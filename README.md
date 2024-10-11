@@ -6,7 +6,7 @@
 To clone this repository to your local environment, run the following command in your terminal:
 
 ```bash
-git clone 
+git clone https://github.com/officialshipex/Project-Shipex.git
 cd backend
 ```
 
