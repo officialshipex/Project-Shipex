@@ -7,7 +7,6 @@ To clone this repository to your local environment, run the following command in
 
 ```bash
 git clone https://github.com/officialshipex/Project-Shipex.git
-cd backend
 ```
 
 ## Commands to run codes on localhost
@@ -15,7 +14,7 @@ cd backend
 ### Backend
 1. Navigate to the backend directory:
    ```bash
-   cd backend
+   cd Project-Shipex\backend
    ```
 
 2. Install the required dependencies:
@@ -33,7 +32,7 @@ cd backend
 ### Frontend
 1. Open new terminal & navigate to the frontend directory:
    ```bash
-   cd frontend
+   cd Project-Shipex\frontend
    ```
 
 2. Install the required dependencies:
