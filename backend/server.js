@@ -1,20 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const router = require('./routes/router');
 
 const app = express();
-const PORT = 5000;
 
 // parse JSON requests
 app.use(express.json());
-
 app.use(cors());
 
-app.get('/api/hello', (req, res) => {
-    res.json({ message: 'Hello from the backend!' });
-});
+app.use('/v1/external',router)
 
-console.log("Its running");
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+module.exports = app;
