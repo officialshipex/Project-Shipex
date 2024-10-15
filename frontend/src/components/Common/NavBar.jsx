@@ -1,10 +1,9 @@
-import React from "react";
-
 const NavBar = ()=> {
 
-    return <>
-    
-    </>
+  return <>
+
+
+  </>
 }
 
 export default NavBar;
