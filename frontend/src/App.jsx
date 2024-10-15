@@ -1,4 +1,8 @@
 import "./App.css";
+import "../src/components/Common/NavBar"
+// import LoginPage from "../src/components/Kyc/LoginPage";
+// import KycStep1 from "../src/components/Kyc/KycStep1"
+// import KycStep2 from "../src/components/Kyc/KycStep2"
 import { useState, useEffect } from "react";
 
 function App() {
@@ -12,9 +16,9 @@ function App() {
 
   return (
     <>
-      <h1 className="underline">This is Frontend and </h1>
-      <h1 className="font-bold">{message}</h1>
-    </>
+    <h1>{message}</h1>
+      
+   </>
   );
 }
 
