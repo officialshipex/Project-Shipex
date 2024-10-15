@@ -2,7 +2,7 @@ const express = require('express');
 
 const auth = express.Router();
 
-auth.post('/login', (req, res) => {
+auth.get('/login', (req, res) => {
     res.json({ message: 'Login route' });
 }); 
 
