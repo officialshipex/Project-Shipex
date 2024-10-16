@@ -1,4 +1,8 @@
 import "./App.css";
+import "../src/components/Common/NavBar"
+// import LoginPage from "../src/components/Kyc/LoginPage";
+// import KycStep1 from "../src/components/Kyc/KycStep1"
+// import KycStep2 from "../src/components/Kyc/KycStep2"
 import { useState, useEffect } from "react";
 import NavBar from "./components/Common/NavBar";
 

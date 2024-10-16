@@ -1,67 +1,78 @@
-# Shipex
+# Contribution Guide
 
+This document outlines the step-by-step process for contributing to the project by creating a new branch, making changes, and submitting a Pull Request (PR).
 
-## Clone this repository
+## Step 1: Pull the Latest Changes
 
-To clone this repository to your local environment, run the following command in your terminal:
+Before starting any new work, it's important to ensure your local copy of the repository is up to date with the latest changes from the `main` branch.
+
+Run the following command to pull the latest changes:
 
 ```bash
-git clone https://github.com/officialshipex/Project-Shipex.git
+git pull origin main
 ```
 
-## Commands to run codes on localhost
+## Step 2: Create a New Branch
 
-### Backend
-1. Navigate to the backend directory:
-   ```bash
-   cd Project-Shipex\backend
-   ```
+Always create a new branch for your changes. This helps in keeping your work organized and separates it from the main codebase.
 
-2. Install the required dependencies:
-   ```bash
-   npm install
-   npm i express cors axios
-   ```
+To create a new branch, run the following command:
 
-4. Start the backend server:
-   ```bash
-   node server.js
-   ```
-   This will start the frontend development server running on `http://localhost:5000`
-
-### Frontend
-1. Open new terminal & navigate to the frontend directory:
-   ```bash
-   cd Project-Shipex\frontend
-   ```
-
-2. Install the required dependencies:
-   ```bash
-   npm install
-   npm -D tailwindcss postcss autoprefixer
-   ```
-
-3. Start the frontend server:
-   ```bash
-   npm run dev
-   ```
-
-   This will start the frontend development server running on `http://localhost:5173`.
+```bash
+git checkout -b feature-branch
+```
+Replace feature-branch with a descriptive name for the feature or fix you're working on.
 
 
+## Step 3: Make Changes and Commit
 
-## How to Contribute
+Make your changes to the codebase. After making the necessary changes, you need to stage and commit them.
 
-We welcome contributions! If you'd like to contribute to this project, please follow these steps:
+To stage all the changes, run:
 
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes and commit them: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Submit a pull request
+```bash
+git add .
+```
+Next, commit the changes with a meaningful commit message:
 
-## Git commands (To push in main branch):
-1. git add . (use this 2 times to add all your changes)
-2. git commit -m "some messages" (use this to commit all your changes)
-3. git pull (use this to fetch changes from Github repository if someone else has pushed codes before you, must write this command everytime you pushed the codes)
-4. git push (use this to push all your codes to repo)
+```bash
+git commit -m "Brief description of the changes"
+```
+Make sure the commit message clearly explains what was changed.
+
+## Step 4: Push the Branch
+
+Once you've committed your changes, it's time to push your branch to the remote repository.
+
+Run the following command to push your new branch:
+
+```bash
+git push origin feature-branch
+```
+
+Make sure to replace feature-branch with the actual name of your branch.
+
+## Step 5: Create a Pull Request
+After pushing your branch, you'll need to create a Pull Request (PR) to propose your changes for review. Here's how to do it:
+
+##### 1. Go to the Repository on GitHub:
+Open your web browser and navigate to the repository on GitHub.
+
+##### 2. Select Your Branch:
+
+On the repository page, click the branch dropdown and select the branch you just pushed (e.g., feature-branch).
+##### 3. Click on "Compare & Pull Request":
+
+GitHub will display a "Compare & pull request" button if your branch has new commits. Click this button.
+
+If you don't see this, go to the Pull Requests tab and click "New Pull Request".
+
+##### 4. Review the Changes:
+
+GitHub will show the changes you've made in the PR interface. Review them to ensure they are correct.
+##### 5. Write a Description:
+
+Add a title and description for the PR explaining the changes you've made and why.
+##### 6. Submit the Pull Request:
+
+Once you're satisfied, click "Create Pull Request" to submit it.
