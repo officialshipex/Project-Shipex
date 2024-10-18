@@ -20,7 +20,7 @@ router.get('/google',passport.authenticate('google',{scope :
 //Auth Callback
 router.get('/google/callback',
     passport.authenticate('google',{
-        successRedirect:'/auth/success',
+        successRedirect:`/auth/success?isBuyer=${0}&isSeller=${1}`,
         failureRedirect:'/auth/failure'
     })
 );
