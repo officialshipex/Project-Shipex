@@ -14,23 +14,23 @@ const usersSchema = new Schema({
         unique:true,
     },
     countryCode:{
-        type:Number,
-        required:true,
+        type:String,
+        // required:true,
     },
     phoneNumber:{
-        type:Number,
-        required:true,
+        type:String,
+        // required:true,
     },
     company:{
         type:String,
-        required:true,
+        // required:true,
     },
     monthlyOrders:{
         type:Number,
     },
     password:{
         type:String,
-        required:true,
+        //required:true,
     },
     isBuyer:{
         type:Boolean,
@@ -39,6 +39,15 @@ const usersSchema = new Schema({
     isSeller:{
         type:Boolean,
         required:true,
+    },
+    googleOAuthID:{
+        type: String
+    },
+    oAuthType:{
+        type:Number
+    },
+    isVerified:{
+        type:Boolean
     }
 })
 

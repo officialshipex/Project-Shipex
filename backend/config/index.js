@@ -21,6 +21,10 @@ const config={
 		INTERNAL_SERVER_ERROR: 500,
 		BAD_GATEWAY: 502,
 		SERVICE_UNAVAILABLE: 503
+	},
+	JWT: {
+		SECRET_KEY:'shipex_test',
+		EXPIRY:'30d'
 	}
 }
 module.exports=config
