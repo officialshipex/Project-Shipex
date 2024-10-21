@@ -2,9 +2,9 @@ const Dotenv = require('dotenv');
 Dotenv.config();
 
 const config={
-    PORT:process.env.PORT || 3000,
+    PORT:process.env.PORT || 3000,  //PORT 
     DB:{
-    MONGO_URL:process.env.MONGO_URL  || 'mongodb://127.0.0.1:27017/shipex_be',
+    MONGO_URL:process.env.MONGO_URL  || 'mongodb://127.0.0.1:27017/shipex_be',  //Database url
     
     },
     HTTP_STATUS_CODES: {
@@ -23,8 +23,8 @@ const config={
 		SERVICE_UNAVAILABLE: 503
 	},
 	JWT: {
-		SECRET_KEY:'shipex_test',
-		EXPIRY:'30d'
+		SECRET_KEY:'shipex_test',  //secret key for jwt
+		EXPIRY:'30d'   //jwt token expiry time
 	}
 }
 module.exports=config

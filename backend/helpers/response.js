@@ -1,5 +1,6 @@
 const config = require('../config');
 const message = require('../helpers/responseMessage')
+
 const success = (res, message, data = null) => {
     const response = {
         status: true,
@@ -11,7 +12,6 @@ const success = (res, message, data = null) => {
 };
 
 const serverError = (res, error) => {
-
     res.status(config.HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({
         status: false,
         message: message.errorMessages.SERVER_ERROR,
