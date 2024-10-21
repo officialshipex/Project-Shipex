@@ -2,7 +2,9 @@ const userService = require("../services/users");
 const response = require("../helpers/response");
 const responseMessage = require("../helpers/responseMessage");
 const users = require("../model/users");
-const {generateToken} = require("../utils/jwtToken")
+const { generateToken } = require("../utils/jwtToken");
+
+//for User Registration
 const register = async (req, res) => {
   try {
     const {
@@ -28,7 +30,6 @@ const register = async (req, res) => {
       isBuyer,
       isSeller,
     };
-    console.log("params", params, req.body);
 
     const userCreated = await userService.createUser(params);
     console.log("userCreated", userCreated);
@@ -39,70 +40,80 @@ const register = async (req, res) => {
         responseMessage.USER.CREATATION_FAILED
       );
     }
-    const payload ={
-      user:{
-        id:userCreated._id,
-        email:userCreated.email,
-        firstName:userCreated.firstName
-      }
+
+    const payload = {
+      user: {
+        id: userCreated._id,
+        email: userCreated.email,
+        firstName: userCreated.firstName,
+      },
+    };
+
+    const token = generateToken(payload);
+
+    if (!token) {
+      return response.serverError(res, error);
     }
-    const token =  generateToken(payload);
-    if(!token){
-      return response.serverError(res,error)
-    }
-    return response.success(
-      res,
-      responseMessage.USER.CREATED_SUCCESS,
-      token
-    );
+
+    return response.success(res, responseMessage.USER.CREATED_SUCCESS, token);
+
   } catch (error) {
     console.log("error", error);
     return response.serverError(res, error);
   }
 };
 
+//For User Login 
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const userExites = await userService.findUser(email);
-    // const data = await usersSchema.({email,password});
     console.log("userExist", userExites);
+
     if (!userExites) {
       return response.badRequestError(res, responseMessage.USER.NOT_FOUND);
     }
+
     const decryptedPass = await users.validatePassword(
       password,
-      userExites[0].password
+      userExites.password
     );
+
     if (!decryptedPass) {
       return response.badRequestError(
         res.responseMessage.USER.PASSWORD_NOT_MATCH
       );
     }
-    const payload ={
-      user:{
-        id:userExites._id,
-        email:userExites.email,
-        firstName:userExites.firstName
-      }
+
+    const payload = {
+      user: {
+        id: userExites._id,
+        email: userExites.email,
+        firstName: userExites.firstName,
+      },
+    };
+
+    const token = generateToken(payload);
+    
+    if (!token) {
+      return response.serverError(res, error);
     }
-    const token =  generateToken(payload);
-    if(!token){
-      return response.serverError(res,error)
-    }
-    return response.success(res, responseMessage.USER.LOGIN_SUCCESS,token);
+    
+    return response.success(res, responseMessage.USER.LOGIN_SUCCESS, token);
+
   } catch (error) {
     console.log("error", error);
     return response.serverError(res, error);
   }
 };
 
+//For check/testing of Google login api in backend
 const loadAuth = (req, res) => {
   console.log("hello");
   res.render("auth");
-  // res.send("hhhkkjkji")
 };
 
+//For successfull Google login  
 const successGoogleLogin = async (req, res) => {
   try {
     if (!req.user) {
@@ -123,26 +134,24 @@ const successGoogleLogin = async (req, res) => {
       oAuthType: 1, //1=Google
       isVerified: req.user.verified,
     };
-    console.log("params..",params,req.query)
 
     const userExist = await userService.findGoogleUser(
       params.email,
       params.googleOAuthID
     );
-console.log("userExist..",userExist)
+    console.log("userExist..", userExist);
     if (userExist) {
-      const payload ={
-        user:{
-          id:userExist._id,
-          email:userExist.email,
-          firstName:userExist.firstName
-        }
-      }
+      const payload = {
+        user: {
+          id: userExist._id,
+          email: userExist.email,
+          firstName: userExist.firstName,
+        },
+      };
       const token = generateToken(payload);
-      if(!token){
-        return response.serverError(res,error)
+      if (!token) {
+        return response.serverError(res, error);
       }
-      console.log("token",token)
       return response.success(res, responseMessage.USER.LOGIN_SUCCESS);
     }
 
@@ -157,28 +166,27 @@ console.log("userExist..",userExist)
     }
 
     console.log(req.user);
-    res.send("Welcome" + req.user.email);
-    console.log(req.user.given_name);
-    console.log("123");
-    const payload ={
-      user:{
-        id:userCreated._id,
-        email:userCreated.email,
-        firstName:userCreated.firstName
-      }
-    }
+    res.send("Welcome'" + req.user.email);
+
+    const payload = {
+      user: {
+        id: userCreated._id,
+        email: userCreated.email,
+        firstName: userCreated.firstName,
+      },
+    };
     const token = generateToken(payload);
-    if(!token){
-      return response.serverError(res,error)
+    if (!token) {
+      return response.serverError(res, error);
     }
-    console.log("token",token)
-    return response.success(res, responseMessage.USER.LOGIN_SUCCESS,token);
+    return response.success(res, responseMessage.USER.LOGIN_SUCCESS, token);
   } catch (error) {
     console.log("error", error);
     return response.serverError(res, error);
   }
 };
 
+//for failure google login 
 const failureGoogleLogin = (req, res) => {
   res.send("Error");
 };

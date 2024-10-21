@@ -2,14 +2,15 @@ const express=require('express')
 const router=express()
 const {register, login, successGoogleLogin,failureGoogleLogin,loadAuth}=require('../controllers/auth')
 const passport = require('passport');
-// require('../helpers/passport');
+const {isAuthorized} = require('../middleware/auth');
 
-// router.use(passport.initialize());
-// router.use(passport.session());
-
+//Registration route
 router.post('/register',register)
+
+//Login route
 router.post('/login',login)
 
+//test route for Google in backend
 router.get('/',loadAuth)
 
 //Auth

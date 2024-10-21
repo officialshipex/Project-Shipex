@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const {JWT} = require('../config/index');
 
+//generate token
 const generateToken = (payload) => {
     try{
         const options = {
@@ -14,6 +15,7 @@ const generateToken = (payload) => {
     }
 }
 
+//validate token
 const validateToken = token => {
     try {
         const payload = jwt.verify(token,JWT.SECRET_KEY);
@@ -26,7 +28,7 @@ const validateToken = token => {
         return {
             success:false,
             data:error
-        };
+        };  
     }
 }
 

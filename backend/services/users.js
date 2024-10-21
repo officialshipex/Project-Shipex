@@ -1,25 +1,25 @@
 const {users}=require('../model/users')
 
+//create user 
 const createUser=async(params)=>{
-    console.log("createUser",params);
-    
     const data=await users.create({...params})
-    console.log("data",data)
     return data
 }
 
+//find user/get user
 const findUser = async(email) => {
-    console.log("email",email)
-    // const data = await getUserSchema.findOne({email: req.body.email, password: req.body.password});
-    const data = await users.find({email});
+    const data = await users.findOne({email});
     return data;
 }
 
-
+//find user for google
 const findGoogleUser = async(email,googleOAuthID) => {
-    console.log("email",email)
-    // const data = await getUserSchema.findOne({email: req.body.email, password: req.body.password});
     const data = await users.findOne({email,googleOAuthID});
     return data;
 }
-module.exports={createUser,findUser,findGoogleUser}
+
+module.exports = {
+    createUser,
+    findUser,
+    findGoogleUser
+}
