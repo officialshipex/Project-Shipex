@@ -4,7 +4,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const axios = require('axios');
 
-const { getSignature, validateGST, validatePAN, validateAadhaar, validateBankDetails } = require('../utils/lib');
+const { getSignature, validateGST, validatePAN, validateAadhaar, validateBankDetails, validateAccountNumber } = require('../utils/lib');
 const BankAccount = require('../models/BankAccount.model');
 const Aadhaar = require('../models/Aadhaar.model');
 const Gstin = require('../models/Gstin.model');
@@ -507,6 +507,186 @@ verfication.post('/bank-account', async (req, res) => {
         message: err.response.data.message || 'Error in Bank Account verification'
       });
     }
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * delete GSTIN number , pan, aadhaar, bank account
+ */
+
+verfication.delete('/gstin', async (req, res) => {
+  try {
+    const { gstin } = req.body;
+
+    if (!gstin) {
+      return res.status(400).json({
+        success: false,
+        message: "GSTIN is required"
+      });
+    }
+
+    const validateGstin = validateGST(gstin);
+    if (!validateGstin) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid GSTIN"
+      });
+    }
+
+    const gstinExists = await Gstin.findOne({ gstin });
+
+    if (!gstinExists) {
+      return res.status(400).json({
+        success: false,
+        message: "GSTIN does not exists"
+      });
+    }
+
+    await Gstin.findOneAndDelete({ gstin });
+
+    return res.status(200).json({
+      success: true,
+      message: "GSTIN deleted successfully"
+    });
+
+  } catch (err) {
+    console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+verfication.delete('/pan', async (req, res) => {
+  try {
+    const { pan } = req.body;
+
+    if (!pan) {
+      return res.status(400).json({
+        success: false,
+        message: "Pan is required"
+      });
+    }
+
+    const validatePan = validatePAN(pan);
+    if (!validatePan) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Pan"
+      });
+    }
+
+    const panExists = await Pan.findOne({ pan });
+
+    if (!panExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Pan does not exists"
+      });
+    }
+
+    await Pan.findOneAndDelete({ pan });
+
+    return res.status(200).json({
+      success: true,
+      message: "Pan deleted successfully"
+    });
+
+  } catch (err) {
+    console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+})
+
+verfication.delete('/aadhaar', async (req, res) => {
+  try {
+    const { aadhaarNumber } = req.body;
+
+    if (!aadhaarNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Aadhaar number is required"
+      });
+    }
+
+    const validateField = validateAadhaar(aadhaarNumber);
+    if (!validateField) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Aadhaar number"
+      });
+    }
+
+    const aadhaarExists = await Aadhaar.findOne({ aadhaarNumber });
+
+    if (!aadhaarExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Aadhaar does not exists"
+      });
+    }
+
+    await Aadhaar.findOneAndDelete({ aadhaarNumber });
+
+    return res.status(200).json({
+      success: true,
+      message: "Aadhaar deleted successfully"
+    });
+
+  } catch (err) {
+    console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+verfication.delete('/bank-account', async (req, res) => {
+  try {
+    const { accountNumber } = req.body;
+
+    if (!accountNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Account number is required"
+      });
+    }
+
+    const validateField = validateAccountNumber(accountNumber);
+    if (!validateField.valid) {
+      return res.status(400).json({
+        success: false,
+        message: validateField.message
+      });
+    }
+
+    const bankAccountExists = await BankAccount.findOne({ accountNumber });
+
+    if (!bankAccountExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Bank Account does not exists"
+      });
+    }
+
+    await BankAccount.findOneAndDelete({ accountNumber });
+
+    return res.status(200).json({
+      success: true,
+      message: "Bank Account deleted successfully"
+    });
+
+  } catch (err) {
+    console.log("err:", err);
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
