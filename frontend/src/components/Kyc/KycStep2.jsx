@@ -30,7 +30,7 @@ const KycStep2 = () => {
         {/* Logo and Title */}
         <div className="text-left">
           <img src={Logo} alt="ShipEx Logo" className="mx-auto h-8 sm:h-10 ml-1" />
-          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 mt-2">
+          <h2 className="text-base sm:text-[18px] lg:text-xl font-bold text-gray-800 mt-2">
             Complete your KYC for a smoother delivery process!
           </h2>
         </div>
@@ -188,7 +188,7 @@ const KycStep2 = () => {
             {/* Next Button */}
             <div className="flex justify-end">
               <button
-                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12"
+                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12 "
               >
                 Next
               </button>
