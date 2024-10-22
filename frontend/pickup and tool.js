@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import './App.css'; // Add your styles here
+import React, { useState } from "react";
+import "./App.css"; // Add your styles here
 
 const App = () => {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -34,7 +34,10 @@ const App = () => {
         <h3>Tools</h3>
         <div className="tools-subhead">
           <button className="tools-dropdown" onClick={toggleDropdown}>
-            <span role="img" aria-label="wrench">🔧</span> Tools {isDropdownOpen ? '▲' : '▼'}
+            <span role="img" aria-label="wrench">
+              🔧
+            </span>{" "}
+            Tools {isDropdownOpen ? "▲" : "▼"}
           </button>
           {isDropdownOpen && (
             <ul className="dropdown-list">
