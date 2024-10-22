@@ -30,6 +30,11 @@ function validateAadhaar(aadhaar) {
     return aadhaarRegex.test(aadhaar);
 }
 
+function validateAccountNumber(accountNumber) {
+    const bankAccountRegex = /^[a-zA-Z0-9]{6,40}$/;
+    return bankAccountRegex.test(accountNumber);
+}
+
 function validateBankDetails(bank_account, ifsc, name, phone ) {
     // Bank account validation: alphanumeric, 6 to 40 characters
     const bankAccountRegex = /^[a-zA-Z0-9]{6,40}$/;
@@ -66,4 +71,5 @@ module.exports = {
     validatePAN,
     validateAadhaar,
     validateBankDetails,
+    validateAccountNumber,
 };
