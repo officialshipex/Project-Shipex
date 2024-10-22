@@ -1,4 +1,5 @@
 import "./App.css";
+<<<<<<< HEAD
 import "../src/components/Common/NavBar"
 // import LoginPage from "../src/components/Kyc/LoginPage"
 // import KycStep1 from "../src/components/Kyc/KycStep1"
@@ -12,6 +13,12 @@ import "../src/components/Common/NavBar"
 
 import { useState, useEffect } from "react";
 import NavBar from "./components/Common/NavBar";  
+=======
+import { useState, useEffect } from "react";
+import NavBar from "./components/Common/NavBar";
+import Dashboard from "./components/Dashboard/Dashboard";
+import { OrderDashboard } from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
+>>>>>>> 2ce6923233659eaa7e848a6f22de77e626b97c90
 
 function App() {
   const [message, setMessage] = useState("");
@@ -22,24 +29,12 @@ function App() {
       .then((data) => setMessage(data.message));
   }, []);
 
-
   return (
-    <>
-    <NavBar/>
-      {/* <h1 className="underline">This is Frontend and </h1> */}
-      <h1 className="font-bold">{message}</h1> 
-       {/* <LoginPage/>
-      <KycStep1/>
-      <KycStep2/>
-      <KycStep3/>
-      <KycStep4/>
-      <Agreement/>
-      <ThankyouPage/>
-       <UploadId/> 
-       <Writemanually/>  */}
-
-     
-      </>
+    <div className="app-container">
+      <NavBar />
+      <Dashboard />
+      <OrderDashboard /> {/* Render OrderDashboard, which includes RtoDashboard */}
+    </div>
   );
 }
 
