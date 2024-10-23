@@ -1,8 +1,8 @@
 import "./App.css";
 import { useState, useEffect } from "react";
 import NavBar from "./components/Common/NavBar";
-import Dashboard from "./components/Dashboard/Dashboard";
-import { OrderDashboard } from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
+import Dashboard from "./components/Dashboard/DashBoard";
+import OrderDashboard from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
 
 function App() {
   const [message, setMessage] = useState("");
@@ -17,7 +17,7 @@ function App() {
     <div className="app-container">
       <NavBar />
       <Dashboard />
-      <OrderDashboard /> {/* Render OrderDashboard, which includes RtoDashboard */}
+      <OrderDashboard />
     </div>
   );
 }
