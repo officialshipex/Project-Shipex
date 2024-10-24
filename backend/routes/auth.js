@@ -1,11 +1,11 @@
+const {register, login, successGoogleLogin,failureGoogleLogin,loadAuth}=require('../controllers/auth')
+const {isAuthorized} = require('../middleware/auth');
+const passport = require('passport');
 const express=require('express')
 const router=express()
-const {register, login, successGoogleLogin,failureGoogleLogin,loadAuth}=require('../controllers/auth')
-const passport = require('passport');
-const {isAuthorized} = require('../middleware/auth');
 
 //Registration route
-router.post('/register',register)
+router.post('/register',register);
 
 //Login route
 router.post('/login',login)

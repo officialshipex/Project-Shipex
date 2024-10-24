@@ -18,6 +18,7 @@ const register = async (req, res) => {
       isBuyer,
       isSeller,
     } = req.body;
+    
     const params = {
       firstName,
       lastName,
@@ -94,11 +95,11 @@ const login = async (req, res) => {
     };
 
     const token = generateToken(payload);
-    
+
     if (!token) {
       return response.serverError(res, error);
     }
-    
+
     return response.success(res, responseMessage.USER.LOGIN_SUCCESS, token);
 
   } catch (error) {
