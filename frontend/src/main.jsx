@@ -3,7 +3,13 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createRoot } from "react-dom/client";
 // import App from "./App.jsx";
 import "./index.css";
+import App from "./App";
 
+<<<<<<< HEAD
+createRoot(document.getElementById("root")).render(<StrictMode>
+    <App/>
+</StrictMode>);
+=======
 import LoginPage from "../src/components/Kyc/LoginPage";
 import KycStep1 from "../src/components/Kyc/KycStep1";
 import KycStep2 from "../src/components/Kyc/KycStep2";
@@ -31,3 +37,4 @@ createRoot(document.getElementById("root")).render(
     </Router>
   </StrictMode>
 );
+>>>>>>> f0121380762613f8092dfeb43a4957355f9477e8

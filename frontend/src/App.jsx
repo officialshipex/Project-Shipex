@@ -2,7 +2,8 @@ import "./App.css";
 import { useState, useEffect } from "react";
 import NavBar from "./components/Common/NavBar";
 import Dashboard from "./components/Dashboard/DashBoard";
-import OrderDashboard from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
+import OrderDashboard from "./components/Dashboard/OrderDashboard";
+import LoginPage from "./components/Kyc/LoginPage";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -15,9 +16,10 @@ function App() {
 
   return (
     <div className="app-container">
-      <NavBar />
+      {/* <NavBar />
       <Dashboard />
-      <OrderDashboard />
+      <OrderDashboard /> */}
+      <LoginPage/>
     </div>
   );
 }
