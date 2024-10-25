@@ -14,7 +14,7 @@ const KycStep1 = () => {
         {/* Logo and Title */}
         <div className="text-left">
           <img src={Logo} alt="ShipEx Logo" className="mx-auto h-10 ml-1" />
-          <h2 className="text-lg lg:text-xl font-bold text-gray-800 mt-2">
+          <h2 className="text-lg lg:text-[18px] font-bold text-gray-800 mt-2">
             Complete your KYC for a smoother delivery process!
           </h2>
         </div>
