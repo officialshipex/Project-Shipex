@@ -1,8 +1,9 @@
 import "./App.css";
 import { useState, useEffect } from "react";
-import NavBar from "./components/Common/NavBar";
-import Dashboard from "./components/Dashboard/Dashboard";
-import { OrderDashboard } from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
+// import NavBar from "./components/Common/NavBar";
+// import Dashboard from "./components/Dashboard/Dashboard";
+// import { OrderDashboard } from "./components/Dashboard/OrderDashboard"; // Only import OrderDashboard
+import OrderList from "./components/Dashboard/MainOrder";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -15,9 +16,10 @@ function App() {
 
   return (
     <div className="app-container">
-      <NavBar />
+      {/* <NavBar />
       <Dashboard />
-      <OrderDashboard /> {/* Render OrderDashboard, which includes RtoDashboard */}
+      <OrderDashboard /> {/* Render OrderDashboard*/}
+      <OrderList /> {/* This will render OnlyNavAndSidebar */}
     </div>
   );
 }
