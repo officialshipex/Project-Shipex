@@ -3,7 +3,7 @@
 const { validateForm, validateEmail } = require("../utils/afv");
 // const userService = require("../services/users");
 // const response = require("../helpers/response");
-const User = require("../model/User.model");
+const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();

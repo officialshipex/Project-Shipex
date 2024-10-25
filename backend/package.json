@@ -4,13 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-<<<<<<< HEAD
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon index.js"
-=======
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
->>>>>>> main
   },
   "keywords": [],
   "author": "",
@@ -19,7 +14,6 @@
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-<<<<<<< HEAD
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.21.1",
@@ -31,13 +25,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0",
     "passport-google-oauth20": "^2.0.0",
-    "path": "^0.12.7"
-=======
-    "crypto": "^1.0.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "mongoose": "^8.7.1",
-    "nodemon": "^3.1.7"
->>>>>>> main
+    "path": "^0.12.7",
+    "crypto": "^1.0.1"
   }
 }
