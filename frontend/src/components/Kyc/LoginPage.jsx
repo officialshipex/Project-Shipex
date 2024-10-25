@@ -1,7 +1,11 @@
+// import React and necessary hooks
 // import React from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import Logo from "../../assets/Vector logo.png";
 
 const LoginPage = () => {
+  const navigate = useNavigate(); // Initialize navigate
+
   // Handlers to redirect to external URLs
   const handleGoogleLogin = () => {
     window.location.href = "https://accounts.google.com/signin"; // Google login page or OAuth link
@@ -9,6 +13,15 @@ const LoginPage = () => {
 
   const handleWhatsAppLogin = () => {
     window.location.href = "https://web.whatsapp.com"; // WhatsApp Web or specific OAuth link if available
+  };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Perform login logic (authentication, validation, etc.)
+
+    // On successful login, navigate to KycStep1 page
+    navigate("/KycStep1");
   };
 
   return (
@@ -26,14 +39,19 @@ const LoginPage = () => {
           </p>
 
           <p className="mt-2 text-gray-600 text-[13px]">
-            Log in to manage your shipments, track orders, and access your personalized dashboard. Ensure smooth operations and efficient logistics management.
+            Log in to manage your shipments, track orders, and access your
+            personalized dashboard. Ensure smooth operations and efficient
+            logistics management.
           </p>
         </div>
 
         <div className="bg-green-50 shadow-lg p-5 sm:p-6 lg:p-7 rounded-lg border-2 space-y-6 border-green-200">
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email
               </label>
               <input
@@ -48,7 +66,10 @@ const LoginPage = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <input
