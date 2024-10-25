@@ -1,32 +1,36 @@
-const indexRouter = require('./routes');
+
 const session = require('express-session');
 const passport = require('passport');
 const express = require("express");
-const config = require('./config');
-const connection = require('./db');
-const cors = require("cors");
 const path = require('path');
+const cors = require("cors");
 
-require('./helpers/passport');
+const authRouter = require('./routes/auth.router');
+const { default: helmet } = require('helmet');
+// require('./helpers/passport');
+// const password = require('./config/passportConfig');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
+app.use(helmet());
 app.use(cors());
 
-app.use(session({
-  resave: false,
-  saveUninitialized: true,
-  secret: process.env.SESSION_SECRET
-}));
-
 app.use(passport.initialize());
-app.use(passport.session());
 
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// app.use(session({
+//   resave: false,
+//   saveUninitialized: true,
+//   secret: process.env.SESSION_SECRET
+// }));
 
-app.use('/', indexRouter);
+// app.use(passport.initialize());
+// app.use(passport.session());
+
+// app.set('view engine', 'ejs');
+// app.set('views', path.join(__dirname, 'views'));
+
+app.use('/v1/external', authRouter);
 
 module.exports = app;
