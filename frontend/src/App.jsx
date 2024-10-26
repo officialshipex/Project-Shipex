@@ -1,12 +1,18 @@
 import "./App.css";
 
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-router-dom";
-import PropTypes from 'prop-types';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Outlet,
+  Navigate,
+} from "react-router-dom";
+import PropTypes from "prop-types";
 import { useState } from "react";
 
 import Writemanually from "../src/components/Kyc/Writemanually";
 import ThankyouPage from "../src/components/Kyc/ThankyouPage";
-import Registeration from "./registeraion/Registeration";
+import Registeration from "./Registration/Registration";
 import Agreement from "../src/components/Kyc/Agreement";
 import KycStep1 from "../src/components/Kyc/KycStep1";
 import KycStep2 from "../src/components/Kyc/KycStep2";
@@ -16,25 +22,36 @@ import UploadId from "../src/components/Kyc/UploadId";
 import LoginPage from "./components/Kyc/LoginPage";
 
 const PrivateRoute = ({ isAuthenticated }) => {
-  return isAuthenticated ?
+  return isAuthenticated ? (
     <>
       <Outlet />
     </>
-    : <><Navigate replace to='/login'></Navigate></>
-}
+  ) : (
+    <>
+      <Navigate replace to="/login"></Navigate>
+    </>
+  );
+};
 
 function App() {
-
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   return (
     <Router>
       <Routes>
+        <Route
+          path="/"
+          element={<Registeration setIsAuthenticated={setIsAuthenticated} />}
+        />
+        <Route
+          path="/login"
+          element={<LoginPage setIsAuthenticated={setIsAuthenticated} />}
+        />
 
-        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
-
-        <Route path="/KycStep1" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}>
+        <Route
+          path="/KycStep1"
+          element={<PrivateRoute isAuthenticated={isAuthenticated} />}
+        >
           <Route path="/KycStep1" element={<KycStep1 />} />
         </Route>
 
