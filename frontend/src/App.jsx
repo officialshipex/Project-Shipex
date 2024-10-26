@@ -12,7 +12,7 @@ import { useState } from "react";
 
 import Writemanually from "../src/components/Kyc/Writemanually";
 import ThankyouPage from "../src/components/Kyc/ThankyouPage";
-import Registeration from "./Registration/Registration";
+import Registeration from "./registration/Registration";
 import Agreement from "../src/components/Kyc/Agreement";
 import KycStep1 from "../src/components/Kyc/KycStep1";
 import KycStep2 from "../src/components/Kyc/KycStep2";
