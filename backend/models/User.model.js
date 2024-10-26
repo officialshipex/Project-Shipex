@@ -22,7 +22,7 @@ const usersSchema = new mongoose.Schema({
         type: String,
     },
     monthlyOrders: {
-        type: Number,
+        type: String,
     },
     password: {
         type: String,

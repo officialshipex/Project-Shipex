@@ -1,4 +1,4 @@
-const { register, login, googleLogin, googleLoginFail } = require('../auth/auth.controller')
+const { register, login, googleLogin, googleLoginFail, verifySession } = require('../auth/auth.controller')
 const { isAuthorized } = require('../middleware/auth');
 // const passport = require('passport');
 const authRouter = require('express').Router();
@@ -26,6 +26,8 @@ authRouter.get('/auth/google/callback',
 );
 
 authRouter.get('/failure', googleLoginFail);
+
+authRouter.get('/verify', verifySession);
 
 
 module.exports = authRouter
