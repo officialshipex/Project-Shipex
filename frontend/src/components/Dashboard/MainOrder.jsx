@@ -317,22 +317,15 @@ const OrderList = () => {
                           Ship Now
                         </button>
                         {/* SVG Icon only in New Orders */}
-                        <svg
-                          width="42"
-                          height="42"
-                          viewBox="0 0 42 42"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="mt-1"
-                        >
-                          <circle cx="21" cy="21" r="21" fill="#0CBB7D" />
-                          <g>
-                            <path
-                              d="M15 23C14.45 23 13.9792 22.8042 13.5875 22.4125C13.1958 22.0208 13 21.55 13 21C13 20.45 13.1958 19.9792 13.5875 19.5875C13.9792 19.1958 14.45 19 15 19C15.55 19 16.0208 19.1958 16.4125 19.5875C16.8042 19.9792 17 20.45 17 21C17 21.55 16.8042 22.0208 16.4125 22.4125C16.0208 22.8042 15.55 23 15 23Z"
-                              fill="white"
-                            />
-                          </g>
-                        </svg>
+                        <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="21" cy="21" r="21" fill="#0CBB7D"/>
+  <g>
+    <path d="M15 23C14.45 23 13.9792 22.8042 13.5875 22.4125C13.1958 22.0208 13 21.55 13 21C13 20.45 13.1958 19.9792 13.5875 19.5875C13.9792 19.1958 14.45 19 15 19C15.55 19 16.0208 19.1958 16.4125 19.5875C16.8042 19.9792 17 20.45 17 21C17 21.55 16.8042 22.0208 16.4125 22.4125C16.0208 22.8042 15.55 23 15 23Z" fill="white"/>
+    <path d="M21 23C20.45 23 19.9792 22.8042 19.5875 22.4125C19.1958 22.0208 19 21.55 19 21C19 20.45 19.1958 19.9792 19.5875 19.5875C19.9792 19.1958 20.45 19 21 19C21.55 19 22.0208 19.1958 22.4125 19.5875C22.8042 19.9792 23 20.45 23 21C23 21.55 22.8042 22.0208 22.4125 22.4125C22.0208 22.8042 21.55 23 21 23Z" fill="white"/>
+    <path d="M27 23C26.45 23 25.9792 22.8042 25.5875 22.4125C25.1958 22.0208 25 21.55 25 21C25 20.45 25.1958 19.9792 25.5875 19.5875C25.9792 19.1958 26.45 19 27 19C27.55 19 28.0208 19.1958 28.4125 19.5875C28.8042 19.9792 29 20.45 29 21C29 21.55 28.8042 22.0208 28.4125 22.4125C28.0208 22.8042 27.55 23 27 23Z" fill="white"/>
+  </g>
+</svg>
+
                       </td>
                     </>
                   )}
@@ -349,7 +342,7 @@ const OrderList = () => {
                           className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                           onClick={() => handleShipOrder(order.id)}
                         >
-                          Ship Now
+                          Download
                         </button>
                       </td>
                     </>
@@ -368,7 +361,7 @@ const OrderList = () => {
                           className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                           onClick={() => handleShipOrder(order.id)}
                         >
-                          Pickup Now
+                          Download invoice
                         </button>
                       </td>
                     </>
@@ -386,7 +379,7 @@ const OrderList = () => {
                           className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                           onClick={() => handleShipOrder(order.id)}
                         >
-                          Track
+                          Track Order
                         </button>
                       </td>
                     </>
@@ -403,7 +396,7 @@ const OrderList = () => {
                           className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
                           onClick={() => handleShipOrder(order.id)}
                         >
-                          Confirm Delivery
+                          Create Return
                         </button>
                       </td>
                     </>
@@ -422,7 +415,15 @@ const OrderList = () => {
         className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300"
         onClick={() => handleShipOrder(order.id)}
       >
-        Track
+        <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="21" cy="21" r="21" fill="#0CBB7D"/>
+  <g>
+    <path d="M15 23C14.45 23 13.9792 22.8042 13.5875 22.4125C13.1958 22.0208 13 21.55 13 21C13 20.45 13.1958 19.9792 13.5875 19.5875C13.9792 19.1958 14.45 19 15 19C15.55 19 16.0208 19.1958 16.4125 19.5875C16.8042 19.9792 17 20.45 17 21C17 21.55 16.8042 22.0208 16.4125 22.4125C16.0208 22.8042 15.55 23 15 23Z" fill="white"/>
+    <path d="M21 23C20.45 23 19.9792 22.8042 19.5875 22.4125C19.1958 22.0208 19 21.55 19 21C19 20.45 19.1958 19.9792 19.5875 19.5875C19.9792 19.1958 20.45 19 21 19C21.55 19 22.0208 19.1958 22.4125 19.5875C22.8042 19.9792 23 20.45 23 21C23 21.55 22.8042 22.0208 22.4125 22.4125C22.0208 22.8042 21.55 23 21 23Z" fill="white"/>
+    <path d="M27 23C26.45 23 25.9792 22.8042 25.5875 22.4125C25.1958 22.0208 25 21.55 25 21C25 20.45 25.1958 19.9792 25.5875 19.5875C25.9792 19.1958 26.45 19 27 19C27.55 19 28.0208 19.1958 28.4125 19.5875C28.8042 19.9792 29 20.45 29 21C29 21.55 28.8042 22.0208 28.4125 22.4125C28.0208 22.8042 27.55 23 27 23Z" fill="white"/>
+  </g>
+</svg>
+
       </button>
     </td>
   </>
@@ -445,10 +446,10 @@ const OrderList = () => {
     <td className="border-b px-4 py-2">{order.status}</td>
     <td className="border-b px-4 py-2">
       <button
-        className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300"
+        className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300"
         onClick={() => handleViewDetails(order.id)}
       >
-        View Details
+        Clone Order
       </button>
     </td>
   </>
@@ -465,10 +466,10 @@ const OrderList = () => {
     <td className="border-b px-4 py-2">{order.status}</td>
     <td className="border-b px-4 py-2">
       <button
-        className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300"
+        className="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300"
         onClick={() => handleViewDetails(order.id)}
       >
-        View Details
+        Clone Order
       </button>
     </td>
   </>
