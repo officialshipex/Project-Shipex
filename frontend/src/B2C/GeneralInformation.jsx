@@ -1,6 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 
-const GeneralInformation = () => {
+const GeneralInformation = (props) => {
+    let [name,setName]=useState()
+    // props.handleCourierName(name)
+    // console.log(props.fun(name))
+    let handleName=(e)=>{
+        setName(e.target.value)
+        props.fun(e.target.value)
+    }
     return (
 
         <div div className="bg-white p-4 md:p-6 shadow-lg rounded-lg" >
@@ -13,6 +20,7 @@ const GeneralInformation = () => {
                         type="text"
                         placeholder="Enter name"
                         className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md"
+                        onChange={handleName}
                     />
                 </div>
 

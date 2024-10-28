@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 (async function () {
     try {
         await connection();
+       
         server.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
