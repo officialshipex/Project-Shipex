@@ -7,6 +7,10 @@ const courierSchema = new mongoose.Schema(
       required: true,
       enum: ["shiprocket", "nimbuspost" /* add more providers here */],
     },
+    courierName:{
+      type:String,
+      required:true
+    },
     companyId: {
       type: Number, // Adjust type based on your needs
       required: true,

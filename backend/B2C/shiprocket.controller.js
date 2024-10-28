@@ -5,6 +5,7 @@ const Courier = require("../models/CouriersB2C.model");
 
 const saveCourierData = async (
   provider,
+  courierName,
   email,
   firstName,
   lastName,
@@ -15,7 +16,7 @@ const saveCourierData = async (
   try {
     const result = await Courier.findOneAndUpdate(
       { provider, userId },
-      { email, firstName, lastName, companyId, token, provider, userId },
+      {courierName, email, firstName, lastName, companyId, token, provider, userId },
       { new: true, upsert: true }
     );
     return result;
@@ -29,7 +30,7 @@ const saveCourierData = async (
 // Here We check the credentials is correct if correct we store the data in databse if not Throw error message
 
 const shiprocket = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password ,courierName} = req.body;
 
   try {
     const options = {
@@ -47,6 +48,7 @@ const shiprocket = async (req, res) => {
 
     const saveData = await saveCourierData(
       "shiprocket",
+      courierName,
       data.email,
       data.first_name,
       data.last_name,
