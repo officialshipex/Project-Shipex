@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 import KycLogo from "../../assets/Illustration.png"; // Update this path according to your project structure
 import { validateGST } from "../../lib/validation";
@@ -25,30 +24,11 @@ const KycStep2 = (props) => {
     }
   }
 
-=======
-import { useState } from "react";
-import Logo from '../../assets/Vector logo.png';
-import KycLogo from '../../assets/Illustration.png'; // Update this path according to your project structure
-
-const KycStep2 = () => {
-  const [companyName, setCompanyName] = useState('');
-  const [gstNumber, setGstNumber] = useState('');
-  const [address, setAddress] = useState({
-    addressLine1: '',
-    addressLine2: '',
-    pinCode: '',
-    city: '',
-    state: '',
-    country: '',
-  });
-
->>>>>>> main
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setAddress((prevAddress) => ({ ...prevAddress, [name]: value }));
   };
 
-<<<<<<< HEAD
   const verifyGst = async (e) => {
     e.preventDefault();
     setSuccess(false);
@@ -101,11 +81,6 @@ const KycStep2 = () => {
       return;
     }
     navigate("/kyc/step3"); // Navigate to KycStep3
-=======
-  const verifyGst = () => {
-    // Add GST verification logic here
-    console.log('Verifying GST:', gstNumber);
->>>>>>> main
   };
 
   return (
@@ -273,6 +248,7 @@ const KycStep2 = () => {
             <div className="flex justify-end">
             {error && (<p className="text-sm text-red-600">{error}</p>)}
               <button
+                onClick={handleNext}
                 className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12 "
               >
                 Next

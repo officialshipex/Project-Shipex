@@ -21,7 +21,6 @@ app.use(cors());
 app.use(passport.initialize());
 
 app.use('/v1/external', authRouter);
-app.use('/v1/merchant', verficationRouter);
-app.use("/v1/couriers", shiprocket);
+app.use('/v1/merchant',  isAuthorized, verficationRouter);
 
 module.exports = app;
