@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { validateAadhaar, validateAccountNumber, validateIFSC, validateName, validatePAN, validatePhoneNumber } from "../../lib/validation";
 import Logo from "../../assets/Vector logo.png";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
@@ -224,19 +225,25 @@ const UploadId = (props) => {
     navigate("/kyc/agreement"); // Navigate to the Agreement page
   };
 
+=======
+// import React from 'react';
+import Logo from '../../assets/Vector logo.png';
+
+const UploadId = () => {
+>>>>>>> main
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-white overflow-hidden -mt-10">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-white overflow-hidden -mt-10"> 
       <div className="w-full max-w-5xl p-6 space-y-4 lg:space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col items-start space-y-2">
+       {/* Header Section */}
+       <div className="flex flex-col items-start space-y-2">
           <img src={Logo} alt="ShipEx Logo" className="h-10 mt-4" />
           <h2 className="text-base sm:text-[18px] lg:text-[16px] font-bold text-gray-800">
             Verify Your Account
           </h2>
         </div>
 
-        {/* Progress Bar */}
-        <div className="relative pt-1 mt-2">
+       {/* Progress Bar */}   
+       <div className="relative pt-1 mt-2"> 
           <div className="flex items-center space-x-2 ">
             <div className="w-16 sm:w-20 lg:w-40 h-1 bg-green-500 rounded-full"></div>
             <div className="w-8 sm:w-10 lg:w-20 h-1 bg-gray-300 rounded-full"></div>
@@ -249,9 +256,7 @@ const UploadId = (props) => {
             <div className="flex flex-col gap-4 flex-1">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 lg:p-6 space-y-4">
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">
-                    Aadhar Card Number
-                  </label>
+                  <label className="block text-gray-700 text-sm font-medium mb-1">Aadhar Card Number</label>
                   <input
                     type="text"
                     placeholder="Enter your number"
@@ -263,17 +268,19 @@ const UploadId = (props) => {
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
+<<<<<<< HEAD
                   <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
+=======
+                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
+>>>>>>> main
                 </div>
               </div>
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 lg:p-6 space-y-4">
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">
-                    PAN
-                  </label>
+                  <label className="block text-gray-700 text-sm font-medium mb-1">PAN</label>
                   <input
                     type="text"
                     placeholder="XXXXX XXXXXXX"
@@ -284,9 +291,7 @@ const UploadId = (props) => {
                   {error?.panNumber && (<p className="text-red-500 text-xs">{error.panNumber}</p>)}
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">
-                    Name (optional)
-                  </label>
+                  <label className="block text-gray-700 text-sm font-medium mb-1">Name (optional)</label>
                   <input
                     type="text"
                     placeholder="Enter your name"
@@ -299,11 +304,15 @@ const UploadId = (props) => {
                 <div className="flex justify-end space-x-2">
                   {message?.panNumber && <p className={success.panNumber ? "text-green-500" : "text-red-500"}>{message?.panNumber}</p>}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
+<<<<<<< HEAD
                   <button
                     onClick={verifyPan}
                     className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
+=======
+                  <button className="bg-green-600 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
+>>>>>>> main
                 </div>
               </div>
             </div>
@@ -313,9 +322,7 @@ const UploadId = (props) => {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 lg:p-6 space-y-4">
                 <div className="grid gap-4">
                   <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-1">
-                      Account Number
-                    </label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Account Number</label>
                     <input
                       type="text"
                       placeholder="Enter your account number"
@@ -326,9 +333,7 @@ const UploadId = (props) => {
                     {error?.accountNumber && (<p className="text-red-500 text-xs">{error.accountNumber}</p>)}
                   </div>
                   <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-1">
-                      IFSC Code
-                    </label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1">IFSC Code</label>
                     <input
                       type="text"
                       placeholder="Enter your IFSC code"
@@ -340,12 +345,10 @@ const UploadId = (props) => {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
-                      <label className="block text-gray-700 text-sm font-medium mb-1">
-                        Account Holder Name
-                      </label>
+                      <label className="block text-gray-700 text-sm font-medium mb-1">Account Holder Name</label>
                       <input
                         type="text"
-                        placeholder="Enter Your name"
+                        placeholder="Enter Your code"
                         className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         value={accountHolderName}
                         onChange={handleAccountNameChange}
@@ -353,9 +356,7 @@ const UploadId = (props) => {
                       {error?.accountHolderName && (<p className="text-red-500 text-xs">{error.accountHolderName}</p>)}
                     </div>
                     <div>
-                      <label className="block text-gray-700 text-sm font-medium mb-1">
-                        Phone Number
-                      </label>
+                      <label className="block text-gray-700 text-sm font-medium mb-1">Phone Number</label>
                       <input
                         type="text"
                         placeholder="Enter your number"
@@ -370,11 +371,15 @@ const UploadId = (props) => {
                 <div className="flex justify-end space-x-2">
                   {message?.account && (<p className={success.account ? "text-green-500" : "text-red-500"}>{message?.account}</p>)}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
+<<<<<<< HEAD
                   <button
                     onClick={verifyBankAccount}
                     className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
+=======
+                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
+>>>>>>> main
                 </div>
               </div>
             </div>
@@ -383,12 +388,7 @@ const UploadId = (props) => {
 
         {/* Next Button */}
         <div className="flex justify-center md:justify-end mt-6">
-          <button
-            onClick={handleNextClick} // Add onClick handler for navigation
-            className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2"
-          >
-            Next
-          </button>
+          <button className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2">Next</button>
         </div>
       </div>
     </div>
