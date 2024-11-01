@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import Logo from "../../assets/Vector logo.png";
 import PropsTypes from "prop-types";
 
@@ -15,11 +14,6 @@ const Agreement = (props) => {
     await kycVerify();
   };
 
-=======
-import Logo from '../../assets/Vector logo.png';
-
-const Agreement = () => {
->>>>>>> main
   return (
     <div
       className="flex justify-center items-center min-h-screen px-4 sm:px-6 lg:px-8 overflow-x-hidden"
@@ -73,17 +67,12 @@ const Agreement = () => {
               checked={checked}
               onChange={handleChecked}
             />
-<<<<<<< HEAD
             <label
               htmlFor="agree"
               className="ml-2 text-xs sm:text-sm text-gray-600"
             >
               By submitting this form, you agree to ShipEx&apos;s User Privacy
               Statement.
-=======
-            <label htmlFor="agree" className="ml-2 text-xs sm:text-sm text-gray-600">
-              By submitting this form, you agree to ShipEx's User Privacy Statement.
->>>>>>> main
             </label>
           </div>
           {/* {error && <p className="text-red-500 text-sm">{error}</p>} */}
@@ -93,6 +82,7 @@ const Agreement = () => {
         {/* Next Button */}
         <div className="flex justify-end">
           <button
+          onClick={handleNext}
             className="px-6 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-4 sm:mt-4"
           >
             Next
@@ -107,7 +97,7 @@ Agreement.propTypes = {
   checked: PropsTypes.bool.isRequired,
   setChecked: PropsTypes.func.isRequired,
   kycVerify: PropsTypes.func.isRequired,
-  verificationError: PropsTypes.string.isRequired
+  verificationError: PropsTypes.string,
 }
 
 export default Agreement;

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { validateAadhaar, validateAccountNumber, validateIFSC, validateName, validatePAN, validatePhoneNumber } from "../../lib/validation";
 import Logo from "../../assets/Vector logo.png";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
@@ -225,12 +224,6 @@ const UploadId = (props) => {
     navigate("/kyc/agreement"); // Navigate to the Agreement page
   };
 
-=======
-// import React from 'react';
-import Logo from '../../assets/Vector logo.png';
-
-const UploadId = () => {
->>>>>>> main
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-white overflow-hidden -mt-10"> 
       <div className="w-full max-w-5xl p-6 space-y-4 lg:space-y-6">
@@ -268,13 +261,9 @@ const UploadId = () => {
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
-<<<<<<< HEAD
                   <button className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
-=======
-                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
->>>>>>> main
                 </div>
               </div>
 
@@ -304,15 +293,11 @@ const UploadId = () => {
                 <div className="flex justify-end space-x-2">
                   {message?.panNumber && <p className={success.panNumber ? "text-green-500" : "text-red-500"}>{message?.panNumber}</p>}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
-<<<<<<< HEAD
                   <button
                     onClick={verifyPan}
                     className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
-=======
-                  <button className="bg-green-600 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
->>>>>>> main
                 </div>
               </div>
             </div>
@@ -371,15 +356,11 @@ const UploadId = () => {
                 <div className="flex justify-end space-x-2">
                   {message?.account && (<p className={success.account ? "text-green-500" : "text-red-500"}>{message?.account}</p>)}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
-<<<<<<< HEAD
                   <button
                     onClick={verifyBankAccount}
                     className="bg-gray-400 hover:bg-gray-500 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
-=======
-                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
->>>>>>> main
                 </div>
               </div>
             </div>
@@ -388,7 +369,7 @@ const UploadId = () => {
 
         {/* Next Button */}
         <div className="flex justify-center md:justify-end mt-6">
-          <button className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2">Next</button>
+          <button onClick={handleNextClick} className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2">Next</button>
         </div>
       </div>
     </div>

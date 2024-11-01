@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 import { validateAadhaar, validateAccountNumber, validateIFSC, validateName, validatePhoneNumber } from "../../lib/validation";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
@@ -7,17 +6,12 @@ import { getTokens } from "../../lib/session";
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import axios from "axios";
-=======
-import React, { useState } from 'react';
-import Logo from '../../assets/Vector logo.png';
->>>>>>> main
 
 const Writemanually = (props) => {
 
   const { setDocumentVerified, aadharNumber, setAadharNumber, aadharOtp, setAadharOtp, accountNumber, setAccountNumber, ifscCode, setIfscCode, accountHolderName, setAccountHolderName, phoneNumber, setPhoneNumber } = props;
   const [aadharImage, setAadharImage] = useState(null);
   const [chequeImage, setChequeImage] = useState(null);
-<<<<<<< HEAD
   const navigate = useNavigate(); // Initialize the useNavigate hook
 
   const [error, setError] = useState();
@@ -161,8 +155,6 @@ const Writemanually = (props) => {
   const handleNextClick = () => {
     navigate("/kyc/agreement"); // Navigate to the Agreement page
   };
-=======
->>>>>>> main
 
   const handleAadharChange = (e) => {
     setAadharImage(e.target.files[0]);
@@ -264,15 +256,11 @@ const Writemanually = (props) => {
                 <div className="flex justify-end space-x-2">
                   {message?.account && (<p className={success ? "text-green-600" : "text-red-500"}>{message.account}</p>)}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
-<<<<<<< HEAD
                   <button
                     onClick={verifyBankAccount}
                     className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">
                     Verify
                   </button>
-=======
-                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
->>>>>>> main
                 </div>
               </div>
             </div>
@@ -335,7 +323,6 @@ const Writemanually = (props) => {
         </div>
 
         {/* Next Button */}
-<<<<<<< HEAD
         <div className="flex justify-center md:justify-end mt-8">
           <button
             onClick={handleNextClick}
@@ -343,10 +330,6 @@ const Writemanually = (props) => {
           >
             Next
           </button>
-=======
-        <div className="flex justify-center md:justify-end mt-8"> 
-          <button className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2">Next</button>
->>>>>>> main
         </div>
       </div>
     </div>
