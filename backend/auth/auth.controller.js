@@ -194,7 +194,7 @@ const googleLogin = async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    res.redirect("http://localhost:5173/KycStep1");
+    return res.redirect(`http://localhost:5173/login?token=${token}`);
 
     // return res.status(200).json({
     //   success: true,
@@ -206,10 +206,11 @@ const googleLogin = async (req, res) => {
 
   } catch (error) {
     console.log("error", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return res.redirect(`http://localhost:5173/`)
+    // return res.status(500).json({
+    //   success: false,
+    //   message: "Internal server error",
+    // });
   };
 }
 
@@ -254,6 +255,17 @@ const verifySession = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid token",
+      });
+    }
+
+    // console.log("decoded", decoded.user);
+    const user = await User.findById(decoded.user.id);
+    // console.log("user", user);
+
+    if(!user){
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
       });
     }
 

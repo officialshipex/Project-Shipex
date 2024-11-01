@@ -1,5 +1,5 @@
 const { register, login, googleLogin, googleLoginFail, verifySession } = require('../auth/auth.controller')
-const { isAuthorized } = require('../middleware/auth');
+const { isAuthorized } = require('../middleware/auth.middleware');
 // const passport = require('passport');
 const authRouter = require('express').Router();
 const passport = require('../config/passwordConfig');

@@ -10,6 +10,7 @@ const Aadhaar = require('../models/Aadhaar.model');
 const Gstin = require('../models/Gstin.model');
 const User = require('../models/User.model');
 const Pan = require('../models/Pan.model');
+const Kyc = require('../models/Kyc.model');
 
 dotenv.config();
 const verfication = express.Router();
@@ -22,8 +23,9 @@ verfication.post('/gstin', async (req, res) => {
   try {
 
     const userId = req.user._id;
+    // console.log("userId:", userId);
     const { GSTIN, businessName } = req.body;
-
+    console.log("GSTIN:", GSTIN);
     if (!GSTIN) {
       return res.status(400).json({
         success: false,
@@ -42,10 +44,19 @@ verfication.post('/gstin', async (req, res) => {
 
     const gstinExists = await Gstin.findOne({ gstin: GSTIN });
 
+    // console.log("gstinExists:", gstinExists.user);
+
     if (gstinExists) {
-      return res.status(400).json({
-        success: false,
+      if (!gstinExists.user.equals(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "gstin already exists for another user",
+        });
+      }
+      return res.status(200).json({
+        success: true,
         message: "GSTIN already exists",
+        data: gstinExists
       });
     }
 
@@ -112,7 +123,7 @@ verfication.post('/gstin', async (req, res) => {
 
     console.log("err:", err);
 
-    if (err instanceof AxiosError || err.response) {
+    if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
         message: err.response.data.message || 'Error in GSTIN verification'
@@ -131,8 +142,7 @@ verfication.post('/gstin', async (req, res) => {
 verfication.post('/pan', async (req, res) => {
   try {
 
-    // const userId = req.user._id;
-    const userId = "6711f5f10d7b30f7193c55fd";
+    const userId = req.user._id;
     const { pan, name } = req.body;
 
     if (!pan) {
@@ -154,9 +164,16 @@ verfication.post('/pan', async (req, res) => {
     const panExists = await Pan.findOne({ pan });
 
     if (panExists) {
-      return res.status(400).json({
-        success: false,
+      if (!panExists.user.equals(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Pan already exists for another user",
+        });
+      }
+      return res.status(200).json({
+        success: true,
         message: "Pan already exists",
+        data: panExists
       });
     }
 
@@ -184,7 +201,7 @@ verfication.post('/pan', async (req, res) => {
 
     const response = await axios.request(config);
 
-    console.log("response:", response);
+    // console.log("response:", response);
 
     if (!response || !response.data) {
       return res.status(500).json({
@@ -215,7 +232,7 @@ verfication.post('/pan', async (req, res) => {
 
     await newPan.save();
 
-    console.log("newPan:", newPan);
+    // console.log("newPan:", newPan);
 
     return res.status(200).json({
       success: true,
@@ -228,7 +245,7 @@ verfication.post('/pan', async (req, res) => {
 
     console.log("err:", err);
 
-    if (err instanceof AxiosError || err.response) {
+    if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
         message: err.response.data.message || 'Error in Pan verification'
@@ -247,7 +264,7 @@ verfication.post('/pan', async (req, res) => {
 verfication.post('/generate-otp', async (req, res) => {
   try {
 
-    // const userId = req.user._id;
+    const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
     const { aadhaarNo } = req.body;
 
@@ -270,8 +287,14 @@ verfication.post('/generate-otp', async (req, res) => {
     const aadhaarExists = await Aadhaar.findOne({ aadhaarNumber: aadhaarNo });
 
     if (aadhaarExists) {
-      return res.status(400).json({
-        success: false,
+      if (!aadhaarExists.user.equals(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Aadhaar already exists for another user",
+        });
+      }
+      return res.status(200).json({
+        success: true,
         message: "Aadhaar already exists",
       });
     }
@@ -315,9 +338,9 @@ verfication.post('/generate-otp', async (req, res) => {
 
   } catch (err) {
 
-    console.log("err:", err);
+    // console.log("err:", err);
 
-    if (err instanceof AxiosError || err.response) {
+    if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
         message: err.response.data.message || 'Error in Aadhaar verification'
@@ -336,7 +359,7 @@ verfication.post('/generate-otp', async (req, res) => {
 verfication.post('/verify-otp', async (req, res) => {
   try {
 
-    // const userId = req.user._id;
+    const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
     const { otp, refId } = req.body;
 
@@ -396,7 +419,7 @@ verfication.post('/verify-otp', async (req, res) => {
 
     console.log("err:", err);
 
-    if (err instanceof AxiosError || err.response) {
+    if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
         message: err.response.data.message || 'Error in Aadhaar verification'
@@ -415,8 +438,8 @@ verfication.post('/verify-otp', async (req, res) => {
 verfication.post('/bank-account', async (req, res) => {
   try {
 
-    // const userId = req.user._id;
-    const userId = "6711f5f10d7b30f7193c55fd";
+    const userId = req.user._id;
+    // const userId = "6711f5f10d7b30f7193c55fd";
 
     const { accountNo, ifsc, name, phone } = req.body;
 
@@ -439,8 +462,14 @@ verfication.post('/bank-account', async (req, res) => {
     const bankAccountExists = await BankAccount.findOne({ accountNumber: accountNo });
 
     if (bankAccountExists) {
-      return res.status(400).json({
-        success: false,
+      if (!bankAccountExists.user.equals(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Bank Account already exists for another user",
+        });
+      }
+      return res.status(200).json({
+        success: true,
         message: "Bank Account already exists",
       });
     }
@@ -495,13 +524,14 @@ verfication.post('/bank-account', async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      message: 'Bank Account verified successfully',
       data: newBankAccount,
     });
 
   } catch (err) {
-    console.log("err:", err);
+    // console.log("err:", err);
 
-    if (err instanceof AxiosError || err.response) {
+    if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
         message: err.response.data.message || 'Error in Bank Account verification'
@@ -514,135 +544,132 @@ verfication.post('/bank-account', async (req, res) => {
   }
 });
 
-/**
- * delete GSTIN number , pan, aadhaar, bank account
- */
 
-verfication.delete('/gstin', async (req, res) => {
+verfication.post('/kyc', async (req, res) => {
   try {
-    const { gstin } = req.body;
 
-    if (!gstin) {
+    const userId = req.user._id;
+
+    const { businesstype, companyName, gstNumber, address, kycType, panNumber, panName, aadharNumber, accountNumber, ifscCode, accountHolderName, phoneNumber, documentVerified } = req.body;
+
+    if (!businesstype || !companyName || !address || !kycType || !panNumber || !panName || !accountNumber || !ifscCode || !accountHolderName || !phoneNumber || !documentVerified) {
       return res.status(400).json({
         success: false,
-        message: "GSTIN is required"
+        message: "All fields are required"
       });
     }
 
-    const validateGstin = validateGST(gstin);
-    if (!validateGstin) {
+    if (!["individual", "soleProprietor", "company"].includes(businesstype)) {
+      return res.status(400).json({ success: false, message: "Invalid business type" });
+    }
+
+    if (!["digital", "manual"].includes(kycType)) {
+      return res.status(400).json({ success: false, message: "Invalid kyc type" });
+    }
+
+    if (!validatePAN(panNumber)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid GSTIN"
+        message: "Invalid PAN number"
       });
     }
 
-    const gstinExists = await Gstin.findOne({ gstin });
-
-    if (!gstinExists) {
-      return res.status(400).json({
-        success: false,
-        message: "GSTIN does not exists"
-      });
-    }
-
-    await Gstin.findOneAndDelete({ gstin });
-
-    return res.status(200).json({
-      success: true,
-      message: "GSTIN deleted successfully"
-    });
-
-  } catch (err) {
-    console.log("err:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-verfication.delete('/pan', async (req, res) => {
-  try {
-    const { pan } = req.body;
-
-    if (!pan) {
-      return res.status(400).json({
-        success: false,
-        message: "Pan is required"
-      });
-    }
-
-    const validatePan = validatePAN(pan);
-    if (!validatePan) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Pan"
-      });
-    }
-
-    const panExists = await Pan.findOne({ pan });
-
-    if (!panExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Pan does not exists"
-      });
-    }
-
-    await Pan.findOneAndDelete({ pan });
-
-    return res.status(200).json({
-      success: true,
-      message: "Pan deleted successfully"
-    });
-
-  } catch (err) {
-    console.log("err:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-})
-
-verfication.delete('/aadhaar', async (req, res) => {
-  try {
-    const { aadhaarNumber } = req.body;
-
-    if (!aadhaarNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Aadhaar number is required"
-      });
-    }
-
-    const validateField = validateAadhaar(aadhaarNumber);
-    if (!validateField) {
+    if (!validateAadhaar(aadharNumber) && aadharNumber) {
       return res.status(400).json({
         success: false,
         message: "Invalid Aadhaar number"
       });
     }
 
-    const aadhaarExists = await Aadhaar.findOne({ aadhaarNumber });
-
-    if (!aadhaarExists) {
+    if (!validateBankDetails(accountNumber, ifscCode, accountHolderName, phoneNumber)) {
       return res.status(400).json({
         success: false,
-        message: "Aadhaar does not exists"
+        message: "Invalid bank details"
       });
     }
 
-    await Aadhaar.findOneAndDelete({ aadhaarNumber });
+    if (!validateGST(gstNumber) && gstNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid GST number"
+      });
+    }
+
+    const kycExists = await Kyc.findOne({ user: userId });
+
+    if (kycExists) {
+      const data = await Kyc.findByIdAndUpdate({
+        _id: kycExists._id
+      }, {
+        businesstype,
+        companyName,
+        gstNumber,
+        address,
+        kycType,
+        panNumber,
+        panName,
+        aadharNumber,
+        accountNumber,
+        ifscCode,
+        accountHolderName,
+        phoneNumber,
+        documentVerified,
+      }, {
+        new: true
+      }).lean();
+
+      await User.findByIdAndUpdate({
+        _id: userId
+      }, {
+        kycDone: true
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "KYC Upadated successfully",
+        data: data
+      });
+    }
+
+    const newKyc = new Kyc({
+      user: userId,
+      businesstype,
+      companyName,
+      gstNumber,
+      address,
+      kycType,
+      panNumber,
+      panName,
+      aadharNumber,
+      accountNumber,
+      ifscCode,
+      accountHolderName,
+      phoneNumber,
+      documentVerified,
+    });
+
+    await newKyc.save();
+
+    await User.findByIdAndUpdate({
+      _id: userId
+    }, {
+      kycDone: true
+    });
 
     return res.status(200).json({
       success: true,
-      message: "Aadhaar deleted successfully"
+      message: 'KYC verified successfully',
+      data: newKyc,
     });
 
   } catch (err) {
-    console.log("err:", err);
+    // console.log("err:", err);
+    if (err.isAxiosError && err.response) {
+      return res.status(err.response.status || 500).json({
+        success: false,
+        message: err.response.data.message || 'Error in KYC verification'
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -650,48 +677,39 @@ verfication.delete('/aadhaar', async (req, res) => {
   }
 });
 
-verfication.delete('/bank-account', async (req, res) => {
+
+verfication.get("/kyc", async (req, res) => {
   try {
-    const { accountNumber } = req.body;
 
-    if (!accountNumber) {
-      return res.status(400).json({
+    const userId = req.user._id;
+
+    const kyc = await Kyc.findOne({ user: userId });
+
+    if (!kyc) {
+      return res.status(404).json({
         success: false,
-        message: "Account number is required"
+        message: "KYC not found"
       });
     }
-
-    const validateField = validateAccountNumber(accountNumber);
-    if (!validateField.valid) {
-      return res.status(400).json({
-        success: false,
-        message: validateField.message
-      });
-    }
-
-    const bankAccountExists = await BankAccount.findOne({ accountNumber });
-
-    if (!bankAccountExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Bank Account does not exists"
-      });
-    }
-
-    await BankAccount.findOneAndDelete({ accountNumber });
 
     return res.status(200).json({
       success: true,
-      message: "Bank Account deleted successfully"
+      data: kyc
     });
 
   } catch (err) {
-    console.log("err:", err);
+    // console.log("err:", err);
+    if (err.isAxiosError && err.response) {
+      return res.status(err.response.status || 500).json({
+        success: false,
+        message: err.response.data.message || 'Error in getting KYC'
+      });
+    }
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });
   }
-});
+})
 
 module.exports = verfication;
