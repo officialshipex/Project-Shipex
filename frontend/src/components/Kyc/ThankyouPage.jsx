@@ -1,12 +1,19 @@
 import Logo from '../../assets/Vector logo.png';
 import image from "../../assets/undraw1.png";
+import PropsTypes from "prop-types";  
 
-const ThankyouPage   = () => {
+const ThankyouPage   = (props) => {
+
+  const {done} = props;
+
+  if (!done) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 lg:px-8 overflow-hidden ">
       {/* Container */}
       <div className="w-full max-w-screen-lg xl:max-w-screen-xl p-6 lg:p-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start lg:ml-[300px] lg:mt-[-250px] mt-0">
-        
         {/* Left section: Title and Logo  */}
         <div className="w-full lg:w-1/2 space-y-4">
           <img src={Logo} alt="ShipEx Logo" className="mx-auto h-10 ml-1" />
@@ -47,5 +54,9 @@ const ThankyouPage   = () => {
     </div>
   );
 };
+
+ThankyouPage.propTypes = {
+  done: PropsTypes.bool,
+}
 
 export default ThankyouPage;

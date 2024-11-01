@@ -24,6 +24,13 @@ const LoginPage = ({setIsAuthenticated}) => {
   useEffect(() => {
     try {
       (async () => {
+        const param = new URLSearchParams(window.location.search);
+        const token = param.get('token');
+
+        if(token){
+          createSession(token);
+        }
+
         const response = await getSession();
         if (response) {
           setIsAuthenticated(true);
@@ -91,7 +98,7 @@ const LoginPage = ({setIsAuthenticated}) => {
   }
 
   const handleNavigation = () => {
-    navigate('/KycStep1');
+    navigate('/kyc/step1');
   };
 
   const handlePasswordChange = (e) => {
@@ -244,7 +251,7 @@ const LoginPage = ({setIsAuthenticated}) => {
 };
 
 LoginPage.propTypes = {
-  setIsAuthenticated: PropTypes.bool.isRequired,
+  setIsAuthenticated: PropTypes.func.isRequired,
 };
 
 export default LoginPage;

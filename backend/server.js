@@ -7,6 +7,7 @@ const cors = require("cors");
 const verficationRouter = require('./routes/kyc.router');
 const authRouter = require('./routes/auth.router');
 const helmet  = require('helmet');
+const { isAuthorized } = require('./middleware/auth.middleware');
 
 require('dotenv').config();
 
@@ -19,6 +20,6 @@ app.use(cors());
 app.use(passport.initialize());
 
 app.use('/v1/external', authRouter);
-app.use('/v1/merchant', verficationRouter);
+app.use('/v1/merchant',  isAuthorized, verficationRouter);
 
 module.exports = app;

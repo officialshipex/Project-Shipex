@@ -1,35 +1,86 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import Logo from "../../assets/Vector logo.png";
+
 import KycLogo from "../../assets/Illustration.png"; // Update this path according to your project structure
+import { validateGST } from "../../lib/validation";
+import Logo from "../../assets/Vector logo.png";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { getTokens } from "../../lib/session";
+import PropTypes from 'prop-types';
+import { useState } from "react";
+import axios from "axios";
 
-const KycStep2 = () => {
-  const [companyName, setCompanyName] = useState("");
-  const [gstNumber, setGstNumber] = useState("");
-  const [address, setAddress] = useState({
-    addressLine1: "",
-    addressLine2: "",
-    pinCode: "",
-    city: "",
-    state: "",
-    country: "",
-  });
+const KycStep2 = (props) => {
 
+  const { setDocumentVerified, companyName, setCompanyName, gstNumber, setGstNumber, address, setAddress } = props;
+  const [success, setSuccess] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleGstChange = (e) => {
+    setMessage("");
+    setGstNumber(e.target.value);
+    if(!validateGST(e.target.value)){
+      setMessage("GST Number is invalid");
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setAddress((prevAddress) => ({ ...prevAddress, [name]: value }));
   };
 
-  const verifyGst = () => {
-    // Add GST verification logic here
-    console.log("Verifying GST:", gstNumber);
+  const verifyGst = async (e) => {
+    e.preventDefault();
+    setSuccess(false);
+    setMessage("");
+
+    const session = getTokens();
+    if (!session) {
+      navigate("/login");
+      return;
+    }
+
+    if (!validateGST(gstNumber)) {
+      setMessage("Invalid GST Number");
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://localhost:5000/v1/merchant/verfication/gstin', {
+        GSTIN: gstNumber,
+        businessName: companyName || "ShipEx",
+      }, {
+        headers: {
+          authorization: `Bearer ${session}`
+        }
+      })
+      console.log("GST Verification Response:", response.data);
+
+      if (response.data.success) {
+        setDocumentVerified( prevState => ({...prevState, gstVerified: true}));
+        setSuccess(true);
+        setMessage("GST Verified Successfully!");
+      } else {
+        setMessage("Invalid GST Number");
+      }
+
+    } catch (error) {
+      console.error("GST Verification Error:", error);
+      if (error?.response?.data?.message) {
+        setMessage(error.response.data.message);
+      } else {
+        setMessage("Something went wrong. Please try again later.");
+      }
+    }
+
   };
 
   const handleNext = () => {
-    // Add any validation if needed, then navigate to the next step
-    navigate("/KycStep3");
+    if(!companyName || !address.addressLine1 || !address.pinCode || !address.city || !address.state || !address.country || !address.addressLine2){
+      setError("Please fill all the fields");
+      return;
+    }
+    navigate("/kyc/step3"); // Navigate to KycStep3
   };
 
   return (
@@ -196,11 +247,11 @@ const KycStep2 = () => {
               type="text"
               id="gstNumber"
               value={gstNumber}
-              onChange={(e) => setGstNumber(e.target.value)}
+              onChange={handleGstChange}
               placeholder="GST Number (Optional)"
               className="w-full border border-gray-300 rounded-md p-2 sm:p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-
+            {message && (<p className={`text-sm text-center ${success ? 'text-green-600' : 'text-red-600'}`}>{message}</p>)}
             {/* Verify Button */}
             <button
               onClick={verifyGst}
@@ -224,6 +275,7 @@ const KycStep2 = () => {
 
             {/* Next Button */}
             <div className="flex justify-end">
+            {error && (<p className="text-sm text-red-600">{error}</p>)}
               <button
                 className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12"
                 onClick={handleNext} // Navigate to KycStep3 on click
@@ -236,6 +288,23 @@ const KycStep2 = () => {
       </div>
     </div>
   );
+};
+
+KycStep2.propTypes = {
+  setDocumentVerified: PropTypes.func.isRequired,
+  companyName: PropTypes.string.isRequired,
+  setCompanyName: PropTypes.func.isRequired,
+  gstNumber: PropTypes.string.isRequired,
+  setGstNumber: PropTypes.func.isRequired,
+  address: PropTypes.shape({
+    addressLine1: PropTypes.string,
+    addressLine2: PropTypes.string,
+    pinCode: PropTypes.string,
+    city: PropTypes.string,
+    state: PropTypes.string,
+    country: PropTypes.string,
+  }).isRequired,
+  setAddress: PropTypes.func.isRequired,
 };
 
 export default KycStep2;

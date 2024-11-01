@@ -1,11 +1,17 @@
 import Logo from "../../assets/Vector logo.png";
-import { useNavigate } from "react-router-dom";
+import PropsTypes from "prop-types";
 
-const Agreement = () => {
-  const navigate = useNavigate(); // Initialize useNavigate hook
+const Agreement = (props) => {
+  const { checked, setChecked, kycVerify, verificationError } = props; 
+  // const [error, setError] = useState("");
+  // const navigate = useNavigate();
 
-  const handleNext = () => {
-    navigate("/thank-you"); // Navigate to Thank You page on button click
+  const handleChecked = (e) => {
+    setChecked(e.target.checked);
+  }
+
+  const handleNext = async () => {
+    await kycVerify();
   };
 
   return (
@@ -82,15 +88,19 @@ const Agreement = () => {
               type="checkbox"
               id="agree"
               className="mt-1.5 h-4 w-4 text-green-500 border-green-500 rounded focus:ring-green-400"
+              checked={checked}
+              onChange={handleChecked}
             />
             <label
               htmlFor="agree"
               className="ml-2 text-xs sm:text-sm text-gray-600"
             >
-              By submitting this form, you agree to ShipEx's User Privacy
+              By submitting this form, you agree to ShipEx&apos;s User Privacy
               Statement.
             </label>
           </div>
+          {/* {error && <p className="text-red-500 text-sm">{error}</p>} */}
+          {verificationError && <p className="text-red-500 text-sm">{verificationError}</p>}
         </div>
 
         {/* Next Button */}
@@ -106,5 +116,12 @@ const Agreement = () => {
     </div>
   );
 };
+
+Agreement.propTypes = {
+  checked: PropsTypes.bool.isRequired,
+  setChecked: PropsTypes.func.isRequired,
+  kycVerify: PropsTypes.func.isRequired,
+  verificationError: PropsTypes.string.isRequired
+}
 
 export default Agreement;
