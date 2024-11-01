@@ -30,12 +30,11 @@ const usersSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true,
         unique: true,
+        required: true,
     },
     phoneNumber: {
         type: String,
-        unique: true,
     },
     company: {
         type: String,
@@ -59,6 +58,10 @@ const usersSchema = new mongoose.Schema({
     provider: {
         type: String,
         default: 'Credentials'
+    },
+    kycDone:{
+        type:Boolean,
+        default:false
     }
 });
 

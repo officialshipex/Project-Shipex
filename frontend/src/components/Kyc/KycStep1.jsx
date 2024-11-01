@@ -1,13 +1,40 @@
-import { useState } from "react";
-import Logo from "../../assets/Vector logo.png";
+<<<<<<< HEAD
 
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+=======
+import { useState } from "react";
+>>>>>>> main
+import Logo from "../../assets/Vector logo.png";
+import PropTypes from 'prop-types';
+import { useState } from "react";
+
+<<<<<<< HEAD
+const KycStep1 = (props) => {
+
+  const { businesstype, setBusinesstype } = props;
+  const [error, setError] = useState();
+  const navigate = useNavigate();
+=======
 const KycStep1 = () => {
   const [selectedOption, setSelectedOption] = useState("");
+>>>>>>> main
 
   const handleOptionChange = (option) => {
-    setSelectedOption(option);
+    setBusinesstype(option);
   };
 
+<<<<<<< HEAD
+  // Handle the "Next" button click
+  const handleNext = () => {
+    if (businesstype) {
+      navigate("/kyc/step2"); // Navigate to KycStep2 page
+    } else {
+      setError("Please select a business type before proceeding."); // Optional: Ensure an option is selected
+    }
+  };
+
+=======
+>>>>>>> main
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="bg-white w-full max-w-xl lg:max-w-5xl p-6 lg:p-8 space-y-6">
@@ -24,7 +51,7 @@ const KycStep1 = () => {
           <div className="flex items-center space-x-2 ml-0">
             <div className="w-32 lg:w-40 h-1 bg-green-500 rounded-full"></div>
             <div className="w-16 lg:w-20 h-1 bg-gray-300 rounded-full"></div>
-            <div className="w-8 lg:w-10 h-1 bg-gray-300 rounded-full"></div>
+            <div className="w-16 lg:w-20 h-1 bg-gray-300 rounded-full"></div>
           </div>
         </div>
 
@@ -35,9 +62,16 @@ const KycStep1 = () => {
           {["individual", "soleProprietor", "company"].map((option) => (
             <div
               key={option}
+<<<<<<< HEAD
+              className={`border p-4 lg:p-6 rounded-lg cursor-pointer ${businesstype === option
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300"
+                }`}
+=======
               className={`border p-4 lg:p-6 rounded-lg cursor-pointer ${
                 selectedOption === option ? "border-green-500 bg-green-50" : "border-gray-300"
               }`}
+>>>>>>> main
               onClick={() => handleOptionChange(option)}
             >
               <div className="flex items-center">
@@ -45,7 +79,7 @@ const KycStep1 = () => {
                   type="radio"
                   name="businessType"
                   id={option}
-                  checked={selectedOption === option}
+                  checked={businesstype === option}
                   onChange={() => handleOptionChange(option)}
                   className="h-4 w-4 text-green-600 border-green-600 focus:ring-green-600"
                 />
@@ -66,6 +100,9 @@ const KycStep1 = () => {
         </div>
 
         {/* Next Button */}
+        {error && (
+          <p className="text-red-500 text-sm font-medium">{error}</p>
+        )}
         <div className="flex justify-start mt-[-10px]">
           <button
             className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-0 mt-2" // Remove focus:ring
@@ -76,6 +113,10 @@ const KycStep1 = () => {
       </div>
     </div>
   );
+};
+KycStep1.propTypes = {
+  businesstype: PropTypes.string.isRequired,
+  setBusinesstype: PropTypes.func.isRequired,
 };
 
 export default KycStep1;

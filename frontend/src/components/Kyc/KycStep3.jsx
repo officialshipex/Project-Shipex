@@ -1,3 +1,28 @@
+<<<<<<< HEAD
+import Logo from "../../assets/Vector logo.png";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+import Image from "../../assets/image.png";
+import PropsTypes from "prop-types";
+import { useState } from "react";
+
+const KycStep3 = (props) => {
+
+  const { kycType, setKycType } = props; 
+  // const [selectedOption, setSelectedOption] = useState();
+  const [error, setError] = useState("");
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleOptionChange = (e) => {
+    setKycType(e.target.value);
+  };
+
+  const handleNextClick = () => {
+    if (kycType === "digital") navigate("/kyc/digital");
+    else if (kycType === "manual") navigate("/kyc/mannual");
+    else setError("Please select an option to proceed!");
+  };
+
+=======
 import { useState } from "react";
 // import { useNavigate } from "react-router-dom"; // Import useNavigate
 import Logo from '../../assets/Vector logo.png';
@@ -15,6 +40,7 @@ const KycStep3 = () => {
     }
   };
 
+>>>>>>> main
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 lg:px-8 overflow-hidden">
       {/* Container */}
@@ -40,12 +66,21 @@ const KycStep3 = () => {
           <h3 className="text-base sm:text-lg font-semibold text-gray-800">Verify Your ID</h3>
           <div className="space-y-4">
             <button
+<<<<<<< HEAD
+              className={`w-full max-w-sm flex items-center justify-between px-4 py-3 border rounded-md mx-auto lg:mx-0 ${kycType === "digital"
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300"
+                }`}
+              value="digital"
+              onClick={handleOptionChange}
+=======
               className={`w-full max-w-sm flex items-center justify-between px-4 py-3 border rounded-md mx-auto lg:mx-0 ${
                 selectedOption === "digital" 
                   ? "border-green-500 bg-green-50" 
                   : "border-gray-300"
               }`}
               onClick={() => handleOptionChange("digital")}
+>>>>>>> main
             >
               <div className="flex items-center space-x-2">
                 <svg
@@ -56,18 +91,36 @@ const KycStep3 = () => {
                 >
                   <path d="M10 11.9999V8.66658H25V11.9999H10ZM10 16.9999V13.6666H25V16.9999H10ZM15 33.6666H5C3.61111 33.6666 2.43056 33.1805 1.45833 32.2082C0.486111 31.236 0 30.0555 0 28.6666V23.6666H5V0.333252H30V15.3749C29.4444 15.3194 28.8819 15.3402 28.3125 15.4374C27.7431 15.5346 27.1944 15.7082 26.6667 15.9582V3.66658H8.33333V23.6666H18.3333L15 26.9999H3.33333V28.6666C3.33333 29.1388 3.49306 29.5346 3.8125 29.8541C4.13194 30.1735 4.52778 30.3332 5 30.3332H15V33.6666ZM18.3333 33.6666V28.5416L27.5417 19.3749C27.7917 19.1249 28.0694 18.9444 28.375 18.8333C28.6805 18.7221 28.9861 18.6666 29.2917 18.6666C29.625 18.6666 29.9444 18.7291 30.25 18.8541C30.5555 18.9791 30.8333 19.1666 31.0833 19.4166L32.625 20.9582C32.8472 21.2082 33.0208 21.486 33.1458 21.7916C33.2708 22.0971 33.3333 22.4027 33.3333 22.7082C33.3333 23.0138 33.2778 23.3263 33.1667 23.6457C33.0555 23.9652 32.875 24.2499 32.625 24.4999L23.4583 33.6666H18.3333ZM20.8333 31.1666H22.4167L27.4583 26.0832L26.7083 25.2916L25.9167 24.5416L20.8333 29.5832V31.1666ZM26.7083 25.2916L25.9167 24.5416L27.4583 26.0832L26.7083 25.2916Z" />
                 </svg>
+<<<<<<< HEAD
+                <span
+                  className={`text-${kycType === "digital" ? "green-500" : "gray-800"
+                    }`}
+                >
+                  Digital KYC
+                </span>
+=======
                 <span className={`text-${selectedOption === "digital" ? "green-500" : "gray-800"}`}>Digital KYC</span>
+>>>>>>> main
               </div>
               <span className="text-sm text-gray-500 ml-12">Instant Activation</span>
             </button>
 
             <button
+<<<<<<< HEAD
+              className={`w-full max-w-sm flex items-center justify-between px-4 py-3 border rounded-md mx-auto lg:mx-0 ${kycType === "manual"
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300"
+                }`}
+              value="manual"
+              onClick={handleOptionChange}
+=======
               className={`w-full max-w-sm flex items-center justify-between px-4 py-3 border rounded-md mx-auto lg:mx-0 ${
                 selectedOption === "manual" 
                   ? "border-green-500 bg-green-50" 
                   : "border-gray-300"
               }`}
               onClick={() => handleOptionChange("manual")}
+>>>>>>> main
             >
               <div className="flex items-center space-x-2">
                 <svg 
@@ -83,6 +136,7 @@ const KycStep3 = () => {
               <span className="text-sm text-gray-500 ml-3">(Takes 24 to 48 Hours)</span>
             </button>
           </div>
+          {error && (<p className="text-red-500 text-sm">{error}</p>)}
         </div>
 
         {/* Right section: Illustration */}
@@ -107,5 +161,10 @@ const KycStep3 = () => {
     </div>
   );
 };
+
+KycStep3.propTypes = {
+  kycType: PropsTypes.string,
+  setKycType: PropsTypes.func,
+}
 
 export default KycStep3;

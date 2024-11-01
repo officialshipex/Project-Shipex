@@ -18,7 +18,7 @@ const Registeration = ({setIsAuthenticated}) => {
 }
 
 Registeration.propTypes = {
-    setIsAuthenticated: PropTypes.bool.isRequired,
+    setIsAuthenticated: PropTypes.func.isRequired,
 };
 
 export default Registeration
