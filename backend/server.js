@@ -8,9 +8,13 @@ const verficationRouter = require('./routes/kyc.router');
 const shiprocket =require("./routes/courierB2C.router")
 const authRouter = require('./routes/auth.router');
 const helmet  = require('helmet');
+<<<<<<< HEAD
 const courierServicesRoutes=require('./routes/courierServiceB2C.router')
 const paytmRoutes = require("./routes/paytm.router");
 const shiprocketRoutes = require('./routes/courierServiceB2C.router');
+=======
+const { isAuthorized } = require('./middleware/auth.middleware');
+>>>>>>> 0306fd56dfca31b342dffd13e072c7cb142de026
 
 require('dotenv').config();
 
@@ -23,11 +27,15 @@ app.use(cors());
 app.use(passport.initialize());
 
 app.use('/v1/external', authRouter);
+<<<<<<< HEAD
 app.use('/v1/merchant', verficationRouter);
 app.use("/v1/couriers", shiprocket);
 app.use("/v1/courierServices", courierServicesRoutes);
 app.use("/v1/paytm", paytmRoutes);
 app.use('/v1/shiprocket', shiprocketRoutes);
 
+=======
+app.use('/v1/merchant',  isAuthorized, verficationRouter);
+>>>>>>> 0306fd56dfca31b342dffd13e072c7cb142de026
 
 module.exports = app;
