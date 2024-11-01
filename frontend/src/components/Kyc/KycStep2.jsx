@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import KycLogo from "../../assets/Illustration.png"; // Update this path according to your project structure
 import { validateGST } from "../../lib/validation";
@@ -24,11 +25,30 @@ const KycStep2 = (props) => {
     }
   }
 
+=======
+import { useState } from "react";
+import Logo from '../../assets/Vector logo.png';
+import KycLogo from '../../assets/Illustration.png'; // Update this path according to your project structure
+
+const KycStep2 = () => {
+  const [companyName, setCompanyName] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
+  const [address, setAddress] = useState({
+    addressLine1: '',
+    addressLine2: '',
+    pinCode: '',
+    city: '',
+    state: '',
+    country: '',
+  });
+
+>>>>>>> main
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setAddress((prevAddress) => ({ ...prevAddress, [name]: value }));
   };
 
+<<<<<<< HEAD
   const verifyGst = async (e) => {
     e.preventDefault();
     setSuccess(false);
@@ -81,6 +101,11 @@ const KycStep2 = (props) => {
       return;
     }
     navigate("/kyc/step3"); // Navigate to KycStep3
+=======
+  const verifyGst = () => {
+    // Add GST verification logic here
+    console.log('Verifying GST:', gstNumber);
+>>>>>>> main
   };
 
   return (
@@ -88,11 +113,7 @@ const KycStep2 = (props) => {
       <div className="bg-white w-full max-w-5xl p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Logo and Title */}
         <div className="text-left">
-          <img
-            src={Logo}
-            alt="ShipEx Logo"
-            className="mx-auto h-8 sm:h-10 ml-1"
-          />
+          <img src={Logo} alt="ShipEx Logo" className="mx-auto h-8 sm:h-10 ml-1" />
           <h2 className="text-base sm:text-[18px] lg:text-xl font-bold text-gray-800 mt-2">
             Complete your KYC for a smoother delivery process!
           </h2>
@@ -111,15 +132,10 @@ const KycStep2 = (props) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
           {/* Left Column - Address Form */}
           <div className="space-y-4">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-800">
-              Enter your company details
-            </h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800">Enter your company details</h3>
 
             {/* Address Line 1 */}
-            <label
-              htmlFor="addressLine1"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="addressLine1" className="block text-sm font-medium text-gray-700">
               Address Line 1
             </label>
             <input
@@ -133,10 +149,7 @@ const KycStep2 = (props) => {
             />
 
             {/* Address Line 2 */}
-            <label
-              htmlFor="addressLine2"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700">
               Address Line 2
             </label>
             <input
@@ -150,10 +163,7 @@ const KycStep2 = (props) => {
             />
 
             {/* Pin Code */}
-            <label
-              htmlFor="pinCode"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="pinCode" className="block text-sm font-medium text-gray-700">
               Pin Code
             </label>
             <input
@@ -167,10 +177,7 @@ const KycStep2 = (props) => {
             />
 
             {/* City */}
-            <label
-              htmlFor="city"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="city" className="block text-sm font-medium text-gray-700">
               City
             </label>
             <input
@@ -184,10 +191,7 @@ const KycStep2 = (props) => {
             />
 
             {/* State */}
-            <label
-              htmlFor="state"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="state" className="block text-sm font-medium text-gray-700">
               State
             </label>
             <input
@@ -201,10 +205,7 @@ const KycStep2 = (props) => {
             />
 
             {/* Country */}
-            <label
-              htmlFor="country"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="country" className="block text-sm font-medium text-gray-700">
               Country
             </label>
             <input
@@ -221,10 +222,7 @@ const KycStep2 = (props) => {
           {/* Right Column - Company Details */}
           <div className="space-y-4 mt-6 lg:mt-10">
             {/* Company Name */}
-            <label
-              htmlFor="companyName"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
               Company Name
             </label>
             <input
@@ -237,10 +235,7 @@ const KycStep2 = (props) => {
             />
 
             {/* GST Number */}
-            <label
-              htmlFor="gstNumber"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="gstNumber" className="block text-sm font-medium text-gray-700">
               GST Number (Optional)
             </label>
             <input
@@ -260,25 +255,25 @@ const KycStep2 = (props) => {
               Verify
             </button>
 
-            {/* KYC Illustration */}
-            <div className="mt-9 lg:mt-0">
-              <img
-                src={KycLogo}
-                alt="KYC Illustration"
-                className="w-full sm:w-3/4 mx-auto mt-6"
-              />
-              <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
-                This will be used as your company address for the pick-up
-                location.
-              </p>
-            </div>
+          {/* KYC Illustration */}
+<div className="mt-9 lg:mt-0">
+  <img
+    src={KycLogo}
+    alt="KYC Illustration"
+    className="w-full sm:w-3/4 mx-auto mt-6"
+  />
+ <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
+  This will be used as your company address for the pick-up location.
+</p>
+
+</div>
+
 
             {/* Next Button */}
             <div className="flex justify-end">
             {error && (<p className="text-sm text-red-600">{error}</p>)}
               <button
-                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12"
-                onClick={handleNext} // Navigate to KycStep3 on click
+                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12 "
               >
                 Next
               </button>

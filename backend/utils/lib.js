@@ -6,6 +6,7 @@ dotenv.config();
 function getSignature() {
     // console.log("Generating signature");
     let clientId = process.env.X_CLIENT_ID;
+    
     let publicKey = process.env.PUBLIC_KEY;
     let timestamp = Math.floor(Date.now() / 1000);
     let dataToEncrypt = `${clientId}.${timestamp}`;

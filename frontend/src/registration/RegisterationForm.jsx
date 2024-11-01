@@ -236,6 +236,7 @@ const RegistrationForm = ({setIsAuthenticated}) => {
                             {/* Mobile Number Section */}
                             <div>
                                 <label className="text-sm font-semibold text-gray-700" htmlFor="phoneNumber">Phone Number*</label>
+                                <div>
                                 <div className="flex">
                                     {/* Country Code Dropdown */}
                                     <select
@@ -250,6 +251,7 @@ const RegistrationForm = ({setIsAuthenticated}) => {
                                         {/* Add more country codes as needed */}
                                     </select>
                                     {/* Phone Number Input */}
+                                    
                                     <input
                                         type="text"
                                         id="phoneNumber"
@@ -258,8 +260,10 @@ const RegistrationForm = ({setIsAuthenticated}) => {
                                         onChange={handlePhoneNumberChange}
                                         className="w-3/4 p-3 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
                                     />
+                                    </div>
                                     {error?.phone && <p className="text-red-400 text-sm">{error.phone}</p>}
-                                </div>
+                                    </div>
+                                
                             </div>
                         </div>
 
