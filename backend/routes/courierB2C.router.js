@@ -1,5 +1,5 @@
 const express = require("express")
-const shiprocket=require("../B2C/shiprocket.controller")
+const shiprocket=require("../B2C/courier.controller")
 
 const router = express.Router();
 
