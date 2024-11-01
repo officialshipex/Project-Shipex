@@ -100,7 +100,7 @@ verfication.post('/gstin', async (req, res) => {
 
     await newGstin.save();
 
-    console.log("newGstin:", newGstin);
+    // console.log("newGstin:", newGstin);
 
     return res.status(200).json({
       success: true,

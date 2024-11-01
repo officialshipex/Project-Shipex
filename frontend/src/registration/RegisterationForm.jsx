@@ -1,35 +1,129 @@
-import React, { useState } from 'react';
-import Logo from "../assets/track/Group.png";
+import { useState } from 'react';
+import axios from 'axios';
+import PropTypes from 'prop-types';
+
 import Illustration from "../assets/track/Illustration.png";
-import Buyer from "../assets/track/buyer.png";
-import Seller from "../assets/track/seller.png";
-import Google from "../assets/google.png"
-import Whatsapp from "../assets/whatsapp.png"
-import Location from "../assets/track/location.png";
-import Partners from "../assets/track/partners.png";
-import Join from "../assets/track/join.png";
 import Shipments from "../assets/track/shipments.png";
+import Partners from "../assets/track/partners.png";
+import Location from "../assets/track/location.png";
+import Seller from "../assets/track/seller.png";
+import Buyer from "../assets/track/buyer.png";
+import Whatsapp from "../assets/whatsapp.png"
+import Logo from "../assets/track/Group.png";
+import Join from "../assets/track/join.png";
+import Google from "../assets/google.png"
+import { validateEmail, validatePhoneNumber } from '../lib/validation';
+import { useNavigate } from 'react-router-dom';
 
-const RegistrationForm = () => {
+const RegistrationForm = ({setIsAuthenticated}) => {
+
+    const navigate = useNavigate();
+
+    const [countryCode, setCountryCode] = useState("+91");
     const [role, setRole] = useState("seller");
-    const [countryCode, setCountryCode] = useState("+91"); // default to India
+
+    const [montlyOrder, setMontlyOrder] = useState("less than 50");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [checked, setChecked] = useState(false);
+    const [firstName, setFirstName] = useState("");
+    const [password, setPassword] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [company, setCompany] = useState("");
+    const [email, setEmail] = useState("");
 
-    const handleRoleChange = (e) => {
-        setRole(e.target.value);
-    };
+    const [message, setMessage] = useState();
+    const [success, setSuccess] = useState();
+    const [error, setError] = useState();
 
-    const handlePhoneChange = (e) => {
-        const value = e.target.value;
-        const regex = /^[0-9\b]+$/; // Only allow numbers
-        if (value === "" || regex.test(value)) {
-            setPhoneNumber(value);
+    const handleGoogleLogin = (e) => {
+        e.preventDefault();
+        console.log("Google Login");
+        window.location.href = 'http://localhost:5000/v1/external/auth/google';
+    }
+
+    const handleSubmit = async (e) => {
+
+        e.preventDefault();
+        setSuccess(false);
+        setMessage(null);
+        setError(null);
+
+        if (!firstName || !lastName || !email || !phoneNumber || !password || !confirmPassword) {
+            setError({ message: "Please fill in all required fields." });
+            return;
         }
+
+        if (password !== confirmPassword) {
+            setError({ password: "Passwords do not match." });
+            return;
+        }
+
+        if (checked === false) {
+            setError({ checked: "Please agree to the privacy statement." });
+            return;
+        }
+
+        try {
+            const response = await axios.post('http://localhost:5000/v1/external/register', {
+                firstName,
+                lastName,
+                email,
+                phoneNumber,
+                company,
+                monthlyOrders: montlyOrder,
+                password,
+                confirmedPassword: confirmPassword,
+                checked
+            })
+            // console.log(response);
+            if (response.data.success) {
+                setSuccess(response.data.success);
+                setMessage(response.data.message);
+                setIsAuthenticated(true);
+                handleNavigation();
+            } else {
+                setSuccess(response.data.success);
+                setMessage(response.data.message);
+            }
+
+        } catch (err) {
+            console.log(err.response.data);
+            if (err?.response?.data) {
+                setSuccess(err.response.data.success);
+                setMessage(err.response.data.message);
+            } else {
+                setMessage("An error occurred. Please try again later.");
+            }
+        }
+    }
+
+    const handleNavigation = () => {
+        navigate('/login');
     };
+
+    function handleEmailChange(e) {
+        setEmail(e.target.value);
+        if (!validateEmail(e.target.value)) {
+            setError({ "email": "Please enter a valid email address." });
+        } else {
+            setError(null);
+        }
+    }
+
+    function handlePhoneNumberChange(e) {
+        setPhoneNumber(e.target.value);
+        if (!validatePhoneNumber(e.target.value)) {
+            setError({ "phone": "Please enter a valid phone number." });
+        } else {
+            setError(null);
+        }
+    }
 
     return (
         <>
             <div className="flex flex-col lg:flex-row items-center lg:justify-center lg:gap-32 p-4 lg:p-8 px-2 sm:px-12 lg:px-16 bg-white min-h-screen">
+
                 {/* Left section */}
                 <div className="lg:w-1/3 w-full space-y-5 text-center lg:text-left mb-8 lg:mb-0">
                     <img src={Logo} alt="Logo" className="mx-auto lg:mx-0 w-28 lg:w-32" />
@@ -73,7 +167,7 @@ const RegistrationForm = () => {
                                 name="role"
                                 value="seller"
                                 className="hidden"
-                                onChange={handleRoleChange}
+                                onChange={(e) => setRole(e.target.value)}
                                 checked={role === "seller"}
                             />
                         </label>
@@ -90,7 +184,7 @@ const RegistrationForm = () => {
                                 name="role"
                                 value="buyer"
                                 className="hidden"
-                                onChange={handleRoleChange}
+                                onChange={(e) => setRole(e.target.value)}
                                 checked={role === "buyer"}
                             />
                         </label>
@@ -107,6 +201,8 @@ const RegistrationForm = () => {
                                     id="firstName"
                                     placeholder="First Name"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
                                 />
                             </div>
                             <div>
@@ -116,6 +212,8 @@ const RegistrationForm = () => {
                                     id="lastName"
                                     placeholder="Last Name"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -129,12 +227,16 @@ const RegistrationForm = () => {
                                     id="email"
                                     placeholder="Email"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={email}
+                                    onChange={handleEmailChange}
                                 />
+                                {error?.email && <p className="text-red-400 text-sm">{error.email}</p>}
                             </div>
 
                             {/* Mobile Number Section */}
                             <div>
                                 <label className="text-sm font-semibold text-gray-700" htmlFor="phoneNumber">Phone Number*</label>
+                                <div>
                                 <div className="flex">
                                     {/* Country Code Dropdown */}
                                     <select
@@ -149,15 +251,19 @@ const RegistrationForm = () => {
                                         {/* Add more country codes as needed */}
                                     </select>
                                     {/* Phone Number Input */}
+                                    
                                     <input
                                         type="text"
                                         id="phoneNumber"
                                         placeholder="Phone Number"
                                         value={phoneNumber}
-                                        onChange={handlePhoneChange}
+                                        onChange={handlePhoneNumberChange}
                                         className="w-3/4 p-3 border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
                                     />
-                                </div>
+                                    </div>
+                                    {error?.phone && <p className="text-red-400 text-sm">{error.phone}</p>}
+                                    </div>
+                                
                             </div>
                         </div>
 
@@ -170,6 +276,8 @@ const RegistrationForm = () => {
                                     id="company"
                                     placeholder="Company"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={company}
+                                    onChange={(e) => setCompany(e.target.value)}
                                 />
                             </div>
                             <div>
@@ -177,6 +285,8 @@ const RegistrationForm = () => {
                                 <select
                                     id="orders"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={montlyOrder}
+                                    onChange={(e) => setMontlyOrder(e.target.value)}
                                 >
                                     <option value="less than 50">Less than 50</option>
                                     <option value="50-200">50-200</option>
@@ -196,8 +306,9 @@ const RegistrationForm = () => {
                                     id="password"
                                     placeholder="Password"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                 />
-                                <p className='text-xs text-gray-600'>Must be at least 8 characters.</p>
                             </div>
                             <div>
                                 <label className="text-sm font-semibold text-gray-700" htmlFor="confirmPassword">Confirm Password*</label>
@@ -206,34 +317,54 @@ const RegistrationForm = () => {
                                     id="confirmPassword"
                                     placeholder="Confirm Password"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                 />
-                                <p className='text-xs text-gray-600'>Must be at least 8 characters.</p>
+                                {error?.password && <p className="text-red-400 text-sm">{error.password}</p>}
                             </div>
                         </div>
 
                         {/* User Privacy Statement */}
                         <div className="flex items-center gap-2 pt-2">
-                            <input type="checkbox" id="privacy" className="w-4 h-4 text-green-600 focus:ring-2 focus:ring-green-500 border-gray-300 rounded mt-1" />
+                            <input type="checkbox" id="privacy" className="w-4 h-4 text-green-600 focus:ring-2 focus:ring-green-500 border-gray-300 rounded mt-1"
+                                checked={checked}
+                                onChange={() => setChecked(!checked)}
+                            />
                             <p className="text-[12px] text-gray-600">
-                                By submitting this form, you agree to ShipEx's <span className="text-green-600">User Privacy Statement</span>.
+                                By submitting this form, you agree to ShipEx&apos;s <span className="text-green-600">User Privacy Statement</span>.
                             </p>
+                            {error?.checked && <p className="text-red-400 text-sm">{error.checked}</p>}
                         </div>
 
-                        <button className="w-full bg-green-600 text-white py-2 rounded-lg font-bold">Register</button>
+                        {message && <div><p className={`text-sm text-center ${success ? "text-green-500" : "text-red-400"}`}>{message}</p></div>}
+                        {error?.message && <p className="text-red-400 text-sm">{error.message}</p>}
 
-                        <p className="text-sm text-center font-bold mt-4">Already a Seller? <a href="#" className="text-green-600">Log in</a></p>
+                        {/* Register Button */}
+                        <button
+                            className="w-full bg-green-600 text-white py-2 rounded-lg font-bold"
+                            onClick={handleSubmit}
+                        >Register
+                        </button>
+
+
+                        <p className="text-sm text-center font-bold mt-4">Already a Seller? <a href="/login" className="text-green-600">Log in</a></p>
 
                         <div className="text-center text-gray-600 text-sm mt-4">OR</div>
 
                         <div className="grid grid-cols-1 gap-4">
                             {/* Google Button */}
-                            <button className="w-full bg-gray-200 text-black py-2 rounded-lg font-bold border-green-500 border-solid border-[2px] flex items-center justify-center gap-2">
+                            <button
+                                onClick={handleGoogleLogin}
+                                className="w-full bg-gray-200 text-black py-2 rounded-lg font-bold border-green-500 border-solid border-[2px] flex items-center justify-center gap-2">
                                 <img src={Google} alt="" />
                                 <span>Google</span>
                             </button>
 
                             {/* WhatsApp Button */}
-                            <button className="w-full bg-gray-200 text-black py-2 rounded-lg font-bold border-green-500 border-solid border-[2px] flex items-center justify-center gap-2">
+                            <button
+                                className="w-full bg-gray-200 text-black py-2 rounded-lg font-bold border-green-500 border-solid border-[2px] flex items-center justify-center gap-2"
+
+                            >
                                 <img src={Whatsapp} alt="" />
                                 <span>WhatsApp</span>
                             </button>
@@ -245,13 +376,8 @@ const RegistrationForm = () => {
     );
 };
 
+RegistrationForm.propTypes = {
+    setIsAuthenticated: PropTypes.bool.isRequired,
+};
+
 export default RegistrationForm;
-
-
-
-
-
-
-
-
-
