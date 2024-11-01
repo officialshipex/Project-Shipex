@@ -10,7 +10,11 @@ const {
     cancelOrder,
     addInventory,
     mapProducts,
-    importOrders
+    importOrders,
+    generateAWB,
+    listCouriers,
+    checkServiceability,
+    requestShipmentPickup
 } = require('../B2C/shiprocket.controller');
 
 const router = express.Router();
@@ -26,6 +30,17 @@ router.delete('/cancel-order/:order_id', cancelOrder);
 router.post('/add-inventory', addInventory);
 router.post('/map-products', mapProducts);
 router.post('/import-orders', importOrders);
+// Generate AWB for Shipment
+router.post('/generate-awb', generateAWB);
+
+// List of Couriers
+router.get('/couriers', listCouriers);
+
+// Check Courier Serviceability
+router.get('/courier-serviceability', checkServiceability);
+
+// Request for Shipment Pickup
+router.post('/request-pickup', requestShipmentPickup);
 
 // export default router;
 module.exports=router
