@@ -1,9 +1,168 @@
+<<<<<<< HEAD
+
+import { validateAadhaar, validateAccountNumber, validateIFSC, validateName, validatePhoneNumber } from "../../lib/validation";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import Logo from "../../assets/Vector logo.png";
+import { getTokens } from "../../lib/session";
+import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import axios from "axios";
+=======
 import React, { useState } from 'react';
 import Logo from '../../assets/Vector logo.png';
+>>>>>>> main
 
-const Writemanually = () => {
+const Writemanually = (props) => {
+
+  const { setDocumentVerified, aadharNumber, setAadharNumber, aadharOtp, setAadharOtp, accountNumber, setAccountNumber, ifscCode, setIfscCode, accountHolderName, setAccountHolderName, phoneNumber, setPhoneNumber } = props;
   const [aadharImage, setAadharImage] = useState(null);
   const [chequeImage, setChequeImage] = useState(null);
+<<<<<<< HEAD
+  const navigate = useNavigate(); // Initialize the useNavigate hook
+
+  const [error, setError] = useState();
+  const [success, setSuccess] = useState(false);
+  const [message, setMessage] = useState();
+  const [session, setSession] = useState();
+
+  useEffect(() => {
+    try {
+      const token = getTokens();
+      if (!token) {
+        navigate("/login");
+      } else {
+        setSession(token);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }, []);
+
+  const verifyBankAccount = async (e) => {
+    e.preventDefault();
+    setSuccess(false);
+    setMessage("");
+    setError("");
+
+    if (!accountNumber || !ifscCode || !accountHolderName || !phoneNumber) {
+      setError({ accountNumber: "All fields are required" });
+      return;
+    }
+
+    if (!validateAccountNumber(accountNumber)) {
+      setError({ accountNumber: "Invalid Account Number" });
+      return;
+    }
+
+    if (!validateIFSC(ifscCode)) {
+      setError({ ifscCode: "Invalid IFSC Code" });
+      return;
+    }
+
+    if (!validateName(accountHolderName)) {
+      setError({ accountHolderName: "Invalid Account Holder Name" });
+      return;
+    }
+
+    if (!validatePhoneNumber(phoneNumber)) {
+      setError({ phoneNumber: "Invalid Phone Number" });
+      return;
+    }
+
+    try {
+      const response = await axios.post("http://localhost:5000/v1/merchant/verfication/bank-account", {
+        accountNo: accountNumber,
+        ifsc: ifscCode,
+        name: accountHolderName,
+        phone: phoneNumber,
+      }, {
+        headers: {
+          authorization: `Bearer ${session}`
+        }
+      })
+      console.log("Account verification response", response.data);
+      if (response.data.success) {
+        setDocumentVerified(prevState => ({
+          ...prevState,
+          bank: true,
+        }));
+        setSuccess({ account: true });
+        setMessage({ account: response.data.message });
+      } else {
+        setMessage({ account: response.data.message });
+      }
+
+    } catch (error) {
+      console.log("bank verification error", error.message);
+      if (error?.response?.data?.message) {
+        setMessage({ account: error.response.data.message });
+      } else {
+        setMessage({ account: "Error verifying PAN number" });
+      }
+    }
+  }
+
+  const handlePhoneNumberChange = (e) => {
+    setError({});
+    setDocumentVerified(prevState => ({
+      ...prevState,
+      bank: false,
+    }));
+    setPhoneNumber(e.target.value);
+    if (!validatePhoneNumber(e.target.value)) {
+      setError({ phoneNumber: "Invalid Phone Number" });
+    }
+  }
+
+  const handleAccountNameChange = (e) => {
+    setError({});
+    setDocumentVerified(prevState => ({
+      ...prevState,
+      bank: false,
+    }));
+    setAccountHolderName(e.target.value);
+    if (!validateName(e.target.value)) {
+      setError({ accountHolderName: "Invalid Account Holder Name" });
+    }
+  }
+
+  const handleIfscChange = (e) => {
+    setError({});
+    setDocumentVerified(prevState => ({
+      ...prevState,
+      bank: false,
+    }));
+    setIfscCode(e.target.value);
+    if (!validateIFSC(e.target.value)) {
+      setError({ ifscCode: "Invalid IFSC Code" });
+    }
+  }
+
+  const handleAccountChange = (e) => {
+    setError({});
+    setDocumentVerified(prevState => ({
+      ...prevState,
+      bank: false,
+    }));
+    setAccountNumber(e.target.value);
+    if (!validateAccountNumber(e.target.value)) {
+      setError({ accountNumber: "Invalid Account Number" });
+    }
+  }
+
+  const handleAadhar = (e) => {
+    setError({});
+    setAadharNumber(e.target.value);
+    if (!validateAadhaar(e.target.value)) {
+      setError({ aadharNumber: "Invalid Aadhar Number" });
+    }
+  }
+
+  const handleNextClick = () => {
+    navigate("/kyc/agreement"); // Navigate to the Agreement page
+  };
+=======
+>>>>>>> main
 
   const handleAadharChange = (e) => {
     setAadharImage(e.target.files[0]);
@@ -43,6 +202,8 @@ const Writemanually = () => {
                   type="text"
                   placeholder="Enter your number"
                   className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                  value={aadharNumber}
+                  onChange={handleAadhar}
                 />
                 <div className="flex justify-end space-x-2">
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
@@ -59,7 +220,10 @@ const Writemanually = () => {
                       type="text"
                       placeholder="Enter your account number"
                       className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      value={accountNumber}
+                      onChange={handleAccountChange}
                     />
+                    {error?.accountNumber && (<p className="text-red-500 text-sm">{error.accountNumber}</p>)}
                   </div>
                   <div>
                     <label className="block text-gray-700 text-sm font-medium mb-1">IFSC Code</label>
@@ -67,7 +231,10 @@ const Writemanually = () => {
                       type="text"
                       placeholder="Enter your IFSC code"
                       className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      value={ifscCode}
+                      onChange={handleIfscChange}
                     />
+                    {error?.ifscCode && (<p className="text-red-500 text-sm">{error.ifscCode}</p>)}
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
@@ -76,7 +243,10 @@ const Writemanually = () => {
                         type="text"
                         placeholder="Enter Your code"
                         className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        value={accountHolderName}
+                        onChange={handleAccountNameChange}
                       />
+                      {error?.accountHolderName && (<p className="text-red-500 text-sm">{error.accountHolderName}</p>)}
                     </div>
                     <div>
                       <label className="block text-gray-700 text-sm font-medium mb-1">Phone Number</label>
@@ -84,13 +254,25 @@ const Writemanually = () => {
                         type="text"
                         placeholder="Enter your number"
                         className="w-full border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        value={phoneNumber}
+                        onChange={handlePhoneNumberChange}
                       />
+                      {error?.phoneNumber && (<p className="text-red-500 text-sm">{error.phoneNumber}</p>)}
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2">
+                  {message?.account && (<p className={success ? "text-green-600" : "text-red-500"}>{message.account}</p>)}
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
+<<<<<<< HEAD
+                  <button
+                    onClick={verifyBankAccount}
+                    className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">
+                    Verify
+                  </button>
+=======
                   <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
+>>>>>>> main
                 </div>
               </div>
             </div>
@@ -153,12 +335,38 @@ const Writemanually = () => {
         </div>
 
         {/* Next Button */}
+<<<<<<< HEAD
+        <div className="flex justify-center md:justify-end mt-8">
+          <button
+            onClick={handleNextClick}
+            className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2"
+          >
+            Next
+          </button>
+=======
         <div className="flex justify-center md:justify-end mt-8"> 
           <button className="bg-green-600 text-white rounded-lg px-8 lg:px-16 py-2">Next</button>
+>>>>>>> main
         </div>
       </div>
     </div>
   );
 };
+
+Writemanually.propTypes = {
+  setDocumentVerified: PropTypes.func,
+  aadharNumber: PropTypes.string,
+  setAadharNumber: PropTypes.func,
+  aadharOtp: PropTypes.string,
+  setAadharOtp: PropTypes.func,
+  accountNumber: PropTypes.string,
+  setAccountNumber: PropTypes.func,
+  ifscCode: PropTypes.string,
+  setIfscCode: PropTypes.func,
+  accountHolderName: PropTypes.string,
+  setAccountHolderName: PropTypes.func,
+  phoneNumber: PropTypes.string,
+  setPhoneNumber: PropTypes.func,
+}
 
 export default Writemanually;
