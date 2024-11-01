@@ -170,6 +170,73 @@ const importOrders = async (req, res) => {
     }
 };
 
+// 10. Generate AWB for Shipment
+const generateAWB = async (req, res) => {
+    const { shipment_id, courier_id } = req.body;
+    const {email,password}=req.body
+    try {
+        const token = await getAuthToken(email,password);
+        const response = await axios.post(
+            `${BASE_URL}/courier/awb/${shipment_id}`,
+            { courier_id },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 11. List of Couriers
+const listCouriers = async (req, res) => {
+    const {email,password}=req.body
+    try {
+        const token = await getAuthToken(email,password);
+        const response = await axios.get(`${BASE_URL}/courier/all`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 12. Check Courier Serviceability
+const checkServiceability = async (req, res) => {
+    const { pickup_pincode, delivery_pincode, cod } = req.query;
+    const {email,password}=req.body
+    try {
+        const token = await getAuthToken(email,password);
+        const response = await axios.get(
+            `${BASE_URL}/courier/serviceability/`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { pickup_pincode, delivery_pincode, cod }
+            }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 13. Request for Shipment Pickup
+const requestShipmentPickup = async (req, res) => {
+    const { shipment_id, pickup_location_id } = req.body;
+    const {email,password}=req.body
+    try {
+        const token = await getAuthToken(email,password);
+        const response = await axios.post(
+            `${BASE_URL}/courier/generate/pickup`,
+            { shipment_id, pickup_location_id },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
 module.exports = {
     createCustomOrder,
     createChannelOrder,
@@ -179,5 +246,9 @@ module.exports = {
     cancelOrder,
     addInventory,
     mapProducts,
-    importOrders
+    importOrders,
+    generateAWB,
+    listCouriers,
+    checkServiceability,
+    requestShipmentPickup
 };
