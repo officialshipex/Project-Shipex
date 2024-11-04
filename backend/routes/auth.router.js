@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-const { register, login, googleLogin, googleLoginFail } = require('../controllers/auth.controller')
+const { register, login, googleLogin, googleLoginFail } = require('../auth/auth.controller')
 const { isAuthorized } = require('../middleware/auth');
 // const passport = require('passport');
 const authRouter = require('express').Router();
@@ -30,12 +29,3 @@ authRouter.get('/failure', googleLoginFail);
 
 
 module.exports = authRouter
-=======
-const authRouter = require('express').Router();
-const auth = require('../auth/auth.controller');
-
-
-authRouter.use('/auth', auth);
-
-module.exports = authRouter;
->>>>>>> main
