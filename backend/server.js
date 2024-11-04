@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 const session = require('express-session');
 const passport = require('passport');
@@ -8,15 +7,10 @@ const cors = require("cors");
 
 const authRouter = require('./routes/auth.router');
 const { default: helmet } = require('helmet');
+const orderRouter = require('./routes/orders.router');
 // require('./helpers/passport');
 // const password = require('./config/passportConfig');
 require('dotenv').config();
-=======
-const express = require('express');
-const cors = require('cors');
-const authRouter = require('./routes/auth.router');
-const verficationRouter = require('./routes/kyc.router');
->>>>>>> main
 
 const app = express();
 
@@ -24,7 +18,6 @@ app.use(express.json());
 app.use(helmet());
 app.use(cors());
 
-<<<<<<< HEAD
 app.use(passport.initialize());
 
 // app.use(session({
@@ -36,13 +29,16 @@ app.use(passport.initialize());
 // app.use(passport.initialize());
 // app.use(passport.session());
 
-// app.set('view engine', 'ejs');
-// app.set('views', path.join(__dirname, 'views'));
+
+//only for testing purpose for backend
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.get('/upload',(req,res) => {
+    return res.render("bulkOrder");
+});
 
 app.use('/v1/external', authRouter);
-=======
-app.use('/v1/external', authRouter);
-app.use('/v1/merchant', verficationRouter);
->>>>>>> main
+app.use('/v1/external',orderRouter);
+
 
 module.exports = app;
