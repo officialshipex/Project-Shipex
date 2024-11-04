@@ -6,6 +6,7 @@ const createOrder = async (req,res) => {
     try {
         const orderData = req.body;
         const order = new Order(orderData);
+
         await order.save();
         res.status(201).json({ message: 'Shipment created successfully', order });
       } catch (error) {
@@ -108,7 +109,7 @@ const createOrder = async (req,res) => {
 const getAllOrders = async (req,res) => {
     try {
         const orders = await Order.find();
-        console.log(orders);
+        console.log("All orders",orders);
         
         return res.status(200).json(orders);
       } catch (error) {
