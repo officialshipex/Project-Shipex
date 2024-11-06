@@ -309,7 +309,7 @@ const AccountVerificationModal = ({ onClose }) => {
         <div className="flex justify-center w-full space-x-2 mt-2 sm:mt-4">
           <button
             onClick={onClose}
-            class="bg-green-600 text-white rounded-lg px-6 py-2 mt-2 sm:mt-3 shadow-md hover:bg-green-700 transition duration-200"
+            className="bg-green-600 text-white rounded-lg px-6 py-2 mt-2 sm:mt-3 shadow-md hover:bg-green-700 transition duration-200"
           >
             Close
           </button>
