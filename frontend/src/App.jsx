@@ -10,16 +10,9 @@ import {
 import PropTypes from "prop-types";
 import { useState } from "react";
 
-import Writemanually from "../src/components/Kyc/Writemanually";
-import ThankyouPage from "../src/components/Kyc/ThankyouPage";
 import Registeration from "./registration/Registration";
-import Agreement from "../src/components/Kyc/Agreement";
-import KycStep1 from "../src/components/Kyc/KycStep1";
-import KycStep2 from "../src/components/Kyc/KycStep2";
-import KycStep3 from "../src/components/Kyc/KycStep3";
-import KycStep4 from "../src/components/Kyc/KycStep4";
-import UploadId from "../src/components/Kyc/UploadId";
 import LoginPage from "./components/Kyc/LoginPage";
+import KycRoutes from "./routes/KycRoutes";
 
 const PrivateRoute = ({ isAuthenticated }) => {
   return isAuthenticated ? (
@@ -48,20 +41,21 @@ function App() {
           element={<LoginPage setIsAuthenticated={setIsAuthenticated} />}
         />
 
+<<<<<<< HEAD
         <Route
           path="/KycStep1"
           element={<PrivateRoute isAuthenticated={isAuthenticated} />}
         >
           <Route path="/KycStep1" element={<KycStep1 />} />
+=======
+        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+
+        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}>
+          <Route path="/kyc/*" element={<KycRoutes/>} />
+>>>>>>> 69f180dda5c7701c3ebf07ed3cd5dd800c75951c
         </Route>
 
-        <Route path="/KycStep2" element={<KycStep2 />} />
-        <Route path="/KycStep3" element={<KycStep3 />} />
-        <Route path="/upload-id" element={<UploadId />} />
-        <Route path="/kyc-step4" element={<KycStep4 />} />
-        <Route path="/writemanually" element={<Writemanually />} />
-        <Route path="/Agreement" element={<Agreement />} />
-        <Route path="/thank-you" element={<ThankyouPage />} />
       </Routes>
     </Router>
   );

@@ -1,4 +1,3 @@
-// import React and necessary hooks
 // import React from "react";
 
 import { useNavigate } from "react-router-dom"; // Import useNavigate
@@ -24,6 +23,13 @@ const LoginPage = ({setIsAuthenticated}) => {
   useEffect(() => {
     try {
       (async () => {
+        const param = new URLSearchParams(window.location.search);
+        const token = param.get('token');
+
+        if(token){
+          createSession(token);
+        }
+
         const response = await getSession();
         if (response) {
           setIsAuthenticated(true);
@@ -91,7 +97,7 @@ const LoginPage = ({setIsAuthenticated}) => {
   }
 
   const handleNavigation = () => {
-    navigate('/KycStep1');
+    navigate('/kyc/step1');
   };
 
   const handlePasswordChange = (e) => {
@@ -127,19 +133,14 @@ const LoginPage = ({setIsAuthenticated}) => {
           </p>
 
           <p className="mt-2 text-gray-600 text-[13px]">
-            Log in to manage your shipments, track orders, and access your
-            personalized dashboard. Ensure smooth operations and efficient
-            logistics management.
+            Log in to manage your shipments, track orders, and access your personalized dashboard. Ensure smooth operations and efficient logistics management.
           </p>
         </div>
 
         <div className="bg-green-50 shadow-lg p-5 sm:p-6 lg:p-7 rounded-lg border-2 space-y-6 border-green-200">
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -158,10 +159,7 @@ const LoginPage = ({setIsAuthenticated}) => {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
@@ -244,7 +242,7 @@ const LoginPage = ({setIsAuthenticated}) => {
 };
 
 LoginPage.propTypes = {
-  setIsAuthenticated: PropTypes.bool.isRequired,
+  setIsAuthenticated: PropTypes.func.isRequired,
 };
 
 export default LoginPage;
