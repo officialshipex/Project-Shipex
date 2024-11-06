@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import NavBar from "../Common/NavBar";
 import Sidebar from "../Common/Sidebar";
+import { FaChevronDown, FaSearch } from "react-icons/fa";
 
 // Sample order data
 const orders = [
@@ -247,24 +248,59 @@ const OrderList = () => {
 
         {/* Main Content */}
         <div className="container mx-auto mt-0 bg-white shadow-md rounded-lg p-2">
-          <div className="flex justify-between items-center mb-4 p-4">
-            <h2 className="text-2xl font-bold">Orders</h2>
+        <div className="flex justify-between items-center mb-4 p-4">
+            <h2 className="text-2xl font-bold"> Orders</h2>
+            <div className="flex items-center space-x-3">
+              <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
+                Select all Orders
+              </button>
+              <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
+                Add an order
+              </button>
+              <div className="relative">
+                <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
+                  Pick the dates
+                  <FaChevronDown className="ml-2" />
+                </button>
+              </div>
+              <div className="flex items-center px-4 py-2 border border-gray-300 rounded-md bg-gray-100">
+                <FaSearch className="text-gray-500 mr-2" />
+                <input 
+                  type="text" 
+                  placeholder="Search AWB number" 
+                  className="bg-transparent focus:outline-none text-sm" 
+                />
+              </div>
+            </div>
           </div>
 
+
+
+
           {/* Order Status Row */}
-          <div className="flex items-center mb-4 p-2 bg-gray-100 rounded-lg">
-            {ORDER_STATUSES.map((status, index) => (
-              <button
-                key={index}
-                className={`text-gray-600 py-1 px-2 mr-1 rounded-lg hover:bg-green-200 transition duration-300 ${
-                  selectedStatus === status ? "bg-green-500 text-white" : "bg-gray-200"
-                }`}
-                onClick={() => setSelectedStatus(status)}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
+          <div className="flex items-center mb-4">
+  {[  "New Orders",
+  "Ready To Ship",
+  "Pick ups",
+  "In Transit",
+  "Delivered",
+  "RTO",
+  "Cancelled",
+  "Lost/Damage",
+  "All"].map((status, index) => (
+    <button
+      key={index}
+      className={`py-2 px-4 text-sm transition duration-300 ${
+        selectedStatus === status
+          ? 'border-b-2 border-green-500 font-semibold text-black'
+          : 'text-gray-500'
+      }`}
+      onClick={() => setSelectedStatus(status)}
+    >
+      {status}
+    </button>
+  ))}
+</div>
 
           {/* Orders Table */}
           <table className="min-w-full bg-white border border-gray-300 rounded-lg">
