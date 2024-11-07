@@ -1,0 +1,34 @@
+import "./App.css";
+
+//import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-router-dom";
+//import PropTypes from 'prop-types';
+import { useState } from "react";
+
+
+
+//import Registeration from "./registration/Registration";
+//import LoginPage from "./components/Kyc/LoginPage";
+//import KycRoutes from "./routes/KycRoutes";
+
+const PrivateRoute = ({ isAuthenticated }) => {
+  return isAuthenticated ?
+    <>
+      <Outlet />
+    </>
+    : <><Navigate replace to='/login'></Navigate></>
+}
+
+function App() {
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  return (
+    <Tools_Pincode></Tools_Pincode>
+  );
+}
+
+PrivateRoute.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+};
+
+export default App;
