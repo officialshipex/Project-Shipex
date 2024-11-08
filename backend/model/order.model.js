@@ -101,24 +101,21 @@ const orderSchema = new mongoose.Schema({
       type: Date,
       require: true,
     },
+    shippingCharges: { type:Number },
+    giftWrap: { type:Number },
+    transaction: { type:Number },
+    additionalDiscount: { type:Number },
+    subTotal: { type:Number },
+    otherCharges: { type:Number },
+    totalOrderValue: { type:Number },
   },
   productDetails: [productSchema],
-  payment: {
-    cod: {
-      type: Boolean,
-      default: false,
-    },
-    prepaid: {
-      type: Boolean,
-      default: false,
-    },
-    transactionId: {
-      type: String,
-    },
-    discount: {
-      type: Number,
-      default: 0,
-    },
+  payment:{
+    PaymentMethod:{
+        type: String,
+        enum: ['COD', 'Prepaid'],
+        required: true
+      }
   },
   packageDetails: {
     weigth: {

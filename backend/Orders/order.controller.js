@@ -1,108 +1,85 @@
 const Order = require('../model/order.model');
 
+// Utility function to calculate order totals
+function calculateOrderTotals(orderData) {
+  let subTotal = 0;
+  let productDiscount = 0;
+
+  // Calculate sub-total and product discounts
+  orderData.productDetails.forEach(product => {
+      const { quantity, unitPrice, discount = 0 } = product;
+      console.log("quantity:",quantity,"unitprice:",unitPrice,"discount:",discount);
+      
+      const productTotal = quantity * unitPrice;
+      console.log("productTotal:",productTotal);
+      
+      subTotal += productTotal;
+      console.log("subtotal:",subTotal);
+      
+      productDiscount += (productTotal * discount) / 100;  // Assuming discount is a percentage
+      console.log("productDiscount:",productDiscount);
+      
+    });
+
+  // Calculate other charges
+  const shipping = orderData.orderDetails.shippingCharges || 0;
+  console.log("shiping:",shipping);
+  
+  const giftWrap = orderData.orderDetails.giftWrap || 0;  
+  console.log("giftwrap:",giftWrap);
+  
+
+  // Calculate additional discount on the whole order
+  const additionalDiscount = orderData.orderDetails?.additionalDiscount || 0;
+  console.log("additionalDiscount:",additionalDiscount);
+  
+  const discountAmount = (subTotal * additionalDiscount) / 100;
+  console.log("discountAmauont:",discountAmount);
+  
+
+  // Total order value calculation
+  const totalOrderValue = subTotal + shipping + giftWrap - productDiscount - discountAmount;
+
+  return {
+      subTotal,
+      otherCharges: shipping + giftWrap,
+      discount: productDiscount + discountAmount,
+      totalOrderValue
+  };
+}
 
 
 const createOrder = async (req,res) => {
     try {
         const orderData = req.body;
-        const order = new Order(orderData);
+
+        //  Perform calculations for the order totals
+        const totals = calculateOrderTotals(orderData);
+
+        const order = new Order({
+          buyerDetails:orderData.buyerDetails,
+          buyerAddress:orderData.buyerAddress,
+          orderDetails:{
+            ...orderData.orderDetails,
+            subTotal: totals.subTotal,
+            otherCharges: totals.otherCharges,
+            discount: totals.discount,
+            totalOrderValue: totals.totalOrderValue
+          
+          },
+          productDetails:orderData.productDetails,
+          payment:orderData.payment,
+          packageDetails:orderData.packageDetails,
+          pickUpAddress:orderData.pickUpAddress
+        });
+        console.log("orderDetails:",order.orderDetails);
+        
 
         await order.save();
         res.status(201).json({ message: 'Shipment created successfully', order });
       } catch (error) {
         res.status(400).json({ error: error.message });
       }
-
-      
-//     try{
-//         const shipmentData = {
-//             buyerDetails:{
-//                 buyerName:req.body.buyerDetails.buyerName,
-//                 phoneNumber:req.body.buyerDetails.phoneNumber,
-//                 alternatePhoneNumber:req.body.buyerDetails.alternatePhoneNumber,
-//                 email:req.body.buyerDetails.email
-//             },
-//             buyerAddress:{
-//                 completeAddress:req.body.buyerAddress.completeAddress,
-//                 landmark:req.body.buyerAddress.landmark,
-//                 pincode:req.body.buyerAddress.pincode,
-//                 city:req.body.buyerAddress.city,
-//                 state:req.body.buyerAddress.state,
-//                 country:req.body.buyerAddress.country,
-//                 compamyName:req.body.buyerAddress.compamyName,
-//                 gstinNumber:req.body.buyerAddress.gstinNumber,
-//                 billingAddressSameAsShipping:req.body.buyerAddress.billingAddressSameAsShipping
-//             },
-//             orderDetails:{
-//                 orderId :req.body.orderDetails.orderId,
-//                 orderType:req.body.orderDetails.orderType,
-//                 orderDate:req.body.orderDetails.orderDate,
-//             },
-//             productDetails:[{
-//                 productName:req.body.productDetails.productName,
-//                 quantity:req.body.productDetails.quantity,
-//                 unitPrice:req.body.productDetails.unitPrice,
-//                 SKU:req.body.productDetails.SKU,
-//                 HSN:req.body.productDetails.HSN,
-//                 taxRate:req.body.productDetails.taxRate,
-//                 productCategory:req.body.productDetails.productCategory,
-//                 discount:req.body.productDetails.discount
-//                 }],
-//             payment:{
-//                 cod:req.body.payment.cod,
-//                 prepaid:req.body.payment.prepaid,
-//                 transactionId:req.body.payment.transactionId,
-//                 discount:req.body.payment.discount
-//             },
-//             packageDetails:{
-//                 weigth:req.body.packageDetails.weigth,
-//                 volumentricWeigth:req.body.packageDetails.volumentricWeigth
-//             },
-//             pickUpAddress:{
-//                 primary:{
-//                     addressLine:req.body.pickUpAddress.primary.addressLine,
-//                     city:req.body.pickUpAddress.primary.city,
-//                     state:req.body.pickUpAddress.primary.state,
-//                     country:req.body.pickUpAddress.primary.country,
-//                     pincode:req.body.pickUpAddress.primary.pincode
-//                 },
-//                 additionalAddresses:[
-//                     {
-//                     addressLine:req.body.pickUpAddress.additionalAddresses.addressLine,
-//                     city:req.body.pickUpAddress.additionalAddresses.city,
-//                     state:req.body.pickUpAddress.additionalAddresses.state,
-//                     country:req.body.pickUpAddress.additionalAddresses.country,
-//                     pincode:req.body.pickUpAddress.additionalAddresses.pincode
-//                     },
-//                     {  
-//                     addressLine:req.body.pickUpAddress.additionalAddresses.addressLine,
-//                     city:req.body.pickUpAddress.additionalAddresses.city,
-//                     state:req.body.pickUpAddress.additionalAddresses.state,
-//                     country:req.body.pickUpAddress.additionalAddresses.country,
-//                     pincode:req.body.pickUpAddress.additionalAddresses.pincode
-//                     }
-//                 ]
-//             }
-//         }
-        
-//         const newShipment = await Shipment.create(shipmentData);
-//         console.log(newShipment);
-        
-//         await newShipment.save();
-
-//         return res.status(200).json({
-//             success: true,
-//             message: "Shipment created successfully",
-//             data: newShipment,
-//           })
-
-//     }catch (error) {
-//         console.log("error", error);
-//         return res.status(500).json({
-//           success: false,
-//           message: "Internal server error",
-//         })
-//     }
 }
 
 
@@ -115,18 +92,6 @@ const getAllOrders = async (req,res) => {
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
-    
-    // try {
-    //     const allShipments = await Shipment.find();
-    //     console.log(allShipments);
-        
-    //     return res.status(200).json(allShipments);
-
-    // } catch (error) {
-    //     res.status(500).json({
-    //         message:'Error fetching shipments'
-    //     })
-    // }
 }
 
 module.exports = {
