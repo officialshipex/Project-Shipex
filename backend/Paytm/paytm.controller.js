@@ -1,75 +1,201 @@
-const { generateChecksum, verifyChecksum } = require("../utils/checkSum");
-const Transaction = require("../models/transactions.model");
+require("dotenv").config();
 
-const PaytmConfig = {
-  MID: "YOUR_MERCHANT_ID",
-  KEY: "YOUR_MERCHANT_KEY",
-  WEBSITE: "YOUR_WEBSITE_NAME",
-  CHANNEL_ID: "WEB",
-  INDUSTRY_TYPE_ID: "Retail",
-  CALLBACK_URL: "http://localhost:5000/v1/paytm/callback",
-};
+const formidable = require("formidable");
+const express = require("express");
+const router = express.Router();
+const { v4: uuidv4 } = require("uuid");
+const https = require("https");
+// const firebase = require("firebase");
+const PaytmChecksum = require("../utils/checkSum");
+// const db = require("./firebase");
 
-exports.initiatePayment = (req, res) => {
-  const { amount, customerId, customerEmail, customerPhone } = req.body;
 
-  const params = {
-    MID: PaytmConfig.MID,
-    WEBSITE: PaytmConfig.WEBSITE,
-    CHANNEL_ID: PaytmConfig.CHANNEL_ID,
-    INDUSTRY_TYPE_ID: PaytmConfig.INDUSTRY_TYPE_ID,
-    ORDER_ID: "ORDER" + new Date().getTime(),
-    CUST_ID: customerId,
-    TXN_AMOUNT: amount,
-    CALLBACK_URL: PaytmConfig.CALLBACK_URL,
-    EMAIL: customerEmail,
-    MOBILE_NO: customerPhone,
-  };
+// exports.paytmCallback = (req, res) => {
+//   const form = new formidable.IncomingForm();
 
-  params.CHECKSUMHASH = generateChecksum(params, PaytmConfig.KEY);
+//   form.parse(req, (err, fields, file) => {
+//     let paytmChecksum = fields.CHECKSUMHASH;
+//     delete fields.CHECKSUMHASH;
+// // console.log(fields)
+//     var isVerifySignature = PaytmChecksum.verifySignature(
+//       fields,
+//       process.env.PAYTM_MERCHANT_KEY,
+//       paytmChecksum
+//     );
+//     if (isVerifySignature) {
+//       var paytmParams = {};
+//       paytmParams["MID"] = fields.MID;
+//       paytmParams["ORDERID"] = fields.ORDERID;
 
-  res.json({
-    paytmURL: "https://securegw-stage.paytm.in/order/process",
-    params,
+//       /*
+//        * Generate checksum by parameters we have
+//        * Find your Merchant Key in your Paytm Dashboard at https://dashboard.paytm.com/next/apikeys
+//        */
+//       PaytmChecksum.generateSignature(
+//         paytmParams,
+//         process.env.PAYTM_MERCHANT_KEY
+//       ).then(function (checksum) {
+//         paytmParams["CHECKSUMHASH"] = checksum;
+
+//         var post_data = JSON.stringify(paytmParams);
+
+//         var options = {
+//           /* for Staging */
+//           hostname: "securegw-stage.paytm.in",
+
+//           /* for Production */
+//           // hostname: 'securegw.paytm.in',
+
+//           port: 443,
+//           path: "/order/status",
+//           method: "POST",
+//           headers: {
+//             "Content-Type": "application/json",
+//             "Content-Length": post_data.length,
+//           },
+//         };
+
+//         var response = "";
+//         var post_req = https.request(options, function (post_res) {
+//           post_res.on("data", function (chunk) {
+//             response += chunk;
+//           });
+
+//           post_res.on("end", function () {
+//             let result = JSON.parse(response);
+//             if (result.STATUS === "TXN_SUCCESS") {
+//               //store in db
+//               db.collection("payments")
+//                 .doc("mPDd5z0pNiInbSIIotfj")
+//                 .update({
+//                   paymentHistory:
+//                     firebase.firestore.FieldValue.arrayUnion(result),
+//                 })
+//                 .then(() => console.log("Update success"))
+//                 .catch(() => console.log("Unable to update"));
+//             }
+
+//             res.redirect(`http://localhost:3000/status/${result.ORDERID}`);
+//           });
+//         });
+
+//         post_req.write(post_data);
+//         post_req.end();
+//       });
+//     } else {
+//       console.log("Checksum Mismatched");
+//     }
+//   });
+// };
+
+
+
+exports.paytmCallback = (req, res) => {
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, (err, fields, file) => {
+    const paytmChecksum = fields.CHECKSUMHASH;
+    delete fields.CHECKSUMHASH;
+
+    const isVerifySignature = PaytmChecksum.verifySignature(
+      fields,
+      process.env.PAYTM_MERCHANT_KEY,
+      paytmChecksum
+    );
+
+    if (isVerifySignature) {
+      const paytmParams = {
+        MID: fields.MID,
+        ORDERID: fields.ORDERID,
+      };
+
+      PaytmChecksum.generateSignature(
+        paytmParams,
+        process.env.PAYTM_MERCHANT_KEY
+      ).then(checksum => {
+        paytmParams["CHECKSUMHASH"] = checksum;
+
+        const post_data = JSON.stringify(paytmParams);
+
+        const options = {
+          hostname: "securegw-stage.paytm.in",
+          port: 443,
+          path: "/order/status",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": post_data.length,
+          },
+        };
+
+        let response = "";
+        const post_req = https.request(options, post_res => {
+          post_res.on("data", chunk => {
+            response += chunk;
+          });
+
+          post_res.on("end", () => {
+            const result = JSON.parse(response);
+            if (result.STATUS === "TXN_SUCCESS") {
+              // Handle success, e.g., store transaction details
+              res.json({ status: "success", result });
+            } else {
+              res.json({ status: "failure", result });
+            }
+          });
+        });
+
+        post_req.write(post_data);
+        post_req.end();
+      });
+    } else {
+      res.json({ status: "Checksum Mismatched" });
+    }
   });
 };
 
-exports.paytmCallback = async (req, res) => {
-  const paytmChecksum = req.body.CHECKSUMHASH;
-  const paytmParams = { ...req.body };
-  delete paytmParams.CHECKSUMHASH;
 
-  const isVerifySignature = verifyChecksum(
-    paytmParams,
-    PaytmConfig.KEY,
-    paytmChecksum
+
+
+// router.post("/payment", (req, res) => {
+exports.initiatePayment = (req, res) => {
+  const { amount, email } = req.body;
+
+  /* import checksum generation utility */
+  const totalAmount = JSON.stringify(amount);
+  var params = {};
+
+  /* initialize an array */
+  (params["MID"] = process.env.PAYTM_MID),
+    (params["WEBSITE"] = process.env.PAYTM_WEBSITE),
+    (params["CHANNEL_ID"] = process.env.PAYTM_CHANNEL_ID),
+    (params["INDUSTRY_TYPE_ID"] = process.env.PAYTM_INDUSTRY_TYPE_ID),
+    (params["ORDER_ID"] = uuidv4()),
+    (params["CUST_ID"] = process.env.PAYTM_CUST_ID),
+    (params["TXN_AMOUNT"] = totalAmount),
+    (params["CALLBACK_URL"] = "http://localhost:5000/v1/paytm/callback"),
+    (params["EMAIL"] = email),
+    (params["MOBILE_NO"] = "9876543210");
+
+  /**
+   * Generate checksum by parameters we have
+   * Find your Merchant Key in your Paytm Dashboard at https://dashboard.paytm.com/next/apikeys
+   */
+  var paytmChecksum = PaytmChecksum.generateSignature(
+    params,
+    process.env.PAYTM_MERCHANT_KEY
   );
-  if (isVerifySignature) {
-    const status = paytmParams.STATUS;
-
-    // Save transaction details to the database
-    const transaction = new Transaction({
-      orderId: paytmParams.ORDERID,
-      customerId: paytmParams.CUST_ID,
-      amount: paytmParams.TXNAMOUNT,
-      status: status,
-      transactionId: paytmParams.TXNID,
+  paytmChecksum
+    .then(function (checksum) {
+      let paytmParams = {
+        ...params,
+        CHECKSUMHASH: checksum,
+      };
+      res.json(paytmParams);
+    })
+    .catch(function (error) {
+      console.log(error);
     });
-
-    try {
-      await transaction.save();
-      res.json({
-        success: status === "TXN_SUCCESS",
-        message:
-          status === "TXN_SUCCESS"
-            ? "Transaction Successful"
-            : "Transaction Failed",
-        data: paytmParams,
-      });
-    } catch (error) {
-      res.json({ success: false, message: "Database Error", error });
-    }
-  } else {
-    res.json({ success: false, message: "Checksum Mismatch" });
-  }
 };
+
+// module.exports = router;
