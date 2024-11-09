@@ -24,7 +24,20 @@ const {
     generateReturnAWB,
     getAllShipments,
     getShipmentDetails,
-    cancelShipment
+    cancelShipment,
+    generateManifest,
+    printManifest,
+    generateLabel,
+    generateInvoice,
+    getAllNDRShipments,
+    getNDRShipmentDetails,
+    actionNDRShipment,
+    getTrackingByAWB,
+    getTrackingByMultipleAWBs,
+    getTrackingByShipmentID,
+    getTrackingByOrderID,
+    getAllPickupLocations,
+    addNewPickupLocation
 } = require('../B2C/shiprocket.controller');
 
 const router = express.Router();
@@ -80,6 +93,45 @@ router.get('/shipments/:shipment_id', getShipmentDetails);
 
 // Cancel a Shipment
 router.post('/shipments/cancel', cancelShipment);
+
+// Generate Manifest
+router.post('/manifest/generate', generateManifest);
+
+// Print Manifest
+router.post('/manifest/print', printManifest);
+
+// Generate Label
+router.post('/label/generate', generateLabel);
+
+// Generate Invoice
+router.post('/invoice/generate', generateInvoice);
+
+// Get All NDR Shipments
+router.get('/ndr/all', getAllNDRShipments);
+
+// Get Specific NDR Shipment Details
+router.get('/ndr/:shipment_id', getNDRShipmentDetails);
+
+// Action NDR Shipment
+router.post('/ndr/action', actionNDRShipment);
+
+// Get Tracking through AWB
+router.get('/track/awb/:awb_code', getTrackingByAWB);
+
+// Get Tracking Data for Multiple AWBs
+router.post('/track/awbs', getTrackingByMultipleAWBs);
+
+// Get Tracking through Shipment ID
+router.get('/track/shipment/:shipment_id', getTrackingByShipmentID);
+
+// Get Tracking Data through Order ID
+router.get('/track/order/:order_id', getTrackingByOrderID);
+
+// Get All Pickup Locations
+router.get('/pickup-locations', getAllPickupLocations);
+
+// Add a New Pickup Location
+router.post('/pickup-locations/add', addNewPickupLocation);
 
 
 
