@@ -53,7 +53,7 @@ const returnRequestedData = [
   },
 ];
 
-const ReturnList = () => {
+const Ndr = () => {
   const [selectedOrders, setSelectedOrders] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("All");
 
@@ -96,9 +96,9 @@ const ReturnList = () => {
 
   return (
     <div className="flex h-screen">
-      <Sidebar />
+      {/* <Sidebar /> */}
       <div className="flex-1 flex flex-col">
-        <NavBar />
+        {/* <NavBar /> */}
         <div className="container mx-auto mt-0 bg-white shadow-md rounded-lg p-2">
           <div className="flex justify-between items-center mb-4 p-4">
             <h2 className="text-2xl font-bold">NDR Orders</h2>
@@ -206,4 +206,4 @@ const ReturnList = () => {
   );
 };
 
-export default ReturnList;
+export default Ndr;
