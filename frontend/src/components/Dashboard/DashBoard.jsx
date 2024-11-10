@@ -3,6 +3,13 @@ import Navbar from '../Common/NavBar';
 import Sidebar from '../Common/SideBar';
 
 const Dashboard = () => {
+
+  const handleRecharge = async () => {
+    console.log('Recharge Wallet clicked!');
+
+    window.location.href = 'http://localhost:5000/v1/recharge/pay';
+  }
+
   return (
     <div className='flex'>
       {/* <Sidebar /> */}
@@ -44,7 +51,10 @@ const Dashboard = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Recharge Wallet</h3>
                 <p className="text-sm text-gray-500 mb-4">Add money to make the shipping process easier.</p>
-                <button className="action-button bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Recharge</button>
+                <button
+                  className="action-button bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+                  onClick={handleRecharge}
+                >Recharge</button>
               </div>
             </div>
           </div>
