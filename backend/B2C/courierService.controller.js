@@ -1,7 +1,7 @@
 // import axios from "axios";
-const axios=require("axios")
+const axios = require("axios")
 // import CourierService from "../models/courierServiceB2C.model";
-const CourierService=require("../models/courierServiceB2C.model")
+const CourierService = require("../models/courierServiceB2C.model")
 
 const getAllActiveCourierServices = async (req, res) => {
     const { provider, token } = req.body;
@@ -97,7 +97,7 @@ const getCourierServicesFromDatabase = async (req, res) => {
     }
 };
 
-module.exports= {
+module.exports = {
     getAllActiveCourierServices,
     saveCourierServiceDataInDatabase,
     getCourierServicesFromDatabase,
