@@ -1,12 +1,11 @@
-// const { generateToken } = require("../utils/jwtToken");
-// const responseMessage = require("../helpers/responseMessage");
+
 const { validateForm, validateEmail } = require("../utils/afv");
-// const userService = require("../services/users");
-// const response = require("../helpers/response");
 const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 //for User Registration
 const register = async (req, res) => {
@@ -120,7 +119,7 @@ const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     // console.log("user", user);
-    if(!user) {
+    if (!user) {
       return res.status(400).json({
         success: false,
         message: "User does not exist",
@@ -150,6 +149,7 @@ const login = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "User logged in successfully",
+      kyc: user.kycDone,
       data: token,
     });
 
@@ -194,7 +194,7 @@ const googleLogin = async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    return res.redirect(`http://localhost:5173/login?token=${token}`);
+    return res.redirect(`${FRONTEND_URL}/login?token=${token}`);
 
     // return res.status(200).json({
     //   success: true,
@@ -206,7 +206,7 @@ const googleLogin = async (req, res) => {
 
   } catch (error) {
     console.log("error", error);
-    return res.redirect(`http://localhost:5173/`)
+    return res.redirect(`${FRONTEND_URL}`);
     // return res.status(500).json({
     //   success: false,
     //   message: "Internal server error",
@@ -231,10 +231,10 @@ const googleLoginFail = (req, res) => {
 };
 
 const verifySession = async (req, res) => {
-  try{
+  try {
     const session = req.headers.authorization;
     // console.log("session", session);
-    if(!session){
+    if (!session) {
       return res.status(400).json({
         success: false,
         message: "session not found",
@@ -243,7 +243,7 @@ const verifySession = async (req, res) => {
 
     const token = session.split(" ")[1];
 
-    if(!token){
+    if (!token) {
       return res.status(400).json({
         success: false,
         message: "Token not found",
@@ -251,7 +251,7 @@ const verifySession = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if(!decoded){
+    if (!decoded) {
       return res.status(400).json({
         success: false,
         message: "Invalid token",
@@ -260,9 +260,9 @@ const verifySession = async (req, res) => {
 
     // console.log("decoded", decoded.user);
     const user = await User.findById(decoded.user.id);
-    // console.log("user", user);
+    // console.log("user", user.kycDone);
 
-    if(!user){
+    if (!user) {
       return res.status(400).json({
         success: false,
         message: "User not found",
@@ -271,10 +271,11 @@ const verifySession = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      kyc: user.kycDone,
       message: "Token verified",
     });
 
-  }catch(error){
+  } catch (error) {
     console.log("error", error);
     return res.status(500).json({
       success: false,
