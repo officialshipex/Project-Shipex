@@ -1,9 +1,14 @@
-import React from 'react';
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = () => {
+
+    const navigate = useNavigate();
+
     const handleClick = (iconName) => {
-        console.log(`${iconName} icon clicked!`);
+        navigate(`/seller/${iconName}`);
     };
+
+
     return (
         <aside className="w-16 bg-green-100 h-screen flex flex-col justify-between items-center py-6">
             {/* Top Icons */}
@@ -20,7 +25,7 @@ const Sidebar = () => {
                         <path d="M0 23.25V8.25L10 0.75L20 8.25V23.25H12.5V14.5H7.5V23.25H0Z" fill="#666666" />
                     </svg>
                 </div>
-                <div onClick={() => handleClick('bar chart')} className="cursor-pointer">
+                <div onClick={() => handleClick('dashboard')} className="cursor-pointer">
 
                     <svg width="24" height="22" viewBox="0 0 26 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0.5 23.25V20.75H25.5V23.25H0.5ZM1.75 19.5V10.75H5.5V19.5H1.75ZM8 19.5V4.5H11.75V19.5H8ZM14.25 19.5V8.25H18V19.5H14.25ZM20.5 19.5V0.75H24.25V19.5H20.5Z" fill="#666666" />

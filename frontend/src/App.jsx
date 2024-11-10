@@ -4,9 +4,11 @@ import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-
 import PropTypes from 'prop-types';
 import { useState } from "react";
 
-import Registeration from "./registration/Registration";
 import LoginPage from "./components/Kyc/LoginPage";
+import Registeration from "./registration/Registration";
+
 import KycRoutes from "./routes/KycRoutes";
+import DashBoardRoute from "./routes/DashboardRoute";
 
 const PrivateRoute = ({ isAuthenticated }) => {
   return isAuthenticated ?
@@ -27,8 +29,12 @@ function App() {
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
-        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}>
-          <Route path="/kyc/*" element={<KycRoutes/>} />
+        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route path="/kyc/*" element={<KycRoutes />} />
+        </Route>
+
+        <Route element={<PrivateRoute isAuthenticated={true} />}>
+          <Route path="/seller/*" element={<DashBoardRoute />} />
         </Route>
 
       </Routes>
