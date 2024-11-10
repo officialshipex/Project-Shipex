@@ -5,20 +5,19 @@ import PartnersSection from "../trackByMobileAWBOrderID/PartnersSection";
 import UniqueFeatures from "../trackByMobileAWBOrderID/UniqueFeature";
 import RegisterationForm from "./RegistrationForm";
 
-const Registeration = ({setIsAuthenticated}) => {
-    return (
-        <div>
-            <RegisterationForm setIsAuthenticated={setIsAuthenticated}/>
-            <UniqueFeatures />
-            <OurOneStopSolutions />
-            <PartnersSection />
-
-        </div>
-    )
-}
+const Registeration = ({ setIsAuthenticated }) => {
+  return (
+    <div>
+      <RegisterationForm setIsAuthenticated={setIsAuthenticated} />
+      <UniqueFeatures />
+      <OurOneStopSolutions />
+      <PartnersSection />
+    </div>
+  );
+};
 
 Registeration.propTypes = {
-    setIsAuthenticated: PropTypes.func.isRequired,
+  setIsAuthenticated: PropTypes.bool.isRequired,
 };
 
 export default Registeration;
