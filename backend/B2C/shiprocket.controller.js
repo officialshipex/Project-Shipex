@@ -15,12 +15,7 @@ async function getAuthToken(email, password) {
 const createCustomOrder = async (req, res) => {
     const orderData = req.body;
     // console.log(orderData)
-<<<<<<< HEAD
     const { email, password } = req.body
-=======
-    const {email,password}=req.body
-    // console.log(email)
->>>>>>> af0fae287d6a023b04de53b8f415d7f74ea3118d
     try {
         const token = await getAuthToken(email, password);
         const response = await axios.post(

@@ -1,9 +1,16 @@
 // import React from 'react';
 
+
 const Navbar = () => {
     const handleClick = (section) => {
         console.log(`${section} clicked!`);
     };
+
+    const handleRecharge = async () => {
+        console.log('Recharge Wallet clicked!');
+        
+        window.location.href = 'http://localhost:5000/v1/recharge/pay';
+    }
 
     return (
         <nav className="h-8 w-full flex items-center justify-end">
@@ -34,7 +41,7 @@ const Navbar = () => {
             <div className="border-l border-gray-300 h-8" />
 
             {/* Recharge Wallet Section (hidden on mobile) */}
-            <div className="hidden lg:flex items-center space-x-4 p-4 cursor-pointer" onClick={() => handleClick('Recharge Wallet')}>
+            <div className="hidden lg:flex items-center space-x-4 p-4 cursor-pointer" onClick={handleRecharge}>
                 <svg width="26" height="21" viewBox="0 0 28 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M3 10H23V5H3V10ZM21.75 22.5V18.75H18V16.25H21.75V12.5H24.25V16.25H28V18.75H24.25V22.5H21.75ZM3 20C2.3125 20 1.72396 19.7552 1.23438 19.2656C0.744792 18.776 0.5 18.1875 0.5 17.5V2.5C0.5 1.8125 0.744792 1.22396 1.23438 0.734375C1.72396 0.244792 2.3125 0 3 0H23C23.6875 0 24.276 0.244792 24.7656 0.734375C25.2552 1.22396 25.5 1.8125 25.5 2.5V10H21.75C20.0208 10 18.5469 10.6094 17.3281 11.8281C16.1094 13.0469 15.5 14.5208 15.5 16.25V20H3Z" fill="#0CBB7D" />
                 </svg>
