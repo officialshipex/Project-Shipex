@@ -1,15 +1,18 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-import CourierDTDC from './B2C/CourierDTDC.jsx'
-// import Sidebar from './B2C/SideBar.jsx'
-// import Track from './trackByMobileAWBOrderID/Track.jsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App";
+// import Paytm from "./payment/Paytm"
+// import App from "./App";
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App/>
-    {/* <CourierDTDC/> */}
-    
-  </StrictMode>,
-)
+// import Dashboard from "./components/Dashboard/DashBoard";
+// import OrderDashboard from "./components/Dashboard/OrderDashboard";
+import KycStep1 from "./components/Kyc/KycStep1";
+
+
+createRoot(document.getElementById("root")).render(
+<StrictMode>
+  <App />
+  {/* <Paytm/> */}
+</StrictMode>
+);
