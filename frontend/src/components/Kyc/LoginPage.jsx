@@ -46,7 +46,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
         //     setRouteName("kyc");
         //   }else{
         //     console.log("KYC is true");
-        //     setRouteName("dashboard");
+        //     setRouteName("seller/home");
         //   }
         // }
 
@@ -58,7 +58,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
             setRouteName("kyc");
           } else {
             // console.log("KYC is true");
-            setRouteName("dashboard");
+            setRouteName("seller/home");
           }
           // handleNavigation()
         }
@@ -106,7 +106,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
         if (response.data.kyc === false) {
           setRouteName("kyc");
         } else {
-          setRouteName("dashboard");
+          setRouteName("seller/home");
         }
       }
 
