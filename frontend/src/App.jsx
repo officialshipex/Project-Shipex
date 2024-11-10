@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import { useState } from "react";
 
 import LoginPage from "./components/Kyc/LoginPage";
-import Registeration from "./registration/Registration";
+import Registeration from "./register/Registration";
 
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute";
