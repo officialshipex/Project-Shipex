@@ -1,6 +1,4 @@
-import React from "react";
-import NavBar from "../Common/NavBar"; // Adjust the import path if necessary
-import Sidebar from "../Common/Sidebar"; // Adjust the import path if necessary
+
 
 // RTO Dashboard Component
 const RtoDashboard = () => {
@@ -119,10 +117,8 @@ const OrderDashboard = () => {
   ];
 
   return (
-    <div className="flex flex-col h-screen order-dashboard">
-      <NavBar />
+    <div className="flex flex-col h-full order-dashboard">
       <div className="flex flex-1">
-        <Sidebar />
         <div className="dashboard-content flex flex-col p-9 overflow-y-auto flex-grow">
           <div className="flex justify-between items-center mb-4">
             <h6 className="text-2xl font-bold">Dashboard</h6>
