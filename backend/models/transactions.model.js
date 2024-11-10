@@ -6,7 +6,8 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: String, required: true },
   status: { type: String, required: true },
   transactionId: { type: String },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  checksumHash:{type:String,required:true}
 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);
