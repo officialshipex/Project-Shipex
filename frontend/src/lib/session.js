@@ -25,7 +25,7 @@ export async function getSession(){
         }
     })
     // console.log('response:',response.data.success);
-    return response.data.success
+    return response.data;
 }
 
 export function getTokens(){
