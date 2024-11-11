@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+// import NavBar from "../Common/NavBar";
+// import Sidebar from "../Common/Sidebar";
 import { FaChevronDown, FaSearch } from "react-icons/fa";
 
 // Sample order data for return requested
