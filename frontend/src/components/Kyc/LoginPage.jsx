@@ -9,7 +9,7 @@ import { createSession, getSession } from "../../lib/session";
 import { validateEmail } from "../../lib/validation";
 import Logo from "../../assets/Vector logo.png";
 
-const LoginPage = ({setIsAuthenticated}) => {
+const LoginPage = ({ setIsAuthenticated }) => {
 
   const navigate = useNavigate();
 
@@ -20,26 +20,58 @@ const LoginPage = ({setIsAuthenticated}) => {
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState();
 
+  const [routeName, setRouteName] = useState("login");
+
   useEffect(() => {
     try {
       (async () => {
         const param = new URLSearchParams(window.location.search);
         const token = param.get('token');
+        const route = param.get('route');
 
-        if(token){
+        if (token) {
           createSession(token);
         }
 
+        if (route) {
+          setRouteName(route);
+        }
+
         const response = await getSession();
-        if (response) {
+        // console.log(response);
+
+        // if (response.success) {
+        //   if (response.kyc === false) {
+        //     console.log("KYC is false");
+        //     setRouteName("kyc");
+        //   }else{
+        //     console.log("KYC is true");
+        //     setRouteName("seller/home");
+        //   }
+        // }
+
+        if (response.success) {
           setIsAuthenticated(true);
-          handleNavigation()
+
+          if (response.kyc === false) {
+            // console.log("KYC is false");
+            setRouteName("kyc");
+          } else {
+            // console.log("KYC is true");
+            setRouteName("seller/home");
+          }
+          // handleNavigation()
         }
       })()
     } catch (err) {
       console.log(err);
     }
   }, []);
+
+  useEffect(() => {
+    if (routeName !== "/login")
+      handleNavigation();
+  }, [routeName]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,12 +100,22 @@ const LoginPage = ({setIsAuthenticated}) => {
         password
       });
 
+      // console.log(response.data);
+
+      if (response.data.success) {
+        if (response.data.kyc === false) {
+          setRouteName("kyc");
+        } else {
+          setRouteName("seller/home");
+        }
+      }
+
       if (response.data.success) {
         setSuccess(response.data.success);
         setMessage(response.data.message);
         createSession(response.data.data);
         setIsAuthenticated(true);
-        handleNavigation();
+        // handleNavigation();
       } else {
         setMessage(response.data.message);
         setSuccess(response.data.success);
@@ -92,12 +134,17 @@ const LoginPage = ({setIsAuthenticated}) => {
 
   const handleGoogleLogin = (e) => {
     e.preventDefault();
-    console.log("Google Login");
+    // console.log("Google Login");
     window.location.href = 'http://localhost:5000/v1/external/auth/google';
   }
 
   const handleNavigation = () => {
-    navigate('/kyc/step1');
+    // console.log("Route Name: ", routeName);
+    if (routeName === "kyc") {
+      navigate("/kyc/step1");
+    } else {
+      navigate(`/${routeName}`);
+    }
   };
 
   const handlePasswordChange = (e) => {
