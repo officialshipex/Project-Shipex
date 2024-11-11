@@ -3,7 +3,7 @@ const Order = require('../models/orderSchema.model');
 
 const BASE_URL = process.env.BASE_URL
 
-async function getAuthToken(email,password) {
+async function getAuthToken(email, password) {
     const response = await axios.post(`${BASE_URL}/auth/login`, {
         email: email,
         password: password,
@@ -15,10 +15,9 @@ async function getAuthToken(email,password) {
 const createCustomOrder = async (req, res) => {
     const orderData = req.body;
     // console.log(orderData)
-    const {email,password}=req.body
-    // console.log(email)
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.post(
             `${BASE_URL}/orders/create/adhoc`,
             orderData,
@@ -33,6 +32,7 @@ const createCustomOrder = async (req, res) => {
 };
 
 // 2. Create Channel-Specific Order
+<<<<<<< HEAD
 // const createChannelOrder = async (req, res) => {
 //     const orderData = req.body;
 //     const {email,password}=req.body
@@ -48,14 +48,31 @@ const createCustomOrder = async (req, res) => {
 //         res.status(500).json({ error: error.response?.data || error.message });
 //     }
 // };
+=======
+const createChannelOrder = async (req, res) => {
+    const orderData = req.body;
+    const { email, password } = req.body
+    try {
+        const token = await getAuthToken(email, password);
+        const response = await axios.post(
+            `${BASE_URL}/orders/create`,
+            orderData,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+>>>>>>> aacd5a2c7873770f2f77dd0fe4e4c9f56220c867
 
 // 3. Change/Update Pickup Location
 const updatePickupLocation = async (req, res) => {
     const { order_id } = req.params;
     const pickupData = req.body;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.put(
             `${BASE_URL}/orders/address/pickup/${order_id}`,
             pickupData,
@@ -71,9 +88,9 @@ const updatePickupLocation = async (req, res) => {
 const updateDeliveryAddress = async (req, res) => {
     const { order_id } = req.params;
     const addressData = req.body;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.put(
             `${BASE_URL}/orders/address/update/${order_id}`,
             addressData,
@@ -89,9 +106,9 @@ const updateDeliveryAddress = async (req, res) => {
 const updateOrder = async (req, res) => {
     const { order_id } = req.params;
     const orderData = req.body;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.put(
             `${BASE_URL}/orders/update/${order_id}`,
             orderData,
@@ -106,9 +123,9 @@ const updateOrder = async (req, res) => {
 // 6. Cancel an Order
 const cancelOrder = async (req, res) => {
     const { order_id } = req.params;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.post(
             `${BASE_URL}/orders/cancel`,
             { ids: [order_id] },
@@ -121,6 +138,7 @@ const cancelOrder = async (req, res) => {
 };
 
 // 7. Add Inventory for Ordered Product
+<<<<<<< HEAD
 // const addInventory = async (req, res) => {
 //     const inventoryData = req.body;
 //     const {email,password}=req.body
@@ -187,12 +205,80 @@ const cancelOrder = async (req, res) => {
 //         res.status(500).json({ error: error.response?.data || error.message });
 //     }
 // };
+=======
+const addInventory = async (req, res) => {
+    const inventoryData = req.body;
+    const { email, password } = req.body
+    try {
+        const token = await getAuthToken(email, password);
+        const response = await axios.post(
+            `${BASE_URL}/products/addinventory`,
+            inventoryData,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 8. Map Unmapped Products
+const mapProducts = async (req, res) => {
+    const mapData = req.body;
+    const { email, password } = req.body
+    try {
+        const token = await getAuthToken(email, password);
+        const response = await axios.post(
+            `${BASE_URL}/products/map`,
+            mapData,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 9. Import Orders in Bulk
+const importOrders = async (req, res) => {
+    const ordersData = req.body;
+    const { email, password } = req.body
+    try {
+        const token = await getAuthToken(email, password);
+        const response = await axios.post(
+            `${BASE_URL}/orders/create/bulk`,
+            ordersData,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+
+// 10. Generate AWB for Shipment
+const generateAWB = async (req, res) => {
+    const { shipment_id, courier_id } = req.body;
+    const { email, password } = req.body
+    try {
+        const token = await getAuthToken(email, password);
+        const response = await axios.post(
+            `${BASE_URL}/courier/awb/${shipment_id}`,
+            { courier_id },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+};
+>>>>>>> aacd5a2c7873770f2f77dd0fe4e4c9f56220c867
 
 // 11. List of Couriers
 const listCouriers = async (req, res) => {
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.get(`${BASE_URL}/courier/all`, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -205,9 +291,9 @@ const listCouriers = async (req, res) => {
 // 12. Check Courier Serviceability
 const checkServiceability = async (req, res) => {
     const { pickup_pincode, delivery_pincode, cod } = req.query;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.get(
             `${BASE_URL}/courier/serviceability/`,
             {
@@ -224,9 +310,9 @@ const checkServiceability = async (req, res) => {
 // 13. Request for Shipment Pickup
 const requestShipmentPickup = async (req, res) => {
     const { shipment_id, pickup_location_id } = req.body;
-    const {email,password}=req.body
+    const { email, password } = req.body
     try {
-        const token = await getAuthToken(email,password);
+        const token = await getAuthToken(email, password);
         const response = await axios.post(
             `${BASE_URL}/courier/generate/pickup`,
             { shipment_id, pickup_location_id },

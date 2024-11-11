@@ -146,3 +146,7 @@ class PaytmChecksum {
 PaytmChecksum.iv = '@@@@&&&&####$$$$';
 module.exports = PaytmChecksum;
 
+exports.verifyChecksum = (params, key, checksum) => {
+  const generatedChecksum = this.generateChecksum(params, key);
+  return generatedChecksum === checksum;
+};
