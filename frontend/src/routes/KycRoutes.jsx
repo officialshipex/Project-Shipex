@@ -140,7 +140,7 @@ const KycRoutes = () => {
       return;
     }
 
-    if(!checked){
+    if (!checked) {
       setVerificationError("Please agree terms & condition");
       navigate("/kyc/agreement");
       Promise.reject();
@@ -257,7 +257,7 @@ const KycRoutes = () => {
         checked={checked}
       />} />
 
-      <Route path='/thanku' element={<ThankyouPage 
+      <Route path='/thanku' element={<ThankyouPage
         done={done}
       />} />
 
