@@ -21,5 +21,5 @@ const courierServiceSecondSchema = new mongoose.Schema(
   }
 );
 
-const CourierServiceSecond= mongoose.model("CourierServicesecond", courierServiceSecondSchema);
+const CourierServiceSecond= mongoose.model("CourierServiceSecond", courierServiceSecondSchema);
 module.exports = CourierServiceSecond;
