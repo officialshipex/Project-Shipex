@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+// import NavBar from "../Common/NavBar";
+// import Sidebar from "../Common/Sidebar";
 
 const BillingList = () => {
   const [selectedStatus, setSelectedStatus] = useState("Shipping Charges");
