@@ -3,6 +3,11 @@
     margin-top: 20px;
 }
 
+.base-rate-page h1{
+    font-size: 3rem;
+    font-weight: 400;
+}
+
 .add-button {
     background-color: green;
     color: white;
@@ -47,4 +52,80 @@
     position: absolute;
     top: 10px;
     right: 15px;
+}
+.base-rates-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.base-rates-table th, .base-rates-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.base-rates-table th {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+}
+
+.base-rates-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.base-rates-table tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+.base-rates-table td {
+    font-size: 14px;
+    color: #555;
+}
+
+.base-rates-table .twoRows {
+    text-align: center;
+}
+
+.base-rates-table th[colspan] {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+.base-rates-table th[rowspan] {
+    vertical-align: middle;
+}
+
+.base-rates-table tbody td {
+    text-align: center;
+}
+
+.base-rates-table .actions {
+    display: flex;
+    justify-content: center;
+}
+
+.base-rates-table .actions button {
+    background-color: #f0ad4e;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.base-rates-table .actions button:hover {
+    background-color: #ec971f;
+}
+
+.add-button{
+    margin-left: 1rem;
+    margin-top: 1rem;
 }
