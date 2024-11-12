@@ -1,11 +1,11 @@
 import "./BaseRateCardForm.css";
 import { useState } from "react";
 
-function BaseRateCardForm() {
+function BaseRateCardForm({setBaseRates,setIsFormVisible}) {
   const [formData, setFormData] = useState({
     courierProviderName: '',
     courierServiceName: '',
-    mode: '',
+    mode:'Surface',
     weightPriceBasic: [
       {
         weight: '',
@@ -61,19 +61,24 @@ function BaseRateCardForm() {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:5000/zipping/saveBaseRate', {
+      const response = await fetch('http://localhost:5000/v1/saveBaseRate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
       });
+      const result=await response.json();
       if(response.ok){
         alert("form submitted succcessfully");
+        console.log(result);
+        setIsFormVisible(false);
+        setBaseRates(result);
+
         setFormData({
             courierProviderName: '',
             courierServiceName: '',
-            mode: '',
+            mode: 'Surface',
             weightPriceBasic: [
               {
                 weight: '',
@@ -165,8 +170,8 @@ function BaseRateCardForm() {
       <label>
         Mode:
         <select name="mode" value={formData.mode} onChange={handleInputChange} required>
-            <option value={'Surface'}>Surface</option>
-            <option value={'Air'}>Air</option>
+            <option value='Surface'>Surface</option>
+            <option value='Air'>Air</option>
         </select>
       </label>
 

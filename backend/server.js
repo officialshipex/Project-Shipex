@@ -20,6 +20,8 @@ const rechargeRouter = require("./recharge/recharge.route");
 const calculateRouter=require("./routes/calculateRate.router");
 const saveRateRouter=require("./routes/saveRate.router");
 const servicesController=require("./routes/getServices.router");
+const saveBaseRateController=require("./routes/saveBaseRate.router");
+const getBaseRateController=require("./routes/getBaseRate.router");
 
 require("dotenv").config();
 
@@ -47,6 +49,8 @@ app.use("/v1/paytm", paytmRoutes);
 app.use('/v1/calculateRate',calculateRouter);
 app.use('/v1/saveRate',saveRateRouter);
 app.use('/v1/getServices',servicesController);
+app.use('/v1/saveBaseRate',saveBaseRateController);
+app.use('/v1/getBaseRate',getBaseRateController);
 
 
 
