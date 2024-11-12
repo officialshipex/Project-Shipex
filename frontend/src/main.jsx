@@ -21,16 +21,14 @@ import "./index.css";
 // import App from "./App";
 // import MainOrder from "./components/Dashboard/MainOrder";
 // import Main_Return_Request from "./components/Dashboard/Main_Return_Request";
-// import Support1 from "./components/Support/Support1";
-import UploadId from "./components/Kyc/UploadId";
+import Support1 from "./components/Support/Support1";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     {/* <App /> */}
     {/* <MainOrder /> */}
     {/* <Main_Return_Request /> */}
-    <UploadId />
 
-    {/* <Support1 /> */}
+    <Support1 />
   </StrictMode>
 );

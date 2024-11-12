@@ -49,7 +49,9 @@ function Support1() {
                 Help Articles
               </button>
             </div>
-
+            <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
+              Last 30 days data overview.
+            </p>
             {/* Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
               {[
@@ -221,12 +223,14 @@ function Support1() {
                   {/* First Row */}
                   <tr className="text-gray-700 bg-white border-b">
                     <td className="px-2 sm:px-4 py-3">7D105973887</td>
-                    <td className="px-2 sm:px-4 py-3">7D105973887</td>
+                    <td className="px-2 sm:px-4 py-3">c</td>
                     <td className="px-2 sm:px-4 py-3">
                       Issue Over Weight Discrepancy
                     </td>
                     <td className="px-2 sm:px-4 py-3 text-yellow-500 font-semibold">
-                      OPEN
+                      <button className="px-3 sm:px-4 py-1 text-white bg-yellow-500 rounded-md hover:bg-yellow-600">
+                        Open
+                      </button>
                     </td>
                     <td className="px-2 sm:px-4 py-3">20 Aug 2024, 02:50 PM</td>
                     <td className="px-2 sm:px-4 py-3">13 Aug 2024, 02:50 PM</td>
