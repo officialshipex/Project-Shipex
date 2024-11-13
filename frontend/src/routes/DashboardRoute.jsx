@@ -19,6 +19,10 @@ function DashBoardRoute() {
                 <Route path="/weight_calculator" element={<>weight_calculator</>} />
                 <Route path="/NDR" element={<Ndr/>} />
                 <Route path="/billing" element={<BillingList/>} />
+                <Route path="/tools" element={<>tools</>} />
+                <Route path="/management" element={<>management</>} />
+                <Route path="/help" element={<>help</>} />
+                <Route path="/settings" element={<>settings</>} />
             </Route>
         </Routes>
     );
