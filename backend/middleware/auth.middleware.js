@@ -1,56 +1,59 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User.model");
+const jwt = require('jsonwebtoken');
+const User = require('../models/User.model');
+
 
 const isAuthorized = async (req, res, next) => {
-  const { authorization } = req.headers;
+    const { authorization } = req.headers;
 
-  if (!authorization) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
-    });
-  }
+    if (!authorization) {
+        return res.status(401).json({
+            success: false,
+            message: "You must be logged in"
+        });
+    }
 
-  // console.log(authorization);
+    // console.log(authorization);
 
-  const [bearer, token] = authorization.split(" ");
+    const [bearer, token] = authorization.split(' ');
 
-  // console.log("bearer", bearer);
-  // console.log("token", token);
+    // console.log("bearer", bearer);
+    // console.log("token", token);
 
-  if (bearer !== "Bearer" || !token) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
-    });
-  }
+    if (bearer !== 'Bearer' || !token) {
+        return res.status(401).json({
+            success: false,
+            message: "You must be logged in"
+        });
+    }
 
-  const { user } = jwt.verify(token, process.env.JWT_SECRET);
+    const { user } = jwt.verify(token, process.env.JWT_SECRET);
 
-  // console.log("User : ", user);
+    // console.log("User : ", user);
 
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
-    });
-  }
+    if (!user) {
+        return res.status(401).json({
+            success: false,
+            message: "You must be logged in"
+        });
+    }
 
-  const userExists = await User.findOne({ _id: user.id });
+    const userExists = await User.findOne({ _id: user.id });
 
-  // console.log("User Exists : ", userExists);
+    // console.log("User Exists : ", userExists);
 
-  if (!userExists) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
-    });
-  }
+    if (!userExists) {
+        return res.status(401).json({
+            success: false,
+            message: "You must be logged in"
+        });
+    }
 
-  req.user = userExists;
+    req.user = userExists;
 
-  next();
-};
+    next()
 
-module.exports = isAuthorized;
+}
 
+module.exports = {
+    isAuthorized
+}
