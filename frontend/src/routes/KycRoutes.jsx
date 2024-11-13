@@ -135,7 +135,7 @@ const KycRoutes = () => {
 
     if (!documentVerified.aadhar || !documentVerified.pan || !documentVerified.bank) {
       setVerificationError("Please verify all documents");
-      navigate("/kyc/digital");
+      navigate("/kyc/step3");
       Promise.reject(); // Exit early
       return;
     }
