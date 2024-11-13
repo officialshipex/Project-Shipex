@@ -3,4 +3,6 @@ const router = express.Router();
 
 const saveRateController=require("../Rate/saveRateCardController");
 
-router.post("/",saveRateController.saveRate);
+router.post("/saverate",saveRateController.saveRate);
+
+module.exports=router

@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
+import KycStep1 from "./components/Kyc/KycStep1";
+import WalletRecharge from "./payment/WalletRecharge";
 // import Paytm from "./payment/Paytm"
 // import App from "./App";
 // import Main_Billing from "./components/Dashboard/main_Billing"
@@ -17,7 +19,10 @@ import App from "./App";
 
 createRoot(document.getElementById("root")).render(
 <StrictMode>
-  <App />
+  {/* <App /> */}
+  <WalletRecharge/>
+
+ 
  
 </StrictMode>
 );
