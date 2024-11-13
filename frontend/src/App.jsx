@@ -25,17 +25,7 @@ function App() {
   return (
     <Router>
       <Routes>
-
-        {/* <Route
-          path="/KycStep1"
-          element={<PrivateRoute isAuthenticated={isAuthenticated} />}
-        />
-          <Route path="/KycStep1" element={<KycStep1 />} /> */}
-        {/* <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} /> */}
-
-        {/* <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}/>
-          <Route path="/kyc/*" element={<KycRoutes/>} /> */}
+    
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
@@ -57,9 +47,3 @@ PrivateRoute.propTypes = {
 };
 
 export default App;
-
-
-
-
-
-
