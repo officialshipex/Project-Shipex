@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import Whatsapp from "../assets/whatsapp.png"
 import Google from "../assets/google.png"
 import { validateEmail, validatePhoneNumber } from '../lib/validation';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const RegistrationForm = ({ setIsAuthenticated }) => {
 
@@ -271,7 +271,7 @@ const RegistrationForm = ({ setIsAuthenticated }) => {
                 </button>
 
 
-                <p className="text-sm text-center font-bold mt-4">Already a Seller? <a href="/login" className="text-green-600">Log in</a></p>
+                <p className="text-sm text-center font-bold mt-4">Already a Seller? <Link to="/login" className="text-green-600">Log in</Link></p>
 
                 <div className="text-center text-gray-600 text-sm mt-4">OR</div>
 

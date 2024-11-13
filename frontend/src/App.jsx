@@ -25,7 +25,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        
+    
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
