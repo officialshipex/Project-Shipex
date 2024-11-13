@@ -33,6 +33,6 @@ const courierServiceSchema = new mongoose.Schema(
   }
 );
 
-const CourierService = mongoose.model("CourierService", courierServiceSchema, "CourierServices");
+const CourierService = mongoose.model("CourierServiceB2C", courierServiceSchema, "CourierServices");
 // export default CourierService;
 module.exports=CourierService
