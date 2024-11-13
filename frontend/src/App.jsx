@@ -26,6 +26,8 @@ function App() {
     <Router>
       <Routes>
 
+      {/* -------------------------------------------------------------------------------- */}
+
         {/* <Route
           path="/KycStep1"
           element={<PrivateRoute isAuthenticated={isAuthenticated} />}
@@ -36,6 +38,10 @@ function App() {
 
         {/* <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}/>
           <Route path="/kyc/*" element={<KycRoutes/>} /> */}
+
+{/* ---------------------------------------------------------------------------------------------- */}
+
+
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
@@ -49,6 +55,7 @@ function App() {
 
       </Routes>
     </Router>
+
   );
 }
 
