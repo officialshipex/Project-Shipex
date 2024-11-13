@@ -8,7 +8,6 @@ const shiprocketRoutes = require('./routes/courierServiceB2C.router');
 const { isAuthorized } = require('./middleware/auth.middleware');
 const rechargeRouter = require("./recharge/recharge.route");
 const verficationRouter = require("./routes/kyc.router");
-const shiprocket =require("./routes/courierB2C.router")
 const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 
