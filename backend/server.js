@@ -22,6 +22,8 @@ const saveRateRouter=require("./routes/saveRate.router");
 const servicesController=require("./routes/getServices.router");
 const saveBaseRateController=require("./routes/saveBaseRate.router");
 const getBaseRateController=require("./routes/getBaseRate.router");
+const userController=require("./routes/getUsers.router");
+const customRateController=require("./routes/saveCustomRate.router");
 
 require("dotenv").config();
 
@@ -51,6 +53,8 @@ app.use('/v1/saveRate',saveRateRouter);
 app.use('/v1/getServices',servicesController);
 app.use('/v1/saveBaseRate',saveBaseRateController);
 app.use('/v1/getBaseRate',getBaseRateController);
+app.use('/v1/users',userController);
+app.use('/v1/saveCustomRate',customRateController);
 
 
 

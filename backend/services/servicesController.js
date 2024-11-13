@@ -1,7 +1,7 @@
 const CourierSecond=require("../models/courierSecond");
 
 const getServices=async(req,res)=>{
-  console.log("Iam in get services");
+ 
     const { provider } = req.query;
 
     if (!provider) {
@@ -9,7 +9,6 @@ const getServices=async(req,res)=>{
     }
   
     try {
-      console.log("Iam in try");
       const couriers = await CourierSecond.find({ provider }).populate('services');
       res.json({ services: couriers });
     } catch (error) {

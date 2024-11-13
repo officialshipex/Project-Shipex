@@ -2,31 +2,61 @@
 const mongoose=require("mongoose");
 
 const weightSchema = new mongoose.Schema({
-    weight: {
-      type: String,
-      required: true,
-    },
-    zoneA: {
+  weight: {
+    type: Number,
+    required: true,
+  },
+  zoneA: {
+    forward: {
       type: Number,
       required: true,
     },
-    zoneB: {
+    rto: {
+      type: Number,
+      required: true,
+    }
+  },
+  zoneB: {
+    forward: {
       type: Number,
       required: true,
     },
-    zoneC: {
+    rto: {
+      type: Number,
+      required: true,
+    }
+  },
+  zoneC: {
+    forward: {
       type: Number,
       required: true,
     },
-    zoneD: {
+    rto: {
+      type: Number,
+      required: true,
+    }
+  },
+  zoneD: {
+    forward: {
       type: Number,
       required: true,
     },
-    zoneE: {
+    rto: {
+      type: Number,
+      required: true,
+    }
+  },
+  zoneE: {
+    forward: {
       type: Number,
       required: true,
     },
-  });
+    rto: {
+      type: Number,
+      required: true,
+    }
+  },
+});
 
   const rateCardSchema = new mongoose.Schema({
     courierProviderName:{
@@ -39,11 +69,9 @@ const weightSchema = new mongoose.Schema({
     },
     courierProviderId: {
       type: String,
-      required: true,
     },
     courierServiceId: {
       type: String,
-      required: true,
     },
     weightPriceBasic: [weightSchema],
     weightPriceAdditional: [weightSchema],
@@ -57,7 +85,6 @@ const weightSchema = new mongoose.Schema({
     },
     gst:{
       type:Number,
-      required:true,
     }
     
   });
