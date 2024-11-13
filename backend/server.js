@@ -26,10 +26,14 @@ app.use('/v1/external', authRouter);
 app.use('/v1/merchant',  isAuthorized, verficationRouter);
 app.use('/v1/recharge', rechargeRouter);
 
-app.use("/v1/couriers", shiprocket);
+// app.use("/v1/couriers", shiprocket);
 app.use("/v1/courierServices", courierServicesRoutes);
 app.use("/v1/paytm", paytmRoutes);
+
+
 app.use('/v1/shiprocket', shiprocketRoutes);
+
+
 
 
 module.exports = app;
