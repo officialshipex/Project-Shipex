@@ -2,14 +2,6 @@ const crypto = require('crypto');
 const axios = require('axios');
 const { response } = require('../server');
 
-async function pay(req, res){
-    try{
-        return res.redirect("http://localhost:5000/v1/recharge/phonepe")
-    }catch(error){
-        console.log(error);
-    }
-}
-
 async function phonePe(req, res) {
     try {
         const merchantTransactionId = 'M' + Date.now();
@@ -69,6 +61,5 @@ async function phonePe(req, res) {
 }
 
 module.exports = {
-    pay,
     phonePe
 }

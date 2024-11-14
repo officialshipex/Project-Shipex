@@ -10,9 +10,6 @@ import Registeration from "./register/Registration";
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute";
 
-import BaseRate from "./components/RateCard/BaseRate";
-import CustomPlan from "./components/RateCard/CustomPlan";
-
 const PrivateRoute = ({ isAuthenticated }) => {
   return isAuthenticated ?
     <>
@@ -26,41 +23,22 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   return (
-//     <Router>
-//       <Routes>
+    <Router>
+      <Routes>
+    
+        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
-//       {/* -------------------------------------------------------------------------------- */}
+        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route path="/kyc/*" element={<KycRoutes />} />
+        </Route>
 
-//         {/* <Route
-//           path="/KycStep1"
-//           element={<PrivateRoute isAuthenticated={isAuthenticated} />}
-//         />
-//           <Route path="/KycStep1" element={<KycStep1 />} /> */}
-//         {/* <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-//         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} /> */}
+        <Route element={<PrivateRoute isAuthenticated={true} />}>
+          <Route path="/seller/*" element={<DashBoardRoute />} />
+        </Route>
 
-//         {/* <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated}/>}/>
-//           <Route path="/kyc/*" element={<KycRoutes/>} /> */}
-
-// {/* ---------------------------------------------------------------------------------------------- */}
-
-
-//         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-//         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
-
-//         <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
-//           <Route path="/kyc/*" element={<KycRoutes />} />
-//         </Route>
-
-//         <Route element={<PrivateRoute isAuthenticated={true} />}>
-//           <Route path="/seller/*" element={<DashBoardRoute />} />
-//         </Route>
-
-//       </Routes>
-//     </Router>
-
-<BaseRate></BaseRate>
-
+      </Routes>
+    </Router>
   );
 }
 
@@ -69,9 +47,3 @@ PrivateRoute.propTypes = {
 };
 
 export default App;
-
-
-
-
-
-
