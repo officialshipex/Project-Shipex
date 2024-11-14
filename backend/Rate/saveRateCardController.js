@@ -3,37 +3,20 @@ const CourierServiceSecond=require("../models/courierServiceSecond");
 const RateCard=require("../models/rateCards");
 
 const saveRate=async(req,res)=>{
-    const provider = await CourierSecond.find({ provider: req.body.provider });
-    const service = await CourierServiceSecond.find({ courierProviderServiceName: req.body.courierService });
+
+ try {
     const rcard = new RateCard({
-      courierProviderName: req.body.provider,
-      courierServiceName: req.body.courierService,
-      courierProviderId: provider[0]._id,
-      courierServiceId: service[0]._id,
-      weightPriceBasic: {
-        weight: req.body.weightBasic,
-        zoneA: req.body.zonesBasic.zoneA,
-        zoneB: req.body.zonesBasic.zoneB,
-        zoneC: req.body.zonesBasic.zoneC,
-        zoneD: req.body.zonesBasic.zoneD,
-        zoneE: req.body.zonesBasic.zoneE,
-      },
-      weightPriceAdditional: {
-        weight: req.body.weightAdditional,
-        zoneA: req.body.zonesAdditional.zoneA,
-        zoneB: req.body.zonesAdditional.zoneB,
-        zoneC: req.body.zonesAdditional.zoneC,
-        zoneD: req.body.zonesAdditional.zoneD,
-        zoneE: req.body.zonesAdditional.zoneE,
-      },
+      courierProviderName: req.body.courierProviderName,
+      courierServiceName: req.body.courierServiceName,
+      weightPriceBasic:req.body.weightPriceBasic,
+      weightPriceAdditional:req.body.weightPriceAdditional,
       codPercent: req.body.codPercent,
       codCharge: req.body.codCharge,
-      gst: req.body.gst
+      defaultRate:true
     });
-  
-    try {
+    console.log(rcard);
       const savedRateCard = await rcard.save();
-      await CourierServiceSecond.updateOne({ courierProviderServiceName: req.body.courierService }, { $push: { rateCards: savedRateCard } });
+      await CourierServiceSecond.updateOne({ courierProviderServiceName: req.body.courierServiceName}, { $push: { rateCards: savedRateCard } });
       res.status(201).json(savedRateCard);
     } catch (error) {
       console.error(error);
