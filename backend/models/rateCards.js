@@ -85,6 +85,10 @@ const weightSchema = new mongoose.Schema({
     },
     gst:{
       type:Number,
+    },
+    defaultRate:{
+      type:Boolean,
+      default:false
     }
     
   });
