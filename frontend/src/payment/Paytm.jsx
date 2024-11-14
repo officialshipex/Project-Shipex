@@ -22,7 +22,7 @@
 
 //       const form = document.createElement("form");
 //       form.action = paytmURL;
-//       form.method = "POST"; 
+//       form.method = "POST";
 
 //       Object.keys(params).forEach((key) => {
 //         const input = document.createElement("input");
@@ -95,47 +95,39 @@
 
 // export default Paytm;
 
-
-
-
-
-
-
-
-import React from 'react'
+// import React from 'react'
 
 const Paytm = () => {
-
   function isDate(val) {
-    return Object.prototype.toString.call(val) === '[object Date]'
+    return Object.prototype.toString.call(val) === "[object Date]";
   }
 
   function isObj(val) {
-    return typeof val === 'object'
+    return typeof val === "object";
   }
 
   function stringifyValue(val) {
     if (isObj(val) && !isDate(val)) {
-      return JSON.stringify(val)
+      return JSON.stringify(val);
     } else {
-      return val
+      return val;
     }
   }
 
   function buildForm({ action, params }) {
-    const form = document.createElement('form')
-    form.setAttribute('method', 'post')
-    form.setAttribute('action', action)
+    const form = document.createElement("form");
+    form.setAttribute("method", "post");
+    form.setAttribute("action", action);
 
-    Object.keys(params).forEach(key => {
-      const input = document.createElement('input')
-      input.setAttribute('type', 'hidden')
-      input.setAttribute('name', key)
-      input.setAttribute('value', stringifyValue(params[key]))
-      form.appendChild(input)
-    })
+    Object.keys(params).forEach((key) => {
+      const input = document.createElement("input");
+      input.setAttribute("type", "hidden");
+      input.setAttribute("name", key);
+      input.setAttribute("value", stringifyValue(params[key]));
+      form.appendChild(input);
+    });
 
-    return form
+    return form;
   }
 
   function post(details) {
@@ -152,29 +144,30 @@ const Paytm = () => {
       method: "POST",
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(data)
-    }).then(response => response.json()).catch(err => console.log(err))
-  }
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .catch((err) => console.log(err));
+  };
 
   const makePayment = () => {
-    getData({ amount: 500, email: 'abc@gmail.com' }).then(response => {
-      console.log(response)
+    getData({ amount: 500, email: "abc@gmail.com" }).then((response) => {
+      console.log(response);
       var information = {
         action: "https://securegw.paytm.in/order/process",
-        params: response
-      }
-      post(information)
-    })
-  }
+        params: response,
+      };
+      post(information);
+    });
+  };
 
   return (
     <div>
       <button onClick={makePayment}>PAY USING PAYTM</button>
     </div>
-  )
-}
+  );
+};
 
-export default Paytm
-
+export default Paytm;

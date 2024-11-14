@@ -125,7 +125,7 @@ class PaytmChecksum {
 	}
 
 	static getStringByParams(params) {
-    // console.log(params)
+    console.log(params)
 		var data = {};
 		Object.keys(params).sort().forEach(function(key,value) {
 			data[key] = (params[key] !== null && params[key].toLowerCase() !== "null") ? params[key] : "";
