@@ -18,3 +18,4 @@ const customRateSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model("CustomRate", customRateSchema);
+

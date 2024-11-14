@@ -2,10 +2,14 @@ import './BaseRate.css';
 import { useState } from 'react';
 import { useEffect } from 'react';
 import BaseRateCardForm from './BaseRateCardForm';
+import EditBaseRate from './EditBaseRate';
 
 const BaseRate = () => {
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [baseRates, setBaseRates] = useState([]);
+    const[isEditFormVisible,setIsEditFormVisible]=useState(false);
+    const [selectedBaseRate, setSelectedBaseRate] = useState(null);
+
 
     const handleAddClick = () => {
         setIsFormVisible(true);
@@ -13,6 +17,7 @@ const BaseRate = () => {
 
     const handleCloseForm = () => {
         setIsFormVisible(false);
+        setIsEditFormVisible(false);
     };
 
     const handleOutsideClick = (e) => {
@@ -21,17 +26,21 @@ const BaseRate = () => {
         }
     };
 
+    const handleEditClick=(data)=>{
+       setIsEditFormVisible(true);
+       setSelectedBaseRate(data);
+    }
+
     useEffect(() => {
         // Function to fetch base rates
-        console.log('useEffect has been triggered');
         const fetchBaseRates = async () => {
             try {
+              
                 const response = await fetch('http://localhost:5000/v1/getBaseRate');
                 if (!response.ok) {
                     throw new Error('Failed to fetch base rates');
                 }
                 const data = await response.json();
-                console.log(data);
                 setBaseRates(data);
             } catch (error) {
                 console.error('Error fetching base rates:', error);
@@ -40,7 +49,7 @@ const BaseRate = () => {
 
         // Call fetch function on component mount
         fetchBaseRates();
-    }, []);
+    }, [selectedBaseRate,baseRates,isEditFormVisible,isFormVisible]);
 
     return (
         <div className="base-rate-page">
@@ -55,6 +64,17 @@ const BaseRate = () => {
                         <BaseRateCardForm setBaseRates={setBaseRates} setIsFormVisible={setIsFormVisible} />
                     </div>
                 </div>
+            )}
+
+            {isEditFormVisible &&(
+
+                <div className='modal' onClick={handleOutsideClick}>
+                <div className="modal-content">
+                        <span className="close-button" onClick={handleCloseForm}>&times;</span>
+                        <EditBaseRate selectedBaseRate={selectedBaseRate} setIsEditFormVisible={setIsEditFormVisible}/>
+                    </div>
+                </div>
+
             )}
 
             {baseRates.length > 0 && (
@@ -109,11 +129,11 @@ const BaseRate = () => {
                                 <td>{rate.weightPriceBasic[0].zoneE.rto}</td>
                                 <td>{rate.codCharge}</td>
                                 <td>{rate.codPercent}</td>
-                                <td><button>Edit</button></td>
+                                <td><button onClick={()=>handleEditClick(rate)}>Edit</button></td>
                                 <td><button>Delete</button></td>
                             </tr>
 
-                            <tr> <td>{rate.weightPriceAdditional[0].weight}</td>
+                            <tr> <td>{rate.weightPriceAdditional[0].weight} (Additional)</td>
                                 <td>{rate.weightPriceAdditional[0].zoneA.forward}</td>
                                 <td>{rate.weightPriceAdditional[0].zoneA.rto}</td>
                                 <td>{rate.weightPriceAdditional[0].zoneB.forward}</td>

@@ -1,12 +1,12 @@
 const User = require("../models/User.model");
 const RateCard = require("../models/rateCards");
 const CustomRate = require("../models/CustomRate");
+const mongoose = require('mongoose');
 
 const saveCustomRate = async (req, res) => {
     try {
         let id = req.body.user;
         
-        // Find the user by id
         let user = await User.findById(id);
         if (!user) {
             return res.status(404).send({ message: "User not found" });
@@ -14,34 +14,44 @@ const saveCustomRate = async (req, res) => {
 
         let customPlan;
         if (user.ratecards.length !== 0) {
-            customPlan = user.ratecards[0]; // Get the first rate card
+            customPlan = await CustomRate.findById(user.ratecards[0]);
+            if (!customPlan) {
+                customPlan = new CustomRate(); 
+                await customPlan.save(); 
+            }
         } else {
-            customPlan = new CustomRate(); // Create a new custom plan
-            user.ratecards.push(customPlan);
-            await customPlan.save();
+            customPlan = new CustomRate(); 
+            user.ratecards.push(customPlan._id); 
+            await customPlan.save(); 
+            await user.save(); 
         }
 
-        // Create a new rate card
-        let ratecard = await new RateCard({
+        if (!customPlan.ratecards) {
+            customPlan.ratecards = [];
+        }
+        if (!customPlan.users) {
+            customPlan.users = [];
+        }
+
+        let ratecard = new RateCard({
             courierProviderName: req.body.courierProviderName,
             courierServiceName: req.body.courierServiceName,
             weightPriceBasic: req.body.weightPriceBasic,
             weightPriceAdditional: req.body.weightPriceAdditional,
             codPercent: req.body.codPercent,
             codCharge: req.body.codCharge,
-        }).save();
+        });
 
-        console.log(ratecard);
+        await ratecard.save();
 
-        // Add rate card to the custom plan and user
-        customPlan.ratecards.push(ratecard._id);
-        customPlan.users.push(id);
+        customPlan.ratecards.push(ratecard._id); 
+        if (!customPlan.users.includes(req.body.user)) {
+            customPlan.users.push(req.body.user); 
+        }
 
-        // Save custom plan and user
-        await customPlan.save();
-        await user.save();
+        await customPlan.save(); 
+        await user.save(); 
 
-        // Send a success response
         res.status(200).send({ message: "Custom rate saved successfully", ratecard });
 
     } catch (error) {
@@ -51,6 +61,9 @@ const saveCustomRate = async (req, res) => {
 };
 
 module.exports = { saveCustomRate };
+
+
+
 
 
 
