@@ -1,24 +1,6 @@
 const mongoose = require('mongoose');
+const RateCard = require("./rateCards");
 
-// const userSchema = new mongoose.Schema({
-//     name : {
-//         type : String,
-//         required : true,
-//     },
-//     email : {
-//         type : String,
-//         required : true,
-//         unique : true,
-//     },
-//     password : {
-//         type : String,
-//         required : true,
-//     }
-// });
-
-// const User = mongoose.model.User || mongoose.model('user',userSchema);
-
-// module.exports = User;
 const usersSchema = new mongoose.Schema({
     firstName: {
         type: String,
@@ -59,12 +41,20 @@ const usersSchema = new mongoose.Schema({
         type: String,
         default: 'Credentials'
     },
-    kycDone:{
-        type:Boolean,
-        default:false
-    }
+    kycDone: {
+        type: Boolean,
+        default: false
+    },
+    ratecards: [
+        {
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'RateCard'
+        }
+    ]
 });
 
+// Using existing model if it exists or defining a new one
 const User = mongoose.model.User || mongoose.model('User', usersSchema);
 
-module.exports = User ;
+module.exports = User;
+
