@@ -25,7 +25,7 @@ verfication.post('/gstin', async (req, res) => {
     const userId = req.user._id;
     // console.log("userId:", userId);
     const { GSTIN, businessName } = req.body;
-    console.log("GSTIN:", GSTIN);
+    // console.log("GSTIN:", GSTIN);
     if (!GSTIN) {
       return res.status(400).json({
         success: false,
@@ -121,7 +121,7 @@ verfication.post('/gstin', async (req, res) => {
 
   } catch (err) {
 
-    console.log("err:", err);
+    // console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
@@ -243,7 +243,7 @@ verfication.post('/pan', async (req, res) => {
 
   } catch (err) {
 
-    console.log("err:", err);
+    // console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
@@ -296,6 +296,7 @@ verfication.post('/generate-otp', async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Aadhaar already exists",
+        data: aadhaarExists
       });
     }
 
@@ -321,18 +322,20 @@ verfication.post('/generate-otp', async (req, res) => {
     };
 
     const response = await axios.request(config);
+    // console.log("response : ", response);
 
     if (response.data.status !== "SUCCESS") {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: response.data.message,
       });
     }
 
-    console.log("response:", response);
+    // console.log("response:", response);
 
     return res.status(200).json({
       success: true,
+      message: response.data.message,
       data: response.data
     });
 
@@ -361,8 +364,8 @@ verfication.post('/verify-otp', async (req, res) => {
 
     const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
-    const { otp, refId } = req.body;
-
+    const { otp, refId ,aadhaarNo} = req.body;
+    // console.log("req body : ", req.body);
     if (!otp || !refId) {
       return res.status(400).json({
         success: false,
@@ -394,7 +397,7 @@ verfication.post('/verify-otp', async (req, res) => {
 
     const response = await axios.request(config);
 
-    console.log("response:", response);
+    // console.log("response:", response);
 
     const newAadhaar = new Aadhaar({
       user: userId,
@@ -412,12 +415,13 @@ verfication.post('/verify-otp', async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      message: 'Aadhaar verified successfully',
       data: newAadhaar,
     });
 
   } catch (err) {
 
-    console.log("err:", err);
+    // console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
@@ -471,6 +475,7 @@ verfication.post('/bank-account', async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Bank Account already exists",
+        data: bankAccountExists
       });
     }
 
@@ -549,6 +554,8 @@ verfication.post('/kyc', async (req, res) => {
   try {
 
     const userId = req.user._id;
+    // console.log("user id : ", userId);
+    // console.log("req body : ", req.body);
 
     const { businesstype, companyName, gstNumber, address, kycType, panNumber, panName, aadharNumber, accountNumber, ifscCode, accountHolderName, phoneNumber, documentVerified } = req.body;
 
