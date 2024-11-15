@@ -1,0 +1,96 @@
+.calculated-rates {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.calculated-rates h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.rates-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1rem;
+    color: #333;
+}
+
+.rates-table th,
+.rates-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.rates-table th {
+    background-color: #4CAF50;
+    color: #fff;
+    font-weight: bold;
+}
+
+.rates-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.rates-table tr:hover {
+    background-color: #e1f5e1;
+}
+
+.rates-table td {
+    text-align: center;
+    color: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .rates-table,
+    .rates-table thead,
+    .rates-table tbody,
+    .rates-table th,
+    .rates-table td,
+    .rates-table tr {
+        display: block;
+    }
+    
+    .rates-table th,
+    .rates-table td {
+        padding: 0.5rem;
+    }
+
+    .rates-table th {
+        background-color: #4CAF50;
+        color: #fff;
+        padding: 0.5rem;
+        font-weight: bold;
+    }
+
+    .rates-table tr {
+        margin-bottom: 1rem;
+        background-color: #f9f9f9;
+    }
+
+    .rates-table td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+    }
+
+    .rates-table td:before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 45%;
+        padding-left: 1rem;
+        white-space: nowrap;
+        content: attr(data-label);
+        text-align: left;
+        font-weight: bold;
+        color: #555;
+    }
+}
