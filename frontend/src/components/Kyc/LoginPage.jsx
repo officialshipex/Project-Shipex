@@ -1,28 +1,169 @@
-// import React and necessary hooks
 // import React from "react";
+
 import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import axios from "axios";
+
+import { createSession, getSession } from "../../lib/session";
+import { validateEmail } from "../../lib/validation";
 import Logo from "../../assets/Vector logo.png";
 
-const LoginPage = () => {
-  const navigate = useNavigate(); // Initialize navigate
+const LoginPage = ({ setIsAuthenticated }) => {
 
-  // Handlers to redirect to external URLs
-  const handleGoogleLogin = () => {
-    window.location.href = "https://accounts.google.com/signin"; // Google login page or OAuth link
-  };
+  const navigate = useNavigate();
 
-  const handleWhatsAppLogin = () => {
-    window.location.href = "https://web.whatsapp.com"; // WhatsApp Web or specific OAuth link if available
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const [error, setError] = useState();
+  const [success, setSuccess] = useState(false);
+  const [message, setMessage] = useState();
+
+  const [routeName, setRouteName] = useState("login");
+
+  useEffect(() => {
+    try {
+      (async () => {
+        const param = new URLSearchParams(window.location.search);
+        const token = param.get('token');
+        const route = param.get('route');
+
+        if (token) {
+          createSession(token);
+        }
+
+        if (route) {
+          setRouteName(route);
+        }
+
+        const response = await getSession();
+        // console.log(response);
+
+        // if (response.success) {
+        //   if (response.kyc === false) {
+        //     console.log("KYC is false");
+        //     setRouteName("kyc");
+        //   }else{
+        //     console.log("KYC is true");
+        //     setRouteName("seller/home");
+        //   }
+        // }
+
+        if (response.success) {
+          setIsAuthenticated(true);
+
+          if (response.kyc === false) {
+            // console.log("KYC is false");
+            setRouteName("kyc");
+          } else {
+            // console.log("KYC is true");
+            setRouteName("seller/home");
+          }
+          // handleNavigation()
+        }
+      })()
+    } catch (err) {
+      console.log(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (routeName !== "/login")
+      handleNavigation();
+  }, [routeName]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Perform login logic (authentication, validation, etc.)
+    setError(null);
+    setSuccess(null);
+    setMessage(null);
 
-    // On successful login, navigate to KycStep1 page
-    navigate("/KycStep1");
+    if (!email || !password) {
+      setError({ message: "Please fill all the fields" });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError({ email: "Please enter a valid email address" });
+      return;
+    }
+
+    if (password.length < 8) {
+      setError({ password: "Password must be at least 8 characters long" });
+      return
+    }
+
+    try {
+      const response = await axios.post("http://localhost:5000/v1/external/login", {
+        email,
+        password
+      });
+
+      // console.log(response.data);
+
+      if (response.data.success) {
+        if (response.data.kyc === false) {
+          setRouteName("kyc");
+        } else {
+          setRouteName("seller/home");
+        }
+      }
+
+      if (response.data.success) {
+        setSuccess(response.data.success);
+        setMessage(response.data.message);
+        createSession(response.data.data);
+        setIsAuthenticated(true);
+        // handleNavigation();
+      } else {
+        setMessage(response.data.message);
+        setSuccess(response.data.success);
+      }
+
+    } catch (err) {
+      console.log(err.response.data);
+      if (err?.response?.data) {
+        setSuccess(err.response.data.success);
+        setMessage(err.response.data.message);
+      } else {
+        setMessage("An error occurred. Please try again later.");
+      }
+    }
+  }
+
+  const handleGoogleLogin = (e) => {
+    e.preventDefault();
+    // console.log("Google Login");
+    window.location.href = 'http://localhost:5000/v1/external/auth/google';
+  }
+
+  const handleNavigation = () => {
+    // console.log("Route Name: ", routeName);
+    if (routeName === "kyc") {
+      navigate("/kyc/step1");
+    } else {
+      navigate(`/${routeName}`);
+    }
   };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (e.target.value.length < 8) {
+      setError({ password: "Password must be at least 8 characters long" });
+    } else {
+      setError("");
+    }
+  }
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (!validateEmail(e.target.value)) {
+      setError({ email: "Please enter a valid email address" });
+    } else {
+      setError("");
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white-100">
@@ -39,19 +180,14 @@ const LoginPage = () => {
           </p>
 
           <p className="mt-2 text-gray-600 text-[13px]">
-            Log in to manage your shipments, track orders, and access your
-            personalized dashboard. Ensure smooth operations and efficient
-            logistics management.
+            Log in to manage your shipments, track orders, and access your personalized dashboard. Ensure smooth operations and efficient logistics management.
           </p>
         </div>
 
         <div className="bg-green-50 shadow-lg p-5 sm:p-6 lg:p-7 rounded-lg border-2 space-y-6 border-green-200">
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -62,14 +198,15 @@ const LoginPage = () => {
                 autoComplete="email"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                value={email}
+                onChange={handleEmailChange}
               />
+              {error?.email && (<p className="text-red-500 text-xs mt-1">{error.email}</p>)}
+
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
@@ -80,7 +217,10 @@ const LoginPage = () => {
                 autoComplete="current-password"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                value={password}
+                onChange={handlePasswordChange}
               />
+              {error?.password && (<p className="text-red-500 text-xs mt-1">{error.password}</p>)}
             </div>
 
             <div className="flex justify-between">
@@ -90,9 +230,13 @@ const LoginPage = () => {
             </div>
 
             <div>
+              {error?.message && <p className="text-red-500 text-xs">{error.message}</p>}
+              {success && message && (<p className="text-green-500 text-xs mt-1">{message}</p>)}
+              {!success && message && (<p className="text-red-500 text-xs mt-1">{message}</p>)}
               <button
                 type="submit"
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                onClick={handleSubmit}
               >
                 Login
               </button>
@@ -101,7 +245,7 @@ const LoginPage = () => {
 
           <div className="text-center text-sm text-gray-600">
             A new User?{" "}
-            <a href="#" className="text-green-600 hover:underline">
+            <a href="/" className="text-green-600 hover:underline">
               Sign in
             </a>
           </div>
@@ -127,7 +271,7 @@ const LoginPage = () => {
 
               <button
                 className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 text-sm font-medium text-gray-700"
-                onClick={handleWhatsAppLogin}
+
               >
                 <img
                   src="https://img.icons8.com/color/20/000000/whatsapp.png"
@@ -142,6 +286,10 @@ const LoginPage = () => {
       </div>
     </div>
   );
+};
+
+LoginPage.propTypes = {
+  setIsAuthenticated: PropTypes.func.isRequired,
 };
 
 export default LoginPage;
