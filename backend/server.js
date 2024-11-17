@@ -9,6 +9,7 @@ const { isAuthorized } = require('./middleware/auth.middleware');
 const rechargeRouter = require("./recharge/recharge.route");
 
 
+
 const calculateRouter=require("./routes/calculateRate.router");
 const saveRateRouter=require("./routes/saveRate.router");
 const servicesController=require("./routes/getServices.router");
@@ -17,6 +18,7 @@ const getBaseRateController=require("./routes/getBaseRate.router");
 const userController=require("./routes/getUsers.router");
 const customRateController=require("./routes/saveCustomRate.router");
 const editBaseRateController=require("./routes/editBaseRate.router");
+const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 
 const verficationRouter = require("./routes/kyc.router");
 // const shiprocket =require("./routes/courierB2C.router")
@@ -53,6 +55,7 @@ app.use('/v1/getBaseRate',getBaseRateController);
 app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
+app.use("/v1/NimbusPost",NimbusPostController);
 
 
 
