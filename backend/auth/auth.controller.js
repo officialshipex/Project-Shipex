@@ -1,12 +1,11 @@
-// const { generateToken } = require("../utils/jwtToken");
-// const responseMessage = require("../helpers/responseMessage");
+
 const { validateForm, validateEmail } = require("../utils/afv");
-// const userService = require("../services/users");
-// const response = require("../helpers/response");
-const User = require("../model/User.model");
+const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 //for User Registration
 const register = async (req, res) => {
@@ -20,11 +19,11 @@ const register = async (req, res) => {
       });
     }
 
-    const userData = { firstName, lastName, email, phoneNumber, company, monthlyOrders: Number(monthlyOrders), password, confirmedPassword, checked }
+    const userData = { firstName, lastName, email, phoneNumber, company, monthlyOrders, password, confirmedPassword, checked };
 
     const validateFields = validateForm(userData);
 
-    if (validateFields && Object.keys(validateFields).length > 0) {
+    if (Object.keys(validateFields).length) {
       return res.status(400).json({
         success: false,
         message: validateFields,
@@ -114,12 +113,18 @@ const login = async (req, res) => {
     if (!validateFields) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email format",
+        message: "Invalid email ",
       })
     }
 
     const user = await User.findOne({ email });
-    console.log("user", user);
+    // console.log("user", user);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User does not exist",
+      })
+    }
 
     const checkPassword = await bcrypt.compare(password, user.password);
 
@@ -144,6 +149,7 @@ const login = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "User logged in successfully",
+      kyc: user.kycDone,
       data: token,
     });
 
@@ -161,15 +167,13 @@ const login = async (req, res) => {
 const googleLogin = async (req, res) => {
   try {
     const profile = req.user;
-    console.log("profile", profile);
+    // console.log("profile", profile);
     const userExist = await User.findOne({ email: profile.email });
     if (!userExist) {
       const newUser = new User({
         firstName: profile.name.givenName,
         lastName: profile.name.familyName,
         email: profile.email,
-        phoneNumber: profile.phone || "",
-        company: profile.company || "",
         monthlyOrders: profile.monthlyOrders || 0,
         googleOAuthID: profile.id,
         isVerified: profile.email_verified,
@@ -190,22 +194,23 @@ const googleLogin = async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    // res.redirect("http://localhost:5173");
-    
-    return res.status(200).json({
-      success: true,
-      message: "User logged in successfully",
-      data: token,
-    })
+    return res.redirect(`${FRONTEND_URL}/login?token=${token}`);
 
-    
+    // return res.status(200).json({
+    //   success: true,
+    //   message: "User logged in successfully",
+    //   data: token,
+    // })
+
+
 
   } catch (error) {
     console.log("error", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return res.redirect(`${FRONTEND_URL}`);
+    // return res.status(500).json({
+    //   success: false,
+    //   message: "Internal server error",
+    // });
   };
 }
 
@@ -225,12 +230,64 @@ const googleLoginFail = (req, res) => {
   }
 };
 
+const verifySession = async (req, res) => {
+  try {
+    const session = req.headers.authorization;
+    // console.log("session", session);
+    if (!session) {
+      return res.status(400).json({
+        success: false,
+        message: "session not found",
+      });
+    }
+
+    const token = session.split(" ")[1];
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+
+    // console.log("decoded", decoded.user);
+    const user = await User.findById(decoded.user.id);
+    // console.log("user", user.kycDone);
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      kyc: user.kycDone,
+      message: "Token verified",
+    });
+
+  } catch (error) {
+    console.log("error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
 
 module.exports = {
   register,
   login,
   googleLogin,
   googleLoginFail,
+  verifySession
 };
-
-// module.exports = { register, login };
