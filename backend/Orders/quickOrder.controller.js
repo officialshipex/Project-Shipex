@@ -1,8 +1,25 @@
 const quickOrder = require("../model/quickOrder.model");
+const {quickOrderValidateSchema}= require("../utils/quickOrderValidation");
 const createQuickOrder = async (req,res) => {
     try {
         const quickOrderData = req.body;
         
+         // Perform validation
+         const { error, value } = quickOrderValidateSchema.validate(quickOrderData, { abortEarly: false }); // `abortEarly: false` to collect all errors
+         if (error) {
+           console.error('Validation Error:', error.details);
+           const validationErrors = error.details.map(err => ({
+             field: err.path.join('.'),
+             message: err.message
+           }));
+ 
+           // Respond with detailed error messages
+           return res.status(400).json({
+             success: false,
+             errors: validationErrors
+           });
+         }
+
         const quickOrders = new quickOrder({
           pickupAddress: quickOrderData.pickupAddress,
           buyerDetails: quickOrderData.buyerDetails,
@@ -15,7 +32,36 @@ const createQuickOrder = async (req,res) => {
           },
           paymentMethod: quickOrderData.paymentMethod,
         });
-    
+        
+        // if(!quickOrderData.pickupAddress){
+        //   return res.status(400).json({
+        //     success:false,
+        //     message:"Please fill the pickup Address."
+        //   })
+        // }
+
+        // const buyerDetailsFields = ['buyerName', 'phoneNumber', 'alternatePhoneNumber', 'email'];
+
+        // for (const field of buyerDetailsFields) {
+        //     if (!quickOrderData.buyerDetails[field]) {
+        //         return res.status(400).json({
+        //             success: false,
+        //             message: `Please fill the ${field} field.`
+        //         });
+        //     }
+        // }
+
+        // const buyerAddressFields = ['completeAddress', 'landmark', 'pincode', 'city', 'state', 'country','companyName' ,'gstinNumber','billingAddressSameAsShipping'];
+        
+        // for (const field of buyerAddressFields) {
+        //   if (!orderData.buyerAddress[field]) {
+        //     return res.status(400).json({
+        //       success: false,
+        //           message: `Please fill the ${field} field.`
+        //       });
+        //     }
+        // }
+
         await quickOrders.save();
         return res.status(201).json({ message: "Order saved successfully" ,quickOrders});
     } catch (error) {
