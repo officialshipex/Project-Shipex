@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const quickOrderSchema = new mongoose.Schema({
   pickupAddress: { type:String, required:true },
   buyerDetails: {
-    name: { type:String, required:true },
+    buyerName: { type:String, required:true },
     phoneNumber: { type:String, required:true  },
     alternatePhoneNumber: { type:String },
     email: { type:String, required:true  },
