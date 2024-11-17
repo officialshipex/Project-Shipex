@@ -1,27 +1,49 @@
 import "./App.css";
-import { useState, useEffect } from "react";
-import NavBar from "./components/Common/NavBar";
-import Dashboard from "./components/Dashboard/DashBoard";
-import OrderDashboard from "./components/Dashboard/OrderDashboard";
+
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState } from "react";
+
 import LoginPage from "./components/Kyc/LoginPage";
+import Registeration from "./register/Registration";
+
+import KycRoutes from "./routes/KycRoutes";
+import DashBoardRoute from "./routes/DashboardRoute";
+
+const PrivateRoute = ({ isAuthenticated }) => {
+  return isAuthenticated ?
+    <>
+      <Outlet />
+    </>
+    : <><Navigate replace to='/login'></Navigate></>
+}
 
 function App() {
-  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetch("http://localhost:5000/v1/external/auth/login")
-      .then((response) => response.json())
-      .then((data) => setMessage(data.message));
-  }, []);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   return (
-    <div className="app-container">
-      {/* <NavBar />
-      <Dashboard />
-      <OrderDashboard /> */}
-      <LoginPage/>
-    </div>
+    <Router>
+      <Routes>
+    
+        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+
+        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route path="/kyc/*" element={<KycRoutes />} />
+        </Route>
+
+        <Route element={<PrivateRoute isAuthenticated={true} />}>
+          <Route path="/seller/*" element={<DashBoardRoute />} />
+        </Route>
+
+      </Routes>
+    </Router>
   );
 }
+
+PrivateRoute.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+};
 
 export default App;
