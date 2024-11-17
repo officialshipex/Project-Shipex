@@ -18,7 +18,7 @@ const getBaseRateController=require("./routes/getBaseRate.router");
 const userController=require("./routes/getUsers.router");
 const customRateController=require("./routes/saveCustomRate.router");
 const editBaseRateController=require("./routes/editBaseRate.router");
-const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
+// const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 
 const verficationRouter = require("./routes/kyc.router");
 // const shiprocket =require("./routes/courierB2C.router")
@@ -29,7 +29,6 @@ const authRouter = require("./routes/auth.router");
 require("dotenv").config();
 
 const app = express();
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
@@ -55,7 +54,7 @@ app.use('/v1/getBaseRate',getBaseRateController);
 app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
-app.use("/v1/NimbusPost",NimbusPostController);
+// app.use("/v1/NimbusPost",ed)
 
 
 
