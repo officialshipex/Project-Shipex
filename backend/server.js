@@ -7,6 +7,7 @@ const courierServicesRoutes=require('./routes/courierServiceB2C.router')
 // const shiprocketRoutes = require('./routes/courierServiceB2C.router');
 const { isAuthorized } = require('./middleware/auth.middleware');
 const rechargeRouter = require("./recharge/recharge.route");
+const orderRouter=require("./routes/orders.router")
 
 
 const calculateRouter=require("./routes/calculateRate.router");
@@ -53,6 +54,7 @@ app.use('/v1/getBaseRate',getBaseRateController);
 app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
+app.use('/v1/order',orderRouter)
 
 
 
