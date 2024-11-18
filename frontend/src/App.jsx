@@ -9,7 +9,9 @@ import Registeration from "./register/Registration";
 
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute";
-import Paytm from "./payment/Paytm";
+
+
+
 
 const PrivateRoute = ({ isAuthenticated }) => {
   return isAuthenticated ?
@@ -25,6 +27,8 @@ function App() {
 
   return (
     <Router>
+      
+      
       <Routes>
     
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
