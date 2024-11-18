@@ -183,6 +183,7 @@ verfication.post('/pan', async (req, res) => {
     });
 
     let signature = getSignature();
+// console.log(signature)
 
     let config = {
       method: 'post',
