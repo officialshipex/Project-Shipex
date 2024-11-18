@@ -53,7 +53,7 @@ const returnRequestedData = [
   },
 ];
 
-const ReturnList = () => {
+const NDR = () => {
   const [selectedOrders, setSelectedOrders] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("All");
 
@@ -206,4 +206,4 @@ const ReturnList = () => {
   );
 };
 
-export default ReturnList;
+export default NDR;
