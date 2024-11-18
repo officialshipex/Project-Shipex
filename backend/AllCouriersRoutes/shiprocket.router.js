@@ -1,31 +1,31 @@
-// import express from "express";
-const express = require("express")
-const { getAllActiveCourierServices, getCourierServicesFromDatabase }= require("../B2C/courierService.controller");
+
+const express = require("express");
+const router = express.Router();
+
+const { getAllActiveCourierServices } = require("../AllCouriers/ShipRocket/Couriers/couriers.controller");
 const {
     createCustomOrder,
-   
+
     updateOrder,
     cancelOrder,
-  
+
     listCouriers,
     checkServiceability,
     requestShipmentPickup,
-    
+
     createReturnOrder,
- 
+
     generateManifest,
-    
+
     generateLabel,
     generateInvoice,
     getAllNDRShipments,
-   
-    getTrackingByAWB,
-   
-    getTrackingByOrderID,
- 
-} = require('../B2C/shiprocket.controller');
 
-const router = express.Router();
+    getTrackingByAWB,
+
+    getTrackingByOrderID,
+
+} = require('../AllCouriers/ShipRocket/MainServices/mainServices.controller');
 
 router.post("/getAllActiveCourierServices", getAllActiveCourierServices);
 router.post("/getCourierServicesFromDatabase", getCourierServicesFromDatabase);

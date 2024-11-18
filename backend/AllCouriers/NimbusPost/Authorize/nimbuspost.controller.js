@@ -6,8 +6,8 @@ const getAuthToken = async () => {
 
     const url = 'https://api.nimbuspost.com/v1/users/login';
     const payload = {
-        email: 'VINCESINGAL+1581@GMAIL.COM',
-        password: 'rnY4xE5bh4'
+        email:process.env.NIMBUS_GMAIL,
+        password:process.env.NIMBUS_PASS
     };
 
     try {
