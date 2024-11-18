@@ -1,25 +1,26 @@
 import "./App.css";
-import { useState, useEffect } from "react";
+// import { useState, useEffect } from "react";
 // import NavBar from "./components/Common/NavBar";
 // import Dashboard from "./components/Dashboard/Dashboard"; // Import Dashboard
-import { OrderDashboard } from "./components/Dashboard/OrderDashboard"; // Import OrderDashboard
+// import OrderDashboard from "./components/Dashboard/OrderDashboard"; // Import OrderDashboard
 // import OrderList from "./components/Dashboard/MainOrder"; // Import OrderList
-// import ReturnList from "./components/Dashboard/Main_Return_Request"; // Import ReturnList
+// import ReturnList from "./components/Dashboard/Main_Return_Request"; // Import only ReturnList
 // import BillingList from "./components/Dashboard/Main_Billing"; // Import BillingList
+// import NDR from "./components/Dashboard/Main_ndr"; // Commented out NDR import
+
+// import CRFIDPopup from "./components/Dashboard/Billing_COD Remittance_CRF id";
+// import Modal from "./components/Dashboard/Billing_COD remittance_CRF ID";
+// import COD from "./components/Dashboard/Billing_COD Remittance_COD available details";
+// import Staff from "./components/user management view/view staff";
+ // import AddStaff from "./components/user management view/viewDashboardUserManagement";
+// import NewOrder from "./components/Dashboard/Order"; // Import Order only
+import AddOrder from "./components/AddOrder/Add Order_Single Shipment";
 
 function App() {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    fetch("http://localhost:5000/v1/external/auth/login")
-      .then((response) => response.json())
-      .then((data) => setMessage(data.message));
-  }, []);
-
   return (
-    <div className="app-container">
-      <OrderDashboard /> {/* Only OrderDashboard will be displayed */}
-    </div>
+    <>
+      <AddOrder /> {/* Render only Order */}
+    </>
   );
 }
 
