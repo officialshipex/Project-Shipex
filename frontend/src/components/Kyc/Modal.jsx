@@ -107,12 +107,17 @@ const OTPModal = ({ onClose, onConfirm }) => {
   const handleConfirm = () => {
     onConfirm(otp.join(""));
   };
+
+  const handleToggleModal = () => {
+    setIsModalOpen(false)
+  }
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-6 shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Authenticate</h3>
-          <button onClick={onClose} className="text-gray-500">
+          <button onClick={handleToggleModal} className="text-gray-500">
             &times;
           </button>
         </div>
@@ -164,6 +169,23 @@ const OTPModal = ({ onClose, onConfirm }) => {
 
 /* AadhaarModal*/
 const AadhaarModal = ({ onClose }) => {
+OTPModal.propTypes = {
+  session: PropTypes.string,
+  refId: PropTypes.string,
+  setIsModalOpen: PropTypes.func,
+  setDocumentVerified: PropTypes.func,
+  aadharNumber: PropTypes.string,
+
+  setDataModalIsOpen: PropTypes.func,
+  setModalData: PropTypes.func,
+}
+
+/* AadhaarModal*/
+export const AadhaarModal = (props) => {
+
+  const { modalData, setDataModalIsOpen } = props;
+
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div
@@ -375,3 +397,99 @@ const AccountVerificationModal = ({ onClose }) => {
     </div>
   );
 };
+
+AccountVerificationModal.propTypes = {
+  modalData: PropTypes.object,
+  setDataModalIsOpen: PropTypes.func,
+}
+
+export const GSTModal = (props) => {
+
+  const { modalData, setDataModalIsOpen } = props;
+
+  return (<>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60">
+      <div className="bg-white rounded-lg p-4 sm:p-6 md:p-8 w-full max-w-[90%] sm:max-w-[75%] md:max-w-[45%] max-h-[95vh] flex flex-col">
+        <div className="flex flex-col items-center">
+          {/* Success Icon */}
+          <div className="bg-green-500 rounded-full p-4 mb-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-8 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          {/* Title */}
+          <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 text-center mb-4">
+            GSTIN is Valid
+          </h3>
+        </div>
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto flex-grow max-h-[80vh]">
+          {/* GSTIN Details */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 text-sm text-gray-700 w-full">
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium w-1/3 sm:w-1/4">GSTIN</span>
+              <span className="text-right flex-1">
+                {modalData.gstin}
+              </span>
+            </div>
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium">GST Ref. ID</span>
+              <span className="text-right flex-1">{modalData.referenceId}</span>
+            </div>
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium w-1/3 sm:w-1/3">Tax payer type</span>
+              <span className="text-right flex-1">{modalData.taxPayerType}</span>
+            </div>
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium w-1/3 sm:w-1/4">
+                Date of Registration
+              </span>
+              <span className="text-right flex-1">{modalData.dateOfRegistration.split('T')[0]}</span>
+            </div>
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium w-1/3 sm:w-1/4">
+                Name of Business
+              </span>
+              <span className="text-right flex-1">{modalData.nameOfBusiness}</span>
+            </div>
+            <div className="flex justify-between p-2 border-b border-gray-300">
+              <span className="font-medium w-1/3 sm:w-1/2">
+                Legal Name of Business
+              </span>
+              <span className="text-right flex-1">{modalData.legalNameOfBusiness}</span>
+            </div>
+            <div className="flex justify-between p-2">
+              <span className="font-medium w-1/3 sm:w-1/4">GSTIN Status</span>
+              <span className="text-right flex-1">{modalData.gstInStatus}</span>
+            </div>
+          </div>
+        </div>
+        {/* Close Button */}
+        <div className="flex justify-center w-full mt-4">
+          <button
+            className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-200 ease-in-out text-center"
+            onClick={() => setDataModalIsOpen(prev => ({ ...prev, gst: false }))}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </>);
+}
+
+GSTModal.propTypes = {
+  modalData: PropTypes.object,
+  setDataModalIsOpen: PropTypes.func,
+}
