@@ -19,7 +19,7 @@ const KycStep2 = (props) => {
   const handleGstChange = (e) => {
     setMessage("");
     setGstNumber(e.target.value);
-    if(!validateGST(e.target.value)){
+    if (!validateGST(e.target.value)) {
       setMessage("GST Number is invalid");
     }
   }
@@ -57,7 +57,7 @@ const KycStep2 = (props) => {
       console.log("GST Verification Response:", response.data);
 
       if (response.data.success) {
-        setDocumentVerified( prevState => ({...prevState, gstVerified: true}));
+        setDocumentVerified(prevState => ({ ...prevState, gstVerified: true }));
         setSuccess(true);
         setMessage("GST Verified Successfully!");
       } else {
@@ -76,7 +76,7 @@ const KycStep2 = (props) => {
   };
 
   const handleNext = () => {
-    if(!companyName || !address.addressLine1 || !address.pinCode || !address.city || !address.state || !address.country || !address.addressLine2){
+    if (!companyName || !address.addressLine1 || !address.pinCode || !address.city || !address.state || !address.country || !address.addressLine2) {
       setError("Please fill all the fields");
       return;
     }
@@ -230,23 +230,23 @@ const KycStep2 = (props) => {
               Verify
             </button>
 
-          {/* KYC Illustration */}
-<div className="mt-9 lg:mt-0">
-  <img
-    src={KycLogo}
-    alt="KYC Illustration"
-    className="w-full sm:w-3/4 mx-auto mt-6"
-  />
- <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
-  This will be used as your company address for the pick-up location.
-</p>
+            {/* KYC Illustration */}
+            <div className="mt-9 lg:mt-0">
+              <img
+                src={KycLogo}
+                alt="KYC Illustration"
+                className="w-full sm:w-3/4 mx-auto mt-6"
+              />
+              <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
+                This will be used as your company address for the pick-up location.
+              </p>
 
-</div>
+            </div>
 
 
             {/* Next Button */}
             <div className="flex justify-end">
-            {error && (<p className="text-sm text-red-600">{error}</p>)}
+              {error && (<p className="text-sm text-red-600">{error}</p>)}
               <button
                 onClick={handleNext}
                 className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12 "
