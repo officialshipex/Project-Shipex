@@ -28,7 +28,6 @@ const {
 } = require('../AllCouriers/ShipRocket/MainServices/mainServices.controller');
 
 router.post("/getAllActiveCourierServices", getAllActiveCourierServices);
-router.post("/getCourierServicesFromDatabase", getCourierServicesFromDatabase);
 router.post('/create-custom-order', createCustomOrder);
 
 router.put('/update-order/:order_id', updateOrder);
@@ -78,8 +77,5 @@ router.get('/track/awb/:awb_code', getTrackingByAWB);
 router.get('/track/order/:order_id', getTrackingByOrderID);
 
 
-
-
-
 // export default router;
-module.exports=router
+module.exports = router
