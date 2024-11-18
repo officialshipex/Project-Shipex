@@ -1,4 +1,4 @@
-const e = require('express');
+
 const mongoose = require('mongoose');
 
 const aadhaarSchema = new mongoose.Schema({
@@ -21,7 +21,7 @@ const aadhaarSchema = new mongoose.Schema({
         required: true,
     },
     dob : {
-        type: Date,
+        type: String,
         required: true,
     },
     email : {
