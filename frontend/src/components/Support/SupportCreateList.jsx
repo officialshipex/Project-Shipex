@@ -83,7 +83,7 @@ const SupportCreateList = () => {
                             value={formData.category}
                             onChange={handleInputChange}
                             placeholder="Enter"
-                            className="p-2 border rounded-md"
+                            className="p-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                         </div>
                         <div className="flex flex-col">
@@ -96,7 +96,7 @@ const SupportCreateList = () => {
                             value={formData.subCategory}
                             onChange={handleInputChange}
                             placeholder="Enter"
-                            className="p-2 border rounded-md"
+                            className="p-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                         </div>
                       </div>
@@ -143,7 +143,7 @@ const SupportCreateList = () => {
                           value={formData.awbNumber}
                           onChange={handleInputChange}
                           placeholder="Enter"
-                          className="p-2 border rounded-md"
+                          className="p-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                       </div>
                     </form>
