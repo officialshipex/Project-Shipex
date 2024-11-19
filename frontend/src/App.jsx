@@ -10,6 +10,9 @@ import Registeration from "./register/Registration";
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute";
 
+
+
+
 const PrivateRoute = ({ isAuthenticated }) => {
   return isAuthenticated ?
     <>
@@ -24,10 +27,12 @@ function App() {
 
   return (
     <Router>
+      
+      
       <Routes>
     
         <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+        {/* <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
         <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
           <Route path="/kyc/*" element={<KycRoutes />} />
@@ -35,7 +40,7 @@ function App() {
 
         <Route element={<PrivateRoute isAuthenticated={true} />}>
           <Route path="/seller/*" element={<DashBoardRoute />} />
-        </Route>
+        </Route> */}
 
       </Routes>
     </Router>
