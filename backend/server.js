@@ -4,7 +4,7 @@ const helmet  = require('helmet');
 const cors = require("cors");
 
 const courierServicesRoutes=require('./routes/courierServiceB2C.router')
-// const shiprocketRoutes = require('./routes/courierServiceB2C.router');
+const shiprocketRoutes = require('./routes/courierServiceB2C.router');
 const { isAuthorized } = require('./middleware/auth.middleware');
 const rechargeRouter = require("./recharge/recharge.route");
 
@@ -43,7 +43,7 @@ app.use("/v1/courierServices", courierServicesRoutes);
 app.use("/v1/paytm", paytmRoutes);
 
 
-// app.use('/v1/shiprocket',shiprocketRoutes);
+app.use('/v1/shiprocket',shiprocketRoutes);
 
 app.use('/v1/calculateRate',calculateRouter);
 app.use('/v1/saveRate',saveRateRouter);
