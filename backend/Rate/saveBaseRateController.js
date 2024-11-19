@@ -1,4 +1,4 @@
-const BaseRateCard = require("../models/baseRateCard");
+const BaseRateCard = require("../models/baseRateCard.model");
 
 const saveBaseRate = async (req, res) => {
   try {
