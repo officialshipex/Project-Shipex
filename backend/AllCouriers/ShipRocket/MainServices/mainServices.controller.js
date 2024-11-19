@@ -1,15 +1,42 @@
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
-const {getToken}=require("../Authorize/shiprocket.controller");
+const { getToken } = require("../Authorize/shiprocket.controller");
 
+const BASE_URL = process.env.BASE_URL;
 
 // 1. Create Custom Order
 const createCustomOrder = async (req, res) => {
   const orderData = req.body;
+  const { shipmentData } = req.body;
+  const {
+    order_number,
+    payment_type,
+    order_amount,
+    package_weight,
+    consignee,
+    pickup,
+    order_items,
+  } = shipmentData;
+
+  if (
+    !order_number ||
+    !payment_type ||
+    !order_amount ||
+    !package_weight ||
+    !consignee ||
+    !pickup ||
+    !order_items ||
+    order_items.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Missing required fields or invalid data" });
+  }
   try {
     const token = await getToken();
     const response = await axios.post(
       `${BASE_URL}/orders/create/adhoc`,
+      shipmentData,
       orderData,
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -21,7 +48,7 @@ const createCustomOrder = async (req, res) => {
   }
 };
 
-// 5. Update Order
+// 2. Update Order
 const updateOrder = async (req, res) => {
   const { order_id } = req.params;
   const orderData = req.body;
@@ -39,7 +66,7 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// 6. Cancel an Order
+// 3. Cancel an Order
 const cancelOrder = async (req, res) => {
   const { order_id } = req.params;
   try {
@@ -55,9 +82,8 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-// 11. List of Couriers
+// 4. List of Couriers
 const listCouriers = async (req, res) => {
- 
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/all`, {
@@ -69,10 +95,10 @@ const listCouriers = async (req, res) => {
   }
 };
 
-// 12. Check Courier Serviceability
+// 5. Check Courier Serviceability
 const checkServiceability = async (req, res) => {
   const { pickup_pincode, delivery_pincode, cod } = req.query;
- 
+
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
@@ -85,10 +111,10 @@ const checkServiceability = async (req, res) => {
   }
 };
 
-// 13. Request for Shipment Pickup
+// 6. Request for Shipment Pickup
 const requestShipmentPickup = async (req, res) => {
   const { shipment_id, pickup_location_id } = req.body;
- 
+
   try {
     const token = await getToken();
     const response = await axios.post(
@@ -102,10 +128,10 @@ const requestShipmentPickup = async (req, res) => {
   }
 };
 
-// 17. Create a Return Order
+// 7. Create a Return Order
 const createReturnOrder = async (req, res) => {
   const { order_id, reason, items, pickup_location, pickup_address } = req.body;
- 
+
   try {
     const token = await getToken();
     const response = await axios.post(
@@ -119,10 +145,9 @@ const createReturnOrder = async (req, res) => {
   }
 };
 
-// 24. Generate Manifest
+// 8. Generate Manifest
 const generateManifest = async (req, res) => {
   const { shipment_id } = req.body;
-  
 
   try {
     const token = await getToken();
@@ -137,10 +162,9 @@ const generateManifest = async (req, res) => {
   }
 };
 
-// 26. Generate Label
+// 9. Generate Label
 const generateLabel = async (req, res) => {
   const { shipment_id } = req.body;
- 
 
   try {
     const token = await getToken();
@@ -158,10 +182,9 @@ const generateLabel = async (req, res) => {
   }
 };
 
-// 27. Generate Invoice
+// 10. Generate Invoice
 const generateInvoice = async (req, res) => {
   const { shipment_id } = req.body;
- 
 
   try {
     const token = await getToken();
@@ -179,7 +202,7 @@ const generateInvoice = async (req, res) => {
   }
 };
 
-// 28. Get All NDR Shipments
+// 11. Get All NDR Shipments
 const getAllNDRShipments = async (req, res) => {
   try {
     const token = await getToken();
@@ -192,7 +215,7 @@ const getAllNDRShipments = async (req, res) => {
   }
 };
 
-// 31. Get Tracking through AWB
+// 12. Get Tracking through AWB
 const getTrackingByAWB = async (req, res) => {
   const { awb_code } = req.params;
 
@@ -208,7 +231,7 @@ const getTrackingByAWB = async (req, res) => {
   }
 };
 
-// 34. Get Tracking Data through Order ID
+// 13. Get Tracking Data through Order ID
 const getTrackingByOrderID = async (req, res) => {
   const { order_id } = req.params;
   try {

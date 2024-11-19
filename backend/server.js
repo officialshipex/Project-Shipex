@@ -21,6 +21,7 @@ const editBaseRateController=require("./routes/editBaseRate.router");
 
 // const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 // const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
+// const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
 
 const verficationRouter = require("./routes/kyc.router");
 const paytmRoutes = require("./routes/paytm.router");
@@ -45,8 +46,6 @@ app.use('/v1/recharge', rechargeRouter);
 app.use("/v1/paytm", paytmRoutes);
 
 
-// app.use('/v1/shiprocket',shiprocketRoutes);
-
 app.use('/v1/calculateRate',calculateRouter);
 app.use('/v1/saveRate',saveRateRouter);
 app.use('/v1/getServices',servicesController);
@@ -59,6 +58,7 @@ app.use('/v1/order',orderRouter)
 
 // app.use("/v1/NimbusPost",NimbusPostController);
 // app.use("/v1/Shiprocket",ShipRocketController);
+// app.use("/v1/EcomExpress",EcomExpressController);
 
 
 module.exports = app;
