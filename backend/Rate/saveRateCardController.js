@@ -1,5 +1,5 @@
 const CourierSecond=require("../models/courierSecond");
-const CourierServiceSecond=require("../models/courierServiceSecond");
+const CourierServiceSecond=require("../models/courierServiceSecond.model");
 const RateCard=require("../models/rateCards");
 
 const saveRate=async(req,res)=>{
