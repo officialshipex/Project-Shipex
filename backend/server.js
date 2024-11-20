@@ -4,7 +4,7 @@ const helmet  = require('helmet');
 const cors = require("cors");
 
 // const courierServicesRoutes=require('./routes/courierServiceB2C.router')
-const { isAuthorized } = require('./middleware/auth.middleware');
+const isAuthorized  = require('./middleware/auth.middleware');
 const rechargeRouter = require("./recharge/recharge.route");
 
 

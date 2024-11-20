@@ -36,7 +36,7 @@ const Writemanually = (props) => {
     } catch (err) {
       console.log(err);
     }
-  }, []);
+  }, [navigate]);
 
   const verifyAadhar = async (e) => {
     e.preventDefault();
