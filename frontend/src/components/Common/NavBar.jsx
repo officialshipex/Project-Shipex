@@ -18,7 +18,7 @@ const Navbar = () => {
 
     return (
         <>
-            <nav className="h-16 w-full flex items-center justify-end top-0 bg-white shadow-md z-50">
+            <nav className="h-16 w-full flex items-center justify-end top-0 bg-white shadow-md z-99999">
                 {/* Wallet Section */}
                 <div className="flex items-center space-x-4 p-4 cursor-pointer" onClick={() => handleClick('Wallet')}>
                     <svg width="22" height="21" viewBox="0 0 24 23" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -257,7 +257,7 @@ const OrderList = () => {
               <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
                 Add an order
               </button>
-              <div className="relative">
+              <div className="">
                 <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
                   Pick the dates
                   <FaChevronDown className="ml-2" />

@@ -170,7 +170,7 @@ const ReturnList = () => {
                 Select all Orders
               </button>
             
-              <div className="relative">
+              <div className="">
                 <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
                   Pick the dates
                   <FaChevronDown className="ml-2" />

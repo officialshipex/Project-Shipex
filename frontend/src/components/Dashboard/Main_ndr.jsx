@@ -106,7 +106,7 @@ const Ndr = () => {
             {/* Button Group for 'Select all Orders', 'Add an Order', Date Picker, and Search Bar */}
             <div className="flex items-center space-x-3">
              
-              <div className="relative">
+              <div className="">
                 <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
                   Pick the dates
                   <span className="ml-2">▼</span>
