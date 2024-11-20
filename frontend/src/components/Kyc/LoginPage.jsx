@@ -50,7 +50,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
         //   }
         // }
 
-        if (response.success) {
+        if (response?.success) {
           setIsAuthenticated(true);
 
           if (response.kyc === false) {
@@ -66,7 +66,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
     } catch (err) {
       console.log(err);
     }
-  }, []);
+  }, [setIsAuthenticated]);
 
   useEffect(() => {
     if (routeName !== "/login")
@@ -102,7 +102,7 @@ const LoginPage = ({ setIsAuthenticated }) => {
 
       // console.log(response.data);
 
-      if (response.data.success) {
+      if (response?.data?.success) {
         if (response.data.kyc === false) {
           setRouteName("kyc");
         } else {
@@ -110,19 +110,19 @@ const LoginPage = ({ setIsAuthenticated }) => {
         }
       }
 
-      if (response.data.success) {
+      if (response?.data?.success) {
         setSuccess(response.data.success);
         setMessage(response.data.message);
         createSession(response.data.data);
         setIsAuthenticated(true);
         // handleNavigation();
       } else {
-        setMessage(response.data.message);
-        setSuccess(response.data.success);
+        setMessage(response?.data?.message);
+        setSuccess(response?.data?.success);
       }
 
     } catch (err) {
-      console.log(err.response.data);
+      // console.log(err?.response?.data);
       if (err?.response?.data) {
         setSuccess(err.response.data.success);
         setMessage(err.response.data.message);

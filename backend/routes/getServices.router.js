@@ -5,4 +5,4 @@ const servicesController=require("../services/servicesController");
 
 router.get("/",servicesController.getServices);
 
-module.exports=router;
+module.exports=router

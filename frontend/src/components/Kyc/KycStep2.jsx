@@ -28,7 +28,7 @@ const KycStep2 = (props) => {
     }));
     setGstNumber(e.target.value);
     if (!validateGST(e.target.value)) {
-      setMessage({gst:"GST Number is invalid"});
+      setMessage("GST Number is invalid");
     }
   }
 
@@ -59,6 +59,10 @@ const KycStep2 = (props) => {
       })
       console.log("GST Verification Response:", response.data);
 
+      if (response.data.success) {
+        setDocumentVerified(prevState => ({ ...prevState, gstVerified: true }));
+        setSuccess(true);
+        setMessage("GST Verified Successfully!");
       if (response?.data?.success) {
         setDocumentVerified(prevState => ({
           ...prevState,
@@ -72,7 +76,7 @@ const KycStep2 = (props) => {
         setMessage({ gst: response.data.message });
       }
 
-    } catch (error) {
+    }} catch (error) {
       console.error("GST Verification Error:", error);
       if (error?.response?.data?.message) {
         setMessage({ gst: error.response.data.message });
