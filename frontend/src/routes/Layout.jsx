@@ -10,8 +10,8 @@ function Layout() {
             <div className="h-screen w-fit ">
                 <Sidebar className=''/>
             </div>
-            <div className="flex flex-col h-full w-full ">
-                <div className='py-2 w-full'>
+            <div className="flex flex-col overflow-auto h-full w-full ">
+                <div className='py-2 w-full sticky top-0'>
                     <Navbar />
                 </div>
                 <div className='w-full h-full'>

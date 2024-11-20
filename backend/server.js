@@ -26,6 +26,7 @@ const verficationRouter = require("./routes/kyc.router");
 const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 
+const orderRouter = require("./routes/orders.router");
 
 require("dotenv").config();
 
@@ -53,6 +54,8 @@ app.use('/v1/getBaseRate',getBaseRateController);
 app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
+
+app.use('/v1/orders',orderRouter);
 
 // app.use("/v1/NimbusPost",NimbusPostController);
 // app.use("/v1/Shiprocket",ShipRocketController);
