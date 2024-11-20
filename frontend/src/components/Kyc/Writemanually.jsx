@@ -6,10 +6,11 @@ import { getTokens } from "../../lib/session";
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import axios from "axios";
+import { AadhaarModal, AccountVerificationModal, OTPModal } from "./Modal";
 
 const Writemanually = (props) => {
 
-  const { setDocumentVerified, aadharNumber, setAadharNumber, aadharOtp, setAadharOtp, accountNumber, setAccountNumber, ifscCode, setIfscCode, accountHolderName, setAccountHolderName, phoneNumber, setPhoneNumber } = props;
+  const { setDocumentVerified, aadharNumber, setAadharNumber, accountNumber, setAccountNumber, ifscCode, setIfscCode, accountHolderName, setAccountHolderName, phoneNumber, setPhoneNumber } = props;
   const [aadharImage, setAadharImage] = useState(null);
   const [chequeImage, setChequeImage] = useState(null);
   const navigate = useNavigate(); // Initialize the useNavigate hook
@@ -18,6 +19,11 @@ const Writemanually = (props) => {
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState();
   const [session, setSession] = useState();
+
+  const [refId, setRefId] = useState();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dataModalIsOpen, setDataModalIsOpen] = useState({});
+  const [modalData, setModalData] = useState();
 
   useEffect(() => {
     try {
@@ -30,7 +36,57 @@ const Writemanually = (props) => {
     } catch (err) {
       console.log(err);
     }
-  }, []);
+  }, [navigate]);
+
+  const verifyAadhar = async (e) => {
+    e.preventDefault();
+
+    if (!aadharNumber) {
+      setError({ aadharNumber: "Aadhar number is required" });
+      return;
+    }
+
+
+    try {
+      const response = await axios.post("http://localhost:5000/v1/merchant/verfication/generate-otp", {
+        aadhaarNo: aadharNumber,
+      }, {
+        headers: {
+          authorization: `Bearer ${session}`
+        }
+      })
+      if (!response.data.success) {
+        setError({ aadharNumber: response.data.message })
+        return
+      }
+
+      if (response.data.data.ref_id) {
+        // console.log("resposne : ", response.data);
+        setRefId(response.data.data.ref_id)
+        setIsModalOpen(true)
+      }else if (response.data.data) {
+        setDocumentVerified(prevState => ({
+          ...prevState,
+          aadhar: true,
+        }));
+        setSuccess({ aadharNumber: response.data.success });
+        setMessage({ aadharNumber: response.data.message });
+        setDataModalIsOpen(prevState => ({ ...prevState, aadhaar: true }));
+        setModalData(response.data.data);
+      }
+
+    } catch (error) {
+      // console.log("Aadhaar verification error", error.message);
+      if (error?.response?.data?.message) {
+        setMessage({ aadharNumber: error.response.data.message });
+      } else {
+        setMessage({ aadharNumber: "Error verifying Aadhaar number" });
+      }
+      return;
+    }
+
+  }
+
 
   const verifyBankAccount = async (e) => {
     e.preventDefault();
@@ -74,7 +130,7 @@ const Writemanually = (props) => {
           authorization: `Bearer ${session}`
         }
       })
-      console.log("Account verification response", response.data);
+      // console.log("Account verification response", response.data);
       if (response.data.success) {
         setDocumentVerified(prevState => ({
           ...prevState,
@@ -82,12 +138,14 @@ const Writemanually = (props) => {
         }));
         setSuccess({ account: true });
         setMessage({ account: response.data.message });
+        setDataModalIsOpen(prevState => ({ ...prevState, account: true }));
+        setModalData(response.data.data);
       } else {
         setMessage({ account: response.data.message });
       }
 
     } catch (error) {
-      console.log("bank verification error", error.message);
+      // console.log("bank verification error", error.message);
       if (error?.response?.data?.message) {
         setMessage({ account: error.response.data.message });
       } else {
@@ -164,6 +222,44 @@ const Writemanually = (props) => {
     setChequeImage(e.target.files[0]);
   };
 
+  const handleManualVerification = () => {
+    setError({Image: "Please do manual verification"});
+    setTimeout(() => {
+      setError({Image: ""});
+    }, 3000);
+  }
+
+  if (dataModalIsOpen.account) {
+    return (<>
+      <AccountVerificationModal
+        modalData={modalData}
+        setDataModalIsOpen={setDataModalIsOpen}
+      />
+    </>)
+  }else if (dataModalIsOpen.aadhaar) {
+    return (<>
+      <AadhaarModal
+        modalData={modalData}
+        setDataModalIsOpen={setDataModalIsOpen}
+      />
+    </>)
+  }
+
+  if (isModalOpen) {
+    return (<>
+      <OTPModal
+        refId={refId}
+        session={session}
+        setIsModalOpen={setIsModalOpen}
+        setDocumentVerified={setDocumentVerified}
+        aadharNumber={aadharNumber}
+
+        setDataModalIsOpen={setDataModalIsOpen}
+        setModalData={setModalData}
+      />
+    </>)
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-start px-4 bg-white overflow-hidden">
       <div className="w-full max-w-5xl p-4 space-y-4">
@@ -171,12 +267,12 @@ const Writemanually = (props) => {
         <div className="flex flex-col items-start space-y-2">
           <img src={Logo} alt="ShipEx Logo" className="h-10 mt-4" />
           <h2 className="text-base sm:text-[18px] lg:text-[16px] font-bold text-gray-800">
-          Verify Your Account
+            Verify Your Account
           </h2>
         </div>
 
-       {/* Progress Bar */}   
-       <div className="relative pt-1 mt-2"> 
+        {/* Progress Bar */}
+        <div className="relative pt-1 mt-2">
           <div className="flex items-center space-x-2 ">
             <div className="w-16 sm:w-20 lg:w-40 h-1 bg-green-500 rounded-full"></div>
             <div className="w-8 sm:w-10 lg:w-20 h-1 bg-gray-300 rounded-full"></div>
@@ -187,8 +283,8 @@ const Writemanually = (props) => {
         <div className="mt-4 lg:mt-6 flex-grow overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left Column: Aadhar Verification */}
-            <div className="flex flex-col space-y-4"> 
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-4 space-y-2"> 
+            <div className="flex flex-col space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-4 space-y-2">
                 <label className="block text-gray-700 text-sm font-medium mb-1">Aadhar Card Number</label>
                 <input
                   type="text"
@@ -199,7 +295,9 @@ const Writemanually = (props) => {
                 />
                 <div className="flex justify-end space-x-2">
                   <button className="text-gray-800 px-3 py-1">Cancel</button>
-                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2">Verify</button>
+                  <button className="bg-gray-300 text-white rounded-lg px-6 lg:px-10 py-2"
+                    onClick={verifyAadhar}
+                  >Verify</button>
                 </div>
               </div>
 
@@ -268,7 +366,10 @@ const Writemanually = (props) => {
             {/* Right Column: Image Upload Sections */}
             <div className="flex flex-col space-y-4">
               {/* Aadhar Image Upload Section */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-6 space-y-2">
+              {error?.Image && (<p className="text-red-500 text-sm">{error.Image}</p>)}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-6 space-y-2"
+                onClick={handleManualVerification}
+              >
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center  rounded-lg">
                     <input
@@ -276,13 +377,14 @@ const Writemanually = (props) => {
                       onChange={handleAadharChange}
                       className="hidden"
                       id="aadharImage"
+                      disabled={true}
                     />
                     <label
                       htmlFor="aadharImage"
                       className="cursor-pointer flex flex-col items-center"
                     >
                       <svg width="30" height="38" viewBox="0 0 39 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4.91667 37.75C3.77083 37.75 2.78993 37.342 1.97396 36.526C1.15799 35.7101 0.75 34.7292 0.75 33.5833V4.41667C0.75 3.27083 1.15799 2.28993 1.97396 1.47396C2.78993 0.657986 3.77083 0.25 4.91667 0.25H23.6667V4.41667H4.91667V33.5833H34.0833V14.8333H38.25V33.5833C38.25 34.7292 37.842 35.7101 37.026 36.526C36.2101 37.342 35.2292 37.75 34.0833 37.75H4.91667ZM29.9167 12.75V8.58333H25.75V4.41667H29.9167V0.25H34.0833V4.41667H38.25V8.58333H34.0833V12.75H29.9167ZM7 29.4167H32L24.1875 19L17.9375 27.3333L13.25 21.0833L7 29.4167Z" fill="black"/>
+                        <path d="M4.91667 37.75C3.77083 37.75 2.78993 37.342 1.97396 36.526C1.15799 35.7101 0.75 34.7292 0.75 33.5833V4.41667C0.75 3.27083 1.15799 2.28993 1.97396 1.47396C2.78993 0.657986 3.77083 0.25 4.91667 0.25H23.6667V4.41667H4.91667V33.5833H34.0833V14.8333H38.25V33.5833C38.25 34.7292 37.842 35.7101 37.026 36.526C36.2101 37.342 35.2292 37.75 34.0833 37.75H4.91667ZM29.9167 12.75V8.58333H25.75V4.41667H29.9167V0.25H34.0833V4.41667H38.25V8.58333H34.0833V12.75H29.9167ZM7 29.4167H32L24.1875 19L17.9375 27.3333L13.25 21.0833L7 29.4167Z" fill="black" />
                       </svg>
                       <span className="text-gray-500 mt-2">Upload Aadhar Image</span>
                     </label>
@@ -294,7 +396,9 @@ const Writemanually = (props) => {
               </div>
 
               {/* Blank Cheque Image Upload Section */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-6 space-y-2">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 lg:p-6 space-y-2"
+                onClick={handleManualVerification}
+              >
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center ">
                     <input
@@ -302,20 +406,21 @@ const Writemanually = (props) => {
                       onChange={handleChequeChange}
                       className="hidden"
                       id="chequeImage"
+                      disabled={true}
                     />
                     <label
                       htmlFor="chequeImage"
                       className="cursor-pointer flex flex-col items-center"
                     >
                       <svg width="30" height="38" viewBox="0 0 39 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4.91667 37.75C3.77083 37.75 2.78993 37.342 1.97396 36.526C1.15799 35.7101 0.75 34.7292 0.75 33.5833V4.41667C0.75 3.27083 1.15799 2.28993 1.97396 1.47396C2.78993 0.657986 3.77083 0.25 4.91667 0.25H23.6667V4.41667H4.91667V33.5833H34.0833V14.8333H38.25V33.5833C38.25 34.7292 37.842 35.7101 37.026 36.526C36.2101 37.342 35.2292 37.75 34.0833 37.75H4.91667ZM29.9167 12.75V8.58333H25.75V4.41667H29.9167V0.25H34.0833V4.41667H38.25V8.58333H34.0833V12.75H29.9167ZM7 29.4167H32L24.1875 19L17.9375 27.3333L13.25 21.0833L7 29.4167Z" fill="black"/>
+                        <path d="M4.91667 37.75C3.77083 37.75 2.78993 37.342 1.97396 36.526C1.15799 35.7101 0.75 34.7292 0.75 33.5833V4.41667C0.75 3.27083 1.15799 2.28993 1.97396 1.47396C2.78993 0.657986 3.77083 0.25 4.91667 0.25H23.6667V4.41667H4.91667V33.5833H34.0833V14.8333H38.25V33.5833C38.25 34.7292 37.842 35.7101 37.026 36.526C36.2101 37.342 35.2292 37.75 34.0833 37.75H4.91667ZM29.9167 12.75V8.58333H25.75V4.41667H29.9167V0.25H34.0833V4.41667H38.25V8.58333H34.0833V12.75H29.9167ZM7 29.4167H32L24.1875 19L17.9375 27.3333L13.25 21.0833L7 29.4167Z" fill="black" />
                       </svg>
                       <span className="text-gray-500 mt-2">Upload Blank Cheque Image</span>
                     </label>
                   </div>
                   {chequeImage && <p className="text-green-600">Blank Cheque Image Uploaded: {chequeImage.name}</p>}
                   {/* Verify Button for Cheque */}
-                  <button className="mt-4 bg-gray-300 text-white rounded-lg px-4 py-1">Verify </button>
+                  <button className="mt-4 bg-gray-300 text-white rounded-lg px-4 py-1" >Verify </button>
                 </div>
               </div>
             </div>
