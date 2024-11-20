@@ -11,7 +11,7 @@ function Layout() {
                 <Sidebar />
             </div>
             <div className="flex flex-col h-screen w-full">
-                <div className='p-2'>
+                <div className='py-2'>
                     <Navbar />
                 </div>
                 <div className=''>

@@ -33,7 +33,6 @@ const KycRoutes = () => {
   const [accountNumber, setAccountNumber] = useState("");
   const [aadharNumber, setAadharNumber] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [aadharOtp, setAadharOtp] = useState("");
   const [panNumber, setPanNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [panName, setPanName] = useState("");
@@ -42,7 +41,7 @@ const KycRoutes = () => {
 
   const [documentVerified, setDocumentVerified] = useState({
     gstin: false,
-    aadhar: true,
+    aadhar: false,
     pan: false,
     bank: false,
   });
@@ -52,6 +51,8 @@ const KycRoutes = () => {
   const navigate = useNavigate();
   const [done, setDone] = useState(false);
 
+  
+  const [unSet, setUnSet] = useState(false);
   useEffect(() => {
     try {
 
@@ -69,7 +70,7 @@ const KycRoutes = () => {
           },
         });
 
-        console.log(response.data.data);
+        // console.log(response.data.data);
 
         const data = response.data.data;
         if (data) {
@@ -86,7 +87,6 @@ const KycRoutes = () => {
           });
           setKycType(data.kycType);
           setAadharNumber(data.aadharNumber);
-          setAadharOtp(data.aadharOtp);
           setPanNumber(data.panNumber);
           setPanName(data.panName);
           setAccountNumber(data.accountNumber);
@@ -99,15 +99,18 @@ const KycRoutes = () => {
             pan: data.documentVerified.pan,
             bank: data.documentVerified.bank,
           });
+          setUnSet(true);
         }
       };
 
-      getUser();
+      if (!unSet) {
+        getUser();
+      }
 
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
-  }, []);
+  }, [navigate]);
 
   const kycVerify = async () => {
     setVerificationError("");
@@ -133,9 +136,9 @@ const KycRoutes = () => {
       return;
     }
 
-    if (!documentVerified.aadhar || !documentVerified.pan || !documentVerified.bank) {
+    if (!documentVerified.aadhar || !documentVerified.bank) {
       setVerificationError("Please verify all documents");
-      navigate("/kyc/digital");
+      navigate("/kyc/step3");
       Promise.reject(); // Exit early
       return;
     }
@@ -156,7 +159,6 @@ const KycRoutes = () => {
         address,
         kycType,
         aadharNumber,
-        aadharOtp,
         panNumber,
         panName,
         accountNumber,
@@ -170,7 +172,7 @@ const KycRoutes = () => {
         },
       })
 
-      console.log(response.data);
+      // console.log(response.data);
       if (response.data.success) {
         setDone(true);
         navigate("/kyc/thanku");
@@ -181,7 +183,7 @@ const KycRoutes = () => {
       }
 
     } catch (error) {
-      console.log("kyc verification error", error.message);
+      // console.log("kyc verification error", error.message);
       if (error?.response?.data?.message) {
         setVerificationError(error.response.data.message);
       } else {
@@ -207,12 +209,15 @@ const KycRoutes = () => {
         setAddress={setAddress}
         gstNumber={gstNumber}
         address={address}
+
+        session={session}
       />} />
 
       <Route path="/step3" element={<KycStep3
         setKycType={setKycType}
         kycType={kycType}
       />} />
+
 
       <Route path='/digital' element={<UploadId
         setAccountHolderName={setAccountHolderName}
@@ -224,11 +229,9 @@ const KycRoutes = () => {
         accountNumber={accountNumber}
         aadharNumber={aadharNumber}
         setPanNumber={setPanNumber}
-        setAadharOtp={setAadharOtp}
         phoneNumber={phoneNumber}
         setIfscCode={setIfscCode}
         setPanName={setPanName}
-        aadharOtp={aadharOtp}
         panNumber={panNumber}
         ifscCode={ifscCode}
         panName={panName}
@@ -242,11 +245,9 @@ const KycRoutes = () => {
         setAadharNumber={setAadharNumber}
         setPhoneNumber={setPhoneNumber}
         accountNumber={accountNumber}
-        setAadharOtp={setAadharOtp}
         aadharNumber={aadharNumber}
         setIfscCode={setIfscCode}
         phoneNumber={phoneNumber}
-        aadharOtp={aadharOtp}
         ifscCode={ifscCode}
       />} />
 

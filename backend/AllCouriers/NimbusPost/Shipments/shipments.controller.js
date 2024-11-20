@@ -1,0 +1,242 @@
+const axios = require('axios');
+const { getAuthToken } = require("../Authorize/nimbuspost.controller");
+
+
+const createShipment = async (req, res) => {
+    const { shipmentData } = req.body;
+    const url = 'https://api.nimbuspost.com/v1/shipments';
+    const {
+        order_number,
+        payment_type,
+        order_amount,
+        package_weight,
+        consignee,
+        pickup,
+        order_items,
+    } = shipmentData;
+
+    if (
+        !order_number ||
+        !payment_type ||
+        !order_amount ||
+        !package_weight ||
+        !consignee ||
+        !pickup ||
+        !order_items ||
+        order_items.length === 0
+    ) {
+        return res.status(400).json({ error: 'Missing required fields or invalid data' });
+    }
+
+    try {
+
+        const token = await getAuthToken();
+        const response = await axios.post(url, shipmentData, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data.status) {
+            return res.status(201).json(response.data.data);
+        } else {
+            return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in creating shipment:', error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+
+const trackShipment = async (req, res) => {
+    const { trackingNumber } = req.body;
+
+    if (!trackingNumber) {
+        return res.status(400).json({ error: 'Tracking number is required' });
+    }
+
+    const url = `https://api.nimbuspost.com/v1/shipments/track/${trackingNumber}`;
+
+    try {
+        const token = await getAuthToken();
+        const response = await axios.get(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        return res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error in tracking shipment:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+
+const trackShipmentsInBulk = async (req, res) => {
+    const { awbNumbers } = req.body;
+
+    if (!awbNumbers || !Array.isArray(awbNumbers) || awbNumbers.length === 0) {
+        return res.status(400).json({ error: 'AWB numbers must be a non-empty array' });
+    }
+
+    const url = 'https://api.nimbuspost.com/v1/shipments/track/bulk';
+
+    try {
+        const token = await getAuthToken();
+        const payload = { awb: awbNumbers };
+
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data.status) {
+            return res.status(200).json(response.data.data);
+        } else {
+            return res.status(400).json({ error: 'Error tracking shipments in bulk', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in tracking shipments in bulk:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+
+const manifest = async (req, res) => {
+    const { awbNumbers } = req.body;
+
+    if (!awbNumbers || !Array.isArray(awbNumbers) || awbNumbers.length === 0) {
+        return res.status(400).json({ error: 'AWB numbers must be a non-empty array' });
+    }
+
+    const url = 'https://api.nimbuspost.com/v1/shipments/manifest';
+
+    try {
+        const token = await getAuthToken();
+        const payload = { awbs: awbNumbers };
+
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data.status) {
+            return res.status(200).json(response.data.data);
+        } else {
+            return res.status(400).json({ error: 'Error in manifest creation', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in creating manifest:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+
+const cancelShipment = async (req, res) => {
+    const { awb } = req.body;
+
+    if (!awb) {
+        return res.status(400).json({ error: 'AWB number is required' });
+    }
+
+    const url = 'https://api.nimbuspost.com/v1/shipments/cancel';
+
+    try {
+        const token = await getAuthToken();
+        const payload = { awb };
+
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (response.data.status) {
+            return res.status(200).json(response.data.data);
+        } else {
+            return res.status(400).json({ error: 'Error in shipment cancellation', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in cancelling shipment:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+const createHyperlocalShipment = async (req, res) => {
+
+    const { shipmentData } = req.body;
+    const {
+        order_number,
+        payment_type,
+        order_amount,
+        package_weight,
+        consignee,
+        pickup,
+        order_items,
+    } = shipmentData;
+
+    if (
+        !order_number ||
+        !payment_type ||
+        !order_amount ||
+        !package_weight ||
+        !consignee ||
+        !pickup ||
+        !order_items ||
+        order_items.length === 0
+    ) {
+        return res.status(400).json({ error: 'Missing required fields or invalid data' });
+    }
+
+    const url = 'https://api.nimbuspost.com/v1/shipments/hyperlocal';
+
+    try {
+        const token = await getAuthToken();
+        const payload = shipmentData;
+
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.data.status) {
+            return res.status(200).json(response.data.data);
+        } else {
+            return res.status(400).json({ error: 'Error in creating hyperlocal shipment', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in creating hyperlocal shipment:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
+
+module.exports = {
+    createShipment,
+    trackShipment,
+    trackShipmentsInBulk,
+    manifest,
+    cancelShipment,
+    createHyperlocalShipment
+};
+
+
+
+
+
