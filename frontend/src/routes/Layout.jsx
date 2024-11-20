@@ -6,17 +6,19 @@ import Sidebar from "../components/Common/SideBar";
 
 function Layout() {
     return (<>
-        <div className="flex h-full w-full" >
-            <div className="h-full w-fit">
-                <Sidebar />
+        <div className="flex h-screen w-full " >
+            <div className="h-screen w-fit ">
+                <Sidebar className=''/>
             </div>
-            <div className="flex flex-col h-screen w-full">
-                <div className='p-2'>
+            <div className="flex flex-col h-full w-full ">
+                <div className='py-2 w-full'>
                     <Navbar />
                 </div>
-                <div className=''>
+                <div className='w-full h-full'>
+                    <div className=" ">
                     <Outlet />
-                </div>
+                    </div>
+                </div> 
             </div>
         </div>
     </>)
