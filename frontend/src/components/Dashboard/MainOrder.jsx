@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+// import NavBar from "../Common/NavBar";
+// import Sidebar from "../Common/Sidebar";
 import { FaChevronDown, FaSearch } from "react-icons/fa";
 
 // Sample order data
@@ -240,11 +240,11 @@ const OrderList = () => {
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <Sidebar />
+      {/* <Sidebar /> */}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        <NavBar />
+        {/* <NavBar /> */}
 
         {/* Main Content */}
         <div className="container mx-auto mt-0 bg-white shadow-md rounded-lg p-2">

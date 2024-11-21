@@ -6,6 +6,7 @@ dotenv.config();
 function getSignature() {
     // console.log("Generating signature");
     let clientId = process.env.X_CLIENT_ID;
+    
     let publicKey = process.env.PUBLIC_KEY;
     let timestamp = Math.floor(Date.now() / 1000);
     let dataToEncrypt = `${clientId}.${timestamp}`;
@@ -28,6 +29,11 @@ function validatePAN(pan) {
 function validateAadhaar(aadhaar) {
     const aadhaarRegex = /^[2-9]{1}[0-9]{11}$/;
     return aadhaarRegex.test(aadhaar);
+}
+
+function validateAccountNumber(accountNumber) {
+    const bankAccountRegex = /^[a-zA-Z0-9]{6,40}$/;
+    return bankAccountRegex.test(accountNumber);
 }
 
 function validateBankDetails(bank_account, ifsc, name, phone ) {
@@ -66,4 +72,5 @@ module.exports = {
     validatePAN,
     validateAadhaar,
     validateBankDetails,
+    validateAccountNumber,
 };

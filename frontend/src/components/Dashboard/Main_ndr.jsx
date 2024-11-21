@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+// import NavBar from "../Common/NavBar";
+// import Sidebar from "../Common/Sidebar";
 
 // Sample order data for return requested with various statuses
 const returnRequestedData = [
@@ -53,7 +53,11 @@ const returnRequestedData = [
   },
 ];
 
+<<<<<<< HEAD
 const NDR = () => {
+=======
+const Ndr = () => {
+>>>>>>> 18e3736adec81068ca8a64293a8ab9bdfd23c0f8
   const [selectedOrders, setSelectedOrders] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("All");
 
@@ -96,9 +100,9 @@ const NDR = () => {
 
   return (
     <div className="flex h-screen">
-      <Sidebar />
+      {/* <Sidebar /> */}
       <div className="flex-1 flex flex-col">
-        <NavBar />
+        {/* <NavBar /> */}
         <div className="container mx-auto mt-0 bg-white shadow-md rounded-lg p-2">
           <div className="flex justify-between items-center mb-4 p-4">
             <h2 className="text-2xl font-bold">NDR Orders</h2>
@@ -206,4 +210,8 @@ const NDR = () => {
   );
 };
 
+<<<<<<< HEAD
 export default NDR;
+=======
+export default Ndr;
+>>>>>>> 18e3736adec81068ca8a64293a8ab9bdfd23c0f8
