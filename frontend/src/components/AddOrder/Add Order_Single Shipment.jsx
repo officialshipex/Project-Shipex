@@ -141,8 +141,8 @@ function PackageDetailsForm() {
           <p className="text-lg font-semibold text-gray-800">Volumetric Weight: 0 kg</p>
         </div>
 
-        {/* Buttons: Move to bottom-right */}
-        <div className="absolute bottom-10 right-10 flex space-x-4">
+        {/* Buttons: Fixed to bottom-right */}
+        <div className="fixed bottom-10 right-10 flex space-x-4"> {/* Fixed positioning */}
           <button className="text-green-500 font-medium">Back</button>
           <button className="bg-green-500 text-white font-medium py-2 px-6 rounded-md hover:bg-green-600">
             Submit
@@ -152,7 +152,7 @@ function PackageDetailsForm() {
     </div>
   );
 }
-  
+
 
 
 const OrderForm = () => {
@@ -357,12 +357,9 @@ const OrderForm = () => {
 
 
 
-
-
-// DeliveryForm Component
-const DeliveryForm = () => {
+const DeliveryForm = ({ onNext }) => {
   return (
-    <div className="bg-green-50 p-8 rounded-lg shadow-md w-full">
+    <div className="bg-green-50 p-8 rounded-lg shadow-md w-full relative">
       <h2 className="text-lg font-semibold mb-4">Where is the order being delivered?</h2>
       <div className="grid grid-cols-1 gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -418,9 +415,20 @@ const DeliveryForm = () => {
           </div>
         </div>
       </div>
+
+      {/* Add the "Next" button here */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={onNext}  // Trigger the onNext function when clicked
+          className="px-6 py-2 bg--500 text-white"
+        >
+       
+        </button>
+      </div>
     </div>
   );
 };
+
 
 
 
@@ -567,12 +575,7 @@ const BuyerForm = ({ onBillingAddressToggle }) => {
 
       {/* Next Button */}
       <div className="absolute bottom-8 right-8">
-        <button
-          type="button"
-          className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none"
-        >
-          Next
-        </button>
+       
       </div>
     </div>
   );
@@ -599,6 +602,11 @@ const AddStaff = () => {
 
   const handleSelectAddress = (address) => {
     setSelectedAddress(address);
+  };
+
+  const handleNextButtonClick = () => {
+    // Handle next button click logic here
+    console.log("Next button clicked");
   };
 
   return (
@@ -648,6 +656,16 @@ const AddStaff = () => {
                   <>
                     <BuyerForm onBillingAddressToggle={handleBillingAddressToggle} />
                     {billingAddressSame && <DeliveryForm />}
+                    
+                    {/* Next Button (only visible in Buyer Details) */}
+                    <div className="absolute bottom-8 right-12">
+                      <button
+                        onClick={handleNextButtonClick}
+                        className="px-4 py-2 bg-green-500 text-white rounded-md"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </>
                 )}
                 {activeSubTab === "Pick up Address" && (
@@ -669,11 +687,6 @@ const AddStaff = () => {
               <p>Select a sub-tab based on the context for the other tabs.</p>
             </div>
           )}
-
-          {/* Next Button */}
-          <div className="flex justify-end mt-6">
-            {/* Next button content */}
-          </div>
         </div>
       </div>
     </div>

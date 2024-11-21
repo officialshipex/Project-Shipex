@@ -501,3 +501,4 @@ const QuickShipment = () => {
   );
 };
 
+export default QuickShipment;

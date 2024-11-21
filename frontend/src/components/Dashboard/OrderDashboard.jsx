@@ -1,4 +1,6 @@
-
+import React from "react";
+import NavBar from "../Common/NavBar"; // Adjust the import path if necessary
+import Sidebar from "../Common/Sidebar"; // Adjust the import path if necessary
 
 // RTO Dashboard Component
 const RtoDashboard = () => {
@@ -19,7 +21,7 @@ const RtoDashboard = () => {
         ))}
       </div>
       <div className="orders-wrapper">
-        <div className="flex gap-32"> {/* Increased the gap to 32 */}
+      <div className="flex gap-32"> {/* Increased the gap to 32 */}
 
           {rtoOrders.map((order, index) => (
             <div key={index} className="flex flex-col items-center">
@@ -117,8 +119,10 @@ const OrderDashboard = () => {
   ];
 
   return (
-    <div className="flex flex-col h-full order-dashboard">
+    <div className="flex flex-col h-screen order-dashboard">
+      <NavBar />
       <div className="flex flex-1">
+        <Sidebar />
         <div className="dashboard-content flex flex-col p-9 overflow-y-auto flex-grow">
           <div className="flex justify-between items-center mb-4">
             <h6 className="text-2xl font-bold">Dashboard</h6>
@@ -163,15 +167,15 @@ const OrderDashboard = () => {
               ))}
             </div>
             <div className="flex flex-wrap justify-around gap-8"> {/* Use justify-around for even distribution */}
-              {orders.map((order, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <div className="bg-white border-2 border-black rounded-lg flex items-center justify-center w-20 h-20 transition-colors duration-300 hover:bg-gray-100">
-                    <div className="font-bold text-sm">{order.count}</div>
-                  </div>
-                  <div className="text-xs text-center">{order.label}</div>
-                </div>
-              ))}
-            </div>
+  {orders.map((order, index) => (
+    <div key={index} className="flex flex-col items-center">
+      <div className="bg-white border-2 border-black rounded-lg flex items-center justify-center w-20 h-20 transition-colors duration-300 hover:bg-gray-100">
+        <div className="font-bold text-sm">{order.count}</div>
+      </div>
+      <div className="text-xs text-center">{order.label}</div>
+    </div>
+  ))}
+</div>
 
 
             <div className="flex justify-between mt-5">
