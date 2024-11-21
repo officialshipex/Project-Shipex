@@ -1,12 +1,14 @@
+require('dotenv').config(); 
+
 const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
-const Services = require("../../../models/courierServiceSecond");
+const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
 
-const dburl = 'mongodb+srv://foundershipex:DEIMTVquekhDVFvc@cluster0.docbi.mongodb.net/zipping?retryWrites=true&w=majority';
+const dburl =process.env.MONGODB_URI;
 mongoose.connect(dburl, {})
     .then(() => {
         console.log('Connected to MongoDB Atlas');
