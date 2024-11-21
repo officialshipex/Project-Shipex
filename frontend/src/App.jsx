@@ -1,4 +1,4 @@
-import "./App.css";
+
 // import { useState, useEffect } from "react";
 // import NavBar from "./components/Common/NavBar";
 // import Dashboard from "./components/Dashboard/Dashboard"; // Import Dashboard
@@ -14,13 +14,13 @@ import "./App.css";
 // import Staff from "./components/user management view/view staff";
  // import AddStaff from "./components/user management view/viewDashboardUserManagement";
 // import NewOrder from "./components/Dashboard/Order"; // Import Order only
- import AddOrder from "./components/AddOrder/Add Order_Single Shipment";
-// import QuickShipment from "./components/AddOrder/Quickshipment"
+//  import AddOrder from "./components/AddOrder/Add Order_Single Shipment";
+ import QuickShipment from "./components/AddOrder/Quickshipment"
 
 function App() {
   return (
     <>
-      <AddOrder /> {/* Render only Order */}
+      <QuickShipment /> {/* Render only Order */}
     </>
   );
 }
