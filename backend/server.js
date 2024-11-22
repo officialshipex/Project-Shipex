@@ -27,6 +27,10 @@ const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 
 
+//B2B ZONE MANAGEMENT
+const B2BzoneController=require("./B2BzoneMangement/Zone.controller");
+
+
 require("dotenv").config();
 
 const app = express();
@@ -57,6 +61,7 @@ app.use('/v1/editBaseRate',editBaseRateController);
 app.use("/v1/NimbusPost",NimbusPostController);
 app.use("/v1/Shiprocket",ShipRocketController);
 app.use("/v1/EcomExpress",EcomExpressController);
+app.use("/v1/B2Bzone",B2BzoneController);
 
 
 module.exports = app;

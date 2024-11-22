@@ -8,7 +8,8 @@ import LoginPage from "./components/Kyc/LoginPage";
 import Registeration from "./register/Registration";
 
 import KycRoutes from "./routes/KycRoutes";
-import DashBoardRoute from "./routes/DashboardRoute";
+import DashBoardRoute from "./routes/DashboardRoute"
+import CreateZoneB2B from "./B2B/createZoneB2B";
 
 
 
@@ -26,24 +27,25 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   return (
-    <Router>
+    // <Router>
       
       
-      <Routes>
+    //   <Routes>
     
-        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
-        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+    //     <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+    //     <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
-        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
-          <Route path="/kyc/*" element={<KycRoutes />} />
-        </Route>
+    //     <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+    //       <Route path="/kyc/*" element={<KycRoutes />} />
+    //     </Route>
 
-        <Route element={<PrivateRoute isAuthenticated={true} />}>
-          <Route path="/seller/*" element={<DashBoardRoute />} />
-        </Route>
+    //     <Route element={<PrivateRoute isAuthenticated={true} />}>
+    //       <Route path="/seller/*" element={<DashBoardRoute />} />
+    //     </Route>
 
-      </Routes>
-    </Router>
+    //   </Routes>
+    // </Router>
+    <CreateZoneB2B></CreateZoneB2B>
   );
 }
 
