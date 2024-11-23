@@ -2,6 +2,7 @@ const passport = require("passport");
 const express = require("express");
 const helmet  = require('helmet');
 const cors = require("cors");
+const path = require("path");
 
 // const courierServicesRoutes=require('./routes/courierServiceB2C.router')
 const isAuthorized  = require('./middleware/auth.middleware');
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 app.use(cors());
 app.use(passport.initialize());
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/v1/external', authRouter);
 app.use('/v1/merchant',  isAuthorized, verficationRouter);
@@ -54,6 +56,9 @@ app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
 
+app.get("/*", (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 // app.use("/v1/NimbusPost",NimbusPostController);
 // app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
