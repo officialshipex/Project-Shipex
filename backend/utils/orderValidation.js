@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 const orderValidateSchema = Joi.object({
     buyerDetails: Joi.object({
-      buyerName: Joi.string().pattern(/^[a-zA-Z]{2,}$/).required().messages({
+      buyerName: Joi.string().pattern(/^[a-zA-Z\s]{2,}$/).required().messages({
         'string.pattern.base': 'Buyer name must have at least 2 characters and contain only letters.',
         'any.required': 'Buyer name is required',
         'string.empty': 'Buyer name cannot be empty'
@@ -28,13 +28,13 @@ const orderValidateSchema = Joi.object({
     }),
   
     buyerAddress: Joi.object({
-      completeAddress: Joi.string().required().messages({
-        'string.base': 'Complete address must be a string',
+      completeAddress: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+        "string.pattern.base": 'complete address must only contain alpha-numeric characters',
         'any.required': 'Complete address is required',
         'string.empty': 'Complete address cannot be empty'
       }),
-      landmark:Joi.string().required().messages({
-        'string.base': 'Complete address must be a string',
+      landmark:Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+        "string.pattern.base": 'Landmark must only contain alpha-numeric characters',
         'any.required': 'Landmark is required',
         'string.empty': 'Landmark cannot be empty'
       }),
@@ -43,18 +43,18 @@ const orderValidateSchema = Joi.object({
         'any.required': 'Pincode is required',
         'string.empty': 'Pincode cannot be empty'
       }),
-      city: Joi.string().required().messages({
-        'string.base': 'City must be a string',
+      city: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        "string.pattern.base": 'City must only contain alphabetic characters and spaces',
         'any.required': 'City is required',
         'string.empty': 'City cannot be empty'
       }),
-      state: Joi.string().required().messages({
-        'string.base': 'State must be a string',
+      state: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        "string.pattern.base": 'State must only contain alphabetic characters and spaces',
         'any.required': 'State is required',
         'string.empty': 'State cannot be empty'
       }),
-      country: Joi.string().required().messages({
-        'string.base': 'Country must be a string',
+      country: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        "string.pattern.base": 'Country must only contain alphabetic characters and spaces',
         'any.required': 'Country is required',
         'string.empty': 'Country cannot be empty'
       }),
@@ -79,8 +79,8 @@ const orderValidateSchema = Joi.object({
     }),
   
     orderDetails: Joi.object({
-      orderId: Joi.string().required().messages({
-        'string.base': 'Order ID must be a string',
+      orderId: Joi.string().pattern(/^[a-zA-Z0-9]+$/).required().messages({
+        "string.pattern.base": 'Order ID must only contain alpha-numeric characters',
         'any.required': 'Order ID is required',
         'string.empty': 'Order ID cannot be empty'
       }),
@@ -94,7 +94,7 @@ const orderValidateSchema = Joi.object({
         'any.required': 'Order date is required',
         'string.empty': 'Order date cannot be empty'
       }),
-      shippingCharges: Joi.number().required().messages({
+      shippingCharges: Joi.number().positive().required().messages({
         'number.base': 'Shipping charges must be a number',
         'any.required': 'Shipping charges are required',
         'number.empty': 'Shipping charges cannot be empty'
@@ -124,8 +124,8 @@ const orderValidateSchema = Joi.object({
   
     productDetails: Joi.array().items(
       Joi.object({
-        productName: Joi.string().required().messages({
-          'string.base': 'Product name must be a string',
+        productName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+          'string.pattern.base': 'Product name must only contain alpha-numeric characters',
           'any.required': 'Product name is required',
           'string.empty': 'Product name cannot be empty'
         }),
@@ -195,8 +195,8 @@ const orderValidateSchema = Joi.object({
   
     pickUpAddress: Joi.object({
       primary: Joi.object({
-        addressLine: Joi.string().required().messages({
-          'string.base': 'Primary address line must be a string',
+        addressLine: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+          'string.pattern.base': 'Primary address line must be a string',
           'any.required': 'Primary address line is required',
           'string.empty': 'Primary address line cannot be empty'
         }),
@@ -226,23 +226,23 @@ const orderValidateSchema = Joi.object({
       }),
       additionalAddresses: Joi.array().items(
         Joi.object({
-          addressLine: Joi.string().required().messages({
-            'string.base': 'Address line must be a string',
+          addressLine: Joi.string().pattern(/^[a-zA-z0-9\s]+$/).required().messages({
+            'string.pattern.base': 'Address line must be a string',
             'any.required': 'Address line is required',
             'string.empty': 'Address line cannot be empty'
           }),
-          city: Joi.string().required().messages({
-            'string.base': 'City must be a string',
+          city: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'City must be a string',
             'any.required': 'City is required',
             'string.empty': 'City cannot be empty'
           }),
-          state: Joi.string().required().messages({
-            'string.base': 'State must be a string',
+          state: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'State must be a string',
             'any.required': 'State is required',
             'string.empty': 'State cannot be empty'
           }),
-          country: Joi.string().required().messages({
-            'string.base': 'Country must be a string',
+          country: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'Country must be a string',
             'any.required': 'Country is required',
             'string.empty': 'Country cannot be empty'
           }),

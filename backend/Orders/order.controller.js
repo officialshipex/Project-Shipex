@@ -1,6 +1,6 @@
+const jwt = require('jsonwebtoken');
 const Order = require('../model/order.model');
 const {orderValidateSchema} = require('../utils/orderValidation');
-// const { validatePincode,validateEmail, validateName,validatePhoneNumber,validateCompanyName,validateGSTIN } = require('../utils/ordersValidation');
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -50,11 +50,34 @@ function calculateOrderTotals(orderData) {
   };
 }
 
-const createOrder = async (req,res) => {
-    try {
-        const orderData = req.body;
-        
 
+
+
+const createOrder = async (req,res) => {
+  try {
+        const orderData = req.body;
+
+        // Get token from the Authorization header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          return res.status(401).json({
+            success: false,
+            message: 'Token not provided or invalid',
+          });
+        }
+        
+        const token = authHeader.split(' ')[1]; // Extract the token
+        
+        // Decode and verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
+        console.log('Decoded Token:', decoded); 
+        // Example: { user: { id: 'userId', email: 'user@example.com' }, iat: ..., exp: ... }
+        
+        // Use the user's ID from the token to create an order
+        const userId = decoded.user.id; // Adjust based on your token payload structure
+        
+        console.log("User ID:",userId);
+        
         // Perform validation
         const { error, value } = orderValidateSchema.validate(orderData, { abortEarly: false }); // `abortEarly: false` to collect all errors
         if (error) {
@@ -70,13 +93,12 @@ const createOrder = async (req,res) => {
             errors: validationErrors
           });
         }
-          // return res.status(400).json({ success: false, error: error.details });
-        
 
         //  Perform calculations for the order totals
         const totals = calculateOrderTotals(orderData);
         
         const order = new Order({
+          user_Id: decoded.user.id,
           buyerDetails:orderData.buyerDetails,
           buyerAddress:orderData.buyerAddress,
           orderDetails:{
@@ -93,145 +115,25 @@ const createOrder = async (req,res) => {
           pickUpAddress:orderData.pickUpAddress
         });
         console.log("orderDetails:",order.orderDetails);
-        
-        // if(!orderData.buyerDetails.buyerName || !orderData.buyerDetails.phoneNumber || !orderData.buyerDetails.alternatePhoneNumber || !orderData.buyerDetails.email){
-        //   return res.status(400).json({
-        //     success:false,
-        //     message: "Please fill all the Buyers Details fields."
-        //   })
-        // const buyerDetailsFields = ['buyerName', 'phoneNumber', 'alternatePhoneNumber', 'email'];
-
-        // for (const field of buyerDetailsFields) {
-        //     if (!orderData.buyerDetails[field]) {
-        //         return res.status(400).json({
-        //             success: false,
-        //             message: `Please fill the ${field} field.`
-        //         });
-        //     }
-        // }
-
-        // const buyerAddressFields = ['completeAddress', 'landmark', 'pincode', 'city', 'state', 'country','companyName' ,'gstinNumber','billingAddressSameAsShipping'];
-        
-        // for (const field of buyerAddressFields) {
-        //   if (!orderData.buyerAddress[field]) {
-        //     return res.status(400).json({
-        //       success: false,
-        //           message: `Please fill the ${field} field.`
-        //       });
-        //     }
-        // }
-        
-        
-        // const orderDetailsFields = ['orderId', 'orderType', 'orderDate', 'shippingCharges', 'transaction','additionalDiscount' ,'otherCharges'];
-        
-        // for (const field of orderDetailsFields) {
-        //   if (!orderData.orderDetails[field]) {
-        //     return res.status(400).json({
-        //       success: false,
-        //       message: `Please fill the ${field} field.`
-        //     });
-        //   }
-        // }
-        // function validateProductDetails(productDetails) {
-        //   for (let i = 0; i < orderData.productDetails.length; i++) {
-        //     const product = productDetails[i];
-        //     const requiredFields = ['productName', 'quantity', 'unitPrice', 'SKU', 'HSN', 'taxRate', 'productCategory', 'discount'];
-            
-        //     for (const field of requiredFields) {
-        //       if (product[field] === undefined || product[field] === null || product[field] === '') {
-        //         return {
-        //                   success: false,
-        //                   message: `Please fill the ${field} field in product ${i + 1}.`
-        //               };
-        //           }
-        //         }
-        //       }
-        //       return { success: true }; // All fields are filled in each product
-        //     }
-            
-        //     const validationResult = validateProductDetails(orderData.productDetails);
-        //     if (!validationResult.success) {
-        //       return res.status(400).json(validationResult);
-        //     }
-            
-        //     if(!orderData.payment.PaymentMethod){
-        //       return res.status(400).json({
-        //         success:false,
-        //         message:"Please fill the PaymentMethod field."
-        //     })
-        // }
-        
-        // if(!orderData.packageDetails.weigth){
-        //   return res.status(400).json({
-        //     success:false,
-        //     message:"please fill the weight field."
-        //   })
-        // }
-        
-        // // }else if(!orderData.buyerAddress.completeAddress){x`
-        // //   return res.status(400).json({
-        //   //     success:false,
-        //   //     message: "Please fill all the Buyers Address fields."
-        //   //   })
-        //   // }
-        //   if(!validateName(orderData.buyerDetails.buyerName)){
-        //     return res.status(400).json({
-        //     success: false,
-        //     message: "Buyer name must have at least 2 characters and contain only letters."
-        //   })
-        // }
-        
-        // // Validate phone number and alternate phone number (must be 10 digits)
-        // if (!validatePhoneNumber(orderData.buyerDetails.phoneNumber)) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: 'Phone number must be 10 digits.'
-        //   });
-        // }
-        
-        // if (!validatePhoneNumber(orderData.buyerDetails.alternatePhoneNumber)) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: 'Alternate phone number must be 10 digits.'
-        //   });
-        // }
-        
-        // if(!validateEmail(orderData.buyerDetails.email)){
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: "Please enter a valid Email Address."
-        //   })
-        // }
-        
-        // // Validate company name (at least 2 characters, only letters and spaces)
-        // if (!validateCompanyName(orderData.buyerAddress.companyName)) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: 'Company name must contain only letters and spaces, with at least 2 characters.'
-        //   });
-        // }
-        
-        // // Validate GSTIN number (generic validation)
-        // if (!validateGSTIN(orderData.buyerAddress.gstinNumber)) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: 'Invalid GSTIN number format.'
-        //   });
-        // }
-        
-        // //validate pincode format
-        // if(!validatePincode(orderData.buyerAddress.pincode)){
-        //   return res.status(400).json({
-        //     success:false,
-        //     message:"Please enter a valid 6-digit pincode in buyerAddress."
-        //   })
-        // }
-        
+                
         await order.save();
+        
+        const responseOrder = {
+          buyerDetails: order.buyerDetails, 
+          buyerAddress: order.buyerAddress,
+          orderDetails: order.orderDetails,
+          productDetails: order.productDetails,
+          payment: order.payment,
+          packageDetails: order.packageDetails,
+          pickUpAddress: order.pickUpAddress,
+          _id: order._id, // Include order ID in response
+        };
+
+
         res.status(201).json({ 
           success:true,
           message: 'Shipment created successfully',
-          data: order 
+          data: responseOrder 
         });
       } catch (error) {
         res.status(400).json({ 
@@ -244,7 +146,16 @@ const createOrder = async (req,res) => {
 
 const getAllOrders = async (req,res) => {
     try {
-        const orders = await Order.find();
+        const orders = await Order.find().select('-user_Id');
+
+          // // Exclude userId from all orders in the response
+          // const sanitizedOrders = orders.map(order => {
+          //   const { userId, ...orderData } = order.toObject(); // Exclude userId
+          //   console.log("orderData:",orderData);
+            
+          //   return orderData;
+          // });
+
         console.log("All orders",orders);
         
         return res.status(200).json(orders);

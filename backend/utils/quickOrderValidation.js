@@ -1,13 +1,13 @@
 const Joi = require('joi');
 
 const quickOrderValidateSchema = Joi.object({
-    pickupAddress: Joi.string().required().messages({
-        'string.base': 'Pickup address line must be a string',
+    pickupAddress: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+        'string.pattern.base': 'Pickup address must only contain alpha-numeric characters',
         'any.required': 'Pickup address line is required',
         'string.empty': 'Pickup address line cannot be empty'
     }),
     buyerDetails: Joi.object({
-      buyerName: Joi.string().pattern(/^[a-zA-Z ]{2,}$/).required().messages({
+      buyerName: Joi.string().pattern(/^[a-zA-Z\s]{2,}$/).required().messages({
         'string.pattern.base': 'Buyer name must have at least 2 characters and contain only letters.',
         'any.required': 'Buyer name is required',
         'string.empty': 'Buyer name cannot be empty'
@@ -33,13 +33,13 @@ const quickOrderValidateSchema = Joi.object({
     }),
   
     buyerAddress: Joi.object({
-      completeAddress: Joi.string().required().messages({
-        'string.base': 'Complete address must be a string',
+      completeAddress: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+        'string.pattern.base': 'Complete address must only contain alpha-numeric characters',
         'any.required': 'Complete address is required',
         'string.empty': 'Complete address cannot be empty'
       }),
-      landmark:Joi.string().required().messages({
-        'string.base': 'Complete address must be a string',
+      landmark:Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+        'string.pattern.base': 'Landmark must only contain alpha-numeric characters',
         'any.required': 'Landmark is required',
         'string.empty': 'Landmark cannot be empty'
       }),
@@ -48,18 +48,18 @@ const quickOrderValidateSchema = Joi.object({
         'any.required': 'Pincode is required',
         'string.empty': 'Pincode cannot be empty'
       }),
-      city: Joi.string().required().messages({
-        'string.base': 'City must be a string',
+      city: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        "string.pattern.base": 'City must only contain alphabetic characters and spaces',
         'any.required': 'City is required',
         'string.empty': 'City cannot be empty'
       }),
-      state: Joi.string().required().messages({
-        'string.base': 'State must be a string',
+      state: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        "string.pattern.base": 'State must only contain alphabetic characters and spaces',
         'any.required': 'State is required',
         'string.empty': 'State cannot be empty'
       }),
-      country: Joi.string().required().messages({
-        'string.base': 'Country must be a string',
+      country: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+        'string.pattern.base': 'Country must only contain alphabetic characters and spaces',
         'any.required': 'Country is required',
         'string.empty': 'Country cannot be empty'
       }),
@@ -79,13 +79,13 @@ const quickOrderValidateSchema = Joi.object({
       'any.required': 'Buyer address is required'
     }),
     shippingAddress:Joi.object({
-        completeAddress:Joi.string().required().messages({
-            'string.base':'Complete Address must be a string',
+        completeAddress:Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+            'string.pattern.base': 'Complete address must only contain alpha-numeric characters',
             'any.required':'Complete Address is required',
             'string.empty':'Complete Address cannot be empty'
         }),
-        landmark:Joi.string().required().messages({
-            'string.base':'Landmark must be a string',
+        landmark:Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+            'string.pattern.base': 'Landmark must only contain alpha-numeric characters',
             'any.required':'Landmark is required',
             'string.empty':'Landmark cannot be empty'
         }),
@@ -94,18 +94,18 @@ const quickOrderValidateSchema = Joi.object({
             'any.required': 'Pincode is required',
             'string.empty': 'Pincode cannot be empty'
         }),
-        city: Joi.string().required().messages({
-            'string.base': 'City must be a string',
+        city: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'City must only contain alphabetic characters and spaces',
             'any.required': 'City is required',
             'string.empty': 'City cannot be empty'
         }),
-        state: Joi.string().required().messages({
-            'string.base': 'State must be a string',
+        state: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'State must only contain alphabetic characters and spaces',
             'any.required': 'State is required',
             'string.empty': 'State cannot be empty'
         }),
-        country: Joi.string().required().messages({
-            'string.base': 'Country must be a string',
+        country: Joi.string().pattern(/^[a-zA-Z\s]+$/).required().messages({
+            'string.pattern.base': 'Country must only contain alphabetic characters and spaces',
             'any.required': 'Country is required',
             'string.empty': 'Country cannot be empty'
         }),
@@ -113,8 +113,8 @@ const quickOrderValidateSchema = Joi.object({
 
     productDetails: Joi.array().items(
       Joi.object({
-        productName: Joi.string().required().messages({
-          'string.base': 'Product name must be a string',
+        productName: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required().messages({
+          'string.pattern.base': 'Product name must only contain alpha-numeric characters and spaces',
           'any.required': 'Product name is required',
           'string.empty': 'Product name cannot be empty'
         }),
