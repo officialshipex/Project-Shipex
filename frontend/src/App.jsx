@@ -9,7 +9,10 @@ import Registeration from "./register/Registration";
 
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute"
+
+
 import CreateZoneB2B from "./B2B/createZoneB2B";
+import MapZone from "./B2B/MapZone";
 
 
 
@@ -45,7 +48,8 @@ function App() {
 
     //   </Routes>
     // </Router>
-    <CreateZoneB2B></CreateZoneB2B>
+   
+    <MapZone></MapZone>
   );
 }
 

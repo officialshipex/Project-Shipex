@@ -1,39 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Zone = require("../models/Zone.model");
-
-// router.post("/createZone", async (req, res) => {
-//   try {
-//     const { name, fullname } = req.body;
-
-//     const existingZone = await Zone.findOne({
-//       $or: [{ name: name }, { fullname: fullname }]
-//     });
-
-//     if (existingZone) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Zone Has Been Updated Succefully."
-//       });
-//     }
-
-//     const newZone = new Zone(req.body);
-//     const savedZone = await newZone.save();
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Zone created successfully.",
-//       data: savedZone
-//     });
-//   } catch (err) {
-//     res.status(500).json({
-//       success: false,
-//       message: "An error occurred while creating the zone.",
-//       error: err.message
-//     });
-//   }
-// });
-
+const courier=require("../models/B2Bcourier");
+const courierService=require("../models/B2BcourierService");
 
 router.post("/createZone", async (req, res) => {
   try {
@@ -87,5 +56,44 @@ router.get("/getAllZones", async (req, res) => {
     res.status(500).json({ message: "Internal server error" }); 
   }
 });
+
+
+
+router.post("/saveZoneMapping", async (req, res) => {
+  let { courierProviderName, courierServiceName, zone, cities, states } = req.body;
+
+  try {
+    const currService=await courierService.find({courierProviderServiceName:courierServiceName});
+    const currZone = await Zone.findOne({ name: zone });
+
+    if (!currZone || !currService) {
+      return res.status(404).json({ error: "Unable to create or update the zone or service" });
+    }
+
+    cities.forEach((city) => {
+      if (!currZone.cities.includes(city)) {
+        currZone.cities.push(city);
+      }
+    });
+
+    states.forEach((state) => {
+      if (!currZone.states.includes(state)) {
+        currZone.states.push(state);
+      }
+    });
+
+    await currZone.save();
+    await currService.updateOne(
+      { courierProviderServiceName: courierServiceName },
+      { $set: { zone: currZone._id } }
+    );
+
+    return res.status(200).json({ message: "Zone mapping saved successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 module.exports = router;

@@ -3,27 +3,27 @@ const mongoose = require('mongoose');
 const zoneSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true, 
-    trim: true,    
+    required: true,
+    trim: true,
   },
   fullname: {
     type: String,
-    required: true, 
-    trim: true,     
+    required: true,
+    trim: true,
   },
-  cities:[
+  cities: [
     {
-      type:String,
+      type: String,
       trim: true,
     }
   ],
-  states:[{
-    type:String,
+  states: [{
+    type: String,
     trim: true,
   }],
   createdAt: {
     type: Date,
-    default: Date.now, 
+    default: Date.now,
   },
 });
 
