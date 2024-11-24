@@ -1,7 +1,7 @@
 const QuickAction = () => {
     return (
     <div className="absolute top-0 right-0 flex justify-center gap-5 p-5 my-16">
-        <div className="flex items-center bg-white border space-x-3 border-green-500 rounded-lg shadow-lg p-5">
+        <div className="flex items-center bg-white border space-x-3 hover: border-[#12C988] rounded-lg shadow-lg p-5">
             <div>
                 <svg width="160" height="156" viewBox="0 0 160 156" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M0.5 16.0117C0.5 7.45131 7.43959 0.511719 16 0.511719H144C152.56 0.511719 159.5 7.45131 159.5 16.0117V139.012C159.5 147.572 152.56 154.512 144 154.512H16C7.43959 154.512 0.5 147.572 0.5 139.012V16.0117Z" fill="#F5FDFA" stroke="#B4EAD7" />

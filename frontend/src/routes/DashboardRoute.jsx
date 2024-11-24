@@ -22,7 +22,7 @@ function DashBoardRoute() {
                 <Route path="/tools" element={<>tools</>} />
                 <Route path="/management" element={<>management</>} />
                 <Route path="/help" element={<>help</>} />
-                <Route path="/settings" element={<>settings</>} />
+                <Route path="/settings" element={<>Settings</>} />
             </Route>
         </Routes>
     );
