@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const CourierServiceSecond= require("./courierServiceSecond");
+const CourierServiceSecond= require("./courierServiceSecond.model");
 
 const courierSecondSchema = new mongoose.Schema(
   {
