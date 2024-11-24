@@ -251,14 +251,14 @@ const OrderList = () => {
         <div className="flex justify-between items-center mb-4 p-4">
             <h2 className="text-2xl font-bold"> Orders</h2>
             <div className="flex items-center space-x-3">
-              <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
+              <button className="px-4 py-2 bg-[#0CBB7D] text-white rounded-md text-sm font-medium">
                 Select all Orders
               </button>
-              <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
+              <button className="px-4 py-2 bg-[#0CBB7D] text-white rounded-md text-sm font-medium">
                 Add an order
               </button>
               <div className="">
-                <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
+                <button className="flex items-center px-4 py-2 bg-gray-100 text-[#D9D9D9] rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-200">
                   Pick the dates
                   <FaChevronDown className="ml-2" />
                 </button>

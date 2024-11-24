@@ -77,7 +77,9 @@ const paytmCallback = (req, res) => {
 
 // router.post("/payment", (req, res) => {
 const initiatePayment = (req, res) => {
-  const { amount, email } = req.body;
+  // const { amount, email } = req.body;
+  const amount = 1;
+  const email = "kulmc01@gmail.com";
 
   /* import checksum generation utility */
   const totalAmount = JSON.stringify(amount);
@@ -93,7 +95,7 @@ const initiatePayment = (req, res) => {
     (params["TXN_AMOUNT"] = totalAmount),
     (params["CALLBACK_URL"] = "http://localhost:5000/v1/paytm/callback"),
     (params["EMAIL"] = email),
-    (params["MOBILE_NO"] = "9876543210");
+    (params["MOBILE_NO"] = "7828153133");
 
   /**
    * Generate checksum by parameters we have
