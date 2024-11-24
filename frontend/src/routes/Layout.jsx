@@ -11,10 +11,10 @@ function Layout() {
                 <Sidebar />
             </div>
             <div className="flex flex-col h-screen w-full">
-                <div className='py-2'>
+                <div className="sticky top-0 z-50">
                     <Navbar />
                 </div>
-                <div className=''>
+                <div className="">
                     <Outlet />
                 </div>
             </div>
