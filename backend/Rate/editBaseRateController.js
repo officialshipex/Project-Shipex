@@ -1,4 +1,4 @@
-const BaseRate = require("../models/baseRateCard");
+const BaseRate = require("../models/baseRateCard.model");
 const CustomRate=require("../models/CustomRate");
 const RateCard=require("../models/rateCards");
 
