@@ -1,23 +1,3 @@
-<<<<<<< HEAD:backend/routes/courierServiceB2C.router.js
-// import express from "express";
-const express = require("express")
-const { getAllActiveCourierServices, getCourierServicesFromDatabase } = require("../B2C/courierService.controller");
-const {
-    createCustomOrder,
-    updateOrder,
-    cancelOrder,
-    listCouriers,
-    checkServiceability,
-    requestShipmentPickup,
-    createReturnOrder,
-    generateManifest,
-    generateLabel,
-    generateInvoice,
-    getAllNDRShipments,
-    getTrackingByAWB,
-    getTrackingByOrderID,
-} = require('../B2C/shiprocket.controller');
-=======
 
 const express = require("express");
 const router = express.Router();
@@ -40,7 +20,6 @@ const {
     generateLabel,
     generateInvoice,
     getAllNDRShipments,
->>>>>>> b141e0fed41a60ccdeff042fa047bcc614d09e55:backend/AllCouriersRoutes/shiprocket.router.js
 
     getTrackingByAWB,
 
@@ -84,11 +63,6 @@ router.get('/track/awb/:awb_code', getTrackingByAWB);
 // Get Tracking Data through Order ID
 router.get('/track/order/:order_id', getTrackingByOrderID);
 
-<<<<<<< HEAD:backend/routes/courierServiceB2C.router.js
-// export default router;
-module.exports = router;
-=======
 
 // export default router;
 module.exports = router
->>>>>>> b141e0fed41a60ccdeff042fa047bcc614d09e55:backend/AllCouriersRoutes/shiprocket.router.js
