@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 
 
-const AddZoneForm = ({setZones}) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    fullname: "",
-  });
+const AddZoneForm = ({setZones,formData,setFormData}) => {
+  // const [formData, setFormData] = useState({
+  //   name: "",
+  //   fullname: "",
+  // });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

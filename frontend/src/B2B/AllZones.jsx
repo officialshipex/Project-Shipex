@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const AllZones = ({zones,setZones}) => {
+const AllZones = ({zones,setZones,setFormData,formRef}) => {
   const [filteredZones, setFilteredZones] = useState([]);
   const [filterDate, setFilterDate] = useState("");
 
@@ -34,6 +34,17 @@ const AllZones = ({zones,setZones}) => {
     setFilteredZones(zones);
     setFilterDate("");
   };
+
+  const handleEdit=(zone)=>{
+        console.log("I am in handle edit");
+        console.log(zone);
+        setFormData({
+          name:zone.name,
+          fullname:zone.fullname
+        })
+
+        formRef.current.scrollIntoView({ behavior: "smooth" });
+  }
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
@@ -111,6 +122,8 @@ const AllZones = ({zones,setZones}) => {
                       color: "#007bff",
                       cursor: "pointer",
                     }}
+
+                    onClick={()=>handleEdit(zone)}
                   >
                     ✏️
                   </button>

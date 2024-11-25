@@ -59,41 +59,41 @@ router.get("/getAllZones", async (req, res) => {
 
 
 
-router.post("/saveZoneMapping", async (req, res) => {
-  let { courierProviderName, courierServiceName, zone, cities, states } = req.body;
+// router.post("/saveZoneMapping", async (req, res) => {
+//   let { courierProviderName, courierServiceName, zone, cities, states } = req.body;
 
-  try {
-    const currService=await courierService.find({courierProviderServiceName:courierServiceName});
-    const currZone = await Zone.findOne({ name: zone });
+//   try {
+//     const currService=await courierService.find({courierProviderServiceName:courierServiceName});
+//     const currZone = await Zone.findOne({ name: zone });
 
-    if (!currZone || !currService) {
-      return res.status(404).json({ error: "Unable to create or update the zone or service" });
-    }
+//     if (!currZone || !currService) {
+//       return res.status(404).json({ error: "Unable to create or update the zone or service" });
+//     }
 
-    cities.forEach((city) => {
-      if (!currZone.cities.includes(city)) {
-        currZone.cities.push(city);
-      }
-    });
+//     cities.forEach((city) => {
+//       if (!currZone.cities.includes(city)) {
+//         currZone.cities.push(city);
+//       }
+//     });
 
-    states.forEach((state) => {
-      if (!currZone.states.includes(state)) {
-        currZone.states.push(state);
-      }
-    });
+//     states.forEach((state) => {
+//       if (!currZone.states.includes(state)) {
+//         currZone.states.push(state);
+//       }
+//     });
 
-    await currZone.save();
-    await currService.updateOne(
-      { courierProviderServiceName: courierServiceName },
-      { $set: { zone: currZone._id } }
-    );
+//     await currZone.save();
+//     await currService.updateOne(
+//       { courierProviderServiceName: courierServiceName },
+//       { $set: { zone: currZone._id } }
+//     );
 
-    return res.status(200).json({ message: "Zone mapping saved successfully" });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
+//     return res.status(200).json({ message: "Zone mapping saved successfully" });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ error: "Server error" });
+//   }
+// });
 
 
 module.exports = router;

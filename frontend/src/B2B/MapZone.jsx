@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import "./MapZone.css";
 
 const MapZone = () => {
-    const [zones, setZones] = useState([]); 
-    const [cities, setCities] = useState([]); 
-    const [states, setStates] = useState([]); 
+    const [zones, setZones] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [states, setStates] = useState([]);
     const [courierServices, setCourierServices] = useState([]);
-    const [newCity, setNewCity] = useState(""); 
-    const [newState, setNewState] = useState(""); 
+    const [newCity, setNewCity] = useState("");
+    const [newState, setNewState] = useState("");
 
     const [formData, setFormData] = useState({
         courierProviderName: "",
@@ -75,20 +75,20 @@ const MapZone = () => {
         }
     };
 
-    const handleSave = async() => {
-        try{
-        console.log("Form Data Submitted:", formData);
-        const response = await fetch('http://localhost:5000/v1/B2Bzone/saveZoneMapping', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
-          });
-          const result=await response.json();
-          console.log(result);
+    const handleSave = async () => {
+        try {
+            console.log("Form Data Submitted:", formData);
+            const response = await fetch('http://localhost:5000/v1/B2Bzone/saveZoneMapping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+            const result = await response.json();
+            console.log(result);
         }
-        catch(error){
+        catch (error) {
 
         }
     };
@@ -147,6 +147,19 @@ const MapZone = () => {
                         {cities.map((city, index) => (
                             <span className="chip" key={index}>
                                 {city}
+                                <button
+                                    className="chip-close"
+                                    onClick={() => {
+                                        const updatedCities = cities.filter((_, i) => i !== index);
+                                        setCities(updatedCities);
+                                        setFormData((prevFormData) => ({
+                                            ...prevFormData,
+                                            cities: updatedCities,
+                                        }));
+                                    }}
+                                >
+                                    ×
+                                </button>
                             </span>
                         ))}
                         <input
@@ -166,6 +179,21 @@ const MapZone = () => {
                         {states.map((state, index) => (
                             <span className="chip" key={index}>
                                 {state}
+                                <button
+                                    className="chip-close"
+                                    onClick={() => {
+                                        // Remove the clicked state from the states array
+                                        const updatedStates = states.filter((_, i) => i !== index);
+                                        setStates(updatedStates);
+
+                                        // Update formData.states
+
+                                        setFormData((prevFormData) => ({
+                                            ...prevFormData,
+                                            states: updatedStates,
+                                        }));
+                                    }}
+                                >x</button>
                             </span>
                         ))}
                         <input
