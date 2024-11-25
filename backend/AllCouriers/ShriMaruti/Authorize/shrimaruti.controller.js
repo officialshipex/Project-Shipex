@@ -1,19 +1,14 @@
-const axios = require("axios");
-const Courier = require("../../../models/courierSecond");
+const axios = require('axios');
 
-const saveShipRocket = async () => {
-    try {
-        const newCourier = new Courier({ provider: "Shiprocket" });
-        await newCourier.save();
-        return newCourier;
-    } catch (error) {
-        throw new Error("Failed to save credentials in the database: " + error?.message);
-    }
-};
+// Configuration (replace with actual values)
+const BASE_URL = 'https://qaapis.delcaper.com'; // Replace with the actual base URL
+
+
 
 const getToken = async () => {
-    const email=process.env.SHIPR_GMAIL;
-    const password=process.env.SHIPR_PASS;
+    const email=process.env.SHREEMA_GMAIL;
+    const password=process.env.SHREEMA_PASS;
+    const vendorType="SELLER"
 
     if (!email || !password) {
         return res.status(400).json({
@@ -24,18 +19,19 @@ const getToken = async () => {
     try {
         const options = {
             method: "POST",
-            url: "https://apiv2.shiprocket.in/v1/external/auth/login",
+            url: "https://qaapis.delcaper.com/auth/login",
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
             },
-            data: { email, password },
+            data: { email, password, vendorType },
         };
 
         const response = await axios.request(options);
+        
          
         if(response.status){
-            return response.data.token;
+            return response.data.data.accessToken
         }
             else {
                 throw new Error(`Login failed: ${response.status}`);
@@ -46,4 +42,5 @@ const getToken = async () => {
     }
 };
 
-module.exports = { saveShipRocket, getToken };
+module.exports =  getToken ;
+

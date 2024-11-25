@@ -4,6 +4,7 @@ const RateCard=require("../models/rateCards");
 
 const editBaseRate = async (req, res) => {
     let changes = {};   
+   
     try {
         // Fetch previous rate card
 
