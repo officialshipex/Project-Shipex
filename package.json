@@ -1,0 +1,19 @@
+{
+  "name": "project-shipex",
+  "version": "1.0.0",
+  "description": "This document outlines the step-by-step process for contributing to the project by creating a new branch, making changes, and submitting a Pull Request (PR).",
+  "main": "index.js",
+  "scripts": {
+    "install-backend": "npm install --prefix backend",
+    "install-frontend": "npm install --prefix frontend",
+    "install": "npm run install-backend && npm run install-frontend",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm start --prefix frontend",
+    "dev": "npm run backend & npm run frontend",
+    "test": "npm run test --prefix backend && npm run test --prefix frontend",
+    "deploy": "npm run build --prefix frontend && npm start --prefix backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
