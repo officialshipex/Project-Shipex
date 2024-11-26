@@ -8,6 +8,8 @@ import PropTypes from "prop-types";
 import axios from "axios";
 import { AadhaarModal, AccountVerificationModal, OTPModal } from "./Modal";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 const Writemanually = (props) => {
 
   const { setDocumentVerified, aadharNumber, setAadharNumber, accountNumber, setAccountNumber, ifscCode, setIfscCode, accountHolderName, setAccountHolderName, phoneNumber, setPhoneNumber } = props;
@@ -48,7 +50,7 @@ const Writemanually = (props) => {
 
 
     try {
-      const response = await axios.post("http://localhost:5000/v1/merchant/verfication/generate-otp", {
+      const response = await axios.post(`${backendUrl}/merchant/verfication/generate-otp`, {
         aadhaarNo: aadharNumber,
       }, {
         headers: {
@@ -120,7 +122,7 @@ const Writemanually = (props) => {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/v1/merchant/verfication/bank-account", {
+      const response = await axios.post(`${backendUrl}/merchant/verfication/bank-account`, {
         accountNo: accountNumber,
         ifsc: ifscCode,
         name: accountHolderName,
