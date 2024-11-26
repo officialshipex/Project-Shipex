@@ -13,7 +13,7 @@ const Dashboard = () => {
   return (
     <div className='flex'>
       {/* <Sidebar /> */}
-      <div className="dashboard-container w-full h-full">
+      <div className="dashboard-container w-full h-full ">
         <div className='m-2'>
           {/* <Navbar /> */}
         </div>

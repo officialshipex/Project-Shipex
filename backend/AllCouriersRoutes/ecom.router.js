@@ -24,4 +24,12 @@ router.post("/createRtoOrder", ecomCourierController.manifestAwbRev);
 router.post("/trackRtoOrder", ecomCourierController.shipmentTrackingRev);
 router.post("/cancelRtoOrder", ecomCourierController.cancelShipmentRev);
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+module.exports = router;
+
+
+
+
+>>>>>>> 835884454d9fe7e64dd24ef76f4548cc078dd7c3

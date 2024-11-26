@@ -1,5 +1,4 @@
 
-
 // RTO Dashboard Component
 const RtoDashboard = () => {
   const rtoOrders = [
@@ -34,7 +33,6 @@ const RtoDashboard = () => {
     </div>
   );
 };
-
 // NDR Dashboard Component
 const NdrDashboard = () => {
   const ndrOrders = [
@@ -44,7 +42,6 @@ const NdrDashboard = () => {
     { label: "RTO", count: 2 },
     { label: "All", count: 1 },
   ];
-
   return (
     <div className="ndr-dashboard bg-gray-100 p-5 rounded-lg shadow-md">
       <h6 className="text-lg font-bold mb-2">NDR Status</h6>
