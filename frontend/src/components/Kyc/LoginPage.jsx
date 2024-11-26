@@ -9,6 +9,8 @@ import { createSession, getSession } from "../../lib/session";
 import { validateEmail } from "../../lib/validation";
 import Logo from "../../assets/Vector logo.png";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 const LoginPage = ({ setIsAuthenticated }) => {
 
   const navigate = useNavigate();
@@ -95,7 +97,8 @@ const LoginPage = ({ setIsAuthenticated }) => {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/v1/external/login", {
+      // const response = await axios.post("http://localhost:5000/v1/external/login", {
+      const response = await axios.post(`${backendUrl}/external/login`, {
         email,
         password
       });

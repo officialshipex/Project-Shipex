@@ -7,16 +7,14 @@ const Services = require("../../../models/courierServiceSecond.model");
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
-const dburl =process.env.MONGODB_URI;
-mongoose.connect(dburl, {})
-    .then(() => {
-        console.log('Connected to MongoDB Atlas');
-    })
-    .catch((err) => {
-        console.error('Connection error', err);
-    });
-
-
+// const dburl =process.env.MONGODB_URI;
+// mongoose.connect(dburl, {})
+//     .then(() => {
+//         console.log('Connected to MongoDB Atlas');
+//     })
+//     .catch((err) => {
+//         console.error('Connection error', err);
+//     });
 
 
 const getCouriers = async () => {

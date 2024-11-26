@@ -8,6 +8,8 @@ import { useState } from "react";
 import axios from "axios";
 import { GSTModal } from "./Modal";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 const KycStep2 = (props) => {
 
   const { setDocumentVerified, companyName, setCompanyName, gstNumber, setGstNumber, address, setAddress, session } = props;
@@ -49,7 +51,7 @@ const KycStep2 = (props) => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/v1/merchant/verfication/gstin', {
+      const response = await axios.post(`${backendUrl}/merchant/verfication/gstin`, {
         GSTIN: gstNumber,
         businessName: companyName || "ShipEx",
       }, {
