@@ -8,6 +8,7 @@ import { validateEmail, validatePhoneNumber } from '../lib/validation';
 import { Link, useNavigate } from 'react-router-dom';
 
 const RegistrationForm = ({ setIsAuthenticated }) => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
     const navigate = useNavigate();
 
@@ -30,7 +31,7 @@ const RegistrationForm = ({ setIsAuthenticated }) => {
     const handleGoogleLogin = (e) => {
         e.preventDefault();
         console.log("Google Login");
-        window.location.href = 'http://localhost:5000/v1/external/auth/google';
+        window.location.href = `${backendUrl}/external/auth/google`;
     }
 
     const handleSubmit = async (e) => {
@@ -56,7 +57,7 @@ const RegistrationForm = ({ setIsAuthenticated }) => {
         }
 
         try {
-            const response = await axios.post('http://localhost:5000/v1/external/register', {
+            const response = await axios.post(`${backendUrl}/external/register`, {
                 firstName,
                 lastName,
                 email,
