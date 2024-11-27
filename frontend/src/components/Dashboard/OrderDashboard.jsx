@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 import React from "react";
 import NavBar from "../Common/NavBar"; // Adjust the import path if necessary
 import Sidebar from "../Common/Sidebar"; // Adjust the import path if necessary
+=======
+>>>>>>> 72798cb5b0662333ec5a43921c38b269836091b9
 
 // RTO Dashboard Component
 const RtoDashboard = () => {
@@ -36,7 +39,6 @@ const RtoDashboard = () => {
     </div>
   );
 };
-
 // NDR Dashboard Component
 const NdrDashboard = () => {
   const ndrOrders = [
@@ -46,7 +48,6 @@ const NdrDashboard = () => {
     { label: "RTO", count: 2 },
     { label: "All", count: 1 },
   ];
-
   return (
     <div className="ndr-dashboard bg-gray-100 p-5 rounded-lg shadow-md">
       <h6 className="text-lg font-bold mb-2">NDR Status</h6>

@@ -1,24 +1,8 @@
 import React from "react";
 
-const BulkOrderPage = () => {
+const BulkOrders = () => {
   return (
     <div className="p-8 bg-gray-100 flex-1">
-      {/* Tabs */}
-      <div className="flex space-x-4 mb-6">
-        <button className="px-4 py-2 border rounded bg-gray-100 hover:bg-green-500 hover:text-white">
-          Single Shipment
-        </button>
-        <button className="px-4 py-2 border rounded bg-green-500 text-white">
-          Bulk Order
-        </button>
-        <button className="px-4 py-2 border rounded bg-gray-100 hover:bg-green-500 hover:text-white">
-          Quick Shipment
-        </button>
-        <button className="px-4 py-2 border rounded bg-gray-100 hover:bg-green-500 hover:text-white">
-          B2B
-        </button>
-      </div>
-
       {/* Upload Section */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-4">Import Bulk Order</h2>
@@ -96,4 +80,4 @@ const BulkOrderPage = () => {
   );
 };
 
-export default BulkOrderPage;
+export default BulkOrders;

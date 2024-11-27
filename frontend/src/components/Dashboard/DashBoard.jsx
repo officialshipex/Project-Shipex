@@ -3,9 +3,20 @@ import Sidebar from '../Common/SideBar';
 
 const Dashboard = () => {
   return (
+<<<<<<< HEAD
     <div className="dashboard-container flex h-screen bg-gray-100">
       {/* Sidebar positioned at the top left */}
       <Sidebar />
+=======
+    <div className='flex'>
+      {/* <Sidebar /> */}
+      <div className="dashboard-container w-full h-full ">
+        <div className='m-2'>
+          {/* <Navbar /> */}
+        </div>
+        <div className="flex-1 flex flex-col items-center p-5">
+          <h4 className="text-xl font-semibold mb-20 text-left w-full pl-5 mt-11">Get Started with These:</h4>
+>>>>>>> 72798cb5b0662333ec5a43921c38b269836091b9
 
       {/* Main Content Section */}
       <div className="flex-1 flex flex-col items-center p-5">
