@@ -7,7 +7,7 @@ import PropTypes from "prop-types";
 import axios from "axios";
 import { AadhaarModal, AccountVerificationModal, OTPModal, PANModal } from "./Modal";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
 const UploadId = (props) => {
 
@@ -48,7 +48,7 @@ const UploadId = (props) => {
 
 
     try {
-      const response = await axios.post(`${backendUrl}/merchant/verfication/generate-otp`, {
+      const response = await axios.post(`${backendUrl}/v1/merchant/verfication/generate-otp`, {
         aadhaarNo: aadharNumber,
       }, {
         headers: {
@@ -119,7 +119,7 @@ const UploadId = (props) => {
     }
 
     try {
-      const response = await axios.post(`${backendUrl}/merchant/verfication/bank-account`, {
+      const response = await axios.post(`${backendUrl}/v1/merchant/verfication/bank-account`, {
         accountNo: accountNumber,
         ifsc: ifscCode,
         name: accountHolderName,
@@ -173,7 +173,7 @@ const UploadId = (props) => {
     }
 
     try {
-      const response = await axios.post(`${backendUrl}/merchant/verfication/pan`, {
+      const response = await axios.post(`${backendUrl}/v1/merchant/verfication/pan`, {
         pan: panNumber,
         name: panName
       }, {
