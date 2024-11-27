@@ -21,7 +21,7 @@ const returnRequestedData = [
 const newReturnRequestedData = [
   {
     id: "NRR124",
-    date: "2024-11-01",
+    date: "2024-11-01T12:00:00Z",
     buyerName: "Jane Smith",
     email: "jane@example.com",
     product: "Shoes",
@@ -36,7 +36,7 @@ const newReturnRequestedData = [
 const schedulePickupData = [
   {
     id: "SP125",
-    date: "2024-11-01",
+    date: "2024-11-01T12:00:00Z",
     buyerName: "Alice Brown",
     email: "alice@example.com",
     product: "Laptop",
@@ -50,7 +50,7 @@ const schedulePickupData = [
 const inTransitData = [
   {
     id: "IT126",
-    date: "2024-11-01",
+    date: "2024-11-01T12:00:00Z",
     buyerName: "Bob Johnson",
     email: "bob@example.com",
     product: "Headphones",
@@ -64,7 +64,7 @@ const inTransitData = [
 const receivedData = [
   {
     id: "R127",
-    date: "2024-11-01",
+    date: "2024-11-01T12:00:00Z",
     buyerName: "Charlie White",
     email: "charlie@example.com",
     product: "Monitor",
@@ -78,7 +78,7 @@ const receivedData = [
 const pendingRefundData = [
   {
     id: "PR128",
-    date: "2024-11-01",
+    date: "2024-11-01T12:00:00Z",
     buyerName: "Diana Green",
     email: "diana@example.com",
     product: "Keyboard",
@@ -166,7 +166,7 @@ const ReturnList = () => {
           <div className="flex justify-between items-center mb-4 p-4">
             <h2 className="text-2xl font-bold">Return Orders</h2>
             <div className="flex items-center space-x-3">
-              <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600">
+              <button className="px-4 py-2 bg-[#0CBB7D] text-white rounded-md text-sm font-medium hover:bg-[#0AA56F]">
                 Select all Orders
               </button>
             
@@ -187,24 +187,20 @@ const ReturnList = () => {
             </div>
           </div>
 
-
-
-
           <div className="flex items-center mb-4">
-  {["Return requested", "New return requested", "Schedule pickup", "In transit", "Received","Pending refund","All"].map((status, index) => (
-    <button
-      key={index}
-      className={`py-2 px-4 text-sm transition duration-300 ${
-        selectedStatus === status
-          ? 'border-b-2 border-green-500 font-semibold text-black'
-          : 'text-gray-500'
-      }`}
-      onClick={() => setSelectedStatus(status)}
-    >
-      {status}
-    </button>
-  ))}
-</div>
+            {["Return requested", "New return requested", "Schedule pickup", "In transit", "Received", "Pending refund", "All"].map((status, index) => (
+              <button
+                key={index}
+                className={`py-2 px-4 text-sm transition duration-300 ${selectedStatus === status
+                    ? 'border-b-2 border-[#0CBB7D] font-semibold text-black'
+                    : 'text-gray-500'
+                  }`}
+                onClick={() => setSelectedStatus(status)}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
 
           <div className="bg-white shadow-md rounded-lg mb-4">
             <div className="border-b p-4 flex font-bold text-left">
@@ -216,22 +212,35 @@ const ReturnList = () => {
 
             {filteredOrders.length > 0 ? (
               filteredOrders.map(order => (
-                <div key={order.id} className="border-b p-4 flex items-start text-left">
+                <div key={order.id} className="border-b p-4 flex items-center text-left space-x-4">
                   <input
                     type="checkbox"
                     checked={selectedOrders[order.id] || false}
                     onChange={() => handleSelectOrder(order.id)}
+                    className="flex-shrink-0"
                   />
                   <div className="flex-1">
-                    <p className="font-semibold">{`Request Id: ${order.id} & Date: ${order.date}`}</p>
+                    <p className="font-semibold">
+                      {/* Format Request Id & Date */}
+                      <span>{order.id}</span> <br />
+                      <span>{new Date(order.date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })} |</span>
+                      <span> {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).replace(':', '.') } </span> <br />
+                      <span className="text-gray-600">CUSTOM</span> <br />
+                      <a href="#" className="text-[#0CBB7D] ml-0 mt-1">View product</a>
+                    </p>
                   </div>
+
                   <div className="flex-1">
                     <p className="font-semibold">{order.buyerName}</p>
                     <p>{order.email}</p>
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold">{order.product}</p>
+                    <p className="px-3 py-1 bg-[#F4F4F4] text-[#1B8D46] rounded-full text-sm shadow-md inline-block mt-1">
+                      Prepaid
+                    </p>
                   </div>
+
                   {order.shippingAddress ? (
                     <div className="flex-1">
                       <p>{order.shippingAddress}</p>
@@ -241,21 +250,26 @@ const ReturnList = () => {
                       <p>{order.buyerDetails}</p>
                     </div>
                   )}
+
                   <div className="flex-1">
                     <p>{order.refundDetails}</p>
                   </div>
+
                   <div className="flex-1">
-                    <p className="text-green-500">{order.status}</p>
+                    <span className="px-3 py-1 border-none bg-[#DFF5E0] rounded-full text-sm text-[#1B8D46] shadow-md">
+                      {order.status}
+                    </span>
                   </div>
+
                   <div className="flex-1">
-                    <button onClick={() => handleShipOrder(order.id)} className="px-2 py-1 bg-green-500 text-white rounded-md">
+                    <button onClick={() => handleShipOrder(order.id)} className="px-2 py-1 bg-[#0CBB7D] text-white rounded-md hover:bg-[#0AA56F]">
                       Schedule Pick up
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-4">No orders found for the selected status.</div>
+              <p className="p-4 text-center">No orders found.</p>
             )}
           </div>
         </div>

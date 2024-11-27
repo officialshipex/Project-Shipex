@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+
 
 
 
@@ -90,56 +89,171 @@ function PackageDetailsForm() {
 
 
 const OrderForm = () => {
+  const [products, setProducts] = useState([{
+    productName: "",
+    quantity: "",
+    unitPrice: "",
+    productCategory: "",
+    sku: "",
+    hsn: "",
+    taxRate: "",
+    discount: "",
+    weight: "",
+    dimensions: {
+      length: "",
+      breadth: "",
+      height: "",
+    },
+    showAdditionalFields: false, // To control showing SKU, HSN, Tax Rate, and Discount
+  }]);
+
+  const handleInputChange = (index, e) => {
+    const { name, value } = e.target;
+    const updatedProducts = [...products];
+    if (name in updatedProducts[index].dimensions) {
+      updatedProducts[index].dimensions[name] = value; // Handle dimensions separately
+    } else {
+      updatedProducts[index][name] = value;
+    }
+    setProducts(updatedProducts);
+  };
+
+  const addProductRow = () => {
+    setProducts([
+      ...products,
+      {
+        productName: "",
+        quantity: "",
+        unitPrice: "",
+        productCategory: "",
+        sku: "",
+        hsn: "",
+        taxRate: "",
+        discount: "",
+        weight: "",
+        dimensions: { length: "", breadth: "", height: "" },
+        showAdditionalFields: true, // Show additional fields (SKU, HSN, Tax Rate, Discount)
+      }
+    ]);
+  };
+
   return (
-    <div className="min-h-screen bg-green-50"> {/* Set the entire background to light green */}
-      <div className="bg-green-50 p-8 w-full min-h-screen"> {/* Inside container background */}
-        
+    <div className="min-h-screen bg-green-50">
+      <div className="bg-green-50 p-8 w-full min-h-screen">
         {/* Product Details Heading with Button */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-gray-800">Product Details</h2>
-          <button className="bg-green-400 text-white py-2 px-4 rounded-md hover:bg-green-500 transition">
+          <button
+            className="bg-green-400 text-white py-2 px-4 rounded-md hover:bg-green-500 transition"
+            onClick={addProductRow}
+          >
             Add Product
           </button>
         </div>
 
         {/* Product Details Inputs */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-800">Product Name</label>
-            <input
-              type="text"
-              className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
-              placeholder="Enter product name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-800">Quantity</label>
-            <input
-              type="number"
-              className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
-              placeholder="Enter Qty"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-800">Unit Price</label>
-            <input
-              type="number"
-              className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
-              placeholder="Enter unit price"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-800">Product Category</label>
-            <input
-              type="text"
-              className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
-              placeholder="Enter product category"
-            />
-          </div>
-        </div>
+        {products.map((product, index) => (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6" key={index}>
+            {/* Product Details Section (always visible) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-800">Product Name</label>
+              <input
+                type="text"
+                name="productName"
+                value={product.productName}
+                onChange={(e) => handleInputChange(index, e)}
+                className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                placeholder="Enter product name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800">Quantity</label>
+              <input
+                type="number"
+                name="quantity"
+                value={product.quantity}
+                onChange={(e) => handleInputChange(index, e)}
+                className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                placeholder="Enter Qty"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800">Unit Price</label>
+              <input
+                type="number"
+                name="unitPrice"
+                value={product.unitPrice}
+                onChange={(e) => handleInputChange(index, e)}
+                className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                placeholder="Enter unit price"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800">Product Category</label>
+              <input
+                type="text"
+                name="productCategory"
+                value={product.productCategory}
+                onChange={(e) => handleInputChange(index, e)}
+                className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                placeholder="Enter product category"
+              />
+            </div>
 
-        {/* Package Details Section with light green background */}
-        <div className="bg-green-50 text-gray-800 rounded-md p-8 w-full max-w-3xl relative mt-4">
+            {/* Conditionally Render SKU, HSN, Tax Rate, Discount */}
+            {product.showAdditionalFields && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">SKU</label>
+                  <input
+                    type="text"
+                    name="sku"
+                    value={product.sku}
+                    onChange={(e) => handleInputChange(index, e)}
+                    className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                    placeholder="Enter SKU"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">HSN</label>
+                  <input
+                    type="text"
+                    name="hsn"
+                    value={product.hsn}
+                    onChange={(e) => handleInputChange(index, e)}
+                    className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                    placeholder="Enter HSN"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">Tax Rate</label>
+                  <input
+                    type="number"
+                    name="taxRate"
+                    value={product.taxRate}
+                    onChange={(e) => handleInputChange(index, e)}
+                    className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                    placeholder="Enter tax rate"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">Discount (Optional)</label>
+                  <input
+                    type="number"
+                    name="discount"
+                    value={product.discount}
+                    onChange={(e) => handleInputChange(index, e)}
+                    className="w-full border rounded-md p-2 focus:ring focus:ring-green-200"
+                    placeholder="Enter discount"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+
+        {/* Package Details Section (Always Visible) */}
+        <div className="bg-green-50 text-gray-800 rounded-md p-8 w-full max-w-3xl relative mt-8">
           <h2 className="text-xl font-semibold mb-6">Package Details</h2>
 
           {/* Weight and Dimensions Row */}
@@ -194,25 +308,13 @@ const OrderForm = () => {
             <h3 className="text-gray-700 font-medium">Package details</h3>
             <p className="text-lg font-semibold text-gray-800">Volumetric Weight: 0 kg</p>
           </div>
-
-          {/* Payment Section */}
-          <h2 className="text-xl font-bold mb-6">Payment</h2>
-          <div className="flex gap-4 mb-6">
-            <label className="flex items-center">
-              <input type="radio" name="payment" value="COD" className="mr-2" />
-              COD
-            </label>
-            <label className="flex items-center">
-              <input type="radio" name="payment" value="Prepaid" className="mr-2" />
-              Prepaid
-            </label>
-          </div>
-
         </div>
 
         {/* Render Next button */}
         <div className="flex justify-end mt-6">
-          {/* Add a button here */}
+          <button className="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -468,6 +570,7 @@ const DeliveryForm = () => {
 
 
 // QuickShipment Component
+
 const QuickShipment = () => {
   const [isBillingSameAsShipping, setIsBillingSameAsShipping] = useState(false);
 
@@ -476,26 +579,19 @@ const QuickShipment = () => {
   };
 
   return (
-    <div className="flex h-screen bg-green-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col bg-green-50">
-        <NavBar />
+    <div className="flex flex-col h-screen bg-green-50">
+      {/* BuyerForm */}
+      <BuyerForm onBillingAddressToggle={handleBillingAddressToggle} />
 
-        {/* BuyerForm */}
-        <BuyerForm onBillingAddressToggle={handleBillingAddressToggle} />
+      {/* Conditionally render DeliveryForm if checkbox is checked */}
+      {isBillingSameAsShipping && <DeliveryForm />}
 
-        {/* Conditionally render DeliveryForm if checkbox is checked */}
-        {isBillingSameAsShipping && <DeliveryForm />}
+      {/* Always render OrderForm */}
+      <OrderForm />
 
-        {/* Always render OrderForm */}
-        <OrderForm />
-
-        {/* Render Next button at the bottom inside the content */}
-        <div className="flex justify-end mt-6 p-4 bg-white shadow-md">
-          <button className="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-            Next
-          </button>
-        </div>
+      {/* Render Next button at the bottom inside the content */}
+      <div className="flex justify-end mt-6 p-4 bg-white shadow-md">
+        
       </div>
     </div>
   );

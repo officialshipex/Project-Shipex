@@ -1,17 +1,24 @@
 import React, { useState } from "react";
 import NavBar from "../Common/NavBar";
 import Sidebar from "../Common/Sidebar";
+import BulkOrders from '../AddOrder/BulkOrders';
+import QuickShipment from '../AddOrder/Quickshipment'; 
+
+
+
+
+
 
 
 function AddressSelection() {
     const [selectedAddress, setSelectedAddress] = useState('');
 
-    const primaryAddress = '129 Vidya nagar, Bhiwani Haryana India';
+    const primaryAddress = '129 Vidya Nagar, Bhiwani Haryana India';
     const moreAddresses = [
-        '129 Vidya nagar, Bhiwani Haryana India',
-        '129 Vidya nagar, Bhiwani Haryana India',
-        '129 Vidya nagar, Bhiwani Haryana India',
-        '129 Vidya nagar, Bhiwani Haryana India',
+        '101 Sector 17, Chandigarh India',
+        '45 Ring Road, Delhi India',
+        '560 Residency Road, Bangalore India',
+        '22 Park Street, Kolkata India',
     ];
 
     const handleSelect = (address) => {
@@ -21,45 +28,60 @@ function AddressSelection() {
     return (
         <div className="p-6 max-w-4xl mx-auto font-sans text-left">
             {/* Primary Address Section */}
-            <h3 className="text-lg font-semibold mb-4 text-left">Pick up Address</h3>
-            <div className="border border-gray-300 p-4 rounded-lg mb-6 bg-gray-50 text-left">
-                <h4 className="font-semibold mb-2 text-left">Primary</h4>
-                <p className="mb-2 text-sm text-gray-600 text-left">{primaryAddress}</p>
+            <h3 className="text-lg font-semibold mb-4">Pick up Address</h3>
+            <div
+                className={`border p-4 rounded-lg mb-6 ${
+                    selectedAddress === primaryAddress ? 'bg-green-200 border-green-500' : 'bg-gray-50 border-gray-300'
+                }`}
+            >
+                <h4 className="font-semibold mb-2">Primary</h4>
+                <p className="mb-2 text-sm text-gray-600">{primaryAddress}</p>
                 <button
                     onClick={() => handleSelect(primaryAddress)}
-                    className="px-4 py-2 rounded bg-green-100 text-gray-600 hover:bg-green-200 text-left"
+                    className="px-4 py-2 rounded bg-green-100 text-gray-600 hover:bg-green-200"
                 >
-                    Select
+                    Select Address
                 </button>
             </div>
 
             {/* More Addresses Section */}
-            <h3 className="text-lg font-semibold mb-4 text-left">More addresses</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-left">
+            <h3 className="text-lg font-semibold mb-4">More Addresses</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {moreAddresses.map((address, index) => (
                     <div
                         key={index}
-                        className="border border-gray-300 p-4 rounded-lg bg-gray-50 text-left"
+                        className={`border p-4 rounded-lg ${
+                            selectedAddress === address ? 'bg-green-200 border-green-500' : 'bg-gray-50 border-gray-300'
+                        }`}
                     >
-                        <p className="mb-2 text-sm text-gray-600 text-left">{address}</p>
+                        <p className="mb-2 text-sm text-gray-600">{address}</p>
                         <button
                             onClick={() => handleSelect(address)}
-                            className="w-full px-4 py-2 rounded bg-green-100 text-gray-600 hover:bg-green-200 text-left"
+                            className="w-full px-4 py-2 rounded bg-green-100 text-gray-600 hover:bg-green-200"
                         >
-                            Select
+                            Select Address
                         </button>
                     </div>
                 ))}
             </div>
 
+            {/* Selected Address Feedback */}
+            {selectedAddress && (
+                <div className="mt-4 text-sm text-green-700">
+                    <strong>Selected Address:</strong> {selectedAddress}
+                </div>
+            )}
+
             {/* Back and Next Buttons */}
             <div className="flex justify-end space-x-4 mt-6">
-                <button className="px-6 py-2 rounded bg-gray-300 hover:bg-gray-400 ml-4">Back</button>
+                <button className="px-6 py-2 rounded bg-gray-300 hover:bg-gray-400">Back</button>
                 <button className="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">Next</button>
             </div>
         </div>
     );
 }
+
+
 
 
 
@@ -591,8 +613,8 @@ const AddStaff = () => {
   const [billingAddressSame, setBillingAddressSame] = useState(false);
   const [activeTab, setActiveTab] = useState("Single shipment");
   const [activeSubTab, setActiveSubTab] = useState("Buyer Details");
-  const [selectedAddress, setSelectedAddress] = useState('');
-  
+  const [selectedAddress, setSelectedAddress] = useState("");
+
   const mainTabs = ["Single shipment", "Bulk orders", "Quick Shipment", "B2B"];
   const subTabs = ["Buyer Details", "Pick up Address", "Order details", "Package Details"];
 
@@ -605,7 +627,6 @@ const AddStaff = () => {
   };
 
   const handleNextButtonClick = () => {
-    // Handle next button click logic here
     console.log("Next button clicked");
   };
 
@@ -621,8 +642,11 @@ const AddStaff = () => {
               <button
                 key={tab}
                 className={`px-4 py-2 rounded-md ${
-                  activeTab === tab ? 'bg-green-500 text-white' : 'bg-white text-gray-500'
+                  activeTab === tab ? "text-white" : "bg-white text-gray-500"
                 }`}
+                style={{
+                  backgroundColor: activeTab === tab ? "#0CBB7D" : "transparent",
+                }}
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
@@ -630,7 +654,7 @@ const AddStaff = () => {
             ))}
           </div>
 
-          {/* Conditionally render Sub Tabs only for "Single shipment" */}
+          {/* Content for Active Tabs */}
           {activeTab === "Single shipment" && (
             <div>
               <h2 className="text-xl font-semibold mb-2">{activeTab}</h2>
@@ -639,10 +663,13 @@ const AddStaff = () => {
                   <button
                     key={subTab}
                     className={`pb-2 ${
-                      activeSubTab === subTab
-                        ? 'text-green-500 border-b-2 border-green-500'
-                        : 'text-gray-500'
+                      activeSubTab === subTab ? "text-gray-500" : "text-gray-500"
                     }`}
+                    style={{
+                      color: activeSubTab === subTab ? "#0CBB7D" : undefined,
+                      borderBottom:
+                        activeSubTab === subTab ? "2px solid #0CBB7D" : undefined,
+                    }}
                     onClick={() => setActiveSubTab(subTab)}
                   >
                     {subTab}
@@ -650,18 +677,16 @@ const AddStaff = () => {
                 ))}
               </div>
 
-              {/* Content based on active sub-tab */}
               <div className="mt-4">
                 {activeSubTab === "Buyer Details" && (
                   <>
                     <BuyerForm onBillingAddressToggle={handleBillingAddressToggle} />
                     {billingAddressSame && <DeliveryForm />}
-                    
-                    {/* Next Button (only visible in Buyer Details) */}
                     <div className="absolute bottom-8 right-12">
                       <button
                         onClick={handleNextButtonClick}
-                        className="px-4 py-2 bg-green-500 text-white rounded-md"
+                        className="px-4 py-2 text-white rounded-md"
+                        style={{ backgroundColor: "#0CBB7D" }}
                       >
                         Next
                       </button>
@@ -680,11 +705,15 @@ const AddStaff = () => {
             </div>
           )}
 
-          {/* You can add the content for other tabs here, if necessary */}
-          {activeTab !== "Single shipment" && (
-            <div className="mt-4">
-              {/* Content for Bulk orders, Quick Shipment, B2B */}
-              <p>Select a sub-tab based on the context for the other tabs.</p>
+          {/* Render BulkOrders for "Bulk orders" tab */}
+          {activeTab === "Bulk orders" && <BulkOrders />}
+
+          {/* Render content for other tabs (Quick Shipment, B2B) */}
+          {activeTab === "Quick Shipment" && <QuickShipment />}
+
+          {activeTab === "B2B" && (
+            <div>
+              <p>B2B content goes here.</p>
             </div>
           )}
         </div>

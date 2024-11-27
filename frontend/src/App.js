@@ -1,4 +1,6 @@
 import React from "react";
+import 'typeface-poppins';
+
 import Dashboard from "../Dashboard"; // Importing the Dashboard component
 
 function App() {
