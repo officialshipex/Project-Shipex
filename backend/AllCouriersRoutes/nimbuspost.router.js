@@ -10,6 +10,7 @@ router.get('/saveNew',saveNimbusPost);
 
 router.get("/getAndUpdateCourierServices",nimbuspostCourierController.getCouriers);
 router.post("/getServiceablePincodes",nimbuspostCourierController.getServiceablePincodes);
+router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
 
 router.post("/createShipment",nimbuspostShipmentController.createShipment);
 router.post("/trackShipment",nimbuspostShipmentController.trackShipment);

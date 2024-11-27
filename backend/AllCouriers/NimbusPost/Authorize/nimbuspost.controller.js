@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({path:"../../../.env"});
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
 
@@ -9,6 +9,7 @@ const getAuthToken = async () => {
         email:process.env.NIMBUS_GMAIL,
         password:process.env.NIMBUS_PASS
     };
+
 
     try {
         const response = await axios.post(url, payload, {
