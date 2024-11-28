@@ -32,6 +32,7 @@ const B2BzoneController=require("./B2BzoneMangement/Zone.controller");
 
 //B2B APIS
 const B2BNimbusPostController=require("./AllCouriersRoutes/B2B/nimbuspost.router");
+const B2BDelhiveryController=require("./AllCouriersRoutes/B2B/delhivery.router");
 
 
 require("dotenv").config();
@@ -67,6 +68,7 @@ app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/B2Bzone",B2BzoneController);
 
 app.use("/v1/B2BNimbusPost",B2BNimbusPostController);
+app.use("/v1/B2BDelhivery",B2BDelhiveryController);
 
 
 module.exports = app;
