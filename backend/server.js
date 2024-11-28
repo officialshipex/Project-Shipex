@@ -19,7 +19,7 @@ const customRateController=require("./routes/saveCustomRate.router");
 const editBaseRateController=require("./routes/editBaseRate.router");
 
 // const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
-// const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
+const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
 // const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
 const ShreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router")
 
@@ -57,7 +57,7 @@ app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
 
 // app.use("/v1/NimbusPost",NimbusPostController);
-// app.use("/v1/Shiprocket",ShipRocketController);
+app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/shreeMaruti",ShreeMarutiController);
 

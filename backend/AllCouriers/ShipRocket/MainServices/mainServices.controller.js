@@ -97,13 +97,13 @@ const listCouriers = async (req, res) => {
 
 // 5. Check Courier Serviceability
 const checkServiceability = async (req, res) => {
-  const { pickup_pincode, delivery_pincode, cod } = req.query;
+  const { pickup_postcode, delivery_postcode, cod, weight } = req.query;
 
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
       headers: { Authorization: `Bearer ${token}` },
-      params: { pickup_pincode, delivery_pincode, cod },
+      params: { pickup_postcode, delivery_postcode, cod, weight},
     });
     res.json(response.data);
   } catch (error) {
