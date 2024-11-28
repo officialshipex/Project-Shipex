@@ -1,12 +1,12 @@
 const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
-// const Services = require("../../../models/courierServiceSecond.model");
+const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
 
-const dburl = 'mongodb+srv://foundershipex:DEIMTVquekhDVFvc@cluster0.docbi.mongodb.net/zipping?retryWrites=true&w=majority';
+const dburl = process.env.MONGODB_URI
 mongoose.connect(dburl, {})
     .then(() => {
         console.log('Connected to MongoDB Atlas');
@@ -16,10 +16,14 @@ mongoose.connect(dburl, {})
     });
 
 
+
 const getAllActiveCourierServices = async (req, res) => {
-    const token = await getToken();
     try {
-        const option = {
+        // Get the authentication token
+        const token = await getToken();
+
+        // Define request options
+        const options = {
             method: "GET",
             url: "https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts?type=active",
             headers: {
@@ -27,49 +31,79 @@ const getAllActiveCourierServices = async (req, res) => {
                 Authorization: `Bearer ${token}`,
             },
         };
-        const response = await axios.request(option);
-        if (response.status) {
-            let servicesData = response.data;
-            let currCourier = await Courier.find({ provider:'Shiprocket'});
 
-            // Fetch all previous services in a single query to reduce DB calls
-            const prevServices = new Set();
-            const services = await Services.find({ '_id': { $in: currCourier[0].services } });
+        // Make the API request
+        const response = await axios.request(options);
 
-            // Populate Set with previous service names
-            services.forEach(service => {
-                prevServices.add(service.courierProviderServiceName);
-            });
+        if (response.status === 200) {
+            const servicesData = response.data;
+            // console.log(servicesData)
+            // Fetch current courier and existing services
+            const currCourier = await Courier.findOne({ provider: 'Shiprocket' });
+            // console.log(currCourier)
+            if (!currCourier) {
+                return res.status(404).send("Courier provider 'Shiprocket' not found.");
+            }
 
-            servicesData.forEach(async (element) => {
-                let name = element.name;
-                if (!prevServices.has(name)) {
+            const existingServices = await Services.find({ '_id': { $in: currCourier.services } });
+            const prevServicesSet = new Set(existingServices.map(service => service.courierProviderServiceName));
+
+            const newServices = []; // To track newly added services
+            const errors = []; // To track errors while saving services
+
+            // Iterate over the fetched services
+            for (const element of servicesData) {
+                const name = element.name;
+                if (!prevServicesSet.has(name)) {
                     try {
                         const newService = new Services({
                             courierProviderServiceId: getUniqueId(),
                             courierProviderServiceName: name,
                         });
-                        const Ship = await Courier.find({ provider: 'Shiprocket' });
-                        Ship.services.push(newService._id);
+                        currCourier.services.push(newService._id);
                         await newService.save();
-                        await Ship.save();
-                        console.log(`New service saved: ${name}`);
+                        newServices.push(name);
                     } catch (error) {
-                        console.error(`Error saving service: ${name}`, error);
+                        errors.push({ name, error: error.message });
                     }
                 }
+            }
+
+            // Save updated courier data
+            await currCourier.save();
+
+            // Send the response with new services and any errors
+            return res.status(200).send({
+                message: "Service update completed.",
+                newServices,
+                errors,
             });
-
+        } else {
+            return res.status(response.status).send({
+                message: "Failed to fetch courier services from Shiprocket.",
+                details: response.data,
+            });
         }
-
     } catch (error) {
-        if (error.response) {
-            console.error('Error Response:', error.response.data);
-        }
-        throw new Error(`Error in fetching couriers: ${error.message}`);
+        console.error("Error fetching couriers:", error);
+        return res.status(500).send({
+            message: "Error fetching courier services.",
+            error: error.response?.data || error.message,
+        });
     }
-
 };
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // const getCourierServicesFromDatabase = async (req, res) => {
