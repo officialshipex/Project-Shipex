@@ -30,6 +30,9 @@ const authRouter = require("./routes/auth.router");
 //B2B ZONE MANAGEMENT
 const B2BzoneController=require("./B2BzoneMangement/Zone.controller");
 
+//B2B APIS
+const B2BNimbusPostController=require("./AllCouriersRoutes/B2B/nimbuspost.router");
+
 
 require("dotenv").config();
 
@@ -62,6 +65,8 @@ app.use("/v1/NimbusPost",NimbusPostController);
 app.use("/v1/Shiprocket",ShipRocketController);
 app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/B2Bzone",B2BzoneController);
+
+app.use("/v1/B2BNimbusPost",B2BNimbusPostController);
 
 
 module.exports = app;
