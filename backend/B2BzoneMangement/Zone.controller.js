@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Zone = require("../models/Zone.model");
-const courier=require("../models/B2Bcourier");
-const courierService=require("../models/B2BcourierService");
+const B2Bcourier=require("../models/B2Bcourier");
+const B2BCourierService=require("../models/B2BcourierService");
 
 router.post("/createZone", async (req, res) => {
   try {
@@ -58,6 +58,29 @@ router.get("/getAllZones", async (req, res) => {
 });
 
 
+router.get("/getAllCourierProviders",async(req,res)=>{
+  try{
+    const result=await B2Bcourier.find({});
+    res.status(200).json(result);
+  }catch(error){
+    console.error("Error retrieving zones:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+})
+
+
+
+router.get("/", async (req, res) => {
+  try {
+      let { provider } = req.query;
+      const query = provider ? { provider: provider } : {};
+      let services = await B2Bcourier.find(query).populate('services');
+      res.status(200).json(services);
+  } catch (error) {
+      console.error("Error fetching courier services:", error);
+      res.status(500).json([]);
+  }
+});
 
 // router.post("/saveZoneMapping", async (req, res) => {
 //   let { courierProviderName, courierServiceName, zone, cities, states } = req.body;

@@ -6,6 +6,7 @@ const MapZone = () => {
     const [zones, setZones] = useState([]);
     const [cities, setCities] = useState([]);
     const [states, setStates] = useState([]);
+    const [courierProvider, setCourierProvider] = useState([]);
     const [courierServices, setCourierServices] = useState([]);
     const [newCity, setNewCity] = useState("");
     const [newState, setNewState] = useState("");
@@ -24,14 +25,47 @@ const MapZone = () => {
                 const response = await fetch("http://localhost:5000/v1/B2Bzone/getAllZones");
                 const data = await response.json();
                 setZones(data);
-                console.log(data);
             } catch (error) {
                 console.error("Error fetching zones:", error);
             }
         };
 
-        fetchZones();
+        const fetchProviders = async () => {
+            try {
+                const response = await fetch("http://localhost:5000/v1/B2Bzone/getAllCourierProviders");
+                const data = await response.json();
+                setCourierProvider(data);
+            } catch (error) {
+                console.error("Error fetching providers:", error);
+            }
+        };
+
+        const fetchData = async () => {
+            await Promise.all([fetchZones(), fetchProviders()]);
+        };
+
+        fetchData();
     }, []);
+
+    const updateCourierService=async(provider)=>{
+        try{
+
+            const response = await fetch(`http://localhost:5000/v1/B2Bzone?provider=${provider}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              const data=await response.json();
+              setCourierServices(data[0].services);
+        }
+         
+        catch (error) {
+            console.error('Error getting couriers:', error);
+            alert('Error getting couriers');
+          }
+    }
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
@@ -39,6 +73,10 @@ const MapZone = () => {
             ...prevFormData,
             [name]: value,
         }));
+
+        if (name ==='courierProviderName') {
+            updateCourierService(value);
+          }
     };
 
     const handleAddCity = (event) => {
@@ -105,7 +143,13 @@ const MapZone = () => {
                         onChange={handleInputChange}
                     >
                         <option value="">Select The Provider</option>
-                        <option value="ShipRocketCargo">ShipRocketCargo</option>
+                       {courierProvider.map((provider,index)=>(
+                        <option key={index} value={provider.provider}>
+                            {provider.provider}
+                        </option>
+                       ))
+
+                       }
                     </select>
                 </div>
 
