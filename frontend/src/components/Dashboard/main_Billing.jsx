@@ -130,11 +130,10 @@ const BillingList = () => {
             {["Shipping Charges", "COD Remittance", "Invoices", "Passbook", "Credit Receipt"].map((status, index) => (
               <button
                 key={index}
-                className={`py-2 px-4 text-sm font-medium ${
-                  selectedStatus === status
+                className={`py-2 px-4 text-sm font-medium ${selectedStatus === status
                     ? "text-gray-600 border-b-2 border-gray-600"
                     : "text-gray-500"
-                }`}
+                  }`}
                 onClick={() => setSelectedStatus(status)}
               >
                 {status}
