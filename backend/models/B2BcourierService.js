@@ -12,10 +12,6 @@ const B2BcourierServiceSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    rateCards: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'RateCard',
-    }],
     zones:[{
       type:mongoose.Schema.Types.ObjectId,
       ref:'Zone'

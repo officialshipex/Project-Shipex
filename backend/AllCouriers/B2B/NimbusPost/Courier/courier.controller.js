@@ -1,6 +1,9 @@
 require('dotenv').config({ path: "../../../../.env" });
 const { getToken } = require("../Authorize/authorize.controller");
 const axios = require('axios');
+const {saveNimbusPost}=require("../Authorize/authorize.controller");
+const B2BCourierService=require("../../../../models/B2BcourierService");
+const B2Bcourier=require("../../../../models/B2Bcourier");
 
 const createOrder= async (req, res) => {
     const url = 'https://ship.nimbuspost.com/api/shipmentcargo/create';
@@ -181,77 +184,99 @@ const cancelManifestOrder = async (req, res) => {
 };
 
 
-const rateAndServiceability = async (req, res) => {
+
+
+
+
+
+async function getRateAndServiceability(payload) {
     const url = 'https://ship.nimbuspost.com/api/courier/b2b_serviceability';
-    const token = await getToken();
-
-    if (!token.data) {
-        console.error("Failed to fetch token.");
-        return res.status(500).json({ success: false, error: "Authorization token missing or invalid" });
-    }
-
-    const { origin, destination, payment_type, details, order_value } = req.body;
-
-    
-    if (!origin || typeof origin !== 'string' || origin.length !== 6) {
-        return res.status(400).json({ success: false, error: "Invalid or missing origin pin code." });
-    }
-
-    if (!destination || typeof destination !== 'string' || destination.length !== 6) {
-        return res.status(400).json({ success: false, error: "Invalid or missing destination pin code." });
-    }
-
-    if (!payment_type || (payment_type !== "prepaid" && payment_type !== "cod")) {
-        return res.status(400).json({ success: false, error: "Payment type must be 'prepaid' or 'cod'." });
-    }
-
-    if (!details || !Array.isArray(details) || details.length === 0) {
-        return res.status(400).json({ success: false, error: "Details must be a non-empty array." });
-    }
-
-    for (const item of details) {
-        if (
-            !item.qty || !item.weight || !item.length || !item.breadth || !item.height ||
-            typeof item.qty !== 'number' || typeof item.weight !== 'number' ||
-            typeof item.length !== 'number' || typeof item.breadth !== 'number' ||
-            typeof item.height !== 'number'
-        ) {
-            return res.status(400).json({ success: false, error: "Invalid or missing fields in details array." });
-        }
-    }
-
-    if (!order_value || isNaN(order_value)) {
-        return res.status(400).json({ success: false, error: "Invalid or missing order value." });
-    }
-
-    const payload = { origin, destination, payment_type, details, order_value };
 
     try {
+        const token = await getToken();
+
+        if (!token?.data) {
+            throw new Error('Failed to fetch token.');
+        }
+
         const response = await axios.post(url, payload, {
             headers: {
-                Authorization: `Bearer ${token.data}`, 
-                "Content-Type": "application/json", 
-            },
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token.data}` // Use fetched token
+            }
         });
 
-        
-        res.status(200).json({
-            success: true,
-            message: "Rate and serviceability details fetched successfully",
-            data: response.data.data,
-        });
+        return response.data;
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to fetch rate and serviceability details",
-            error: error.response?.data || error.message,
+        console.error('Error fetching rate and serviceability:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
+const rateAndServiceability = async () => {
+    const testPayload = {
+        origin: "122001",
+        destination: "400001",
+        payment_type: "prepaid",
+        details: [
+            {
+                qty: 2,
+                weight: 4,
+                length: 1,
+                breadth: 1,
+                height: 1
+            }
+        ],
+        order_value: "2"
+    };
+
+    try {
+        await saveNimbusPost();
+
+       
+        const nimbusPost = await B2Bcourier.findOne({ provider: "NimbusPost" });
+        if (!nimbusPost) {
+            throw new Error("NimbusPost provider not found in the database.");
+        }
+
+        
+        const result = await getRateAndServiceability(testPayload);
+
+        const services = result.data || [];
+        if (services.length === 0) {
+            console.log("No services available for the provided parameters.");
+            return;
+        }
+
+        
+        const existingServices = await B2BCourierService.find({
+            courierProviderServiceName: { $in: services.map(s => s.name) }
         });
+
+        const existingServiceNames = new Set(existingServices.map(s => s.courierProviderServiceName));
+
+        
+        for (let service of services) {
+            if (!existingServiceNames.has(service.name)) {
+                let newService=new B2BCourierService({
+                    courierProviderServiceId: nimbusPost._id,
+                    courierProviderServiceName: service.name
+                });
+                await newService.save();
+                nimbusPost.services.push(newService._id);
+                await nimbusPost.save();
+            }
+        }
+
+        console.log("Services updated successfully.");
+    } catch (error) {
+        console.error('Operation failed:', error.message);
     }
 };
 
 
 
 
-
 module.exports = { createOrder, trackShipment, manifestOrder,cancelManifestOrder,rateAndServiceability};
+
 

@@ -1,5 +1,6 @@
 require('dotenv').config({ path: "../../../../.env" }); 
 const axios = require('axios');
+const B2Bcourier=require("../../../../models/B2Bcourier");
 
 const getToken= async () => {
     const url = 'https://ship.nimbuspost.com/api/users/login';
@@ -18,4 +19,16 @@ const getToken= async () => {
     }
 };
 
-module.exports={getToken};
+const saveNimbusPost = async () => {
+    const existingCourier = await B2Bcourier.findOne({ provider: 'NimbusPost' });
+    if (!existingCourier) {
+        const newB2B = new B2Bcourier({ provider: 'NimbusPost' });
+        await newB2B.save();
+        console.log('NimbusPost added to the B2Bcourier collection.');
+    } else {
+        console.log('NimbusPost already exists in the B2Bcourier collection.');
+    }
+};
+
+
+module.exports={getToken,saveNimbusPost};
