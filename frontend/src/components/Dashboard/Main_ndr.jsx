@@ -140,8 +140,8 @@ const NDR = () => {
             <button
               key={index}
               className={`py-2 px-4 text-sm transition duration-300 ${selectedStatus === status
-                  ? "border-b-2 border-green-500 font-semibold text-black"
-                  : "text-gray-500"
+                ? "border-b-2 border-green-500 font-semibold text-black"
+                : "text-gray-500"
                 }`}
               onClick={() => setSelectedStatus(status)}
             >
