@@ -6,8 +6,8 @@ import 'typeface-poppins';
 // import OrderDashboard from "./components/Dashboard/OrderDashboard"; // Import OrderDashboard
 // import OrderList from "./components/Dashboard/Order"; // Import OrderList
 //import ReturnList from "./components/Dashboard/Main_Return_Request"; // Import only ReturnList
-// import BillingList from "./components/Dashboard/Main_Billing"; // Import BillingList
- import NDR from "./components/Dashboard/Main_ndr"; // Commented out NDR import
+ import BillingList from "./components/Dashboard/Main_Billing"; // Import BillingList
+// import NDR from "./components/Dashboard/Main_ndr"; // Commented out NDR import
 
 // import CRFIDPopup from "./components/Dashboard/Billing_COD Remittance_CRF id";
 // import Modal from "./components/Dashboard/Billing_COD remittance_CRF ID";
@@ -22,7 +22,7 @@ import 'typeface-poppins';
 function App() {
   return (
     <>
-      <NDR />
+      <BillingList />
     </>
   );
 }

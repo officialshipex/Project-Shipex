@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import NavBar from "../Common/NavBar";
-import Sidebar from "../Common/Sidebar";
+
 
 const BillingList = () => {
   const [selectedStatus, setSelectedStatus] = useState("Shipping Charges");
@@ -17,8 +16,8 @@ const BillingList = () => {
       excessWeightCharges: "0",
       holdOnAmount: "0.0",
       totalFreightCharge: "399",
-      endDate: "15 Aug, 2024",
-      invoiceDueDate: "10 Sep, 2024",
+      enteredweightdimensions: "15 Kg",
+      chargedweightdimensions: "",
     },
     {
       orderId: "75847594",
@@ -30,8 +29,8 @@ const BillingList = () => {
       excessWeightCharges: "0",
       holdOnAmount: "0.0",
       totalFreightCharge: "399",
-      endDate: "15 Aug, 2024",
-      invoiceDueDate: "10 Sep, 2024",
+      enteredweightdimensions: "15 Kg",
+      chargedweightdimensions: "",
     },
   ];
 
@@ -48,6 +47,7 @@ const BillingList = () => {
       adjustedAmount: "N/A",
       remittanceAccount: "₹ 5680",
       remittanceMethod: "Prepaid",
+      remittancestatus:"Remittance Successful"
     },
     {
       date: "Wed, Aug 14 2024",
@@ -60,6 +60,7 @@ const BillingList = () => {
       adjustedAmount: "N/A",
       remittanceAccount: "₹ 5680",
       remittanceMethod: "Prepaid",
+      remittancestatus:"Remittance Successful"
     },
   ];
 
@@ -116,10 +117,7 @@ const BillingList = () => {
   ];
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <NavBar />
+   
         <div className="container mx-auto mt-4 bg-white shadow-md rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold">Billing</h2>
@@ -142,51 +140,80 @@ const BillingList = () => {
             ))}
           </div>
 
+
+
+
+
+
+
           {/* Shipping Charges Table */}
+         
           {selectedStatus === "Shipping Charges" && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead>
-                  <tr className="bg-gray-100 border-b">
-                    {[
-                      "Order ID",
-                      "AWB Number",
-                      "Courier",
-                      "Shipment Status",
-                      "AWB Assigned Date",
-                      "Applied Weight Charges ₹",
-                      "Excess Weight Charges ₹",
-                      "Hold On Amount ₹",
-                      "Total Freight Charge ₹",
-                      "End Date",
-                      "Invoice Due Date",
-                    ].map((header, index) => (
-                      <th key={index} className="py-3 px-4 text-left text-gray-700 font-semibold text-sm">
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {shippingChargesData.map((order, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="py-3 px-4">{order.orderId}</td>
-                      <td className="py-3 px-4">{order.awbNumber}</td>
-                      <td className="py-3 px-4">{order.courier}</td>
-                      <td className="py-3 px-4">{order.shipmentStatus}</td>
-                      <td className="py-3 px-4">{order.awbAssignedDate}</td>
-                      <td className="py-3 px-4">{order.appliedWeightCharges}</td>
-                      <td className="py-3 px-4">{order.excessWeightCharges}</td>
-                      <td className="py-3 px-4">{order.holdOnAmount}</td>
-                      <td className="py-3 px-4">{order.totalFreightCharge}</td>
-                      <td className="py-3 px-4">{order.endDate}</td>
-                      <td className="py-3 px-4">{order.invoiceDueDate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+  <div className="overflow-x-auto">
+    {/* Balance Display Section */}
+    <div className="grid grid-cols-5 gap-4 mb-4">
+      {["Total Freight Charges  ₹ 5680", "Billed Freight Charges ₹ 5680", "Unbilled Freight Charges ₹ 5680", "Total On-Hold Amount ₹ 5680", "Invoice Due Amount ₹ 5680"].map((balance, index) => (
+        <div
+          key={index}
+          className="bg-[#E7F8F2] p-4 rounded text-center font-semibold text-gray-700"
+        >
+          {balance}
+        </div>
+      ))}
+    </div>
+  
+
+
+
+
+    <table className="min-w-full bg-white">
+      <thead>
+        <tr className="bg-gray-100 border-b">
+          {[
+            "Order ID",
+            "AWB Number",
+            "Courier",
+            "Shipment Status",
+            "AWB Assigned Date",
+            "Applied Weight Charges ₹",
+            "Excess Weight Charges ₹",
+            "Hold On Amount ₹",
+            "Total Freight Charge ₹",
+            "Entered Weight & Dimensions",
+            "Charged weight & Dimensions",
+          ].map((header, index) => (
+            <th key={index} className="py-3 px-4 text-left text-gray-700 font-semibold text-sm">
+              {header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {shippingChargesData.map((order, index) => (
+          <tr key={index} className="border-b">
+            <td className="py-3 px-4">{order.orderId}</td>
+            <td className="py-3 px-4">{order.awbNumber}</td>
+            <td className="py-3 px-4">{order.courier}</td>
+            <td className="py-3 px-4">{order.shipmentStatus}</td>
+            <td className="py-3 px-4">{order.awbAssignedDate}</td>
+            <td className="py-3 px-4">{order.appliedWeightCharges}</td>
+            <td className="py-3 px-4">{order.excessWeightCharges}</td>
+            <td className="py-3 px-4">{order.holdOnAmount}</td>
+            <td className="py-3 px-4">{order.totalFreightCharge}</td>
+            <td className="py-3 px-4">{order.enteredweightdimensions}</td>
+            <td className="py-3 px-4">{order.invoiceDueDate}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+
+
+
+
+
 
           {/* COD Remittance Table */}
           {selectedStatus === "COD Remittance" && (
@@ -205,6 +232,7 @@ const BillingList = () => {
                       "Adjusted Amount",
                       "Remittance Account",
                       "Remittance Method",
+                      "Status",
                     ].map((header, index) => (
                       <th key={index} className="py-3 px-4 text-left text-gray-700 font-semibold text-sm">
                         {header}
@@ -218,13 +246,15 @@ const BillingList = () => {
                       <td className="py-3 px-4">{remittance.date}</td>
                       <td className="py-3 px-4 text-green-500">{remittance.crfId}</td>
                       <td className="py-3 px-4">{remittance.utr}</td>
-                      <td className="py-3 px-4">{remittance.codAvailable}</td>
+                      <td className="py-3 px-4 text-[#0CBB7D]">{remittance.codAvailable}</td>
+
                       <td className="py-3 px-4">{remittance.freightCharges}</td>
                       <td className="py-3 px-4">{remittance.earlyCodCharges}</td>
                       <td className="py-3 px-4">{remittance.rtoReversalAmount}</td>
                       <td className="py-3 px-4">{remittance.adjustedAmount}</td>
                       <td className="py-3 px-4">{remittance.remittanceAccount}</td>
                       <td className="py-3 px-4">{remittance.remittanceMethod}</td>
+                      <td className="py-3 px-4">{remittance.remittancestatus}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -263,6 +293,9 @@ const BillingList = () => {
             </div>
           )}
 
+
+
+
           {/* Passbook Table */}
           {selectedStatus === "Passbook" && (
             <div className="overflow-x-auto">
@@ -270,7 +303,7 @@ const BillingList = () => {
                 {["Current Usable Balance ₹ 5680", "Balance On Hold ₹ 5680", "Total Balance ₹ 5680"].map((balance, index) => (
                   <div
                     key={index}
-                    className="bg-green-100 p-4 rounded text-center font-semibold text-gray-700"
+                    className="bg-[#E7F8F2] p-4 rounded text-center font-semibold text-gray-700"
                   >
                     {balance}
                   </div>
@@ -329,8 +362,8 @@ const BillingList = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      
+    
   );
 };
 
