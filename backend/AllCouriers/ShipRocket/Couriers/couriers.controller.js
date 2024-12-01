@@ -7,17 +7,6 @@ const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
-
-const dburl =process.env.MONGODB_URI;
-mongoose.connect(dburl, {})
-    .then(() => {
-        console.log('Connected to MongoDB Atlas');
-    })
-    .catch((err) => {
-        console.error('Connection error', err);
-    });
-
-
 const getAllActiveCourierServices = async (req, res) => {
     const token = await getToken();
     try {
