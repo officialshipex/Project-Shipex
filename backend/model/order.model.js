@@ -36,6 +36,11 @@ const addressSchema = new mongoose.Schema({
 });
 
 const orderSchema = new mongoose.Schema({
+  user_Id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
   buyerDetails: {
     buyerName: {
       type: String,
@@ -92,6 +97,7 @@ const orderSchema = new mongoose.Schema({
     orderId: {
       type: String,
       require: true,
+      unique: true
     },
     orderType: {
       type: String,
