@@ -3,6 +3,9 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      colors: {
+        primary: '#0CBB7D',
+      },
       keyframes: {
         slideDown: {
           '0%': { transform: 'translateY(-100%)', opacity: '0' },
