@@ -5,16 +5,6 @@ const Services = require("../../../models/courierServiceSecond");
 const { getAuthToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
-const dburl = 'mongodb+srv://foundershipex:DEIMTVquekhDVFvc@cluster0.docbi.mongodb.net/zipping?retryWrites=true&w=majority';
-mongoose.connect(dburl, {})
-    .then(() => {
-        console.log('Connected to MongoDB Atlas');
-    })
-    .catch((err) => {
-        console.error('Connection error', err);
-    });
-
-
     const getCourierList = async () => {
         const url = 'https://shipment.xpressbees.com/api/courier';
     
