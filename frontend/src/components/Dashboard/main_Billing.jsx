@@ -130,11 +130,10 @@ const BillingList = () => {
             {["Shipping Charges", "COD Remittance", "Invoices", "Passbook", "Credit Receipt"].map((status, index) => (
               <button
                 key={index}
-                className={`py-2 px-4 text-sm font-medium ${
-                  selectedStatus === status
+                className={`py-2 px-4 text-sm font-medium ${selectedStatus === status
                     ? "text-gray-600 border-b-2 border-gray-600"
                     : "text-gray-500"
-                }`}
+                  }`}
                 onClick={() => setSelectedStatus(status)}
               >
                 {status}
@@ -216,9 +215,9 @@ const BillingList = () => {
                   {codRemittanceData.map((remittance, index) => (
                     <tr key={index} className="border-b">
                       <td className="py-3 px-4">{remittance.date}</td>
-                      <td className="py-3 px-4 text-green-500">{remittance.crfId}</td>
+                      <td className="py-3 px-4 text-[#0BAA72]">{remittance.crfId}</td>
                       <td className="py-3 px-4">{remittance.utr}</td>
-                      <td className="py-3 px-4">{remittance.codAvailable}</td>
+                      <td className="py-3 px-4 text-[#0BAA72]">{remittance.codAvailable}</td>
                       <td className="py-3 px-4">{remittance.freightCharges}</td>
                       <td className="py-3 px-4">{remittance.earlyCodCharges}</td>
                       <td className="py-3 px-4">{remittance.rtoReversalAmount}</td>
@@ -255,7 +254,7 @@ const BillingList = () => {
                       <td className="py-3 px-4">
                         <span className="bg-red-500 text-white px-2 py-1 rounded">{invoice.status}</span>
                       </td>
-                      <td className="py-3 px-4 text-green-500 cursor-pointer">View Invoice</td>
+                      <td className="py-3 px-4 text-[#0BAA72] cursor-pointer">View Invoice</td>
                     </tr>
                   ))}
                 </tbody>
@@ -321,7 +320,7 @@ const BillingList = () => {
                       <td className="py-3 px-4">{receipt.noteNumber}</td>
                       <td className="py-3 px-4">{receipt.noteDate}</td>
                       <td className="py-3 px-4">{receipt.total}</td>
-                      <td className="py-3 px-4 text-green-500 cursor-pointer">View Receipt</td>
+                      <td className="py-3 px-4 text-[#0BAA72] cursor-pointer">View Receipt</td>
                     </tr>
                   ))}
                 </tbody>
