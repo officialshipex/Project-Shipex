@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const RateCard = require('./rateCards');
 const Zone=require("./Zone.model");
+const ZoneMapData=require("./ZoneMapData.model");
 
 const B2BcourierServiceSchema = new mongoose.Schema(
   {
@@ -15,8 +16,11 @@ const B2BcourierServiceSchema = new mongoose.Schema(
     zones:[{
       type:mongoose.Schema.Types.ObjectId,
       ref:'Zone'
+    }],
+    zoneSheet:[{
+         type:mongoose.Schema.Types.ObjectId,
+         ref:'ZoneMapData'
     }]
-
   },
   {
     timestamps: true,
