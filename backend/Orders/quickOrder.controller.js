@@ -5,24 +5,24 @@ const createQuickOrder = async (req,res) => {
     try {
         const quickOrderData = req.body;
         
-         // Get token from the Authorization header
-         const authHeader = req.headers.authorization;
-         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-           return res.status(401).json({
-             success: false,
-             message: 'Token not provided or invalid',
-           });
-         }
+        //  // Get token from the Authorization header
+        //  const authHeader = req.headers.authorization;
+        //  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        //    return res.status(401).json({
+        //      success: false,
+        //      message: 'Token not provided or invalid',
+        //    });
+        //  }
          
-         const token = authHeader.split(' ')[1]; // Extract the token
+        //  const token = authHeader.split(' ')[1]; // Extract the token
          
-         // Decode and verify the token
-         const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
+        //  // Decode and verify the token
+        //  const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
         //  console.log('Decoded Token:', decoded); 
          // Example: { user: { id: 'userId', email: 'user@example.com' }, iat: ..., exp: ... }
          
          // Use the user's ID from the token to create an order
-         const userId = decoded.user.id; // Adjust based on your token payload structure
+        //  const userId = decoded.user.id; // Adjust based on your token payload structure
          
         //  console.log("User ID:",userId);
 
@@ -43,7 +43,8 @@ const createQuickOrder = async (req,res) => {
          }
 
         const quickOrders = new quickOrder({
-          user_Id: decoded.user.id,
+          // user_Id: decoded.user.id,
+          user_Id: "67237ee56a42044404423c8e",
           pickupAddress: quickOrderData.pickupAddress,
           buyerDetails: quickOrderData.buyerDetails,
           buyerAddress: quickOrderData.buyerAddress,
@@ -78,6 +79,7 @@ const createQuickOrder = async (req,res) => {
           data:responseQuickOrders
         });
     } catch (error) {
+        console.error('Error:', error);
         return res.status(500).json({ error: "Failed to save order" });
     }
 }
