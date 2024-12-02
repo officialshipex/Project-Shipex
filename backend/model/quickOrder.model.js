@@ -1,14 +1,9 @@
 const mongoose = require("mongoose");
 
 const quickOrderSchema = new mongoose.Schema({
-  user_Id : {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
   pickupAddress: { type:String, required:true },
   buyerDetails: {
-    buyerName: { type:String, required:true },
+    name: { type:String, required:true },
     phoneNumber: { type:String, required:true  },
     alternatePhoneNumber: { type:String },
     email: { type:String, required:true  },
