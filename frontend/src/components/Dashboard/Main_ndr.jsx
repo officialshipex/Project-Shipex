@@ -139,11 +139,10 @@ const NDR = () => {
           (status, index) => (
             <button
               key={index}
-              className={`py-2 px-4 text-sm transition duration-300 ${
-                selectedStatus === status
-                  ? "border-b-2 border-green-500 font-semibold text-black"
-                  : "text-gray-500"
-              }`}
+              className={`py-2 px-4 text-sm transition duration-300 ${selectedStatus === status
+                ? "border-b-2 border-green-500 font-semibold text-black"
+                : "text-gray-500"
+                }`}
               onClick={() => setSelectedStatus(status)}
             >
               {status}
@@ -153,9 +152,9 @@ const NDR = () => {
       </div>
 
       <div className="space-y-4">
-        <div className="bg-[#F9F9F9] shadow-md rounded-lg mb-4">
+        <div className="bg-[#F9F9F9] shadow-md mb-4">
           <div className="border-b p-4 flex font-bold text-left bg-[#F9F9F9]">
-            <input type="checkbox" onChange={handleSelectAll} className="mr-2" />
+            <input type="checkbox" onChange={handleSelectAll} className="mr-2 w-6 h-5 accent-[#0CBB7D] border-4 border-green-500  focus:outline-none" />
             {getHeaders().map((header, index) => (
               <div key={index} className="flex-1 text-center">
                 {header}
@@ -175,7 +174,7 @@ const NDR = () => {
                   type="checkbox"
                   checked={selectedOrders[order.id] || false}
                   onChange={() => handleSelectOrder(order.id)}
-                  className="mr-2"
+                  className="mr-2 w-6 h-5 accent-[#0CBB7D] border-4 border-green-500  focus:outline-none"
                 />
 
                 {/* Tracking Details */}
@@ -191,77 +190,76 @@ const NDR = () => {
 
                 {/* Customer Details */}
                 <div className="flex-1 text-center">
-                <p className="ml-0">{order.buyerName}</p>
-<p className="ml-4">{order.email}</p>
-<p className="ml-0">{order.phone}</p>
+                  <p className="ml-0">{order.buyerName}</p>
+                  <p className="ml-4">{order.email}</p>
+                  <p className="ml-0">{order.phone}</p>
 
                 </div>
 
                 {/* Item Details */}
                 <div className="flex-1 text-left">
-  <p className="ml-12 underline">{order.productID}</p>
-  <p className="ml-12 whitespace-nowrap">{order.purchaseDate}</p> 
-  <p className="ml-12">{order.attempt === "3rd Attempt" ? "CUSTOM" : "--------"}</p>
-  <p
-    className={`ml-12 text-[14px] font-normal ${
-      order.attempt === "4th Attempt" ? "" : "text-[#0CBB7D] underline"
-    }`}
-  >
-    {order.attempt === "4th Attempt" ? "CUSTOM" : "View Product"}
-  </p>
-</div>
+                  <p className="ml-12 underline">{order.productID}</p>
+                  <p className="ml-12 whitespace-nowrap">{order.purchaseDate}</p>
+                  <p className="ml-12">{order.attempt === "3rd Attempt" ? "CUSTOM" : "--------"}</p>
+                  <p
+                    className={`ml-12 text-[14px] font-normal ${order.attempt === "4th Attempt" ? "" : "text-[#0CBB7D] underline"
+                      }`}
+                  >
+                    {order.attempt === "4th Attempt" ? "CUSTOM" : "View Product"}
+                  </p>
+                </div>
 
 
 
-{/* Fulfilled By */}
-<div className="flex-1 text-center">
-  <p>
-    {selectedStatus === "Action Required" || selectedStatus === "All"
-      ? "--------"
-      : order.fulfillment}
-  </p>
-</div>
+                {/* Fulfilled By */}
+                <div className="flex-1 text-center">
+                  <p>
+                    {selectedStatus === "Action Required" || selectedStatus === "All"
+                      ? "--------"
+                      : order.fulfillment}
+                  </p>
+                </div>
 
 
 
                 {/* IVR Status */}
                 {(selectedStatus === "Action Required" ||
                   selectedStatus === "All") && (
-                  <div className="flex-1 text-center">
-                    <p>--------</p>
-                  </div>
-                )}
+                    <div className="flex-1 text-center">
+                      <p>--------</p>
+                    </div>
+                  )}
 
-           {/* Last Action */}
-<div className="flex-1 text-center">
-  <p className="text-sm font-normal">Shipex</p>
-  <p className="bg-[#F2F2F2] text-[#FFB800] inline-block px-2 rounded-md">
-    {order.firstNDR}
-  </p>
-  <p className="text-sm font-normal">Remarks: None</p>
-</div>
+                {/* Last Action */}
+                <div className="flex-1 text-center">
+                  <p className="text-sm font-normal">Shipex</p>
+                  <p className="bg-[#F2F2F2] text-[#FFB800] inline-block px-2 rounded-md">
+                    {order.firstNDR}
+                  </p>
+                  <p className="text-sm font-normal">Remarks: None</p>
+                </div>
 
 
-         {/* First NDR */}
-<div className="flex-1 text-center">
-  <p className="text-sm font-normal">Shipex</p>
-  <p className="bg-[#F2F2F2] text-[#FFB800] inline-block px-2 rounded-md">
-    {order.firstNDR}
-  </p>
-  <p className="text-sm font-normal">Remarks: None</p>
-</div>
+                {/* First NDR */}
+                <div className="flex-1 text-center">
+                  <p className="text-sm font-normal">Shipex</p>
+                  <p className="bg-[#F2F2F2] text-[#FFB800] inline-block px-2 rounded-md">
+                    {order.firstNDR}
+                  </p>
+                  <p className="text-sm font-normal">Remarks: None</p>
+                </div>
 
                 {/* OFD Aging */}
-                <div className="flex-1 text-center" style={{ marginLeft: '30px' }}>
-  <p>{order.aging}</p>
-</div>
+                <div className=" text-center" style={{ marginLeft: '30px' }}>
+                  <p>{order.aging}</p>
+                </div>
 
 
                 {/* Actions */}
                 <div className="flex-1 text-center text-green-500 cursor-pointer mt-3">
-  View History
-  <div className="border-b-2 border-[#0CBB7D] mt-0.9 mx-auto w-1/2"></div> {/* Further reduced margin */}
-</div>
+                  View History
+                  <div className="border-b-2 border-[#0CBB7D] mt-0.9 mx-auto w-1/2"></div> {/* Further reduced margin */}
+                </div>
 
 
               </div>
