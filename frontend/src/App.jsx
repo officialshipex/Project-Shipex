@@ -1,33 +1,54 @@
-import 'typeface-poppins';
+import "./App.css";
 
-// import { useState, useEffect } from "react";
-// import NavBar from "./components/Common/NavBar";
-// import Dashboard from "./components/Dashboard/Dashboard"; // Import Dashboard
-import OrderDashboard from "./components/Dashboard/OrderDashboard"; // Import OrderDashboard
- //import OrderList from "./components/Dashboard/Order"; // Import OrderList
-//import ReturnList from "./components/Dashboard/Main_Return_Request"; // Import only ReturnList
- //import BillingList from "./components/Dashboard/Main_Billing"; // Import BillingList
-// import NDR from "./components/Dashboard/Main_ndr"; // Commented out NDR import
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-router-dom";
+import PropTypes from 'prop-types';
+import { useState } from "react";
 
-// import CRFIDPopup from "./components/Dashboard/Billing_COD Remittance_CRF id";
-// import Modal from "./components/Dashboard/Billing_COD remittance_CRF ID";
-// import COD from "./components/Dashboard/Billing_COD Remittance_COD available details";
-// import Staff from "./components/user management view/view staff";
-//  import AddStaff from "./components/user management view/viewDashboardUserManagement";
-// import NewOrder from "./components/Dashboard/Order"; 
- // import AddOrder from "./components/AddOrder/Add Order_Single Shipment";
-// import CourierPage from "./components/AddOrder/courierpage";
- // import QuickShipment from "./components/AddOrder/Quickshipment"
-// import BulkOrders from "./components/AddOrder/BulkOrders";\
-//import DeliveryPerformance from './components/Dashboard 1/DeliveryPerformance';
-//import ToolsActivity from './components/Dashboard 1/Activity-log';
+import LoginPage from "./components/Kyc/LoginPage";
+import Registeration from "./register/Registration";
+
+import KycRoutes from "./routes/KycRoutes";
+import DashBoardRoute from "./routes/DashboardRoute";
+
+
+
+
+const PrivateRoute = ({ isAuthenticated }) => {
+  return isAuthenticated ?
+    <>
+      <Outlet />
+    </>
+    : <><Navigate replace to='/login'></Navigate></>
+}
 
 function App() {
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   return (
-    <>
-  <OrderDashboard></OrderDashboard>
-    </>
+    <Router>
+      
+      
+      <Routes>
+    
+        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+        <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+
+        <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
+          <Route path="/kyc/*" element={<KycRoutes />} />
+        </Route>
+
+        <Route element={<PrivateRoute isAuthenticated={true} />}>
+          <Route path="/seller/*" element={<DashBoardRoute />} />
+        </Route>
+
+      </Routes>
+    </Router>
   );
 }
+
+PrivateRoute.propTypes = {
+  isAuthenticated: PropTypes.bool.isRequired,
+};
 
 export default App;
