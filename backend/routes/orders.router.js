@@ -1,6 +1,6 @@
 const multer = require('multer');
 const path = require('path');
-const orderRouter = require('express').Router();
+const Router = require('express').Router();
 const {createOrder,getAllOrders} = require('../Orders/order.controller');
 const {bulkOrder} = require('../Orders/bulkOrders.controller');
 const {createQuickOrder} = require('../Orders/quickOrder.controller');
@@ -18,9 +18,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage:storage });
 
-orderRouter.post('/create-order',createOrder);
-orderRouter.get('/get-all-orders',getAllOrders);
-orderRouter.post('/upload-bulk-orders',upload.single('bulkOrderFile'),bulkOrder);
-orderRouter.post('/quick-order',createQuickOrder);
+Router.post('/create-order',createOrder);
+Router.get('/get-all-orders',getAllOrders);
+Router.post('/upload-bulk-orders',upload.single('bulkOrderFile'),bulkOrder);
+Router.post('/quick-order',createQuickOrder);
 
-module.exports = orderRouter;
+module.exports = Router;
