@@ -196,6 +196,14 @@ router.post("/uploadRates", async (req, res) => {
 
 
 
+router.get("/getAllServices", async (req, res) => {
+  try {
+    const services = await B2BCourierService.find({}).populate("zones").populate("zoneSheet"); 
+    res.status(201).json(services);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch services." });
+  }
+});
 
 
 module.exports = router;

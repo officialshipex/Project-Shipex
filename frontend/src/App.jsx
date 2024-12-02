@@ -12,6 +12,8 @@ import DashBoardRoute from "./routes/DashboardRoute"
 
 import MapZone from "./B2B/MapZone";
 
+import RateChart from "./B2B/RateChart";
+
 
 
 
@@ -46,7 +48,7 @@ function App() {
 
     //   </Routes>
     // </Router>
-   <MapZone></MapZone>
+   <RateChart></RateChart>
    
   );
 }
