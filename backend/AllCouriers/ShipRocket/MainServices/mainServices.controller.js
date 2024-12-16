@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");

@@ -1,20 +1,20 @@
+require('dotenv').config(); 
+
 const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
-const Services = require("../../../models/courierServiceSecond");
+const Services = require("../../../models/courierServiceSecond.model");
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
-const dburl = 'mongodb+srv://foundershipex:DEIMTVquekhDVFvc@cluster0.docbi.mongodb.net/zipping?retryWrites=true&w=majority';
-mongoose.connect(dburl, {})
-    .then(() => {
-        console.log('Connected to MongoDB Atlas');
-    })
-    .catch((err) => {
-        console.error('Connection error', err);
-    });
-
-
+// const dburl =process.env.MONGODB_URI;
+// mongoose.connect(dburl, {})
+//     .then(() => {
+//         console.log('Connected to MongoDB Atlas');
+//     })
+//     .catch((err) => {
+//         console.error('Connection error', err);
+//     });
 
 
 const getCouriers = async () => {
@@ -111,8 +111,51 @@ const getServiceablePincodes = async (req, res) => {
     }
 };
 
+const getServiceablePincodesData= async () => {
+    const { payload} = req.body;
+
+    const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
+
+    try {
+        const token = await getAuthToken();
+
+        // // Define the payload for the POST request
+        // const payload = {
+        //     origin: "122001",         // Replace with your actual origin pincode
+        //     destination: pincode,    // Destination pincode passed in the request body
+        //     payment_type: "cod",     // Example payment type
+        //     order_amount: "999",     // Example order amount
+        //     weight: "600",           // Example weight in grams
+        //     length: "10",            // Example length in cm
+        //     breadth: "10",           // Example breadth in cm
+        //     height: "10"             // Example height in cm
+        // };
+
+        // Make the POST request
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.data.status) {
+            let fetchedData = response.data.data;
+            let info = {};
+
+
+            return res.status(200).json(info);
+        } else {
+            return res.status(400).json({ error: 'Error in fetching serviceable pincodes', details: response.data });
+        }
+    } catch (error) {
+        console.error('Error in fetching serviceable pincodes:', error.response?.data || error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    }
+};
+
 module.exports = {
-    getServiceablePincodes,getCouriers
+    getServiceablePincodes,getCouriers,getServiceablePincodesData
 };
 
 

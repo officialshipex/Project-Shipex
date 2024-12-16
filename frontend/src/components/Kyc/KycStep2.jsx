@@ -1,12 +1,8 @@
-
-import KycLogo from "../../assets/Illustration.png"; // Update this path according to your project structure
-import { validateGST } from "../../lib/validation";
-import Logo from "../../assets/Vector logo.png";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import PropTypes from 'prop-types';
 import { useState } from "react";
-import axios from "axios";
-import { GSTModal } from "./Modal";
+import Logo from '../../assets/Vector logo.png';
+import KycLogo from '../../assets/Illustration.png'; // Update this path according to your project structure
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const KycStep2 = (props) => {
 
@@ -49,7 +45,7 @@ const KycStep2 = (props) => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/v1/merchant/verfication/gstin', {
+      const response = await axios.post(`${backendUrl}/merchant/verfication/gstin`, {
         GSTIN: gstNumber,
         businessName: companyName || "ShipEx",
       }, {
@@ -87,30 +83,13 @@ const KycStep2 = (props) => {
 
   };
 
-  const handleNext = () => {
-    if (!companyName || !address.addressLine1 || !address.pinCode || !address.city || !address.state || !address.country || !address.addressLine2) {
-      setError("Please fill all the fields");
-      return;
-    }
-    navigate("/kyc/step3"); // Navigate to KycStep3
-  };
-
-  if (dataModalIsOpen.gst) {
-    return (<>
-      <GSTModal
-        modalData={modalData}
-        setDataModalIsOpen={setDataModalIsOpen}
-      />
-    </>)
-  }
-
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="bg-white w-full max-w-5xl p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Logo and Title */}
         <div className="text-left">
           <img src={Logo} alt="ShipEx Logo" className="mx-auto h-8 sm:h-10 ml-1" />
-          <h2 className="text-base sm:text-[18px] lg:text-xl font-bold text-gray-800 mt-2">
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 mt-2">
             Complete your KYC for a smoother delivery process!
           </h2>
         </div>
@@ -231,18 +210,18 @@ const KycStep2 = (props) => {
             />
 
             {/* GST Number */}
-            <label htmlFor="gst" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="gstNumber" className="block text-sm font-medium text-gray-700">
               GST Number (Optional)
             </label>
             <input
               type="text"
-              id="gst"
+              id="gstNumber"
               value={gstNumber}
-              onChange={handleGstChange}
+              onChange={(e) => setGstNumber(e.target.value)}
               placeholder="GST Number (Optional)"
               className="w-full border border-gray-300 rounded-md p-2 sm:p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            {message.gst && (<p className={`text-sm text-center ${success ? 'text-green-600' : 'text-red-600'}`}>{message.gst}</p>)}
+
             {/* Verify Button */}
             <button
               onClick={verifyGst}
@@ -251,26 +230,24 @@ const KycStep2 = (props) => {
               Verify
             </button>
 
-            {/* KYC Illustration */}
-            <div className="mt-9 lg:mt-0">
-              <img
-                src={KycLogo}
-                alt="KYC Illustration"
-                className="w-full sm:w-3/4 mx-auto mt-6"
-              />
-              <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
-                This will be used as your company address for the pick-up location.
-              </p>
+          {/* KYC Illustration */}
+<div className="mt-9 lg:mt-0">
+  <img
+    src={KycLogo}
+    alt="KYC Illustration"
+    className="w-full sm:w-3/4 mx-auto mt-6"
+  />
+ <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
+  This will be used as your company address for the pick-up location.
+</p>
 
-            </div>
+</div>
 
 
             {/* Next Button */}
             <div className="flex justify-end">
-              {error && (<p className="text-sm text-red-600">{error}</p>)}
               <button
-                onClick={handleNext}
-                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12 "
+                className="px-8 sm:px-16 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mt-6 sm:mt-12"
               >
                 Next
               </button>
@@ -280,25 +257,6 @@ const KycStep2 = (props) => {
       </div>
     </div>
   );
-};
-
-KycStep2.propTypes = {
-  setDocumentVerified: PropTypes.func.isRequired,
-  companyName: PropTypes.string.isRequired,
-  setCompanyName: PropTypes.func.isRequired,
-  gstNumber: PropTypes.string,
-  setGstNumber: PropTypes.func.isRequired,
-  address: PropTypes.shape({
-    addressLine1: PropTypes.string,
-    addressLine2: PropTypes.string,
-    pinCode: PropTypes.string,
-    city: PropTypes.string,
-    state: PropTypes.string,
-    country: PropTypes.string,
-  }).isRequired,
-  setAddress: PropTypes.func.isRequired,
-
-  session: PropTypes.string,
 };
 
 export default KycStep2;
