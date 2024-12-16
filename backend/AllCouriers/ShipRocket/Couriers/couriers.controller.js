@@ -1,3 +1,5 @@
+require('dotenv').config(); 
+
 const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
@@ -6,7 +8,7 @@ const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
 
-const dburl = process.env.MONGODB_URI
+const dburl =process.env.MONGODB_URI;
 mongoose.connect(dburl, {})
     .then(() => {
         console.log('Connected to MongoDB Atlas');
