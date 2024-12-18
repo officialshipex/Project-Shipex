@@ -28,6 +28,8 @@ const verficationRouter = require("./routes/kyc.router");
 const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 
+const WoocommerceController=require("./AllCouriersRoutes/woocommerce.router")
+
 
 
 require("dotenv").config();
@@ -66,6 +68,7 @@ app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/shreeMaruti",ShreeMarutiController);
 
+app.use("/v1/woocommerce",WoocommerceController);
 
 
 module.exports = app;
