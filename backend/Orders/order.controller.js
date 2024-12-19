@@ -50,36 +50,38 @@ function calculateOrderTotals(orderData) {
 
 
 const createOrder = async (req,res) => {
-    try {
-        const orderData = req.body;
+  console.log("I am in createOrder");
+  console.log(req.body);
+    // try {
+    //     const orderData = req.body;
 
-        //  Perform calculations for the order totals
-        const totals = calculateOrderTotals(orderData);
+    //     //  Perform calculations for the order totals
+    //     const totals = calculateOrderTotals(orderData);
 
-        const order = new Order({
-          buyerDetails:orderData.buyerDetails,
-          buyerAddress:orderData.buyerAddress,
-          orderDetails:{
-            ...orderData.orderDetails,
-            subTotal: totals.subTotal,
-            otherCharges: totals.otherCharges,
-            discount: totals.discount,
-            totalOrderValue: totals.totalOrderValue
+    //     const order = new Order({
+    //       buyerDetails:orderData.buyerDetails,
+    //       buyerAddress:orderData.buyerAddress,
+    //       orderDetails:{
+    //         ...orderData.orderDetails,
+    //         subTotal: totals.subTotal,
+    //         otherCharges: totals.otherCharges,
+    //         discount: totals.discount,
+    //         totalOrderValue: totals.totalOrderValue
           
-          },
-          productDetails:orderData.productDetails,
-          payment:orderData.payment,
-          packageDetails:orderData.packageDetails,
-          pickUpAddress:orderData.pickUpAddress
-        });
-        console.log("orderDetails:",order.orderDetails);
+    //       },
+    //       productDetails:orderData.productDetails,
+    //       payment:orderData.payment,
+    //       packageDetails:orderData.packageDetails,
+    //       pickUpAddress:orderData.pickUpAddress
+    //     });
+    //     console.log("orderDetails:",order.orderDetails);
         
 
-        await order.save();
-        res.status(201).json({ message: 'Shipment created successfully', order });
-      } catch (error) {
-        res.status(400).json({ error: error.message });
-      }
+    //     await order.save();
+    //     res.status(201).json({ message: 'Shipment created successfully', order });
+    //   } catch (error) {
+    //     res.status(400).json({ error: error.message });
+    //   }
 }
 
 
