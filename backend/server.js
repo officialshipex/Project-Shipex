@@ -28,6 +28,7 @@ const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 const dtdcRouter = require("./Dtdc/routes/dtdc.router");
 const shiprocketCargoRouter = require("./AllCouriersRoutes/shiprocketCargo.router");
+const smartShipRouter = require("./AllCouriersRoutes/smartShip.router");
 
 
 require("dotenv").config();
@@ -58,7 +59,8 @@ app.use('/v1/saveCustomRate',customRateController);
 app.use('/v1/editBaseRate',editBaseRateController);
 app.use('/v1/order',orderRouter);
 app.use('/v1/dtdc',dtdcRouter);
-app.use('/v1/shiprocketcargo',shiprocketCargoRouter)
+app.use('/v1/shiprocketcargo',shiprocketCargoRouter);
+app.use('/v1/smartship',smartShipRouter);
 
 // app.use("/v1/NimbusPost",NimbusPostController);
 // app.use("/v1/Shiprocket",ShipRocketController);
