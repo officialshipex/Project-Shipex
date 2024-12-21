@@ -74,12 +74,11 @@ const createOrder = async (req, res) => {
 
 
 
+
 const getAllOrders = async (req,res) => {
     try {
-        const orders = await Order.find();
-        console.log("All orders",orders);
-        
-        return res.status(200).json(orders);
+        const orders = await Order.find({});
+        return res.status(201).json(orders);
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
