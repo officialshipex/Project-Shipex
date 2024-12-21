@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage:storage });
 
-orderRouter.post('/create-order',createOrder);
+orderRouter.post('/create-order-forward',createOrder);
 orderRouter.get('/get-all-orders',getAllOrders);
 orderRouter.post('/upload-bulk-orders',upload.single('bulkOrderFile'),bulkOrder);
 orderRouter.post('/quick-order',createQuickOrder);

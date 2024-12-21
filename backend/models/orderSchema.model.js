@@ -1,57 +1,91 @@
 const mongoose = require('mongoose');
+const CourierSecond = require("./courierSecond");
+const CourierServiceSecond = require("./courierServiceSecond.model");
 const User = require("./User.model");
 
 const orderSchema = new mongoose.Schema({
-    // user: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'User',
-    //     required: true
-    // },
     order_id: {
         type: String,
         required: true,
         unique: true
     },
-    billing_customer_name: {
+    order_type:{
+      type:String,
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    orderCategory: {
         type: String,
+        enum: ['B2C-forward', 'B2C-reverse', 'B2C-reverse-QC', 'B2B'],
         required: true
     },
-    billing_address: String,
-    billing_city: String,
-    order_items: {
+    shipping_details: {
+        firstName: { type: String, required: true },
+        lastName: { type: String },
+        companyName: { type: String },
+        address: { type: String, required: true },
+        address2: { type: String },
+        pinCode: { type: Number, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        phone: { type: Number, required: true },
+    },
+    Biling_details: {
+        firstName: { type: String, required: true },
+        lastName: { type: String },
+        companyName: { type: String },
+        address: { type: String, required: true },
+        address2: { type: String },
+        pinCode: { type: Number, required: true },
+        city: { type: String, required: true },
+        state: { type: String, required: true },
+        phone: { type: Number, required: true },
+        gstNumber: { type:String, required: true },
+    },
+    Product_details: {
         type: Array,
         required: true
     },
+
+    shipping_cost: {
+        weight:String,
+        dimensions: {
+            length: String,
+            width: String,
+            height: String
+        },
+        volumetricWeight:Number,
+        shippingCharges:Number,
+        codCharges: Number,
+        taxAmount:Number,
+        discount:Number,
+        collectableAmount:Number
+    },
+
     sub_total: {
         type: Number,
-        required: true,
         min: 0
     },
     status: {
         type: String,
-        default: 'Pending',
-        enum: ['Pending', 'Shipped', 'Cancelled', 'Fulfilled']
+        enum: ['Booked', 'Pending', 'Cancelled', 'Fulfilled'],
+        required:true
     },
-    isBooked: {
-        type: Boolean,
-        default: false
+    courier_details: {
+        courier: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'CourierSecond'
+        },
+        service: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'CourierServiceSecond'
+        }
     },
-    isShipped: {
-        type: Boolean,
-        default: false
-    },
-    isCancelled: {
-        type: Boolean,
-        default: false
-    },
-    isFulfilled: {
-        type: Boolean,
-        default: false
-    },
-    orderCategory: {
-        type: String,
-        enum: ['B2C', 'B2B'],
-        required: true
+
+    order_shipped_date: {
+        type: Date
     }
 }, {
     timestamps: true
