@@ -1,4 +1,4 @@
-const Order = require('../model/order.model');
+const Order=require("../models/orderSchema.model");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -49,40 +49,29 @@ function calculateOrderTotals(orderData) {
 }
 
 
-const createOrder = async (req,res) => {
-  console.log("I am in createOrder");
-  console.log(req.body);
-    // try {
-    //     const orderData = req.body;
+const createOrder = async (req, res) => {
+  try {
+    console.log("I am in createOrder");
+    const data = req.body;
 
-    //     //  Perform calculations for the order totals
-    //     const totals = calculateOrderTotals(orderData);
+    let newOrder = new Order({
+      order_id: data.orderInfo.orderID,
+      order_type: data.orderInfo.orderType,
+      orderCategory: 'B2C-forward',
+      shipping_details: data.shippingInfo,
+      Biling_details: data.billingInfo,
+      Product_details: data.productDetails,
+      shipping_cost: data.shippingCost,
+      status: 'Booked',
+    });
+    let result = await newOrder.save();
+    res.status(201).json({ message: "Order created successfully", order: result });
+  } catch (error) {
+    console.error("Error in createOrder:", error);
+    res.status(500).json({ message: "Failed to create order", error: error.message });
+  }
+};
 
-    //     const order = new Order({
-    //       buyerDetails:orderData.buyerDetails,
-    //       buyerAddress:orderData.buyerAddress,
-    //       orderDetails:{
-    //         ...orderData.orderDetails,
-    //         subTotal: totals.subTotal,
-    //         otherCharges: totals.otherCharges,
-    //         discount: totals.discount,
-    //         totalOrderValue: totals.totalOrderValue
-          
-    //       },
-    //       productDetails:orderData.productDetails,
-    //       payment:orderData.payment,
-    //       packageDetails:orderData.packageDetails,
-    //       pickUpAddress:orderData.pickUpAddress
-    //     });
-    //     console.log("orderDetails:",order.orderDetails);
-        
-
-    //     await order.save();
-    //     res.status(201).json({ message: 'Shipment created successfully', order });
-    //   } catch (error) {
-    //     res.status(400).json({ error: error.message });
-    //   }
-}
 
 
 const getAllOrders = async (req,res) => {
