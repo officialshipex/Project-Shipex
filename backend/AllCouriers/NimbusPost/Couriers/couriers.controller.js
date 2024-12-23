@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 
 const axios = require('axios');
 const mongoose = require("mongoose");
@@ -17,13 +17,11 @@ const { getUniqueId } = require("../../getUniqueId");
 //     });
 
 
-const getCouriers = async () => {
+const getCouriers = async (req, res) => {
     const url = 'https://api.nimbuspost.com/v1/courier';
 
     try {
         const token = await getAuthToken();
-        console.log('Retrieved Token:', token);
-
         const response = await axios.get(url, {
             headers: {
                 'Content-Type': 'application/json',
@@ -32,44 +30,98 @@ const getCouriers = async () => {
         });
 
         if (response.data.status) {
-            let servicesData = response.data.data;
-            let currCourier = await Courier.find({ provider: 'NimbusPost' });
+            const servicesData = response.data.data;
+            const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
+            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
-            // Fetch all previous services in a single query to reduce DB calls
-            const prevServices = new Set();
-            const services = await Services.find({ '_id': { $in: currCourier[0].services } });
-            
-            // Populate Set with previous service names
-            services.forEach(service => {
-                prevServices.add(service.courierProviderServiceName);
-            });
+            const allServices = servicesData.map(element => ({
+                service: element.name,
+                isAdded: prevServices.has(element.name)
+            }));
 
-            // Loop through new services and check if they already exist
-            servicesData.forEach(async (element) => {
-                let name = element.name;
-                if (!prevServices.has(name)) {
-                    try {
-                        const newService = new Services({
-                            courierProviderServiceId: getUniqueId(),
-                            courierProviderServiceName: name,
-                        });
-                        const Nimb=await Courier.find({provider:'NimbusPost'});
-                        Nimb.services.push(newService._id);
-                        await newService.save();
-                        await Nimb.save();
-                        console.log(`New service saved: ${name}`);
-                    } catch (error) {
-                        console.error(`Error saving service: ${name}`, error);
-                    }
-                }
-            });
+            return res.status(201).json(allServices);
         }
+
+        res.status(400).json({ message: 'Failed to fetch services' });
 
     } catch (error) {
-        if (error.response) {
-            console.error('Error Response:', error.response.data);
+        console.error('Error:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Failed to fetch couriers', details: error.message });
+    }
+};
+
+
+
+// if (response.data.status) {
+//     let servicesData = response.data.data;
+//     let currCourier = await Courier.find({ provider: 'NimbusPost' });
+
+
+//     const prevServices = new Set();
+//     const services = await Services.find({ '_id': { $in: currCourier[0].services } });
+
+
+//     services.forEach(service => {
+//         prevServices.add(service.courierProviderServiceName);
+//     });
+
+
+// //     servicesData.forEach(async (element) => {
+// //         let name = element.name;
+// //         if (!prevServices.has(name)) {
+// //             try {
+// //                 const newService = new Services({
+// //                     courierProviderServiceId: getUniqueId(),
+// //                     courierProviderServiceName: name,
+// //                 });
+// //                 const Nimb=await Courier.find({provider:'NimbusPost'});
+// //                 Nimb.services.push(newService._id);
+// //                 await newService.save();
+// //                 await Nimb.save();
+// //                 console.log(`New service saved: ${name}`);
+// //             } catch (error) {
+// //                 console.error(`Error saving service: ${name}`, error);
+// //             }
+// //         }
+// //     });
+// }
+
+const addService = async (req, res) => {
+    try {
+        console.log(req.body);
+
+        const currCourier = await Courier.findOne({ provider: 'NimbusPost' });
+
+        const prevServices = new Set();
+        const services = await Services.find({ '_id': { $in: currCourier.services } });
+
+        services.forEach(service => {
+            prevServices.add(service.courierProviderServiceName);
+        });
+
+        const name = req.body.service;
+
+        if (!prevServices.has(name)) {
+            const newService = new Services({
+                courierProviderServiceId: getUniqueId(),
+                courierProviderServiceName: name,
+            });
+
+            const Nimb = await Courier.findOne({ provider: 'NimbusPost' });
+            Nimb.services.push(newService._id);
+
+            await newService.save();
+            await Nimb.save();
+
+            console.log(`New service saved: ${name}`);
+
+            return res.status(201).json({ message: `${name} has been successfully added` });
         }
-        throw new Error(`Error in fetching couriers: ${error.message}`);
+
+        return res.status(400).json({ message: `${name} already exists` });
+    } catch (error) {
+        console.error(`Error adding service: ${error.message}`);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }
 };
 
@@ -77,7 +129,7 @@ const getCouriers = async () => {
 
 const getServiceablePincodes = async (req, res) => {
 
-    const{pincode}=req.body;
+    const { pincode } = req.body;
 
     const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
 
@@ -92,12 +144,12 @@ const getServiceablePincodes = async (req, res) => {
         });
 
         if (response.data.status) {
-            let fetchedData=response.data.data;
-            let info={};
-            for(d of fetchedData){
-                if(d.pincode==pincode){
-                    info.cod=d.cod;
-                    info.prepaid=d.prepaid;
+            let fetchedData = response.data.data;
+            let info = {};
+            for (d of fetchedData) {
+                if (d.pincode == pincode) {
+                    info.cod = d.cod;
+                    info.prepaid = d.prepaid;
                     break;
                 }
             }
@@ -111,8 +163,8 @@ const getServiceablePincodes = async (req, res) => {
     }
 };
 
-const getServiceablePincodesData= async () => {
-    const { payload} = req.body;
+const getServiceablePincodesData = async () => {
+    const { payload } = req.body;
 
     const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
 
@@ -131,7 +183,7 @@ const getServiceablePincodesData= async () => {
         //     height: "10"             // Example height in cm
         // };
 
-        // Make the POST request
+
         const response = await axios.post(url, payload, {
             headers: {
                 'Content-Type': 'application/json',
@@ -155,7 +207,7 @@ const getServiceablePincodesData= async () => {
 };
 
 module.exports = {
-    getServiceablePincodes,getCouriers,getServiceablePincodesData
+    getServiceablePincodes, getCouriers, getServiceablePincodesData, addService
 };
 
 

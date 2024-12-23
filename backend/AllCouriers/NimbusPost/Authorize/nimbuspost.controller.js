@@ -27,15 +27,48 @@ const getAuthToken = async () => {
 
 }
 
-const saveNimbusPost=async()=>{
-    const newCourier=new Courier({
-        provider:'NimbusPost'
-    });
-    
-    await newCourier.save();
-}
+const saveNimbusPost = async (req, res) => {
+    try {
+        console.log("I am in NimbusPost");
+      const existingCourier = await Courier.findOne({ provider: 'NimbusPost' });
+  
+      if (existingCourier) {
+        return res.status(400).json({ message: 'NimbusPost service is already added' });
+      }
+  
+      const newCourier = new Courier({
+        provider: 'NimbusPost'
+      });
+      await newCourier.save();
+      res.status(201).json({ message: 'NimbusPost Integrated Successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'An error has occurred', error: error.message });
+    }
+  };
 
-module.exports={getAuthToken,saveNimbusPost};
+  const isEnabeled = async (req, res) => {
+    try {
+      console.log("I am in NimbusPost");
+      const existingCourier = await Courier.findOne({ provider: 'NimbusPost' });
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      if (existingCourier.isEnabeled) {
+        return res.status(201).json({ isEnabeled: true });
+      } else {
+        return res.status(200).json({ isEnabeled: false });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  };
+  
+  
+
+module.exports={getAuthToken,saveNimbusPost,isEnabeled};
 
 
 

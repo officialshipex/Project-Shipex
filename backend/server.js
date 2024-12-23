@@ -19,7 +19,7 @@ const userController=require("./routes/getUsers.router");
 const customRateController=require("./routes/saveCustomRate.router");
 const editBaseRateController=require("./routes/editBaseRate.router");
 
-// const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
+const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 // const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
 // const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
 
@@ -61,12 +61,12 @@ app.use("/v1/order",orderRouter);
 
 
 
-app.get("/*", (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-// app.use("/v1/NimbusPost",NimbusPostController);
+app.use("/v1/NimbusPost",NimbusPostController);
 // app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 
+app.get("/*", (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 module.exports = app;
