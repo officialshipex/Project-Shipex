@@ -1,6 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
-const Courier = require("../../../models/courierSecond");
+const Courier=require("../../../models/courierSecond");
 
 
 const getAuthToken = async () => {
@@ -28,14 +28,43 @@ const getAuthToken = async () => {
 
 }
 
-const saveXpressbees = async () => {
+const saveXpressbees = async (req, res) => {
     try {
-        const newCourier = new Courier({ provider: "Xpressbees" });
+        const existingCourier = await Courier.findOne({ provider: 'Xpressbees' });
+
+        if (existingCourier) {
+            return res.status(400).json({ message: 'Xpressbees service is already added' });
+        }
+
+        const newCourier = new Courier({
+            provider: 'Xpressbees'
+        });
         await newCourier.save();
-        return newCourier;
+        res.status(201).json({ message: 'Xpressbees Integrated Successfully' });
     } catch (error) {
-        throw new Error("Failed to save credentials in the database: " + error?.message);
+        res.status(500).json({ message: 'An error has occurred', error: error.message });
     }
 };
 
-module.exports={getAuthToken,saveXpressbees}
+const isEnabeled = async (req, res) => {
+    try {
+      const existingCourier = await Courier.findOne({ provider: 'Xpressbees' });
+      
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      if (existingCourier.isEnabeled) {
+        return res.status(201).json({ isEnabeled: true });
+      } else {
+        return res.status(200).json({ isEnabeled: false });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  };
+
+
+module.exports={getAuthToken,saveXpressbees,isEnabeled}
