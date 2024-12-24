@@ -13,8 +13,6 @@ const getAllActiveCourierServices = async (req, res) => {
 
     try {
         const token = await getToken();
-        console.log("Token received:", token);
-
         const response = await axios.get(
             "https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts?type=active",
             {
@@ -25,7 +23,19 @@ const getAllActiveCourierServices = async (req, res) => {
             }
         );
 
-        console.log(response);
+      const result= response.data.courier_data;
+
+      const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
+      const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+
+      const allServices =result.map(element => ({
+        service: element.master_company,
+        isAdded: prevServices.has(element.master_company)
+    }));
+
+    return res.status(201).json(allServices);
+
+      
     } catch (error) {
         console.error("Error encountered while fetching courier services:");
 
@@ -46,6 +56,56 @@ const getAllActiveCourierServices = async (req, res) => {
         }
     }
 };
+
+
+
+
+
+const addService = async (req, res) => {
+    try {
+        console.log(req.body);
+
+        const currCourier = await Courier.findOne({ provider: 'Shiprocket' });
+
+        if (!currCourier) {
+            return res.status(404).json({ message: 'Courier not found' });
+        }
+
+        const prevServices = new Set(currCourier.services.map(serviceId => serviceId.toString()));
+        const name = req.body.service;
+
+        if (!prevServices.has(name)) {
+            const newService = new Services({
+                courierProviderServiceId: getUniqueId(),
+                courierProviderServiceName: name,
+            });
+
+            currCourier.services.push(newService._id);
+
+            await newService.save();
+            await currCourier.save();
+
+            console.log(`New service saved: ${name}`);
+
+            return res.status(201).json({ message: `${name} has been successfully added` });
+        }
+
+        return res.status(400).json({ message: `${name} already exists` });
+    } catch (error) {
+        console.error(`Error adding service: ${error.message}`);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    }
+};
+
+
+
+
+
+
+module.exports = {
+    getAllActiveCourierServices,addService
+};
+
 
 // const getAllActiveCourierServices = async (req, res) => {
 //     console.log("I am in getAll form shiprocket");
@@ -127,8 +187,3 @@ const getAllActiveCourierServices = async (req, res) => {
 //         });
 //     }
 // };
-
-
-module.exports = {
-    getAllActiveCourierServices
-};
