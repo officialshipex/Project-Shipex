@@ -22,6 +22,7 @@ const editBaseRateController=require("./routes/editBaseRate.router");
 const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
 const XpressbeesController=require("./AllCouriersRoutes/xpressbee.router");
+const shreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router");
 // const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
 
 const verficationRouter = require("./routes/kyc.router");
@@ -65,6 +66,7 @@ app.use("/v1/order",orderRouter);
 app.use("/v1/NimbusPost",NimbusPostController);
 app.use("/v1/Shiprocket",ShipRocketController);
 app.use("/v1/Xpressbees",XpressbeesController);
+app.use("/v1/ShreeMaruti",shreeMarutiController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 
 app.get("/*", (req, res) => {
