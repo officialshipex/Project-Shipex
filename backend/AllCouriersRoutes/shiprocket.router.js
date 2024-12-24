@@ -2,7 +2,10 @@
 const express = require("express");
 const router = express.Router();
 
+const shiprocketAuthorize=require("../AllCouriers/ShipRocket/Authorize/shiprocket.controller");
+
 const { getAllActiveCourierServices } = require("../AllCouriers/ShipRocket/Couriers/couriers.controller");
+
 const {
     createCustomOrder,
 
@@ -27,7 +30,10 @@ const {
 
 } = require('../AllCouriers/ShipRocket/MainServices/mainServices.controller');
 
-router.post("/getAllActiveCourierServices", getAllActiveCourierServices);
+router.get('/saveNew',shiprocketAuthorize.saveShipRocket);
+router.get('/isEnabeled',shiprocketAuthorize.isEnabeled);
+
+router.get("/getAllActiveCourierServices", getAllActiveCourierServices);
 router.post('/create-custom-order', createCustomOrder);
 
 router.put('/update-order/:order_id', updateOrder);

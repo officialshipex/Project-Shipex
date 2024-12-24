@@ -29,7 +29,6 @@ const getAuthToken = async () => {
 
 const saveNimbusPost = async (req, res) => {
     try {
-        console.log("I am in NimbusPost");
       const existingCourier = await Courier.findOne({ provider: 'NimbusPost' });
   
       if (existingCourier) {
