@@ -2,15 +2,6 @@ require('dotenv').config();
 const axios = require("axios");
 const Courier = require("../../../models/courierSecond");
 
-const saveShipRocket = async () => {
-    try {
-        const newCourier = new Courier({ provider: "Shiprocket" });
-        await newCourier.save();
-        return newCourier;
-    } catch (error) {
-        throw new Error("Failed to save credentials in the database: " + error?.message);
-    }
-};
 
 const getToken = async () => {
     const email=process.env.SHIPR_GMAIL;
@@ -46,5 +37,26 @@ const getToken = async () => {
         throw new Error(`Error in authentication: ${error.message}`);
     }
 };
+
+
+const saveShipRocket = async (req, res) => {
+   
+    try {
+        const existingCourier = await Courier.findOne({ provider: 'Shiprocket' });
+
+        if (existingCourier) {
+            return res.status(400).json({ message: 'Shiprocket service is already added' });
+        }
+
+        const newCourier = new Courier({
+            provider: 'Shiprocket'
+        });
+        await newCourier.save();
+        res.status(201).json({ message: 'Shiprocket Integrated Successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'An error has occurred', error: error.message });
+    }
+};
+
 
 module.exports = { saveShipRocket, getToken };
