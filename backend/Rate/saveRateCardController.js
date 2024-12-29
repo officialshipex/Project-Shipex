@@ -1,6 +1,6 @@
-const CourierSecond=require("../models/courierSecond");
-const CourierServiceSecond=require("../models/courierServiceSecond.model");
-const RateCard=require("../models/rateCards");
+const CourierSecond = require("../models/courierSecond");
+const CourierServiceSecond = require("../models/courierServiceSecond.model");
+const RateCard = require("../models/rateCards");
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
@@ -9,7 +9,7 @@ const fs = require('fs');
 
 const saveRate = async (req, res) => {
   try {
-    const { type, courierProviderName,mode,courierServiceName, weightPriceBasic, weightPriceAdditional, codPercent, codCharge } = req.body;
+    const { type, courierProviderName, mode, courierServiceName, weightPriceBasic, weightPriceAdditional, codPercent, codCharge } = req.body;
 
     const existingRateCard = await RateCard.findOne({
       type,
@@ -23,11 +23,11 @@ const saveRate = async (req, res) => {
       existingRateCard.weightPriceAdditional = weightPriceAdditional;
       existingRateCard.codPercent = codPercent;
       existingRateCard.codCharge = codCharge;
-      existingRateCard.mode=mode;
+      existingRateCard.mode = mode;
 
       const updatedRateCard = await existingRateCard.save();
 
-      res.status(201).json({ message: `${type} ratecard has been updated successfully for service ${courierServiceName} under provide ${courierProviderName}`});
+      res.status(201).json({ message: `${type} ratecard has been updated successfully for service ${courierServiceName} under provide ${courierProviderName}` });
     } else {
       const rcard = new RateCard({
         type,
@@ -48,7 +48,7 @@ const saveRate = async (req, res) => {
         { $push: { rateCards: savedRateCard } }
       );
 
-      res.status(201).json({ message: `${type} ratecard has been added successfully for service ${courierServiceName} under provide ${courierProviderName}`});
+      res.status(201).json({ message: `${type} ratecard has been added successfully for service ${courierServiceName} under provide ${courierProviderName}` });
 
     }
   } catch (error) {
@@ -98,7 +98,7 @@ const uploadRate = async (req, res) => {
 
           const lowercaseCurrService = service.replace(/\s+/g, "").toLowerCase();
           console.log(lowercaseCurrService);
-          
+
           if (existingServices.includes(lowercaseCurrService)) {
             exists = true;
             const existingRateCard = await RateCard.findOne({
@@ -169,7 +169,7 @@ const uploadRate = async (req, res) => {
             zoneD: { forward: item['Zone D Forward'], rto: item['Zone D RTO'] },
             zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
           }];
-          
+
           const existingRateCard = await RateCard.findOne({
             type,
             mode,
@@ -179,7 +179,7 @@ const uploadRate = async (req, res) => {
 
           if (existingRateCard) {
             existingRateCard.weightPriceAdditional = transformedData;
-            const updatedRateCard=await existingRateCard.save();
+            const updatedRateCard = await existingRateCard.save();
             console.log("----------------------------");
             console.log("Updated RateCard with additional weight price");
             console.log(updatedRateCard);
@@ -190,16 +190,16 @@ const uploadRate = async (req, res) => {
 
       fs.unlinkSync(filePath);
 
-      res.status(200).send(exists ? 'Service already exists.' : 'File uploaded and data saved successfully.');
+      res.status(201).json('File uploaded and data saved successfully.');
 
     } catch (error) {
       console.error('Error processing file:', error);
-      res.status(500).send('Error processing file.');
+      res.status(500).json('Error processing file.');
     }
 
   } catch (error) {
     console.error('General error:', error);
-    res.status(500).send('An unexpected error occurred.');
+    res.status(500).json('An unexpected error occurred.');
   }
 };
 
@@ -207,4 +207,4 @@ const uploadRate = async (req, res) => {
 
 
 
-module.exports={saveRate,uploadRate};
+module.exports = { saveRate, uploadRate };
