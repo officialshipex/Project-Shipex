@@ -4,12 +4,11 @@ const getZone = zoneManagementController.getZone;
 
 const calculateRate = async (req, res) => {
   try {
-    console.log(req.body);
     let result = await getZone(req.body.pickupPincode, req.body.deliveryPincode);
     let currentZone = result.zone;
     let ans = [];
     let rateCards = await RateCard.find({ defaultRate: true });
-    console.log(rateCards);
+   
 
     let l = parseFloat(req.body.length);
     let b = parseFloat(req.body.breadth);
@@ -19,19 +18,19 @@ const calculateRate = async (req, res) => {
     let chargedWeight = Math.max(deadweight, volumetricWeight);
 
     let cod = 0;
-    let gst = req.body.gst || 18;
+    let gst = 18;
 
     for (let rc of rateCards) {
-      let basicWeight = parseFloat(rc.weightPriceBasic[0].weight) / 1000;
-      let additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight) / 1000;
+      let basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
+      let additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
 
       let basicChargef = parseFloat(rc.weightPriceBasic[0][currentZone].forward);
       let additionalChargef = parseFloat(rc.weightPriceAdditional[0][currentZone].forward);
 
       let finalBasicChargef = basicChargef;
-      let finalAdditionalChargef = Math.ceil((chargedWeight - basicWeight) / additionalWeight) * additionalChargef;
+      let finalAdditionalChargef = Math.max(0,Math.ceil((chargedWeight - basicWeight) / additionalWeight) * additionalChargef);
       let finalChargef = finalBasicChargef + finalAdditionalChargef;
-      console.log(finalChargef);
+     
 
       let basicChargep = parseFloat(rc.weightPriceBasic[0][currentZone].rto);
       let additionalChargep = parseFloat(rc.weightPriceAdditional[0][currentZone].rto);
@@ -39,14 +38,14 @@ const calculateRate = async (req, res) => {
       let finalBasicChargep = basicChargep;
       let finalAdditionalChargep = Math.ceil((chargedWeight - basicWeight) / additionalWeight) * additionalChargep;
       let finalChargep = finalBasicChargep + finalAdditionalChargep;
-      console.log(finalChargep);
+  
 
-      if (req.body.paymentMode === 'cod') {
-        const orderValue = Number(req.body.value) || 0;
-        
+      if (req.body.cod === 'Yes') {
+        const orderValue = Number(req.body.valueInINR) || 0;
+
         if (typeof rc.codCharge === 'number' && typeof rc.codPercent === 'number') {
           let finalCod = Math.max(rc.codCharge, orderValue * (rc.codPercent / 100));
-          console.log("cod", finalCod);
+          
           cod += finalCod;
         } else {
           console.error("COD charge or percentage is not properly defined.");
@@ -77,7 +76,6 @@ const calculateRate = async (req, res) => {
       ans.push(allRates);
     }
 
-    console.log(ans);
     res.status(201).json(ans);
   } catch (error) {
     console.log('Error in Calculation');
