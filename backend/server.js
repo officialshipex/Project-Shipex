@@ -30,6 +30,8 @@ const verficationRouter = require("./routes/kyc.router");
 const paytmRoutes = require("./routes/paytm.router");
 const authRouter = require("./routes/auth.router");
 
+const couriersB2CRoutes=require("./routes/couriersB2C.router");
+
 
 require("dotenv").config();
 
@@ -70,6 +72,9 @@ app.use("/v1/Xpressbees",XpressbeesController);
 app.use("/v1/ShreeMaruti",shreeMarutiController);
 app.use("/v1/SmartShip",SmartShipController);
 // app.use("/v1/EcomExpress",EcomExpressController);
+
+
+app.use("/v1/B2Ccouries",couriersB2CRoutes);
 
 app.get("/*", (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
