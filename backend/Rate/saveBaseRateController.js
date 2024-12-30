@@ -10,7 +10,6 @@ const { editBaseRate } = require("./editBaseRateController");
 const saveBaseRate = async (req, res) => {
   try {
 
-    console.log("I am in Save Base Rate");
     const { courierServiceName, mode } = req.body;
 
     const existingRateCard = await BaseRateCard.findOne({ courierServiceName, mode });
@@ -45,8 +44,6 @@ const uploadBaseRate = async (req, res) => {
       const sheet = workbook.Sheets[sheetName];
       const data = xlsx.utils.sheet_to_json(sheet);
 
-      console.log("I am in upload Base Rate");
-      console.log(data);
 
       let parsedData;
       try {
@@ -56,11 +53,12 @@ const uploadBaseRate = async (req, res) => {
       }
 
       const { courierProviderName } = parsedData;
-      console.log(courierProviderName);
+      
 
       let service = '';
       let mode = 'Surface';
 
+      let prevRateCard=null;
       for (const item of data) {
         if (item.Courier) {
           service = item.Courier;
@@ -77,16 +75,14 @@ const uploadBaseRate = async (req, res) => {
           }];
 
           if (existingBaseCard) {
-            const currentCard = existingBaseCard;
+            prevRateCard=existingBaseCard;
 
             existingBaseCard.weightPriceBasic = transformedData;
             existingBaseCard.codPercent = item['COD %'];
             existingBaseCard.codCharge = item['COD Charge'];
             existingBaseCard.mode = mode;
 
-            const updatedRateCard = await existingBaseCard.save();
-
-            await editBaseRate(currentCard, updatedRateCard);
+            
           } else {
             const newBaseRate = new BaseRateCard({
               courierProviderName,
@@ -99,6 +95,7 @@ const uploadBaseRate = async (req, res) => {
 
             await newBaseRate.save();
           }
+          
 
         } else {
           const existingBaseCard = await BaseRateCard.findOne({ courierProviderName, courierServiceName: service, mode });
@@ -111,14 +108,14 @@ const uploadBaseRate = async (req, res) => {
             zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
           }];
 
+          console.log(transformedData);
+         
+
           if (existingBaseCard) {
-            const currentCard = existingBaseCard;
-
-            existingBaseCard.weightPriceBasic = transformedData;
-
+            existingBaseCard.weightPriceAdditional= transformedData;
             const updatedRateCard = await existingBaseCard.save();
 
-            await editBaseRate(currentCard, updatedRateCard);
+            await editBaseRate(prevRateCard, updatedRateCard);
           }
         }
       }
