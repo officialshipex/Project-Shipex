@@ -83,12 +83,13 @@ const uploadRate = async (req, res) => {
       }
 
       const { courierProviderName, type } = parsedData;
-      let exists = false;
       let service = '';
       let mode = 'Surface';
 
       const existingCourier = await CourierSecond.find({ provider: courierProviderName }).populate('services');
-      const existingServices = existingCourier.flatMap(courier => courier.services.map(service => service.courierProviderServiceName.replace(/\s+/g, "").toLowerCase()));
+      const existingServices = existingCourier.flatMap(courier => 
+        courier.services.map(service => service.courierProviderServiceName.replace(/\s+/g, "").toLowerCase())
+      );
       console.log(existingServices);
 
       for (const item of data) {
@@ -100,7 +101,7 @@ const uploadRate = async (req, res) => {
           console.log(lowercaseCurrService);
 
           if (existingServices.includes(lowercaseCurrService)) {
-            exists = true;
+           
             const existingRateCard = await RateCard.findOne({
               type,
               mode,
@@ -108,9 +109,17 @@ const uploadRate = async (req, res) => {
               courierServiceName: service,
             });
 
+            const transformedData = [{
+              weight: parseFloat(item.Weight),
+              zoneA: { forward: item['Zone A Forward'], rto: item['Zone A RTO'] },
+              zoneB: { forward: item['Zone B Forward'], rto: item['Zone B RTO'] },
+              zoneC: { forward: item['Zone C Forward'], rto: item['Zone C RTO'] },
+              zoneD: { forward: item['Zone D Forward'], rto: item['Zone D RTO'] },
+              zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
+            }];
+
             if (existingRateCard) {
-              existingRateCard.weightPriceBasic = item['Weight Price Basic'];
-              existingRateCard.weightPriceAdditional = item['Weight Price Additional'];
+              existingRateCard.weightPriceBasic = transformedData;
               existingRateCard.codPercent = item['COD %'];
               existingRateCard.codCharge = item['COD Charge'];
               existingRateCard.mode = mode;
@@ -121,15 +130,6 @@ const uploadRate = async (req, res) => {
               console.log("----------------------------");
               // await existingRateCard.save();
             } else {
-              const transformedData = [{
-                weight: parseFloat(item.Weight),
-                zoneA: { forward: item['Zone A Forward'], rto: item['Zone A RTO'] },
-                zoneB: { forward: item['Zone B Forward'], rto: item['Zone B RTO'] },
-                zoneC: { forward: item['Zone C Forward'], rto: item['Zone C RTO'] },
-                zoneD: { forward: item['Zone D Forward'], rto: item['Zone D RTO'] },
-                zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
-              }];
-
               const rcard = new RateCard({
                 type,
                 mode,
@@ -160,7 +160,7 @@ const uploadRate = async (req, res) => {
 
             continue;
           }
-        } else if (exists) {
+        } else{
           const transformedData = [{
             weight: parseFloat(item.Weight.replace(/[^\d.-]/g, '')),
             zoneA: { forward: item['Zone A Forward'], rto: item['Zone A RTO'] },
@@ -196,7 +196,6 @@ const uploadRate = async (req, res) => {
       console.error('Error processing file:', error);
       res.status(500).json('Error processing file.');
     }
-
   } catch (error) {
     console.error('General error:', error);
     res.status(500).json('An unexpected error occurred.');
