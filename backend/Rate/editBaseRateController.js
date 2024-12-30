@@ -10,6 +10,8 @@ const editBaseRate = async (prevCard, newCard) => {
         const prevRateCard = prevCard;
         const newRateCard = newCard;
 
+       
+
         // PREVIOUS WEIGHT
         let { zoneA: pzoneA, zoneB: pzoneB, zoneC: pzoneC, zoneD: pzoneD, zoneE: pzoneE, weight: pweight } = prevRateCard.weightPriceBasic[0];
         let { zoneA: pzoneA_additional, zoneB: pzoneB_additional, zoneC: pzoneC_additional, zoneD: pzoneD_additional, zoneE: pzoneE_additional, weight: pweight_additional } = prevRateCard.weightPriceAdditional[0];
@@ -17,6 +19,8 @@ const editBaseRate = async (prevCard, newCard) => {
         // CURRENT WEIGHT
         let { zoneA: czoneA, zoneB: czoneB, zoneC: czoneC, zoneD: czoneD, zoneE: czoneE, weight: cweight } = newRateCard.weightPriceBasic[0];
         let { zoneA: czoneA_additional, zoneB: czoneB_additional, zoneC: czoneC_additional, zoneD: czoneD_additional, zoneE: czoneE_additional, weight: cweight_additional } = newRateCard.weightPriceAdditional[0];
+
+        console.log(pzoneA_additional,czoneA_additional);
 
         //COD CHARGE AND PERCENT
         let { codCharge: pcodCharge, codPercent: pcodPercent } = prevRateCard;

@@ -1,5 +1,6 @@
 const CourierSecond = require("../models/courierSecond");
 const CourierServiceSecond = require("../models/courierServiceSecond.model");
+const Plan=require("../models/Plan.model");
 const RateCard = require("../models/rateCards");
 const multer = require('multer');
 const xlsx = require('xlsx');
@@ -41,7 +42,12 @@ const saveRate = async (req, res) => {
         defaultRate: true
       });
 
+      const newPlan=new Plan({
+         type
+      });
+
       const savedRateCard = await rcard.save();
+      const latestPaln=await newPlan.save();
 
       await CourierServiceSecond.updateOne(
         { courierProviderServiceName: courierServiceName },
@@ -141,11 +147,17 @@ const uploadRate = async (req, res) => {
                 defaultRate: true,
               });
 
+              const newPlan=new Plan({
+                type
+             });
+             
+
               console.log("----------------------------");
               console.log("This is new RateCard");
               console.log(rcard);
               console.log("----------------------------");
               const savedRateCard = await rcard.save();
+              const latestPaln=await newPlan.save();
 
               console.log("----------------------------");
               console.log("This is new RateCard");
