@@ -17,7 +17,7 @@ const saveBaseRateController=require("./routes/saveBaseRate.router");
 const getBaseRateController=require("./routes/getBaseRate.router");
 const userController=require("./routes/getUsers.router");
 const customRateController=require("./routes/saveCustomRate.router");
-const editBaseRateController=require("./routes/editBaseRate.router");
+// const editBaseRateController=require("./routes/editBaseRate.router");
 
 const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
@@ -59,7 +59,7 @@ app.use('/v1/saveBaseRate',saveBaseRateController);
 app.use('/v1/getBaseRate',getBaseRateController);
 app.use('/v1/users',userController);
 app.use('/v1/saveCustomRate',customRateController);
-app.use('/v1/editBaseRate',editBaseRateController);
+// app.use('/v1/editBaseRate',editBaseRateController);
 
 
 app.use("/v1/order",orderRouter);
