@@ -115,7 +115,9 @@ const uploadBaseRate = async (req, res) => {
             existingBaseCard.weightPriceAdditional= transformedData;
             const updatedRateCard = await existingBaseCard.save();
 
+           if(prevRateCard!=null){
             await editBaseRate(prevRateCard, updatedRateCard);
+           }
           }
         }
       }

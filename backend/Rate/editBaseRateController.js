@@ -9,7 +9,6 @@ const editBaseRate = async (prevCard, newCard) => {
 
         const prevRateCard = prevCard;
         const newRateCard = newCard;
-
        
 
         // PREVIOUS WEIGHT
