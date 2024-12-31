@@ -42,12 +42,21 @@ const saveRate = async (req, res) => {
         defaultRate: true
       });
 
-      const newPlan=new Plan({
-         type
-      });
+      try {
+        const existingPlan = await Plan.findOne({ type }); // Ensure you're searching by type correctly
+        if (!existingPlan) {
+          const newPlan = new Plan({ type });
+          const latestPlan = await newPlan.save();
+          console.log('New plan saved:', latestPlan);
+        } else {
+          console.log('Plan already exists:', existingPlan);
+        }
+      } catch (error) {
+        console.error('Error while checking or saving the plan:', error);
+      }
 
       const savedRateCard = await rcard.save();
-      const latestPaln=await newPlan.save();
+     
 
       await CourierServiceSecond.updateOne(
         { courierProviderServiceName: courierServiceName },
@@ -79,7 +88,7 @@ const uploadRate = async (req, res) => {
       const sheet = workbook.Sheets[sheetName];
       const data = xlsx.utils.sheet_to_json(sheet);
 
-      console.log(data);
+      // console.log(data);
 
       let parsedData;
       try {
@@ -96,7 +105,7 @@ const uploadRate = async (req, res) => {
       const existingServices = existingCourier.flatMap(courier => 
         courier.services.map(service => service.courierProviderServiceName.replace(/\s+/g, "").toLowerCase())
       );
-      console.log(existingServices);
+      // console.log(existingServices);
 
       for (const item of data) {
         if (item.Courier) {
@@ -104,7 +113,7 @@ const uploadRate = async (req, res) => {
           mode = item.mode || mode;
 
           const lowercaseCurrService = service.replace(/\s+/g, "").toLowerCase();
-          console.log(lowercaseCurrService);
+          // console.log(lowercaseCurrService);
 
           if (existingServices.includes(lowercaseCurrService)) {
            
@@ -130,10 +139,10 @@ const uploadRate = async (req, res) => {
               existingRateCard.codCharge = item['COD Charge'];
               existingRateCard.mode = mode;
 
-              console.log("----------------------------");
-              console.log("This is existing RateCard");
-              console.log(existingRateCard);
-              console.log("----------------------------");
+              // console.log("----------------------------");
+              // console.log("This is existing RateCard");
+              // console.log(existingRateCard);
+              // console.log("----------------------------");
               // await existingRateCard.save();
             } else {
               const rcard = new RateCard({
@@ -147,22 +156,31 @@ const uploadRate = async (req, res) => {
                 defaultRate: true,
               });
 
-              const newPlan=new Plan({
-                type
-             });
+              try {
+                const existingPlan = await Plan.findOne({ type }); // Ensure you're searching by type correctly
+                if (!existingPlan) {
+                  const newPlan = new Plan({ type });
+                  const latestPlan = await newPlan.save();
+                  console.log('New plan saved:', latestPlan);
+                } else {
+                  console.log('Plan already exists:', existingPlan);
+                }
+              } catch (error) {
+                console.error('Error while checking or saving the plan:', error);
+              }
              
 
-              console.log("----------------------------");
-              console.log("This is new RateCard");
-              console.log(rcard);
-              console.log("----------------------------");
+              // console.log("----------------------------");
+              // console.log("This is new RateCard");
+              // console.log(rcard);
+              // console.log("----------------------------");
               const savedRateCard = await rcard.save();
-              const latestPaln=await newPlan.save();
+              
 
-              console.log("----------------------------");
-              console.log("This is new RateCard");
-              console.log(savedRateCard);
-              console.log("----------------------------");
+              // console.log("----------------------------");
+              // console.log("This is new RateCard");
+              // console.log(savedRateCard);
+              // console.log("----------------------------");
 
               await CourierServiceSecond.updateOne(
                 { courierProviderServiceName: service },
@@ -192,10 +210,10 @@ const uploadRate = async (req, res) => {
           if (existingRateCard) {
             existingRateCard.weightPriceAdditional = transformedData;
             const updatedRateCard = await existingRateCard.save();
-            console.log("----------------------------");
-            console.log("Updated RateCard with additional weight price");
-            console.log(updatedRateCard);
-            console.log("----------------------------");
+            // console.log("----------------------------");
+            // console.log("Updated RateCard with additional weight price");
+            // console.log(updatedRateCard);
+            // console.log("----------------------------");
           }
         }
       }
