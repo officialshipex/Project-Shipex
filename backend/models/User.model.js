@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const RateCard = require("./rateCards");
+const Plan=require("../models/Plan.model");
 
 const usersSchema = new mongoose.Schema({
     firstName: {
@@ -45,12 +45,11 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    ratecards: [
-        {
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'RateCard'
-        }
-    ]
+    plan:{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Plan',
+          default:'Basic'
+    }
 });
 
 // Using existing model if it exists or defining a new one

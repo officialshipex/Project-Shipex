@@ -42,7 +42,7 @@ const orderSchema = new mongoose.Schema({
         city: { type: String, required: true },
         state: { type: String, required: true },
         phone: { type: Number, required: true },
-        gstNumber: { type:String, required: true },
+        gstNumber: { type:String, default:"" },
     },
     Product_details: {
         type: Array,
@@ -70,7 +70,7 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Booked', 'Pending', 'Cancelled', 'Fulfilled'],
+        enum: ['Not-Shipped','Booked', 'Pending', 'Cancelled', 'Fulfilled'],
         required:true
     },
     courier_details: {

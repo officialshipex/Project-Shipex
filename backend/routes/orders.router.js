@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const orderRouter = require('express').Router();
-const {createOrder,getAllOrders} = require('../Orders/order.controller');
+const {createOrder,getAllOrders,getOrderDetails} = require('../Orders/order.controller');
 const {bulkOrder} = require('../Orders/bulkOrders.controller');
 const {createQuickOrder} = require('../Orders/quickOrder.controller');
 
@@ -22,5 +22,6 @@ orderRouter.post('/create-order-forward',createOrder);
 orderRouter.get('/get-all-orders',getAllOrders);
 orderRouter.post('/upload-bulk-orders',upload.single('bulkOrderFile'),bulkOrder);
 orderRouter.post('/quick-order',createQuickOrder);
+orderRouter.post("/get-order-details",getOrderDetails);
 
 module.exports = orderRouter;
