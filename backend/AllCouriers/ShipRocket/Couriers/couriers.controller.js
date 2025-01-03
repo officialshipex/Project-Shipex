@@ -25,7 +25,7 @@ const getAllActiveCourierServices = async (req, res) => {
 
       const result= response.data.courier_data;
 
-      const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
+      const currCourier = await Courier.findOne({ provider: 'Shiprocket' }).populate('services');
       const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
       const allServices =result.map(element => ({
@@ -78,6 +78,7 @@ const addService = async (req, res) => {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
+                courierProviderName:'Shiprocket'
             });
 
             currCourier.services.push(newService._id);

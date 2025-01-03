@@ -105,6 +105,7 @@ const addService = async (req, res) => {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
+                courierProviderName:'NimbusPost'
             });
 
             const Nimb = await Courier.findOne({ provider: 'NimbusPost' });
@@ -163,26 +164,11 @@ const getServiceablePincodes = async (req, res) => {
     }
 };
 
-const getServiceablePincodesData = async () => {
-    const { payload } = req.body;
-
+const getServiceablePincodesData = async (service, payload) => {
     const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
 
     try {
         const token = await getAuthToken();
-
-        // // Define the payload for the POST request
-        // const payload = {
-        //     origin: "122001",         // Replace with your actual origin pincode
-        //     destination: pincode,    // Destination pincode passed in the request body
-        //     payment_type: "cod",     // Example payment type
-        //     order_amount: "999",     // Example order amount
-        //     weight: "600",           // Example weight in grams
-        //     length: "10",            // Example length in cm
-        //     breadth: "10",           // Example breadth in cm
-        //     height: "10"             // Example height in cm
-        // };
-
 
         const response = await axios.post(url, payload, {
             headers: {
@@ -192,19 +178,18 @@ const getServiceablePincodesData = async () => {
         });
 
         if (response.data.status) {
-            let fetchedData = response.data.data;
-            let info = {};
-
-
-            return res.status(200).json(info);
+            const filteredData = response.data.data.filter((item) => item.name === service);
+            return filteredData.length > 0;
         } else {
-            return res.status(400).json({ error: 'Error in fetching serviceable pincodes', details: response.data });
+            throw new Error('Error in fetching serviceable pincodes');
         }
     } catch (error) {
         console.error('Error in fetching serviceable pincodes:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        throw new Error(error.response?.data || error.message); 
     }
 };
+
+
 
 module.exports = {
     getServiceablePincodes, getCouriers, getServiceablePincodesData, addService

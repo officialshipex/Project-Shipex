@@ -53,6 +53,7 @@ const addService = async (req, res) => {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
+                courierProviderName:'SmartShip'
             });
 
             const S2 = await Courier.findOne({ provider: 'SmartShip' });

@@ -13,7 +13,7 @@ router.get("/getCourierServices",nimbuspostCourierController.getCouriers);
 router.post("/addService",nimbuspostCourierController.addService);
 
 router.post("/getServiceablePincodes",nimbuspostCourierController.getServiceablePincodes);
-router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
+// router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
 
 router.post("/createShipment",nimbuspostShipmentController.createShipment);
 router.post("/trackShipment",nimbuspostShipmentController.trackShipment);
