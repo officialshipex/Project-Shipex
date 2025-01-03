@@ -1,6 +1,6 @@
-const Order=require("../models/orderSchema.model");
-const Services=require("../models/courierServiceSecond.model");
-const{checkServiceabilityAll}=require("./shipment.controller");
+const Order = require("../models/orderSchema.model");
+const Services = require("../models/courierServiceSecond.model");
+const { checkServiceabilityAll } = require("./shipment.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -9,44 +9,44 @@ function calculateOrderTotals(orderData) {
 
   // Calculate sub-total and product discounts
   orderData.productDetails.forEach(product => {
-      const { quantity, unitPrice, discount = 0 } = product;
-      console.log("quantity:",quantity,"unitprice:",unitPrice,"discount:",discount);
-      
-      const productTotal = quantity * unitPrice;
-      console.log("productTotal:",productTotal);
-      
-      subTotal += productTotal;
-      console.log("subtotal:",subTotal);
-      
-      productDiscount += (productTotal * discount) / 100;  // Assuming discount is a percentage
-      console.log("productDiscount:",productDiscount);
-      
-    });
+    const { quantity, unitPrice, discount = 0 } = product;
+    console.log("quantity:", quantity, "unitprice:", unitPrice, "discount:", discount);
+
+    const productTotal = quantity * unitPrice;
+    console.log("productTotal:", productTotal);
+
+    subTotal += productTotal;
+    console.log("subtotal:", subTotal);
+
+    productDiscount += (productTotal * discount) / 100;  // Assuming discount is a percentage
+    console.log("productDiscount:", productDiscount);
+
+  });
 
   // Calculate other charges
   const shipping = orderData.orderDetails.shippingCharges || 0;
-  console.log("shiping:",shipping);
-  
-  const giftWrap = orderData.orderDetails.giftWrap || 0;  
-  console.log("giftwrap:",giftWrap);
-  
+  console.log("shiping:", shipping);
+
+  const giftWrap = orderData.orderDetails.giftWrap || 0;
+  console.log("giftwrap:", giftWrap);
+
 
   // Calculate additional discount on the whole order
   const additionalDiscount = orderData.orderDetails?.additionalDiscount || 0;
-  console.log("additionalDiscount:",additionalDiscount);
-  
+  console.log("additionalDiscount:", additionalDiscount);
+
   const discountAmount = (subTotal * additionalDiscount) / 100;
-  console.log("discountAmauont:",discountAmount);
-  
+  console.log("discountAmauont:", discountAmount);
+
 
   // Total order value calculation
   const totalOrderValue = subTotal + shipping + giftWrap - productDiscount - discountAmount;
 
   return {
-      subTotal,
-      otherCharges: shipping + giftWrap,
-      discount: productDiscount + discountAmount,
-      totalOrderValue
+    subTotal,
+    otherCharges: shipping + giftWrap,
+    discount: productDiscount + discountAmount,
+    totalOrderValue
   };
 }
 
@@ -67,7 +67,7 @@ const createOrder = async (req, res) => {
       Product_details: data.productDetails,
       shipping_cost: data.shippingCost,
       status: 'Not-Shipped',
-      sub_total:data.sub_total
+      sub_total: data.sub_total
     });
 
     console.log(newOrder);
@@ -83,13 +83,13 @@ const createOrder = async (req, res) => {
 
 
 
-const getAllOrders = async (req,res) => {
-    try {
-        const orders = await Order.find({});
-        return res.status(201).json(orders);
-      } catch (error) {
-        res.status(500).json({ error: error.message });
-      }
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({});
+    return res.status(201).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 }
 
 const getOrderDetails = async (req, res) => {
@@ -110,11 +110,11 @@ const getOrderDetails = async (req, res) => {
 
 const shipOrder = async (req, res) => {
   try {
-    const enabledServices = await Services.find({ isEnabeled: true});
-    
+    const enabledServices = await Services.find({ isEnabeled: true });
+    const currentOrder = await Order.findById(req.body.id);
 
-    const availableServices=await Promise.all(
-      enabledServices.map(async(item)=>{
+    const availableServices = await Promise.all(
+      enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(item, req.body.id);
         if (result) {
           return item;
@@ -123,12 +123,25 @@ const shipOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
+    console.log(filteredServices);
+
+    const payload = {
+      pickupPincode: 110085,
+      deliveryPincode: currentOrder.Biling_details.pinCode,
+      length:currentOrder.shipping_cost.dimensions.length,
+      breadth:currentOrder.shipping_cost.dimensions.width,                         
+      height:currentOrder.shipping_cost.dimensions.height,             
+      weight:currentOrder.shipping_cost.weight,                         
+      cod:currentOrder.order_type==='Cash on Delivery'?"Yes":"No",
+      valueInINR:currentOrder.sub_total
+    };
+
 
     res.status(201).json({
       success: true,
       services: filteredServices,
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -140,8 +153,8 @@ const shipOrder = async (req, res) => {
 
 
 module.exports = {
-    createOrder,
-    getAllOrders,
-    getOrderDetails,
-    shipOrder
+  createOrder,
+  getAllOrders,
+  getOrderDetails,
+  shipOrder
 }
