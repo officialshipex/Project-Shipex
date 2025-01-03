@@ -34,6 +34,13 @@ const checkServiceabilityAll= async (service, id) => {
             const result = await checkServiceability(service.courierProviderServiceName, payload);
             return result;
         }
+
+        if (service.courierProviderName === "Xpressbees") {
+            return true;
+        }
+
+        
+
         return false;
     } catch (error) {
         console.error("Error in checking serviceability:", error.message);

@@ -123,7 +123,6 @@ const shipOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
-    console.log(filteredServices);
 
     res.status(201).json({
       success: true,
