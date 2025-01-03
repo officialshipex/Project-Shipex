@@ -1,4 +1,6 @@
 const Order=require("../models/orderSchema.model");
+const Services=require("../models/courierServiceSecond.model");
+const{checkServiceabilityAll}=require("./shipment.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -106,8 +108,41 @@ const getOrderDetails = async (req, res) => {
   }
 };
 
+const shipOrder = async (req, res) => {
+  try {
+    const enabledServices = await Services.find({ isEnabeled: true});
+    
+
+    const availableServices=await Promise.all(
+      enabledServices.map(async(item)=>{
+        let result = await checkServiceabilityAll(item, req.body.id);
+        if (result) {
+          return item;
+        }
+      })
+    );
+
+    const filteredServices = availableServices.filter(Boolean);
+    console.log(filteredServices);
+
+    res.status(201).json({
+      success: true,
+      services: filteredServices,
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch services',
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
     createOrder,
     getAllOrders,
-    getOrderDetails
+    getOrderDetails,
+    shipOrder
 }

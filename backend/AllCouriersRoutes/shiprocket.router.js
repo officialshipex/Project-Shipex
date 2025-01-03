@@ -46,7 +46,7 @@ router.delete('/cancel-order/:order_id', cancelOrder);
 router.get('/couriers', listCouriers);
 
 // Check Courier Serviceability
-router.get('/courier-serviceability', checkServiceability);
+// router.get('/courier-serviceability', checkServiceability);
 
 // Request for Shipment Pickup
 router.post('/request-pickup', requestShipmentPickup);

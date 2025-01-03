@@ -3,6 +3,9 @@ const RateCard = require('./rateCards');
 
 const courierServiceSecondSchema = new mongoose.Schema(
   {
+    courierProviderName:{
+       type:String,
+    },
     courierProviderServiceId: {
       type: String,
       required: true,
