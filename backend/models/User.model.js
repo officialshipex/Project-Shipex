@@ -45,11 +45,14 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    plan:{
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Plan',
-          default:'Basic'
-    }
+    // plan: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: 'Plan',
+    //     default: async function () {
+    //         const basicPlan = await mongoose.model('Plan').findOne({ name: 'Basic' });
+    //         return basicPlan ? basicPlan._id : null;
+    //     },
+    // },
 });
 
 // Using existing model if it exists or defining a new one
