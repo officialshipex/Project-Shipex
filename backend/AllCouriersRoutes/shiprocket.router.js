@@ -33,6 +33,7 @@ const {
 router.get('/saveNew', shiprocketAuthorize.saveShipRocket);
 router.get('/isEnabeled', shiprocketAuthorize.isEnabeled);
 router.get('/disable',shiprocketAuthorize.disable);
+router.get('/enable',shiprocketAuthorize.enable);
 
 router.get("/getAllActiveCourierServices", getAllActiveCourierServices);
 

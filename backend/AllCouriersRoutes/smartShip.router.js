@@ -11,13 +11,14 @@ const {
     trackOrderByOrderReferenceId,
     getCouriers,addService} = require('../AllCouriers/SmartShip/Couriers/couriers.controller');
 
-const  {saveSmartShip,isEnabeled,disable}= require('../AllCouriers/SmartShip/Authorize/smartShip.controller');
+const  {saveSmartShip,isEnabeled,disable,enable}= require('../AllCouriers/SmartShip/Authorize/smartShip.controller');
 
 const router = express.Router();
 
 // router.post('/get-token',getAccessToken)
 router.get("/saveNew",saveSmartShip);
 router.get("/isEnabeled",isEnabeled);
+router.get("/enable",enable);
 router.get("/disable",disable);
 router.get("/getCouriers",getCouriers);
 
