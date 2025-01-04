@@ -46,6 +46,27 @@ const isEnabeled = async (req, res) => {
     }
   };
 
+  const disable = async (req, res) => {
+
+    try {
+      const existingCourier = await Courier.findOne({ provider: 'ShreeMaruti'});
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      existingCourier.isEnabeled = true;
+      existingCourier.toEnabeled = true;
+      const result=await existingCourier.save();
+      return res.status(201).json({ isEnabeled: true, toEnabeled:true});
+    }
+    catch (error) {
+      onsole.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  
+  }
+
 
 
   const getToken = async () => {
@@ -82,4 +103,4 @@ const isEnabeled = async (req, res) => {
 };
 
 
-module.exports ={saveShreeMaruti,getToken,isEnabeled} ;
+module.exports ={saveShreeMaruti,getToken,isEnabeled,disable};
