@@ -14,6 +14,10 @@ const courierSecondSchema = new mongoose.Schema(
     isEnabeled: {
       type: Boolean,
       default: true
+    },
+    toEnabeled:{
+      type:Boolean,
+      default:false
     }
   },
   {

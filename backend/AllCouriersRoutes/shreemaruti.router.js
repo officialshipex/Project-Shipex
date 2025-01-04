@@ -21,6 +21,8 @@ router.get('/saveNew',ShreeMarutiAuthorizeController.saveShreeMaruti);
 router.get('/isEnabeled',ShreeMarutiAuthorizeController.isEnabeled);
 router.get('/getCourierList',shreeMarutiController.getCourierList);
 
+router.post('/addService',shreeMarutiController.addService);
+
 router.post('/create-order', shreeMarutiController.createOrder);
 router.delete('/cancel-order/:orderId', shreeMarutiController.cancelOrder);
 router.get('/download-label-invoice/:orderId', shreeMarutiController.downloadLabelInvoice);

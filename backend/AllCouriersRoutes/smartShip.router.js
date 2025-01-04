@@ -9,7 +9,7 @@ const {
     trackOrderByTrackingID,
     trackOrderByRequestorderId,
     trackOrderByOrderReferenceId,
-    getCouriers} = require('../AllCouriers/SmartShip/Couriers/couriers.controller');
+    getCouriers,addService} = require('../AllCouriers/SmartShip/Couriers/couriers.controller');
 
 const  {saveSmartShip,isEnabeled}= require('../AllCouriers/SmartShip/Authorize/smartShip.controller');
 
@@ -19,6 +19,8 @@ const router = express.Router();
 router.get("/saveNew",saveSmartShip);
 router.get("/isEnabeled",isEnabeled);
 router.get("/getCouriers",getCouriers);
+
+router.post("/addService",addService);
 
 router.post('/one-step-order-register',OneStapOrderRegisteration);
 router.post('/order-register',orderRegistration);

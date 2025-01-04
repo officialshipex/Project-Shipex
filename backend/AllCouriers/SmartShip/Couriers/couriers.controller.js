@@ -3,6 +3,7 @@ require('dotenv').config();
 const { getAccessToken } =require("../Authorize/smartShip.controller");
 const Courier=require("../../../models/courierSecond");
 const Services=require("../../../models/courierServiceSecond.model");
+const{getUniqueId}=require("../../getUniqueId");
 
 const getCouriers = async (req, res) => {
     try {
@@ -36,7 +37,6 @@ const getCouriers = async (req, res) => {
 
 const addService = async (req, res) => {
     try {
-        console.log(req.body);
 
         const currCourier = await Courier.findOne({ provider: 'SmartShip' });
 
@@ -62,7 +62,7 @@ const addService = async (req, res) => {
             await newService.save();
             await S2.save();
 
-            console.log(`New service saved: ${name}`);
+            // console.log(`New service saved: ${name}`);
 
             return res.status(201).json({ message: `${name} has been successfully added` });
         }
