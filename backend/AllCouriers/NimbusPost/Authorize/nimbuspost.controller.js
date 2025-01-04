@@ -75,7 +75,6 @@ const isEnabeled = async (req, res) => {
 const disable = async (req, res) => {
 
   try {
-    console.log("I am in disabled");
     const existingCourier = await Courier.findOne({ provider: 'NimbusPost' });
 
     if (!existingCourier) {

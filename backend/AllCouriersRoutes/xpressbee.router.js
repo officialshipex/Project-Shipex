@@ -6,6 +6,7 @@ const XpressbeesCouierController=require("../AllCouriers/Xpressbees/Courier/cour
 
 router.get('/saveNew',XpressbeesAuthorizeController.saveXpressbees);
 router.get('/isEnabeled',XpressbeesAuthorizeController.isEnabeled);
+router.get('/disable',XpressbeesAuthorizeController.disable);
 
 router.get('/getCourierList',XpressbeesCouierController.getCourierList);
 router.post("/addService",XpressbeesCouierController.addService);
