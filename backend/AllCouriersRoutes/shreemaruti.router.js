@@ -19,6 +19,7 @@ const shreeMarutiController=require("../AllCouriers/ShreeMaruti/Couriers/courier
 
 router.get('/saveNew',ShreeMarutiAuthorizeController.saveShreeMaruti);
 router.get('/isEnabeled',ShreeMarutiAuthorizeController.isEnabeled);
+router.get('/enable',ShreeMarutiAuthorizeController.enable);
 router.get('/disable',ShreeMarutiAuthorizeController.disable);
 router.get('/getCourierList',shreeMarutiController.getCourierList);
 

@@ -68,10 +68,32 @@ const getAccessToken = async () => {
       }
       };
 
+
+      const enable = async (req, res) => {
+
+        try {
+          const existingCourier = await Courier.findOne({ provider:'SmartShip'});
+      
+          if (!existingCourier) {
+            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+          }
+      
+          existingCourier.isEnabeled = true;
+          existingCourier.toEnabeled = false;
+          const result = await existingCourier.save();
+          return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+        }
+        catch (error) {
+          onsole.error("Error:", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      
+      }
+
       const disable = async (req, res) => {
 
         try {
-          const existingCourier = await Courier.findOne({ provider: 'SmartShip'});
+          const existingCourier = await Courier.findOne({ provider:'SmartShip'});
       
           if (!existingCourier) {
             return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
@@ -91,4 +113,4 @@ const getAccessToken = async () => {
     
 
 
-module.exports = { getAccessToken,saveSmartShip,isEnabeled,disable};
+module.exports = { getAccessToken,saveSmartShip,isEnabeled,disable,enable};

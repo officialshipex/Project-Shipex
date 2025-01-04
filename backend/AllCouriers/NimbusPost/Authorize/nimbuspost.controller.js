@@ -55,22 +55,43 @@ const isEnabeled = async (req, res) => {
 
     if (existingCourier.isEnabeled && !existingCourier.toEnabeled) {
       return res.status(201).json({ isEnabeled: true, toEnabeled: false });
-  
-  } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
+
+    } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
       return res.status(201).json({ isEnabeled: false, toEnabeled: true });
-  
-  } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
+
+    } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
       return res.status(201).json({ isEnabeled: true, toEnabeled: true });
-  
-  } else {
+
+    } else {
       return res.status(201).json({ isEnabeled: false, toEnabeled: false });
-  }
-  
+    }
+
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+const enable = async (req, res) => {
+
+  try {
+    const existingCourier = await Courier.findOne({ provider: 'NimbusPost' });
+
+    if (!existingCourier) {
+      return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+    }
+
+    existingCourier.isEnabeled = true;
+    existingCourier.toEnabeled = false;
+    const result = await existingCourier.save();
+    return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+  }
+  catch (error) {
+    onsole.error("Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+
+}
 
 const disable = async (req, res) => {
 
@@ -83,8 +104,8 @@ const disable = async (req, res) => {
 
     existingCourier.isEnabeled = true;
     existingCourier.toEnabeled = true;
-    const result=await existingCourier.save();
-    return res.status(201).json({ isEnabeled: true, toEnabeled:true});
+    const result = await existingCourier.save();
+    return res.status(201).json({ isEnabeled: true, toEnabeled: true });
   }
   catch (error) {
     onsole.error("Error:", error);
@@ -95,7 +116,7 @@ const disable = async (req, res) => {
 
 
 
-module.exports = { getAuthToken, saveNimbusPost, isEnabeled, disable };
+module.exports = { getAuthToken, saveNimbusPost, isEnabeled, disable ,enable};
 
 
 
