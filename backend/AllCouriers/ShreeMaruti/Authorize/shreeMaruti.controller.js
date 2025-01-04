@@ -12,7 +12,7 @@ const saveShreeMaruti = async (req, res) => {
         const existingCourier = await Courier.findOne({ provider: 'ShreeMaruti' });
 
         if (existingCourier) {
-            return res.status(400).json({ message: 'Shiprocket service is already added' });
+            return res.status(400).json({ message: 'ShreeMaruti service is already added' });
         }
 
         const newCourier = new Courier({
@@ -53,9 +53,6 @@ const isEnabeled = async (req, res) => {
     const password = process.env.SHREEMA_PASS;
     const vendorType = "SELLER";
 
-    console.log("Email:", email); // Debug log
-    console.log("Password:", password); // Debug log
-
     if (!email || !password) {
         throw new Error("Email and password environment variables are required.");
     }
@@ -72,8 +69,6 @@ const isEnabeled = async (req, res) => {
         };
 
         const response = await axios.request(options);
-
-        console.log("Response:", response.data); // Debug log
 
         if (response.status === 200 && response.data.data.accessToken) {
             return response.data.data.accessToken;

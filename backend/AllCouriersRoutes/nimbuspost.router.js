@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
-const {saveNimbusPost,isEnabeled}=require("../../backend/AllCouriers/NimbusPost/Authorize/nimbuspost.controller");
+const {saveNimbusPost,isEnabeled,disable}=require("../../backend/AllCouriers/NimbusPost/Authorize/nimbuspost.controller");
 const nimbuspostCourierController=require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
 const nimbuspostShipmentController=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const nimbuspostNDRController=require("../AllCouriers/NimbusPost/NDR/ndr.controller");
 
 router.get('/saveNew',saveNimbusPost);
 router.get('/isEnabeled',isEnabeled);
+router.get('/disable',disable);
 
 router.get("/getCourierServices",nimbuspostCourierController.getCouriers);
 router.post("/addService",nimbuspostCourierController.addService);

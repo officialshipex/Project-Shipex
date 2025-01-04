@@ -1,26 +1,37 @@
 const axios = require('axios');
-const  {getToken}  = require('../Authorize/shreeMaruti.controller');
+const { getToken } = require('../Authorize/shreeMaruti.controller');
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
+const {getUniqueId}=require("../../getUniqueId");
 
 // Configuration (replace with actual values)
 const BASE_URL = 'https://qaapis.delcaper.com'; // Replace with the actual base URL
 
 
+
 const getCourierList = async (req, res) => {
-    const API_URL = "https://qaapis.delcaper.com/couriers";
-    const token = await getToken();
-    console.log(token);
 
     try {
-        const response = await axios.get(API_URL, {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const hardCoreServices = [
+        { name: "Shree Maruti service1" },
+        { name: "Shree Maruti service2" },
+        { name: " Shree Maruti service3" }
+    ];
+      
+        if (hardCoreServices && hardCoreServices.length > 0) {
+            const servicesData = hardCoreServices;
+            const currCourier = await Courier.findOne({ provider:'ShreeMaruti'}).populate('services');
+            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
-        console.log(response);
+            const allServices = servicesData.map(element => ({
+                service: element.name,
+                isAdded: prevServices.has(element.name)
+            }));
+
+            return res.status(201).json(allServices);
+        }
+
+        res.status(400).json({ message: 'Failed to fetch services' });
     } catch (error) {
         res.status(500).json({
             error: "Failed to fetch courier list",
@@ -30,17 +41,57 @@ const getCourierList = async (req, res) => {
 };
 
 
+const addService = async (req, res) => {
+    try {
+
+        const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' });
+
+        const prevServices = new Set();
+        const services = await Services.find({ '_id': { $in: currCourier.services } });
+
+        services.forEach(service => {
+            prevServices.add(service.courierProviderServiceName);
+        });
+
+        const name = req.body.service;
+
+        if (!prevServices.has(name)) {
+            const newService = new Services({
+                courierProviderServiceId: getUniqueId(),
+                courierProviderServiceName: name,
+                courierProviderName:'SmartShip'
+            });
+
+            const S2 = await Courier.findOne({ provider: 'ShreeMaruti'});
+            S2.services.push(newService._id);
+
+            await newService.save();
+            await S2.save();
+
+            // console.log(`New service saved: ${name}`);
+
+            return res.status(201).json({ message: `${name} has been successfully added` });
+        }
+
+        return res.status(400).json({ message: `${name} already exists` });
+    } catch (error) {
+        console.error(`Error adding service: ${error.message}`);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    }
+};
+
+
 // Create Order
 const createOrder = async (req, res) => {
     const API_URL = "https://qaapis.delcaper.com/booking/order/";
     const token = await getToken();
-    
+
     try {
         // Ensure the request body contains the required data
         if (!req.body || !Array.isArray(req.body) || req.body.length === 0) {
             return res.status(400).json({ error: "Invalid or missing request body" });
         }
-       
+
         // Make the API call
         const response = await axios.post(API_URL, req.body, {
             headers: {
@@ -185,5 +236,6 @@ module.exports = {
     createManifest,
     trackOrder,
     checkServiceability,
-    getCourierList
+    getCourierList,
+    addService
 };
