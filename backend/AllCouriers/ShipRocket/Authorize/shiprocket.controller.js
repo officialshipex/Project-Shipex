@@ -61,22 +61,29 @@ const saveShipRocket = async (req, res) => {
 
 const isEnabeled = async (req, res) => {
     try {
-      const existingCourier = await Courier.findOne({ provider: 'Shiprocket' });
+        const existingCourier = await Courier.findOne({ provider:'Shiprocket' });
+    
+        if (!existingCourier) {
+          return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+        }
+    
+        if (existingCourier.isEnabeled && !existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: true, toEnabeled: false });
       
-  
-      if (!existingCourier) {
-        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-      }
-  
-      if (existingCourier.isEnabeled) {
-        return res.status(201).json({ isEnabeled: true });
+      } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: false, toEnabeled: true });
+      
+      } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: true, toEnabeled: true });
+      
       } else {
-        return res.status(200).json({ isEnabeled: false });
+          return res.status(201).json({ isEnabeled: false, toEnabeled: false });
       }
-    } catch (error) {
-      console.error("Error:", error);
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+      
+      } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
   };
 
   const disable = async (req, res) => {
