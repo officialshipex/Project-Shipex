@@ -1,6 +1,8 @@
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
+const Courier=require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
+const{calculateRateForService}=require("../Rate/calculateRateController");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -110,8 +112,19 @@ const getOrderDetails = async (req, res) => {
 
 const shipOrder = async (req, res) => {
   try {
-    const enabledServices = await Services.find({ isEnabeled: true });
+    // const enabledServices = await Services.find({ isEnabeled: true });
     const currentOrder = await Order.findById(req.body.id);
+
+    const servicesCursor = Services.find({ isEnabeled: true });
+    const enabledServices = [];
+  
+    for await (const srvc of servicesCursor) {
+      const provider = await Courier.findOne({ provider: srvc.courierProviderName });
+  
+      if (provider?.isEnabeled === true && provider?.toEnabeled === false) {
+        enabledServices.push(srvc);
+      }
+    }
 
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
@@ -133,13 +146,18 @@ const shipOrder = async (req, res) => {
       height:currentOrder.shipping_cost.dimensions.height,             
       weight:currentOrder.shipping_cost.weight,                         
       cod:currentOrder.order_type==='Cash on Delivery'?"Yes":"No",
-      valueInINR:currentOrder.sub_total
+      valueInINR:currentOrder.sub_total,
+      filteredServices,
+      rateCardType:"Basic"
     };
+
+    let rates=await calculateRateForService(payload);
 
 
     res.status(201).json({
       success: true,
       services: filteredServices,
+      rates
     });
 
   } catch (error) {
