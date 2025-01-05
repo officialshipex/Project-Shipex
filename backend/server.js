@@ -32,6 +32,8 @@ const authRouter = require("./routes/auth.router");
 
 const couriersB2CRoutes=require("./routes/couriersB2C.router");
 
+const WareHouse=require("./routes/warehouse.router");
+
 
 require("dotenv").config();
 
@@ -75,6 +77,8 @@ app.use("/v1/SmartShip",SmartShipController);
 
 
 app.use("/v1/B2Ccouries",couriersB2CRoutes);
+
+app.use('/v1/warehouse',WareHouse);
 
 app.get("/*", (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

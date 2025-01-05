@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Plan=require("../models/Plan.model");
+const Warehouse=require("../models/wareHouse.model");
 
 const usersSchema = new mongoose.Schema({
     firstName: {
@@ -45,14 +46,14 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    // plan: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'Plan',
-    //     default: async function () {
-    //         const basicPlan = await mongoose.model('Plan').findOne({ name: 'Basic' });
-    //         return basicPlan ? basicPlan._id : null;
-    //     },
-    // },
+    wareHouse:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'Warehouse'
+    },
+    plan: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Plan',
+    },
 });
 
 // Using existing model if it exists or defining a new one
