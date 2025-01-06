@@ -7,7 +7,6 @@ const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
-
 const getAllActiveCourierServices = async (req, res) => {
     console.log("Fetching active courier services from ShipRocket");
 
