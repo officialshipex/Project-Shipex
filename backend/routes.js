@@ -1,4 +1,5 @@
 const express = require("express");
+const router=express.Router();
 
 const authRouter = require("./routes/auth.router");
 const { isAuthorized } = require('./middleware/auth.middleware');
@@ -26,7 +27,7 @@ const NimbusPostController = require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
 const LabelRouter = require('./label/label.router');
 
-const router = express.Router();
+
 
 router.use('/external', authRouter);
 
@@ -35,7 +36,7 @@ router.use('/merchant', isAuthorized, verficationRouter);
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
 
-router.use('/order', orderRouter)
+router.use('/order', orderRouter);
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);
@@ -45,7 +46,7 @@ router.use('/saveRate', saveRateRouter);
 router.use('/getBaseRate', getBaseRateController);
 router.use('/saveBaseRate', saveBaseRateController);
 router.use('/saveCustomRate', customRateController);
-router.use('/editBaseRate', editBaseRateController);
+// router.use('/editBaseRate', editBaseRateController);
 
 router.use("/NimbusPost", NimbusPostController);
 router.use("/Shiprocket", ShipRocketController);

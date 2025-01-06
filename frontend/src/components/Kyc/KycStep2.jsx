@@ -2,19 +2,6 @@ import { useState } from "react";
 import Logo from '../../assets/Vector logo.png';
 import KycLogo from '../../assets/Illustration.png'; // Update this path according to your project structure
 
-<<<<<<< HEAD
-const KycStep2 = () => {
-  const [companyName, setCompanyName] = useState('');
-  const [gstNumber, setGstNumber] = useState('');
-  const [address, setAddress] = useState({
-    addressLine1: '',
-    addressLine2: '',
-    pinCode: '',
-    city: '',
-    state: '',
-    country: '',
-  });
-=======
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const KycStep2 = (props) => {
@@ -40,18 +27,12 @@ const KycStep2 = (props) => {
       setMessage("GST Number is invalid");
     }
   }
->>>>>>> 72798cb5b0662333ec5a43921c38b269836091b9
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setAddress((prevAddress) => ({ ...prevAddress, [name]: value }));
   };
 
-<<<<<<< HEAD
-  const verifyGst = () => {
-    // Add GST verification logic here
-    console.log('Verifying GST:', gstNumber);
-=======
   const verifyGst = async (e) => {
     e.preventDefault();
     setSuccess(false);
@@ -100,7 +81,6 @@ const KycStep2 = (props) => {
       }
     }
 
->>>>>>> 72798cb5b0662333ec5a43921c38b269836091b9
   };
 
   return (
