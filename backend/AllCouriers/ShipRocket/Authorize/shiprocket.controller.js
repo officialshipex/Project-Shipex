@@ -2,24 +2,12 @@ require('dotenv').config();
 const axios = require("axios");
 const Courier = require("../../../models/courierSecond");
 
-const saveShipRocket = async () => {
-    try {
-        const newCourier = new Courier({ provider: "Shiprocket" });
-        await newCourier.save();
-        return newCourier;
-    } catch (error) {
-        throw new Error("Failed to save credentials in the database: " + error?.message);
-    }
-};
-
 const getToken = async () => {
-    const email=process.env.SHIPR_GMAIL;
-    const password=process.env.SHIPR_PASS;
+    const email = process.env.SHIPR_GMAIL;
+    const password = process.env.SHIPR_PASS;
 
     if (!email || !password) {
-        return res.status(400).json({
-            message: "Email and password are required.",
-        });
+        throw new Error("Email and password are required as environment variables.");
     }
 
     try {
@@ -34,17 +22,112 @@ const getToken = async () => {
         };
 
         const response = await axios.request(options);
-         
-        if(response.status){
+
+        if (response.status === 200 && response.data.token) {
             return response.data.token;
+        } else {
+            throw new Error(`Login failed: Status ${response.status}`);
         }
-            else {
-                throw new Error(`Login failed: ${response.status}`);
-            }
-       
     } catch (error) {
-        throw new Error(`Error in authentication: ${error.message}`);
+        if (error.response) {
+            throw new Error(`Error in authentication: ${error.response.data.message || error.message}`);
+        } else {
+            throw new Error(`Error in authentication: ${error.message}`);
+        }
     }
 };
 
-module.exports = { saveShipRocket, getToken };
+
+
+const saveShipRocket = async (req, res) => {
+   
+    console.log("I am in shiprocket");
+    try {
+        const existingCourier = await Courier.findOne({ provider: 'Shiprocket' });
+
+        if (existingCourier) {
+            return res.status(400).json({ message: 'Shiprocket service is already added' });
+        }
+
+        const newCourier = new Courier({
+            provider: 'Shiprocket'
+        });
+        await newCourier.save();
+        res.status(201).json({ message: 'Shiprocket Integrated Successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'An error has occurred', error: error.message });
+    }
+};
+
+const isEnabeled = async (req, res) => {
+    try {
+        const existingCourier = await Courier.findOne({ provider:'Shiprocket' });
+    
+        if (!existingCourier) {
+          return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+        }
+    
+        if (existingCourier.isEnabeled && !existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+      
+      } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: false, toEnabeled: true });
+      
+      } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
+          return res.status(201).json({ isEnabeled: true, toEnabeled: true });
+      
+      } else {
+          return res.status(201).json({ isEnabeled: false, toEnabeled: false });
+      }
+      
+      } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+  };
+
+  const enable = async (req, res) => {
+
+    try {
+      const existingCourier = await Courier.findOne({ provider: 'Shiprocket' });
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      existingCourier.isEnabeled = true;
+      existingCourier.toEnabeled = false;
+      const result = await existingCourier.save();
+      return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+    }
+    catch (error) {
+      onsole.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  
+  }
+  
+
+  const disable = async (req, res) => {
+
+    try {
+      const existingCourier = await Courier.findOne({ provider: 'Shiprocket'});
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      existingCourier.isEnabeled = true;
+      existingCourier.toEnabeled = true;
+      const result=await existingCourier.save();
+      return res.status(201).json({ isEnabeled: true, toEnabeled:true});
+    }
+    catch (error) {
+      onsole.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  
+  }
+
+
+module.exports = { saveShipRocket, getToken, isEnabeled, disable,enable };

@@ -97,20 +97,44 @@ const listCouriers = async (req, res) => {
 };
 
 // 5. Check Courier Serviceability
-const checkServiceability = async (req, res) => {
-  const { pickup_pincode, delivery_pincode, cod } = req.query;
+async function checkServiceability(service, payload) {
+  const pickup_postcode =payload.origin;
+  const delivery_postcode =payload.destination;
+  const cod = payload.payment_type === true ? 1 : 0;
+  const weight = payload.weight || '1';
 
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pickup_pincode, delivery_pincode, cod },
+      headers: { 
+        Authorization: `Bearer ${token}` 
+      },
+      params: {
+        pickup_postcode,
+        delivery_postcode,
+        cod,
+        weight
+      },
     });
-    res.json(response.data);
+
+    const result = response.data?.data?.available_courier_companies || [];
+    const filteredData = result.filter((item) => item.courier_name === service);
+
+    if (filteredData.length > 0) {
+      return true;
+    } else {
+      console.log(`No courier service found matching: ${service}`);
+      return false;
+    }
+
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    console.error('Error Response:', error.response?.data || error.message);
+    return false;
   }
-};
+}
+
+
+
 
 // 6. Request for Shipment Pickup
 const requestShipmentPickup = async (req, res) => {

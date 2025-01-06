@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
- 
 
 const bulkOrdersExcelSchema = new mongoose.Schema({
     fileId: {
@@ -7,10 +6,9 @@ const bulkOrdersExcelSchema = new mongoose.Schema({
         ref: 'BulkOrderFiles',
         required: true,
     },
-    orderId: {  
+    orderId: {
         type: String,
         required: true,
-        unique: true
     },
     orderDate:{
         type:Date,

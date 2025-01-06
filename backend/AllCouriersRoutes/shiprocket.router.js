@@ -2,7 +2,10 @@
 const express = require("express");
 const router = express.Router();
 
-const { getAllActiveCourierServices } = require("../AllCouriers/ShipRocket/Couriers/couriers.controller");
+const shiprocketAuthorize = require("../AllCouriers/ShipRocket/Authorize/shiprocket.controller");
+
+const { getAllActiveCourierServices, addService } = require("../AllCouriers/ShipRocket/Couriers/couriers.controller");
+
 const {
     createCustomOrder,
 
@@ -27,7 +30,15 @@ const {
 
 } = require('../AllCouriers/ShipRocket/MainServices/mainServices.controller');
 
-router.post("/getAllActiveCourierServices", getAllActiveCourierServices);
+router.get('/saveNew', shiprocketAuthorize.saveShipRocket);
+router.get('/isEnabeled', shiprocketAuthorize.isEnabeled);
+router.get('/disable',shiprocketAuthorize.disable);
+router.get('/enable',shiprocketAuthorize.enable);
+
+router.get("/getAllActiveCourierServices", getAllActiveCourierServices);
+
+router.post("/addService", addService);
+
 router.post('/create-custom-order', createCustomOrder);
 
 router.put('/update-order/:order_id', updateOrder);
@@ -37,7 +48,7 @@ router.delete('/cancel-order/:order_id', cancelOrder);
 router.get('/couriers', listCouriers);
 
 // Check Courier Serviceability
-router.get('/courier-serviceability', checkServiceability);
+// router.get('/courier-serviceability', checkServiceability);
 
 // Request for Shipment Pickup
 router.post('/request-pickup', requestShipmentPickup);

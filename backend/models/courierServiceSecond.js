@@ -15,6 +15,11 @@ const courierServiceSecondSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RateCard',
     }],
+    
+    isEnabeled:{
+      type:Boolean,
+      default:true
+    }
   },
   {
     timestamps: true,
