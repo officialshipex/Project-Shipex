@@ -24,7 +24,7 @@ const editBaseRateController = require("./routes/editBaseRate.router");
 const EcomExpressController = require("./AllCouriersRoutes/ecom.router");
 const NimbusPostController = require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
-
+const LabelRouter = require('./label/label.router');
 
 const router = express.Router();
 
@@ -50,5 +50,7 @@ router.use('/editBaseRate', editBaseRateController);
 router.use("/NimbusPost", NimbusPostController);
 router.use("/Shiprocket", ShipRocketController);
 router.use("/EcomExpress", EcomExpressController);
+
+router.use("/label", LabelRouter);
 
 module.exports = router;
