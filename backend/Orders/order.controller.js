@@ -10,33 +10,33 @@ function calculateOrderTotals(orderData) {
   // Calculate sub-total and product discounts
   orderData.productDetails.forEach(product => {
       const { quantity, unitPrice, discount = 0 } = product;
-      console.log("quantity:",quantity,"unitprice:",unitPrice,"discount:",discount);
+      // console.log("quantity:",quantity,"unitprice:",unitPrice,"discount:",discount);
       
       const productTotal = quantity * unitPrice;
-      console.log("productTotal:",productTotal);
+      // console.log("productTotal:",productTotal);
       
       subTotal += productTotal;
-      console.log("subtotal:",subTotal);
+      // console.log("subtotal:",subTotal);
       
       productDiscount += (productTotal * discount) / 100;  // Assuming discount is a percentage
-      console.log("productDiscount:",productDiscount);
+      // console.log("productDiscount:",productDiscount);
       
     });
 
   // Calculate other charges
   const shipping = orderData.orderDetails.shippingCharges || 0;
-  console.log("shiping:",shipping);
+  // console.log("shiping:",shipping);
   
   const giftWrap = orderData.orderDetails.giftWrap || 0;  
-  console.log("giftwrap:",giftWrap);
+  // console.log("giftwrap:",giftWrap);
   
 
   // Calculate additional discount on the whole order
   const additionalDiscount = orderData.orderDetails?.additionalDiscount || 0;
-  console.log("additionalDiscount:",additionalDiscount);
+  // console.log("additionalDiscount:",additionalDiscount);
   
   const discountAmount = (subTotal * additionalDiscount) / 100;
-  console.log("discountAmauont:",discountAmount);
+  // console.log("discountAmauont:",discountAmount);
   
 
   // Total order value calculation
@@ -57,26 +57,26 @@ const createOrder = async (req,res) => {
   try {
         const orderData = req.body;
 
-        // Get token from the Authorization header
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-          return res.status(401).json({
-            success: false,
-            message: 'Token not provided or invalid',
-          });
-        }
+        // // Get token from the Authorization header
+        // const authHeader = req.headers.authorization;
+        // if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        //   return res.status(401).json({
+        //     success: false,
+        //     message: 'Token not provided or invalid',
+        //   });
+        // }
         
-        const token = authHeader.split(' ')[1]; // Extract the token
+        // const token = authHeader.split(' ')[1]; // Extract the token
         
-        // Decode and verify the token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
-        console.log('Decoded Token:', decoded); 
-        // Example: { user: { id: 'userId', email: 'user@example.com' }, iat: ..., exp: ... }
+        // // Decode and verify the token
+        // const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
+        // console.log('Decoded Token:', decoded); 
+        // // Example: { user: { id: 'userId', email: 'user@example.com' }, iat: ..., exp: ... }
         
-        // Use the user's ID from the token to create an order
-        const userId = decoded.user.id; // Adjust based on your token payload structure
+        // // Use the user's ID from the token to create an order
+        // const userId = decoded.user.id; // Adjust based on your token payload structure
         
-        console.log("User ID:",userId);
+        // console.log("User ID:",userId);
         
         // Perform validation
         const { error, value } = orderValidateSchema.validate(orderData, { abortEarly: false }); // `abortEarly: false` to collect all errors
@@ -93,12 +93,13 @@ const createOrder = async (req,res) => {
             errors: validationErrors
           });
         }
-
+        // console.log("value:",value); 
         //  Perform calculations for the order totals
         const totals = calculateOrderTotals(orderData);
         
         const order = new Order({
-          user_Id: decoded.user.id,
+          // user_Id: decoded.user.id,
+          user_Id: "67237ee56a42044404423c8e",
           buyerDetails:orderData.buyerDetails,
           buyerAddress:orderData.buyerAddress,
           orderDetails:{
@@ -114,7 +115,7 @@ const createOrder = async (req,res) => {
           packageDetails:orderData.packageDetails,
           pickUpAddress:orderData.pickUpAddress
         });
-        console.log("orderDetails:",order.orderDetails);
+        // console.log("orderDetails:",order.orderDetails);
                 
         await order.save();
         
@@ -156,7 +157,7 @@ const getAllOrders = async (req,res) => {
           //   return orderData;
           // });
 
-        console.log("All orders",orders);
+        // console.log("All orders",orders);
         
         return res.status(200).json(orders);
       } catch (error) {
