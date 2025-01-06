@@ -139,7 +139,7 @@ const shipOrder = async (req, res) => {
     console.log(filteredServices);
 
     const payload = {
-      pickupPincode: 110085,
+      pickupPincode:req.body.pincode,
       deliveryPincode: currentOrder.Biling_details.pinCode,
       length:currentOrder.shipping_cost.dimensions.length,
       breadth:currentOrder.shipping_cost.dimensions.width,                         
