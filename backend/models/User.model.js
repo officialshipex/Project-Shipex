@@ -46,10 +46,10 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    wareHouse:{
+    wareHouse:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:'Warehouse'
-    },
+    }],
     plan: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Plan',
@@ -57,7 +57,7 @@ const usersSchema = new mongoose.Schema({
 });
 
 // Using existing model if it exists or defining a new one
-const User = mongoose.model.User || mongoose.model('User', usersSchema);
+const User = mongoose.model('User', usersSchema);
 
 module.exports = User;
 
