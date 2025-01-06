@@ -27,6 +27,9 @@ const NimbusPostController = require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
 const LabelRouter = require('./label/label.router');
 
+const userRouter=require("./routes/user.router");
+const WareHouse=require("./routes/warehouse.router");
+
 
 
 router.use('/external', authRouter);
@@ -53,5 +56,7 @@ router.use("/Shiprocket", ShipRocketController);
 router.use("/EcomExpress", EcomExpressController);
 
 router.use("/label", LabelRouter);
+router.use('/user',isAuthorized,userRouter);
+router.use('/warehouse',WareHouse);
 
 module.exports = router;
