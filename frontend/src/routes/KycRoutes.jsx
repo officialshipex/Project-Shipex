@@ -12,7 +12,7 @@ import KycStep3 from '../components/Kyc/KycStep3';
 import UploadId from '../components/Kyc/UploadId';
 import { getTokens } from '../lib/session';
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
 const KycRoutes = () => {
   
@@ -67,7 +67,7 @@ const KycRoutes = () => {
       }
 
       const getUser = async () => {
-        const response = await axios.get(`${backendUrl}/merchant/verfication/kyc`, {
+        const response = await axios.get(`${backendUrl}/v1/merchant/verfication/kyc`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -155,7 +155,7 @@ const KycRoutes = () => {
 
     try {
 
-      const response = await axios.post(`${backendUrl}/merchant/verfication/kyc`, {
+      const response = await axios.post(`${backendUrl}/v1/merchant/verfication/kyc`, {
         businesstype,
         companyName,
         gstNumber,
