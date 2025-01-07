@@ -39,7 +39,7 @@ router.get("/getAllActiveCourierServices", getAllActiveCourierServices);
 
 router.post("/addService", addService);
 
-router.post('/create-custom-order', createCustomOrder);
+router.post('/createShipment', createCustomOrder);
 
 router.put('/update-order/:order_id', updateOrder);
 router.delete('/cancel-order/:order_id', cancelOrder);
