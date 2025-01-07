@@ -1,6 +1,6 @@
 const WareHouse = require("../models/wareHouse.model");
 const User = require("../models/User.model");
-const{addPickupLocation}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { addPickupLocation, getAllPickupLocations } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 
 const createWareHouse = async (req, res) => {
   try {
@@ -10,8 +10,6 @@ const createWareHouse = async (req, res) => {
 
     const data = req.body.formData;
     const userId = req.body.userId;
-    
-   
 
     const currentUser = await User.findById(userId);
     if (!currentUser) {
@@ -29,6 +27,22 @@ const createWareHouse = async (req, res) => {
     }
 
     try {
+      let locations = await getAllPickupLocations();
+      const existingLocation = locations.find(location => 
+        location.pickup_location === data.warehouseName || 
+        (location.address === data.addressLine1 && location.city === data.city)
+      );
+      
+      if (existingLocation) {
+        return res.status(400).json({
+          message: "Pickup location with the same name or address already exists."
+        });
+      }
+    } catch (pickupError) {
+      return res.status(500).json({ message: "Error checking pickup location.", error: pickupError.message });
+    }
+
+    try {
       await addPickupLocation(data, currentUser.email);
     } catch (pickupError) {
       return res.status(500).json({ message: "Error creating pickup location.", error: pickupError.message });
@@ -40,16 +54,17 @@ const createWareHouse = async (req, res) => {
     currentUser.wareHouse.push(wh._id);
     await currentUser.save();
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Warehouse has been successfully saved.",
       warehouse: wh,
     });
-    
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 module.exports = { createWareHouse };
 

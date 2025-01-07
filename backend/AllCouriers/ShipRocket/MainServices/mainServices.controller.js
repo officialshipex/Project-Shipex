@@ -322,7 +322,7 @@ const getTrackingByOrderID = async (req, res) => {
 const addPickupLocation = async (data, email) => {
   const requestData = {
     pickup_location: data.warehouseName,
-    name: data.warehouseName,
+    name: data.contactName,
     email,
     phone: parseInt(data.contactNo),
     address: data.addressLine1,
@@ -345,13 +345,32 @@ const addPickupLocation = async (data, email) => {
         }
       }
     );
-
+    
     return response.data;
   } catch (error) {
     console.error('Error:', error.response ? error.response.data : error.message);
     throw error; 
   }
 };
+
+const getAllPickupLocations= async () => {
+  try {
+    const token = await getToken();
+    const response = await axios.get(
+      `${BASE_URL}/settings/company/pickup`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    return response.data.data.shipping_address;
+  } catch (error) {
+    console.error('Error:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
 
 
 module.exports = {
@@ -375,5 +394,7 @@ module.exports = {
   getTrackingByAWB,
 
   getTrackingByOrderID,
-  addPickupLocation
+  addPickupLocation,
+  getAllPickupLocations
+
 };
