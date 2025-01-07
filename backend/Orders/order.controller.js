@@ -128,7 +128,7 @@ const shipOrder = async (req, res) => {
 
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
-        let result = await checkServiceabilityAll(item, req.body.id);
+        let result = await checkServiceabilityAll(item, req.body.id,req.body.pincode);
         if (result) {
           return item;
         }

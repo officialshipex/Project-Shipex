@@ -18,6 +18,12 @@ const courierServiceSecondSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RateCard',
     }],
+
+    provider_courier_id:{
+      type:String,
+      required:true
+    },
+    
     isEnabeled:{
       type:Boolean,
       default:true

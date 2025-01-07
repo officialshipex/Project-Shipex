@@ -33,9 +33,11 @@ const getCouriers = async (req, res) => {
             const servicesData = response.data.data;
             const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
             const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+           
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
+                provider_courier_id:element.id,
                 isAdded: prevServices.has(element.name)
             }));
 
@@ -88,7 +90,7 @@ const getCouriers = async (req, res) => {
 
 const addService = async (req, res) => {
     try {
-        console.log(req.body);
+        
 
         const currCourier = await Courier.findOne({ provider: 'NimbusPost' });
 
@@ -100,12 +102,14 @@ const addService = async (req, res) => {
         });
 
         const name = req.body.service;
+        const provider_courier_id=req.body.provider_courier_id;
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'NimbusPost'
+                courierProviderName:'NimbusPost',
+                provider_courier_id,
             });
 
             const Nimb = await Courier.findOne({ provider: 'NimbusPost' });

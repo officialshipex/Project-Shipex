@@ -26,6 +26,7 @@ const getCourierList = async (req, res) => {
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
+                provider_courier_id:element.id,
                 isAdded: prevServices.has(element.name)
             }));
 
@@ -45,7 +46,7 @@ const getCourierList = async (req, res) => {
 
 const addService = async (req, res) => {
     try {
-        console.log(req.body);
+        
 
         const currCourier = await Courier.findOne({ provider: 'Xpressbees' });
 
@@ -57,12 +58,14 @@ const addService = async (req, res) => {
         });
 
         const name = req.body.service;
+        const provider_courier_id=req.body.provider_courier_id;
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'Xpressbees'
+                courierProviderName:'Xpressbees',
+                provider_courier_id
             });
 
             const Xpress = await Courier.findOne({ provider:'Xpressbees' });

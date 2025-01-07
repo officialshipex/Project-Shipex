@@ -8,7 +8,6 @@ const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
 const getAllActiveCourierServices = async (req, res) => {
-    console.log("Fetching active courier services from ShipRocket");
 
     try {
         const token = await getToken();
@@ -23,14 +22,17 @@ const getAllActiveCourierServices = async (req, res) => {
         );
 
       const result= response.data.courier_data;
+      
 
       const currCourier = await Courier.findOne({ provider: 'Shiprocket' }).populate('services');
       const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
-      const allServices =result.map(element => ({
+      const allServices = result.map(element => ({
         service: element.master_company,
+        provider_courier_id: `${element.id}`,
         isAdded: prevServices.has(element.master_company)
     }));
+    
 
     return res.status(201).json(allServices);
 
@@ -62,7 +64,7 @@ const getAllActiveCourierServices = async (req, res) => {
 
 const addService = async (req, res) => {
     try {
-        console.log(req.body);
+        
 
         const currCourier = await Courier.findOne({ provider: 'Shiprocket' });
 
@@ -72,12 +74,14 @@ const addService = async (req, res) => {
 
         const prevServices = new Set(currCourier.services.map(serviceId => serviceId.toString()));
         const name = req.body.service;
+        const provider_courier_id=req.body.provider_courier_id;
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'Shiprocket'
+                courierProviderName:'Shiprocket',
+                provider_courier_id
             });
 
             currCourier.services.push(newService._id);
