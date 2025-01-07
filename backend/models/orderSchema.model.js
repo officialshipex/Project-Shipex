@@ -9,8 +9,8 @@ const orderSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    order_type:{
-      type:String,
+    order_type: {
+        type: String,
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -31,6 +31,7 @@ const orderSchema = new mongoose.Schema({
         city: { type: String, required: true },
         state: { type: String, required: true },
         phone: { type: Number, required: true },
+        email: { type: String, required: true }
     },
     Biling_details: {
         firstName: { type: String, required: true },
@@ -42,7 +43,8 @@ const orderSchema = new mongoose.Schema({
         city: { type: String, required: true },
         state: { type: String, required: true },
         phone: { type: Number, required: true },
-        gstNumber: { type:String, default:"" },
+        email: { type: String, required: true },
+        gstNumber: { type: String, default: "" },
     },
     Product_details: {
         type: Array,
@@ -50,18 +52,18 @@ const orderSchema = new mongoose.Schema({
     },
 
     shipping_cost: {
-        weight:String,
+        weight: String,
         dimensions: {
             length: String,
             width: String,
             height: String
         },
-        volumetricWeight:Number,
-        shippingCharges:Number,
+        volumetricWeight: Number,
+        shippingCharges: Number,
         codCharges: Number,
-        taxAmount:Number,
-        discount:Number,
-        collectableAmount:Number
+        taxAmount: Number,
+        discount: Number,
+        collectableAmount: Number
     },
 
     sub_total: {
@@ -70,8 +72,8 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Not-Shipped','Booked', 'Pending', 'Cancelled', 'Fulfilled'],
-        required:true
+        enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled'],
+        required: true
     },
     courier_details: {
         courier: {
@@ -86,7 +88,13 @@ const orderSchema = new mongoose.Schema({
 
     order_shipped_date: {
         type: Date
-    }
+    },
+    awb_number: {
+        type: String
+    },
+    shipment_id: {
+        type: String
+    },
 }, {
     timestamps: true
 });

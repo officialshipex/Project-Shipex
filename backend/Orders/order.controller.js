@@ -3,6 +3,7 @@ const Services = require("../models/courierServiceSecond.model");
 const Courier=require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const{calculateRateForService}=require("../Rate/calculateRateController");
+const User=require("../models/User.model");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -56,9 +57,10 @@ function calculateOrderTotals(orderData) {
 const createOrder = async (req, res) => {
   try {
     console.log("I am in createOrder");
-    const data = req.body;
+    const data = req.body.formData;
+    const id=req.body.user._id;
 
-    console.log(data);
+    const currentUser=await User.findById(id);
 
     let newOrder = new Order({
       order_id: data.orderInfo.orderID,
@@ -71,10 +73,10 @@ const createOrder = async (req, res) => {
       status: 'Not-Shipped',
       sub_total: data.sub_total
     });
-
-    console.log(newOrder);
+    
     let result = await newOrder.save();
-    console.log(result);
+    currentUser.orders.push(result._id);
+    await currentUser.save();
     res.status(201).json({ message: "Order created successfully", order: result });
   } catch (error) {
     console.error("Error in createOrder:", error);

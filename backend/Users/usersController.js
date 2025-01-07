@@ -21,7 +21,7 @@ const getUsers = async (req, res) => {
 const getUserDetails = async (req, res) => {
     try {
     
-        const existsingUser=await User.findById(req.user._id).populate('wareHouse');
+        const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate('orders');
         res.status(201).json({
             success: true,
             user:existsingUser,

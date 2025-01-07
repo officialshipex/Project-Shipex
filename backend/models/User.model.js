@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Plan=require("../models/Plan.model");
 const Warehouse=require("../models/wareHouse.model");
+const Order=require("../models/orderSchema.model");
 
 const usersSchema = new mongoose.Schema({
     firstName: {
@@ -54,6 +55,10 @@ const usersSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Plan',
     },
+    orders:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'Order'
+    }]
 });
 
 // Using existing model if it exists or defining a new one
