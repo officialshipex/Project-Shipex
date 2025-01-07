@@ -1,5 +1,6 @@
 const WareHouse = require("../models/wareHouse.model");
 const User = require("../models/User.model");
+const{addPickupLocation}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 
 const createWareHouse = async (req, res) => {
   try {
@@ -9,6 +10,8 @@ const createWareHouse = async (req, res) => {
 
     const data = req.body.formData;
     const userId = req.body.userId;
+    
+   
 
     const currentUser = await User.findById(userId);
     if (!currentUser) {
@@ -23,6 +26,12 @@ const createWareHouse = async (req, res) => {
 
     if (existingWareHouse) {
       return res.status(400).json({ message: "Warehouse with the same name and address already exists." });
+    }
+
+    try {
+      await addPickupLocation(data, currentUser.email);
+    } catch (pickupError) {
+      return res.status(500).json({ message: "Error creating pickup location.", error: pickupError.message });
     }
 
     const newWareHouse = new WareHouse(data);

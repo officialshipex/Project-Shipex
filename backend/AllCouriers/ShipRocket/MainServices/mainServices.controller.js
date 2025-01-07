@@ -318,6 +318,42 @@ const getTrackingByOrderID = async (req, res) => {
   }
 };
 
+
+const addPickupLocation = async (data, email) => {
+  const requestData = {
+    pickup_location: data.warehouseName,
+    name: data.warehouseName,
+    email,
+    phone: parseInt(data.contactNo),
+    address: data.addressLine1,
+    address_2: data.addressLine2,
+    city: data.city,
+    state: data.state,
+    country: "India",
+    pin_code: data.pinCode
+  };
+
+  try {
+    const token = await getToken();
+    const response = await axios.post(
+      `${BASE_URL}/settings/company/addpickup`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.response ? error.response.data : error.message);
+    throw error; 
+  }
+};
+
+
 module.exports = {
   createCustomOrder,
 
@@ -339,4 +375,5 @@ module.exports = {
   getTrackingByAWB,
 
   getTrackingByOrderID,
+  addPickupLocation
 };
