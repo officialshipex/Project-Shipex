@@ -1,6 +1,69 @@
+drequire('dotenv').config();
 const axios = require('axios');
 const url=process.env.DELHIVERY_URL;
 
+const createOrder = async (req, res) => {
+    const {
+      orderId,
+      waybill,
+      pin,
+      phone,
+      address,
+      paymentMode,
+      pickupLocation,
+      clientName,
+      fragileShipment,
+      sellerGstTin,
+      hsnCode,
+      invoiceReference,
+      country = "India",
+    } = req.body;
+  
+    if (!orderId || !pin || !phone || !address || !sellerGstTin || !hsnCode) {
+      return res.status(400).json({
+        error: "Missing mandatory fields: orderId, pin, phone, address, sellerGstTin, or hsnCode.",
+      });
+    }
+  
+    const url = `https://staging-express.delhivery.com/api/cmu/create.json`; // Change to production URL for live environment.
+  
+    const payload = {
+      waybill: waybill || undefined, // Omit if not provided
+      order: orderId,
+      pin,
+      phone,
+      address,
+      payment_mode: paymentMode,
+      pickup_location: pickupLocation,
+      client: clientName,
+      fragile_shipment: fragileShipment === true ? true : undefined, // Omit if not applicable
+      seller_gst_tin: sellerGstTin,
+      hsn_code: hsnCode,
+      invoice_reference: invoiceReference,
+      country,
+    };
+  
+    try {
+      const response = await axios.post(url, {
+        format: "json",
+        data: JSON.stringify(payload),
+      });
+  
+      return res.status(200).json({
+        success: true,
+        message: "Order created successfully.",
+        data: response.data,
+      });
+    } catch (error) {
+      console.error("Error creating order:", error.message);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create order.",
+        error: error.message,
+      });
+    }
+  };
+  
 
 const checkPincodeServiceability = async (req, res) => {
   const { pincode } = req.params; 
@@ -154,6 +217,7 @@ const trackShipment = async (req, res) => {
     }
   };
 module.exports = {
+    createOrder,
   checkPincodeServiceability,
   trackShipment,
   generateShippingLabel,

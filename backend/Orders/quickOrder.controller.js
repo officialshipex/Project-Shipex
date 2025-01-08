@@ -19,6 +19,7 @@ const createQuickOrder = async (req,res) => {
         await quickOrders.save();
         return res.status(201).json({ message: "Order saved successfully" ,quickOrders});
     } catch (error) {
+        console.error('Error:', error);
         return res.status(500).json({ error: "Failed to save order" });
     }
 }

@@ -1,8 +1,8 @@
-const express = require("express");
-const router = express.Router();
+// const express = require("express");
+// const router = express.Router();
 
-const editBaseRateController=require("../Rate/editBaseRateController");
+// const editBaseRateController=require("../Rate/editBaseRateController");
 
-router.post("/",editBaseRateController.editBaseRate);
+// router.post("/",editBaseRateController.editBaseRate);
 
-module.exports=router;
+// module.exports=router;

@@ -11,6 +11,7 @@ const Gstin = require('../models/Gstin.model');
 const User = require('../models/User.model');
 const Pan = require('../models/Pan.model');
 const Kyc = require('../models/Kyc.model');
+const Kyc2Model = require('../models/Kyc2.model');
 
 dotenv.config();
 const verfication = express.Router();
@@ -183,7 +184,7 @@ verfication.post('/pan', async (req, res) => {
     });
 
     let signature = getSignature();
-// console.log(signature)
+    // console.log(signature)
 
     let config = {
       method: 'post',
@@ -365,7 +366,7 @@ verfication.post('/verify-otp', async (req, res) => {
 
     const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
-    const { otp, refId ,aadhaarNo} = req.body;
+    const { otp, refId, aadhaarNo } = req.body;
     // console.log("req body : ", req.body);
     if (!otp || !refId) {
       return res.status(400).json({
@@ -719,5 +720,152 @@ verfication.get("/kyc", async (req, res) => {
     });
   }
 })
+
+
+verfication.post('/kyc2', async (req, res) => {
+  try {
+
+    const userId = req.user._id;
+
+    const {
+      companyDetails,
+      primaryAddress,
+      accountDetails,
+      isVerified,
+      companyCategory,
+      panNumber,
+      panHolderName,
+      gstNumber,
+      gstCompanyName,
+      aadhaarNumber,
+      verificationState
+    } = req.body;
+
+    // Validate required fields
+    if (!companyDetails || !primaryAddress || !accountDetails || !companyCategory || !panNumber || !panHolderName || !verificationState) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      });
+    }
+
+    if (!validatePAN(panNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid PAN number"
+      });
+    }
+
+    if (aadhaarNumber && !validateAadhaar(aadhaarNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Aadhaar number"
+      });
+    }
+
+    if (!validateBankDetails(accountDetails.accountNumber, accountDetails.ifscCode, accountDetails.accountHolderName, accountDetails.phoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bank details"
+      });
+    }
+
+    if (gstNumber && !validateGST(gstNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid GST number"
+      });
+    }
+
+    const kycExists = await Kyc2Model.findOne({ user: userId });
+
+    // console.log("kycExists:", kycExists);
+    if (kycExists) {
+      // Update existing KYC
+      const updatedKyc = await Kyc2Model.findByIdAndUpdate(
+        kycExists._id,
+        {
+          companyDetails,
+          primaryAddress,
+          accountDetails,
+          isVerified,
+          companyCategory,
+          panNumber,
+          panHolderName,
+          gstNumber,
+          gstCompanyName,
+          aadhaarNumber,
+          verificationState,
+        }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "KYC updated successfully",
+        data: updatedKyc,
+      });
+    }
+
+    // Create new KYC
+    const newKyc = new Kyc2Model({
+      user: userId,
+      companyDetails,
+      primaryAddress,
+      accountDetails,
+      isVerified,
+      companyCategory,
+      panNumber,
+      panHolderName,
+      gstNumber,
+      gstCompanyName,
+      aadhaarNumber,
+      verificationState,
+    });
+
+    await newKyc.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "KYC created successfully",
+      data: newKyc,
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+verfication.get("/kyc2", async (req, res) => {
+  try {
+
+    const userId = req.user._id;
+
+    const kyc = await Kyc2Model.findOne({ user: userId });
+    // console.log("kyc:", kyc);
+
+    if (!kyc) {
+      return res.status(404).json({
+        success: false,
+        message: "KYC not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: kyc
+    });
+
+  } catch (err) {
+    // console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+})
+
 
 module.exports = verfication;
