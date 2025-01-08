@@ -64,6 +64,7 @@ const createShipment = async (req, res) => {
            currentOrder.status='Booked';
            currentOrder.awb_number=result.awb_number;
            currentOrder.shipment_id=`${result.awb_number}`;
+           currentOrder.courier_details.carrier=selectedServiceDetails.courierProviderServiceName;
            await currentOrder.save();
 
            return res.status(201).json({message:"Shipment Created Succesfully"});

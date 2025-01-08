@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
-const CourierServiceSecond = require("./courierServiceSecond.model");
+const Service=require("./courierServiceSecond.model");
 const User = require("./User.model");
 
 const orderSchema = new mongoose.Schema({
@@ -76,14 +76,11 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     courier_details: {
-        courier: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'CourierSecond'
-        },
-        service: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'CourierServiceSecond'
-        }
+        // service: {
+        //     type: mongoose.Schema.Types.ObjectId,
+        //     ref: 'CourierServiceSecond'
+        // },
+        carrier:{type:String}
     },
 
     order_shipped_date: {
