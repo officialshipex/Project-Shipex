@@ -95,6 +95,11 @@ const orderSchema = new mongoose.Schema({
     shipment_id: {
         type: String
     },
+    shipping_is_billing:{
+        type:Boolean,
+        default:false
+    },
+
 }, {
     timestamps: true
 });
