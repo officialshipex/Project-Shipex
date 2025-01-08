@@ -15,7 +15,7 @@ const checkServiceabilityAll= async (service, id,pincode) => {
                 destination: currentOrder.shipping_details.pinCode,
                 payment_type: currentOrder.order_type === 'Cash on Delivery' ? "cod" : "prepaid",
                 order_amount: currentOrder.sub_total,
-                weight: currentOrder.shipping_cost.weight,
+                weight:currentOrder.shipping_cost.weight,
                 length: currentOrder.shipping_cost.dimensions.length,
                 breadth: currentOrder.shipping_cost.dimensions.width,
                 height: currentOrder.shipping_cost.dimensions.height,
@@ -30,7 +30,11 @@ const checkServiceabilityAll= async (service, id,pincode) => {
                 origin:pincode,
                 destination: currentOrder.shipping_details.pinCode,
                 payment_type: currentOrder.order_type === 'Cash on Delivery' ? true : false,
-                weight: currentOrder.shipping_cost.weight,
+                weight: `${parseInt(currentOrder.shipping_cost.weight)/1000}`,
+                length: currentOrder.shipping_cost.dimensions.length,
+                breadth: currentOrder.shipping_cost.dimensions.width,
+                height: currentOrder.shipping_cost.dimensions.height,
+
             };
 
             const result = await checkServiceability(service.courierProviderServiceName, payload);
