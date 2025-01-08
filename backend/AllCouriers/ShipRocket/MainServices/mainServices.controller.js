@@ -12,6 +12,14 @@ const getCurrentDateTime = () => {
   const minutes = String(now.getMinutes()).padStart(2, '0');
   return `${date} ${hours}:${minutes}`;
 };
+
+function generateSKU(productName) {
+  const timestamp = Date.now(); 
+  const randomPart = Math.floor(1000 + Math.random() * 9000); 
+  const sanitizedProductName = productName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
+
+  return `${sanitizedProductName}-${timestamp}-${randomPart}`;
+}
 // 1. Create Custom Order
 const createCustomOrder = async (req, res) => {
   const { selectedServiceDetails, id, wh } = req.body;
@@ -24,7 +32,7 @@ const createCustomOrder = async (req, res) => {
       name: item.product,
       units: item.quantity,
       selling_price: item.amount,
-      sku: item.sku
+      sku: item.sku || generateSKU(item.product)
     };
   });
 
@@ -32,9 +40,9 @@ const createCustomOrder = async (req, res) => {
   let payment_type = currentOrder.order_type === "Cash on Delivery" ? "COD" : "Prepaid";
   const currentDateTime = getCurrentDateTime();
   const shipmentData = {
-    order_number: `${currentOrder.order_id}`,
+    order_id:`${currentOrder.order_id}`,
     order_date: currentDateTime,
-    // pickup_location: "",
+    pickup_location:wh.warehouseName,
     billing_customer_name: `${currentOrder.Biling_details.firstName}`,
     billing_last_name: `${currentOrder.Biling_details.lastName}`,
     billing_address: currentOrder.Biling_details.address,
@@ -43,57 +51,58 @@ const createCustomOrder = async (req, res) => {
     billing_pincode: `${currentOrder.shipping_details.pinCode}`,
     billing_state: currentOrder.shipping_details.state,
     billing_country: "India",
-    // billing_email: "",
+    billing_email:currentOrder.shipping_details.email,
     billing_phone: currentOrder.Biling_details.phone,
-    // shipping_is_billing:currentOrder.shipping_is_billing,
+    shipping_is_billing:currentOrder.shipping_is_billing,
     order_items,
-    payment_type,
+    payment_method:payment_type,
     sub_total: currentOrder.sub_total,
     length:currentOrder.shipping_cost.dimensions.length,
     breadth:currentOrder.shipping_cost.dimensions.width,
     height:currentOrder.shipping_cost.dimensions.height,
-    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),currentOrder.shipping_cost.volumetricWeight)
+    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),currentOrder.shipping_cost.volumetricWeight)/1000
   };
 
-  // if (!shipmentData.shipping_is_billing) {
-  //   shipmentData.shipping_customer_name = `${currentOrder.shipping_details.firstName}`;
-  //   shipmentData.shipping_last_name = `${currentOrder.shipping_details.lastName}`;
-  //   shipmentData.shipping_address = currentOrder.shipping_details.address;
-  //   shipmentData.shipping_address_2 = currentOrder.shipping_details.address2;
-  //   shipmentData.shipping_city = currentOrder.shipping_details.city;
-  //   shipmentData.shipping_pincode = `${currentOrder.shipping_details.pinCode}`;
-  //   shipmentData.shipping_state = currentOrder.shipping_details.state;
-  //   shipmentData.shipping_country = "India";
-  //   shipmentData.shipping_phone = currentOrder.shipping_details.phone;
-  // }
+  if (!currentOrder.shipping_is_billing) {
+    shipmentData.shipping_customer_name =currentOrder.shipping_details.firstName;
+    shipmentData.shipping_last_name = currentOrder.shipping_details.lastName;
+    shipmentData.shipping_address = currentOrder.shipping_details.address;
+    shipmentData.shipping_address_2 = currentOrder.shipping_details.address2;
+    shipmentData.shipping_city = currentOrder.shipping_details.city;
+    shipmentData.shipping_pincode = `${currentOrder.shipping_details.pinCode}`;
+    shipmentData.shipping_state = currentOrder.shipping_details.state;
+     shipmentData.shipping_email=currentOrder.shipping_details.email;
+    shipmentData.shipping_country = "India";
+    shipmentData.shipping_phone = currentOrder.shipping_details.phone;
+  }
 
-  // try {
-  //   const token = await getToken();
-  //   const response = await axios.post(
-  //     `${BASE_URL}/orders/create/adhoc`,
-  //     shipmentData,
-  //     orderData,
-  //     { headers: { Authorization: `Bearer ${token}` } }
-  //   );
+  console.log(shipmentData);
 
-  //   if (response.data.status) {
+  try {
+    const token = await getToken();
+    const response = await axios.post(
+      `${BASE_URL}/orders/create/adhoc`,
+      shipmentData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-  //     const result = response.data.data;
-  //     console.log(result);
+
+    if (response.data.status) {
+      console.log(response);
   // currentOrder.status='Booked';
   // currentOrder.awb_number=result.awb_number;
   // currentOrder.shipment_id=`${result.awb_number}`;
   // await currentOrder.save();
 
-  //     return res.status(201).json({ message: "Shipment Created Succesfully" });
-  //   } else {
-  //     consol
-  //     return res.status(400).json({ error: 'Error creating shipment', details: response.data });
-  //   }
-  // } catch (error) {
-  //   console.log(error);
-  //   res.status(500).json({ error: error.response?.data || error.message });
-  // }
+      return res.status(201).json({ message: "Shipment Created Succesfully" });
+    } else {
+      
+      return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.response?.data || error.message });
+  }
 };
 
 // 2. Update Order
