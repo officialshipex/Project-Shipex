@@ -21,10 +21,37 @@ function generateSKU(productName) {
   return `${sanitizedProductName}-${timestamp}-${randomPart}`;
 }
 // 1. Create Custom Order
+
+const assignAWB =async(shipment_id, courier_id) => {
+  try {
+    const token = await getToken(); 
+    const response = await axios.post(
+      `${BASE_URL}/courier/assign/awb`,
+      {
+        shipment_id,
+        courier_id,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+   return response.data.response.data;
+       
+  } catch (error) {
+    return null;
+    
+  }
+};
+
+
+
 const createCustomOrder = async (req, res) => {
   const { selectedServiceDetails, id, wh } = req.body;
   const currentOrder = await Order.findById(id);
-  console.log(currentOrder);
   const order_items = new Array(currentOrder.Product_details.length);
 
   currentOrder.Product_details.map((item, index) => {
@@ -76,8 +103,6 @@ const createCustomOrder = async (req, res) => {
     shipmentData.shipping_phone = currentOrder.shipping_details.phone;
   }
 
-  console.log(shipmentData);
-
   try {
     const token = await getToken();
     const response = await axios.post(
@@ -88,22 +113,40 @@ const createCustomOrder = async (req, res) => {
 
 
     if (response.data.status) {
-      console.log(response);
-  // currentOrder.status='Booked';
-  // currentOrder.awb_number=result.awb_number;
-  // currentOrder.shipment_id=`${result.awb_number}`;
-  // await currentOrder.save();
-
-      return res.status(201).json({ message: "Shipment Created Succesfully" });
+      const { shipment_id } = response.data;
+      const courier_id = selectedServiceDetails.provider_courier_id;
+    
+      await assignAWB(shipment_id, courier_id);
+    
+      if (!result || !result.awb_code) {
+        console.error("Invalid response from assignAWB:", result);
+        return res.status(400).json({
+          error: "Failed to assign AWB",
+          details: result,
+        });
+      }
+    
+      currentOrder.status = 'Booked';
+      currentOrder.awb_number =result.awb_code;
+      currentOrder.shipment_id =shipment_id;
+      await currentOrder.save();
+    
+      return res.status(201).json({ message: "Shipment Created Successfully" });
     } else {
-      
-      return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+      return res.status(400).json({
+        error: 'Error creating shipment',
+        details: response.data,
+      });
     }
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: error.response?.data || error.message });
   }
 };
+
+
+
+
 
 // 2. Update Order
 const updateOrder = async (req, res) => {
@@ -174,7 +217,7 @@ async function checkServiceability(service, payload) {
     });
 
     const result = response.data?.data?.available_courier_companies || [];
-    const filteredData = result.filter((item) => item.courier_name === service);
+    const filteredData = result.filter((item) => item.courier_name === service && item.pickup_availability!='0');
 
     if (filteredData.length > 0) {
       return true;
