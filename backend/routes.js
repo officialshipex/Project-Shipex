@@ -26,11 +26,14 @@ const NimbusPostController = require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
 const LabelRouter = require('./label/label.router');
 
+const allocationRouter = require('./addons/orderAllocationEngine/OAE.router');
+
 const router = express.Router();
 
 router.use('/external', authRouter);
 
 router.use('/merchant', isAuthorized, verficationRouter);
+router.use('/allocation', allocationRouter)
 
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
