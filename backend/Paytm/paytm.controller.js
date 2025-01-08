@@ -94,7 +94,7 @@ const initiatePayment = (req, res) => {
     (params["TXN_AMOUNT"] = totalAmount),
     (params["CALLBACK_URL"] = "http://localhost:5000/v1/paytm/callback"),
     (params["EMAIL"] = email),
-    (params["MOBILE_NO"] = "9876543210");
+    (params["MOBILE_NO"] = "7828153133");
 
   /**
    * Generate checksum by parameters we have

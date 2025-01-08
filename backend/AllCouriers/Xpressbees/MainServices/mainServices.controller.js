@@ -3,12 +3,54 @@ const Order = require("../../../models/orderSchema.model");
 const {getAuthToken}=require("../Authorize/XpressbeesAuthorize.controller");
 
 const createShipment = async (req, res) => {
-    const { shipmentData } = req.body;
+
     const url = 'https://shipment.xpressbees.com/api/shipments2';
+
+    const {selectedServiceDetails,id,wh}=req.body;
+        const currentOrder = await Order.findById(id);
+        const order_items = new Array(currentOrder.Product_details.length);
+        
+        currentOrder.Product_details.map((item, index) => {
+           order_items[index] = {
+               name: item.product,
+               qty: item.quantity,
+               price: item.amount,
+               sku: item.sku
+           };
+        });
+        
+    
+        let payment_type=currentOrder.order_type==="Cash on Delivery"?"cod":"prepaid";
+        const shipmentData = {
+            order_number:`${currentOrder.order_id}`,
+            payment_type,
+            order_amount:currentOrder.sub_total,
+            consignee: {
+              name:`${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
+              address:`${currentOrder.shipping_details.address} ${currentOrder.shipping_details.address2}`,
+              city:currentOrder.shipping_details.city,
+              state:currentOrder.shipping_details.state,
+              pincode:`${currentOrder.shipping_details.pinCode}`,
+              phone:currentOrder.shipping_details.phone
+            },
+            pickup: {
+              warehouse_name:wh.warehouseName,
+              name:wh.contactName,
+              address:`${wh.addressLine1} ${wh.addressLine2}`,
+              city:wh.city,
+              state:wh.state,
+              pincode:wh.pinCode,
+              phone:parseInt(wh.contactNo)
+            },
+            order_items,
+            collectable_amount:currentOrder.sub_total,
+            courier_id: selectedServiceDetails.provider_courier_id
+          };
+    
+          
     
 
     try {
-
         const token = await getAuthToken();
         const response = await axios.post(url, shipmentData, {
             headers: {
@@ -18,7 +60,14 @@ const createShipment = async (req, res) => {
         });
 
         if (response.data.status) {
-            return res.status(201).json(response.data.data);
+            const result=response.data.data;
+            currentOrder.status='Booked';
+            currentOrder.awb_number=result.awb_number;
+            currentOrder.shipment_id=`${result.awb_number}`;
+            await currentOrder.save();
+ 
+            return res.status(201).json({message:"Shipment Created Succesfully"});
+            
         } else {
             return res.status(400).json({ error: 'Error creating shipment', details: response.data });
         }

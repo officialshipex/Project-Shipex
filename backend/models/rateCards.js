@@ -59,6 +59,14 @@ const weightSchema = new mongoose.Schema({
 });
 
   const rateCardSchema = new mongoose.Schema({
+    type:{
+      type:String,
+      required:true
+    },
+    mode:{
+      type:String,
+      required:true
+    },
     courierProviderName:{
       type: String,
       required: true,

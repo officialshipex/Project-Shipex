@@ -25,7 +25,3 @@ router.post("/trackRtoOrder", ecomCourierController.shipmentTrackingRev);
 router.post("/cancelRtoOrder", ecomCourierController.cancelShipmentRev);
 
 module.exports = router;
-
-
-
-
