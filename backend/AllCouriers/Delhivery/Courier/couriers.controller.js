@@ -186,19 +186,22 @@ const trackShipment = async (req, res) => {
       });
     }
   };
+ 
+
   const createClientWarehouse = async (req, res) => {
-    const { warehouseDetails } = req.body; 
+    const { warehouseDetails } = req.body;
   
     if (!warehouseDetails) {
       return res.status(400).json({ error: "Warehouse details are required" });
     }
   
-    // const url = `https://staging-express.delhivery.com/api/backend/clientwarehouse/create/`;
+    const url = 'https://staging-express.delhivery.com/api/backend/clientwarehouse/create/';
   
     try {
-      const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
+      const response = await axios.post(url, warehouseDetails, {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
         },
       });
   
@@ -216,6 +219,41 @@ const trackShipment = async (req, res) => {
       });
     }
   };
+
+
+  const updateClientWarehouse = async (req, res) => {
+    const { warehouseDetails } = req.body;
+  
+    if (!warehouseDetails) {
+      return res.status(400).json({ error: "Warehouse details are required" });
+    }
+  
+    const url = 'https://staging-express.delhivery.com/api/backend/clientwarehouse/edit/';
+  
+    try {
+      const response = await axios.post(url, warehouseDetails, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+        },
+      });
+  
+      return res.status(200).json({
+        success: true,
+        message: "Client warehouse updated successfully",
+        data: response.data,
+      });
+    } catch (error) {
+      console.error("Error updating client warehouse:", error.message);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update client warehouse",
+        error: error.message,
+      });
+    }
+  };
+
+  
 module.exports = {
     createOrder,
   checkPincodeServiceability,
@@ -223,4 +261,5 @@ module.exports = {
   generateShippingLabel,
   createPickupRequest,
   createClientWarehouse,
+  updateClientWarehouse
 };
