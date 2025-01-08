@@ -1,4 +1,4 @@
-drequire('dotenv').config();
+require('dotenv').config();
 const axios = require('axios');
 const url=process.env.DELHIVERY_URL;
 

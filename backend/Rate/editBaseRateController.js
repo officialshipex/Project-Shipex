@@ -2,14 +2,8 @@ const BaseRate = require("../models/baseRateCard.model");
 const CustomRate = require("../models/CustomRate");
 const RateCard = require("../models/rateCards");
 
-<<<<<<< HEAD
-const editBaseRate = async (req, res) => {
-    let changes = {};   
-   
-=======
 const editBaseRate = async (prevCard, newCard) => {
     let changes = {};
->>>>>>> f17dc343532b368b69d12b07c4b8278c5183907b
     try {
         // Fetch previous rate card
 
