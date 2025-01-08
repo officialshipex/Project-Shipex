@@ -1,18 +1,3 @@
-<<<<<<< HEAD
-const mongoose = require("mongoose");
-
-const orderSchema = new mongoose.Schema({
-  order_id: { type: String, required: true, unique: true },
-  billing_customer_name: String,
-  billing_address: String,
-  billing_city: String,
-  order_items: Array,
-  sub_total: Number,
-  status: { type: String, default: "Pending" },
-});
-
-module.exports = mongoose.model("Order", orderSchema);
-=======
 const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
 const CourierServiceSecond = require("./courierServiceSecond.model");
@@ -124,4 +109,3 @@ const orderSchema = new mongoose.Schema({
 // orderSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);
->>>>>>> f17dc343532b368b69d12b07c4b8278c5183907b
