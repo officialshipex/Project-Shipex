@@ -1,5 +1,6 @@
 const User = require("../models/User.model");
 
+
 const getUsers = async (req, res) => {
     try {
         const allUsers = await User.find({});
@@ -17,4 +18,21 @@ const getUsers = async (req, res) => {
     }
 };
 
-module.exports ={getUsers};
+const getUserDetails = async (req, res) => {
+    try {
+    
+        const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate('orders');
+        res.status(201).json({
+            success: true,
+            user:existsingUser,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+}
+
+module.exports = { getUsers,getUserDetails};

@@ -3,6 +3,9 @@ const RateCard = require('./rateCards');
 
 const courierServiceSecondSchema = new mongoose.Schema(
   {
+    courierProviderName:{
+       type:String,
+    },
     courierProviderServiceId: {
       type: String,
       required: true,
@@ -15,6 +18,16 @@ const courierServiceSecondSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RateCard',
     }],
+
+    provider_courier_id:{
+      type:String,
+      required:true
+    },
+    
+    isEnabeled:{
+      type:Boolean,
+      default:true
+    }
   },
   {
     timestamps: true,

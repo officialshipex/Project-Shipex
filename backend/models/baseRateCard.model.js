@@ -72,14 +72,14 @@ const baseRateCardSchema = new mongoose.Schema({
   },
   weightPriceBasic: [weightSchema],
   weightPriceAdditional: [weightSchema],
+  codCharge: {
+    type: Number,
+    required: true,
+  },
   codPercent: {
     type: Number,
     required: true,
   },
-  codCharge: {
-    type: Number,
-    required: true,
-  }
 });
 
 // Create the model from the schema
