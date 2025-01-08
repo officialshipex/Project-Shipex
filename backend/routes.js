@@ -1,4 +1,5 @@
 const express = require("express");
+const router = express.Router();
 
 const authRouter = require("./routes/auth.router");
 const { isAuthorized } = require('./middleware/auth.middleware');
@@ -24,11 +25,15 @@ const editBaseRateController = require("./routes/editBaseRate.router");
 const EcomExpressController = require("./AllCouriersRoutes/ecom.router");
 const NimbusPostController = require("./AllCouriersRoutes/nimbuspost.router");
 const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
+const XpressbeesController = require("./AllCouriersRoutes/xpressbee.router");
+const shreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
+const SmartShipController = require("./AllCouriersRoutes/smartShip.router");
 const LabelRouter = require('./label/label.router');
 
 const allocationRouter = require('./addons/orderAllocationEngine/OAE.router');
 
-const router = express.Router();
+const userRouter = require("./routes/user.router");
+const WareHouse = require("./routes/warehouse.router");
 
 router.use('/external', authRouter);
 
@@ -38,7 +43,7 @@ router.use('/allocation', allocationRouter)
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
 
-router.use('/order', orderRouter)
+router.use('/order', orderRouter);
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);
@@ -48,12 +53,17 @@ router.use('/saveRate', saveRateRouter);
 router.use('/getBaseRate', getBaseRateController);
 router.use('/saveBaseRate', saveBaseRateController);
 router.use('/saveCustomRate', customRateController);
-router.use('/editBaseRate', editBaseRateController);
+// router.use('/editBaseRate', editBaseRateController);
 
 router.use("/NimbusPost", NimbusPostController);
 router.use("/Shiprocket", ShipRocketController);
 router.use("/EcomExpress", EcomExpressController);
+router.use("/Xpressbees", XpressbeesController);
+router.use("/ShreeMaruti", shreeMarutiController);
+router.use("/SmartShip", SmartShipController);
 
 router.use("/label", LabelRouter);
+router.use('/user', isAuthorized, userRouter);
+router.use('/warehouse', WareHouse);
 
 module.exports = router;

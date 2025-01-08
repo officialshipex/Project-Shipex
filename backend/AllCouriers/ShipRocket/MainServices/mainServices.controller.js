@@ -1,52 +1,99 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 
 const BASE_URL = process.env.BASE_URL;
 
+const getCurrentDateTime = () => {
+  const now = new Date();
+  const date = now.toISOString().split('T')[0];
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${date} ${hours}:${minutes}`;
+};
 // 1. Create Custom Order
 const createCustomOrder = async (req, res) => {
-  const orderData = req.body;
-  const { shipmentData } = req.body;
-  const {
-    order_number,
-    payment_type,
-    order_amount,
-    package_weight,
-    consignee,
-    pickup,
-    order_items,
-  } = shipmentData;
+  const { selectedServiceDetails, id, wh } = req.body;
+  const currentOrder = await Order.findById(id);
+  console.log(currentOrder);
+  const order_items = new Array(currentOrder.Product_details.length);
 
-  if (
-    !order_number ||
-    !payment_type ||
-    !order_amount ||
-    !package_weight ||
-    !consignee ||
-    !pickup ||
-    !order_items ||
-    order_items.length === 0
-  ) {
-    return res
-      .status(400)
-      .json({ error: "Missing required fields or invalid data" });
-  }
-  try {
-    const token = await getToken();
-    const response = await axios.post(
-      `${BASE_URL}/orders/create/adhoc`,
-      shipmentData,
-      orderData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const newOrder = await Order.create(orderData);
-    console.log(newOrder);
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
-  }
+  currentOrder.Product_details.map((item, index) => {
+    order_items[index] = {
+      name: item.product,
+      units: item.quantity,
+      selling_price: item.amount,
+      sku: item.sku
+    };
+  });
+
+
+  let payment_type = currentOrder.order_type === "Cash on Delivery" ? "COD" : "Prepaid";
+  const currentDateTime = getCurrentDateTime();
+  const shipmentData = {
+    order_number: `${currentOrder.order_id}`,
+    order_date: currentDateTime,
+    // pickup_location: "",
+    billing_customer_name: `${currentOrder.Biling_details.firstName}`,
+    billing_last_name: `${currentOrder.Biling_details.lastName}`,
+    billing_address: currentOrder.Biling_details.address,
+    billing_address_2: currentOrder.Biling_details.address2,
+    billing_city: currentOrder.Biling_details.city,
+    billing_pincode: `${currentOrder.shipping_details.pinCode}`,
+    billing_state: currentOrder.shipping_details.state,
+    billing_country: "India",
+    // billing_email: "",
+    billing_phone: currentOrder.Biling_details.phone,
+    // shipping_is_billing:currentOrder.shipping_is_billing,
+    order_items,
+    payment_type,
+    sub_total: currentOrder.sub_total,
+    length:currentOrder.shipping_cost.dimensions.length,
+    breadth:currentOrder.shipping_cost.dimensions.width,
+    height:currentOrder.shipping_cost.dimensions.height,
+    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),currentOrder.shipping_cost.volumetricWeight)
+  };
+
+  // if (!shipmentData.shipping_is_billing) {
+  //   shipmentData.shipping_customer_name = `${currentOrder.shipping_details.firstName}`;
+  //   shipmentData.shipping_last_name = `${currentOrder.shipping_details.lastName}`;
+  //   shipmentData.shipping_address = currentOrder.shipping_details.address;
+  //   shipmentData.shipping_address_2 = currentOrder.shipping_details.address2;
+  //   shipmentData.shipping_city = currentOrder.shipping_details.city;
+  //   shipmentData.shipping_pincode = `${currentOrder.shipping_details.pinCode}`;
+  //   shipmentData.shipping_state = currentOrder.shipping_details.state;
+  //   shipmentData.shipping_country = "India";
+  //   shipmentData.shipping_phone = currentOrder.shipping_details.phone;
+  // }
+
+  // try {
+  //   const token = await getToken();
+  //   const response = await axios.post(
+  //     `${BASE_URL}/orders/create/adhoc`,
+  //     shipmentData,
+  //     orderData,
+  //     { headers: { Authorization: `Bearer ${token}` } }
+  //   );
+
+  //   if (response.data.status) {
+
+  //     const result = response.data.data;
+  //     console.log(result);
+  // currentOrder.status='Booked';
+  // currentOrder.awb_number=result.awb_number;
+  // currentOrder.shipment_id=`${result.awb_number}`;
+  // await currentOrder.save();
+
+  //     return res.status(201).json({ message: "Shipment Created Succesfully" });
+  //   } else {
+  //     consol
+  //     return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+  //   }
+  // } catch (error) {
+  //   console.log(error);
+  //   res.status(500).json({ error: error.response?.data || error.message });
+  // }
 };
 
 // 2. Update Order
@@ -97,20 +144,44 @@ const listCouriers = async (req, res) => {
 };
 
 // 5. Check Courier Serviceability
-const checkServiceability = async (req, res) => {
-  const { pickup_pincode, delivery_pincode, cod } = req.query;
+async function checkServiceability(service, payload) {
+  const pickup_postcode = payload.origin;
+  const delivery_postcode = payload.destination;
+  const cod = payload.payment_type === true ? 1 : 0;
+  const weight = payload.weight || '1';
 
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pickup_pincode, delivery_pincode, cod },
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: {
+        pickup_postcode,
+        delivery_postcode,
+        cod,
+        weight
+      },
     });
-    res.json(response.data);
+
+    const result = response.data?.data?.available_courier_companies || [];
+    const filteredData = result.filter((item) => item.courier_name === service);
+
+    if (filteredData.length > 0) {
+      return true;
+    } else {
+      console.log(`No courier service found matching: ${service}`);
+      return false;
+    }
+
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    console.error('Error Response:', error.response?.data || error.message);
+    return false;
   }
-};
+}
+
+
+
 
 // 6. Request for Shipment Pickup
 const requestShipmentPickup = async (req, res) => {
@@ -247,6 +318,61 @@ const getTrackingByOrderID = async (req, res) => {
   }
 };
 
+
+const addPickupLocation = async (data, email) => {
+  const requestData = {
+    pickup_location: data.warehouseName,
+    name: data.contactName,
+    email,
+    phone: parseInt(data.contactNo),
+    address: data.addressLine1,
+    address_2: data.addressLine2,
+    city: data.city,
+    state: data.state,
+    country: "India",
+    pin_code: data.pinCode
+  };
+
+  try {
+    const token = await getToken();
+    const response = await axios.post(
+      `${BASE_URL}/settings/company/addpickup`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.response ? error.response.data : error.message);
+    throw error; 
+  }
+};
+
+const getAllPickupLocations= async () => {
+  try {
+    const token = await getToken();
+    const response = await axios.get(
+      `${BASE_URL}/settings/company/pickup`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    return response.data.data.shipping_address;
+  } catch (error) {
+    console.error('Error:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
+
+
 module.exports = {
   createCustomOrder,
 
@@ -268,4 +394,7 @@ module.exports = {
   getTrackingByAWB,
 
   getTrackingByOrderID,
+  addPickupLocation,
+  getAllPickupLocations
+
 };

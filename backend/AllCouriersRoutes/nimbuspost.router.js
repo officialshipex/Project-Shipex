@@ -1,16 +1,21 @@
 const express = require("express");
 const router = express.Router();
 
-const {saveNimbusPost}=require("../../backend/AllCouriers/NimbusPost/Authorize/nimbuspost.controller");
+const {saveNimbusPost,isEnabeled,disable,enable}=require("../../backend/AllCouriers/NimbusPost/Authorize/nimbuspost.controller");
 const nimbuspostCourierController=require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
 const nimbuspostShipmentController=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const nimbuspostNDRController=require("../AllCouriers/NimbusPost/NDR/ndr.controller");
 
 router.get('/saveNew',saveNimbusPost);
+router.get('/isEnabeled',isEnabeled);
+router.get('/disable',disable);
+router.get('/enable',enable);
 
-router.get("/getAndUpdateCourierServices",nimbuspostCourierController.getCouriers);
+router.get("/getCourierServices",nimbuspostCourierController.getCouriers);
+router.post("/addService",nimbuspostCourierController.addService);
+
 router.post("/getServiceablePincodes",nimbuspostCourierController.getServiceablePincodes);
-router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
+// router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
 
 router.post("/createShipment",nimbuspostShipmentController.createShipment);
 router.post("/trackShipment",nimbuspostShipmentController.trackShipment);

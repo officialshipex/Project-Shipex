@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
-const RateCard = require("./rateCards");
+const Plan=require("../models/Plan.model");
+const Warehouse=require("../models/wareHouse.model");
+const Order=require("../models/orderSchema.model");
 
 const usersSchema = new mongoose.Schema({
     firstName: {
@@ -45,16 +47,22 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    ratecards: [
-        {
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'RateCard'
-        }
-    ]
+    wareHouse:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'Warehouse'
+    }],
+    plan: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Plan',
+    },
+    orders:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'Order'
+    }]
 });
 
 // Using existing model if it exists or defining a new one
-const User = mongoose.model.User || mongoose.model('User', usersSchema);
+const User = mongoose.model('User', usersSchema);
 
 module.exports = User;
 
