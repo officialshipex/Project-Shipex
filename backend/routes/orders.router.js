@@ -1,9 +1,11 @@
 const multer = require('multer');
 const path = require('path');
 const orderRouter = require('express').Router();
-const {createOrder,getAllOrders,getOrderDetails,shipOrder,cancelOrdersAtNotShipped,requestPickup} = require('../Orders/order.controller');
+const {createOrder,getAllOrders,getOrderDetails,shipOrder,cancelOrdersAtNotShipped,requestPickup,cancelOrdersAtBooked} = require('../Orders/order.controller');
 const {bulkOrder} = require('../Orders/bulkOrders.controller');
 const {createQuickOrder} = require('../Orders/quickOrder.controller');
+
+
 
 
 // const upload = multer({ dest: 'uploads/' });
@@ -27,5 +29,6 @@ orderRouter.post("/get-order-details",getOrderDetails);
 orderRouter.post("/shipOrder",shipOrder);
 orderRouter.post("/cancel",cancelOrdersAtNotShipped);
 orderRouter.post("/requestPickup",requestPickup);
+orderRouter.post("/cancelAtBooked",cancelOrdersAtBooked);
 
 module.exports = orderRouter;

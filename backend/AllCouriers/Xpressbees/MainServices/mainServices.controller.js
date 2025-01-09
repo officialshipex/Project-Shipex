@@ -130,11 +130,9 @@ const trackShipment = async (req, res) => {
 };
 
 
-const pickup = async (req, res) => {
-    const { awbNumbers } = req.body;
-
+const pickup = async (awbNumbers) => {
     if (!awbNumbers || !Array.isArray(awbNumbers) || awbNumbers.length === 0) {
-        return res.status(400).json({ error: 'AWB numbers must be a non-empty array' });
+        return { error: 'AWB numbers must be a non-empty array' };
     }
 
     const url = 'https://shipment.xpressbees.com/api/shipments2/manifest';
@@ -146,18 +144,18 @@ const pickup = async (req, res) => {
         const response = await axios.post(url, payload, {
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-            }
+                Authorization: `Bearer ${token}`,
+            },
         });
 
         if (response.data.status) {
-            return res.status(200).json(response.data.data);
+            return { success: true, data: response.data.data };
         } else {
-            return res.status(400).json({ error: 'Error in manifest creation', details: response.data });
+            return { success: false, error: 'Error in manifest creation', details: response.data };
         }
     } catch (error) {
         console.error('Error in creating manifest:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        return { success: false, error: 'Internal Server Error', message: error.message };
     }
 };
 

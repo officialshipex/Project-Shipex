@@ -236,21 +236,40 @@ async function checkServiceability(service, payload) {
 
 
 // 6. Request for Shipment Pickup
-const requestShipmentPickup = async (req, res) => {
-  const { shipment_id, pickup_location_id } = req.body;
-
+const requestShipmentPickup = async (shipment_id) => {
   try {
-    const token = await getToken();
+    const token = await getToken(); 
     const response = await axios.post(
       `${BASE_URL}/courier/generate/pickup`,
-      { shipment_id, pickup_location_id },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { shipment_id: [shipment_id] },
+      { headers: { 
+        'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+       } }
     );
-    res.json(response.data);
+    
+    if (response.data.status) {
+      return {
+        success: true,
+        data: response.data,
+        message: "Pickup request generated successfully",
+      };
+    } else {
+      return {
+        success: false,
+        message: "Failed to generate pickup request. Please check the shipment details.",
+      };
+    }
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    console.error("Error generating shipment pickup:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "An unexpected error occurred.",
+      error: error.response?.data || error.message,
+    };
   }
 };
+
 
 // 7. Create a Return Order
 const createReturnOrder = async (req, res) => {

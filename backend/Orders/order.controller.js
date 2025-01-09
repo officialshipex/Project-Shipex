@@ -4,6 +4,9 @@ const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
+const { requestShipmentPickup } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { pickup } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const {cancelShipment}=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -183,20 +186,107 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 
       if (currentOrder) {
         currentOrder.status = 'Cancelled';
-        currentOrder.cancelledAtStage='Not-Shipped';
+        currentOrder.cancelledAtStage = 'Not-Shipped';
         await currentOrder.save();
       }
     }
-    res.status(201).send({ message:'Orders has cancelled successfully'});
+    res.status(201).send({ message: 'Orders has cancelled successfully' });
   } catch (error) {
     console.error('Error canceling orders:', error);
     res.status(500).send({ error: 'An error occurred while cancelling orders.' });
   }
 };
 
-const requestPickup=async(req,res)=>{
-  console.log(req.body.items);
+
+
+const requestPickup = async (req, res) => {
+  const allOrders = req.body.items;
+  
+  if (!allOrders || allOrders.length === 0) {
+    return res.status(400).json({ error: "No orders provided." });
+  }
+
+  try {
+    const results = await Promise.all(allOrders.map(async (order) => {
+      let currentOrder = await Order.findById(order._id).populate('service_details');
+      let updateStatus = { orderId: order._id, status: "Failed" };
+
+      if (!currentOrder) {
+        updateStatus.error = "Order not found";
+        return updateStatus;
+      }
+
+      try {
+        if (currentOrder.service_details.courierProviderName === "NimbusPost") {
+          currentOrder.status = "WaitingPickup";
+          await currentOrder.save();
+          updateStatus.status = "WaitingPickup";
+
+        } else if (currentOrder.service_details.courierProviderName === "Shiprocket") {
+          const result = await requestShipmentPickup(currentOrder.shipment_id);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          } else {
+            updateStatus.error = "Shiprocket pickup failed";
+          }
+
+        } else if (currentOrder.service_details.courierProviderName === "Xpressbees") {
+          const result = await pickup([currentOrder.awb_number]);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          } else {
+            updateStatus.error = "Xpressbees pickup failed";
+          }
+        } else {
+          updateStatus.error = "Unsupported courier provider";
+        }
+
+      } catch (error) {
+        updateStatus.error = error.message || "Unknown error";
+      }
+
+      return updateStatus;
+    }));
+
+    const successCount = results.filter(r => r.status === "WaitingPickup").length;
+    const failedCount = results.filter(r => r.status === "Failed").length;
+
+    return res.status(200).json({
+      success: true,
+      message: `${successCount} orders updated successfully, ${failedCount} failed.`,
+      details: results
+    });
+
+  } catch (error) {
+    console.error('Error processing pickup requests:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
+const cancelOrdersAtBooked=async(req,res)=>{
+  
+  const allOrders=req.body.items;
+  for (let order of allOrders){
+
+    if (currentOrder.service_details.courierProviderName === "NimbusPost") {
+      const result=await cancelShipment(currentOrder.awb_number);
+      currentOrder.status = "Not-Shipped";
+      currentOrder.cancelledAtStage="Booked";
+      await currentOrder.save();
+    }
+  }
+
+
 }
+
 
 
 
@@ -206,5 +296,6 @@ module.exports = {
   getOrderDetails,
   shipOrder,
   cancelOrdersAtNotShipped,
-  requestPickup
+  requestPickup,
+  cancelOrdersAtBooked
 }
