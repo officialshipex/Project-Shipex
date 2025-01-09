@@ -174,7 +174,7 @@ const shipOrder = async (req, res) => {
 };
 
 
-const cancelOrdersAtBooked = async (req, res) => {
+const cancelOrdersAtNotShipped = async (req, res) => {
   const ordersToBeCancelled = req.body.items;
 
   try {
@@ -183,7 +183,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 
       if (currentOrder) {
         currentOrder.status = 'Cancelled';
-        currentOrder.cancelledAtStage = 'Booked';
+        currentOrder.cancelledAtStage='Not-Shipped';
         await currentOrder.save();
       }
     }
@@ -194,6 +194,10 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 
+const requestPickup=async(req,res)=>{
+  console.log(req.body.items);
+}
+
 
 
 module.exports = {
@@ -201,5 +205,6 @@ module.exports = {
   getAllOrders,
   getOrderDetails,
   shipOrder,
-  cancelOrdersAtBooked
+  cancelOrdersAtNotShipped,
+  requestPickup
 }
