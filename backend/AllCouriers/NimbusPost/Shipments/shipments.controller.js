@@ -172,11 +172,9 @@ const manifest = async (req, res) => {
 
 
 
-const cancelShipment = async (req, res) => {
-    const { awb } = req.body;
-
+const cancelShipment = async (awb) => {
     if (!awb) {
-        return res.status(400).json({ error: 'AWB number is required' });
+        return { error: 'AWB number is required', code: 400 };
     }
 
     const url = 'https://api.nimbuspost.com/v1/shipments/cancel';
@@ -184,24 +182,36 @@ const cancelShipment = async (req, res) => {
     try {
         const token = await getAuthToken();
         const payload = { awb };
+        const headers = {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        };
 
-        const response = await axios.post(url, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-            }
-        });
+        const response = await axios.post(url, payload, { headers });
 
-        if (response.data.status) {
-            return res.status(200).json(response.data.data);
+        const { status, data } = response.data;
+        if (status) {
+            return { data, code: 201};
         } else {
-            return res.status(400).json({ error: 'Error in shipment cancellation', details: response.data });
+            return {
+                error: 'Error in shipment cancellation',
+                details: response.data,
+                code: 400,
+            };
         }
     } catch (error) {
-        console.error('Error in cancelling shipment:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        console.error(
+            'Error in cancelling shipment:',
+            error.response?.data || error.message
+        );
+        return {
+            error: 'Internal Server Error',
+            message: error.message,
+            code: 500,
+        };
     }
 };
+
 
 
 const createHyperlocalShipment = async (req, res) => {
