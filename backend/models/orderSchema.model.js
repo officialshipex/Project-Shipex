@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
-const Service=require("./courierServiceSecond.model");
+const Service = require("./courierServiceSecond.model");
 const User = require("./User.model");
 
 const orderSchema = new mongoose.Schema({
@@ -75,12 +75,17 @@ const orderSchema = new mongoose.Schema({
         enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled'],
         required: true
     },
+    cancelledAtStage: {
+        type: String,
+        enum: ['Booked', 'Not-Shipped', 'Pending'],
+        default: null
+    },
     courier_details: {
         // service: {
         //     type: mongoose.Schema.Types.ObjectId,
         //     ref: 'CourierServiceSecond'
         // },
-        carrier:{type:String}
+        carrier: { type: String }
     },
 
     order_shipped_date: {
@@ -92,9 +97,9 @@ const orderSchema = new mongoose.Schema({
     shipment_id: {
         type: String
     },
-    shipping_is_billing:{
-        type:Boolean,
-        default:false
+    shipping_is_billing: {
+        type: Boolean,
+        default: false
     },
 
 }, {

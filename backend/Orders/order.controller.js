@@ -1,9 +1,9 @@
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
-const Courier=require("../models/courierSecond");
+const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
-const{calculateRateForService}=require("../Rate/calculateRateController");
-const User=require("../models/User.model");
+const { calculateRateForService } = require("../Rate/calculateRateController");
+const User = require("../models/User.model");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -58,10 +58,10 @@ const createOrder = async (req, res) => {
   try {
     console.log("I am in createOrder");
     const data = req.body.formData;
-    const id=req.body.user._id;
-    const shipping_is_billing=req.body.isSame;
+    const id = req.body.user._id;
+    const shipping_is_billing = req.body.isSame;
 
-    const currentUser=await User.findById(id);
+    const currentUser = await User.findById(id);
 
     let newOrder = new Order({
       order_id: data.orderInfo.orderID,
@@ -75,7 +75,7 @@ const createOrder = async (req, res) => {
       sub_total: data.sub_total,
       shipping_is_billing
     });
-    
+
     let result = await newOrder.save();
     currentUser.orders.push(result._id);
     await currentUser.save();
@@ -121,10 +121,10 @@ const shipOrder = async (req, res) => {
 
     const servicesCursor = Services.find({ isEnabeled: true });
     const enabledServices = [];
-  
+
     for await (const srvc of servicesCursor) {
       const provider = await Courier.findOne({ provider: srvc.courierProviderName });
-  
+
       if (provider?.isEnabeled === true && provider?.toEnabeled === false) {
         enabledServices.push(srvc);
       }
@@ -132,7 +132,7 @@ const shipOrder = async (req, res) => {
 
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
-        let result = await checkServiceabilityAll(item, req.body.id,req.body.pincode);
+        let result = await checkServiceabilityAll(item, req.body.id, req.body.pincode);
         if (result) {
           return item;
         }
@@ -143,19 +143,19 @@ const shipOrder = async (req, res) => {
     console.log(filteredServices);
 
     const payload = {
-      pickupPincode:req.body.pincode,
+      pickupPincode: req.body.pincode,
       deliveryPincode: currentOrder.Biling_details.pinCode,
-      length:currentOrder.shipping_cost.dimensions.length,
-      breadth:currentOrder.shipping_cost.dimensions.width,                         
-      height:currentOrder.shipping_cost.dimensions.height,             
-      weight:currentOrder.shipping_cost.weight,                         
-      cod:currentOrder.order_type==='Cash on Delivery'?"Yes":"No",
-      valueInINR:currentOrder.sub_total,
+      length: currentOrder.shipping_cost.dimensions.length,
+      breadth: currentOrder.shipping_cost.dimensions.width,
+      height: currentOrder.shipping_cost.dimensions.height,
+      weight: currentOrder.shipping_cost.weight,
+      cod: currentOrder.order_type === 'Cash on Delivery' ? "Yes" : "No",
+      valueInINR: currentOrder.sub_total,
       filteredServices,
-      rateCardType:"Basic"
+      rateCardType: "Basic"
     };
 
-    let rates=await calculateRateForService(payload);
+    let rates = await calculateRateForService(payload);
 
 
     res.status(201).json({
@@ -174,9 +174,32 @@ const shipOrder = async (req, res) => {
 };
 
 
+const cancelOrdersAtBooked = async (req, res) => {
+  const ordersToBeCancelled = req.body.items;
+
+  try {
+    for (let order of ordersToBeCancelled) {
+      const currentOrder = await Order.findById(order._id);
+
+      if (currentOrder) {
+        currentOrder.status = 'Cancelled';
+        currentOrder.cancelledAtStage = 'Booked';
+        await currentOrder.save();
+      }
+    }
+    res.status(201).send({ message:'Orders has cancelled successfully'});
+  } catch (error) {
+    console.error('Error canceling orders:', error);
+    res.status(500).send({ error: 'An error occurred while cancelling orders.' });
+  }
+};
+
+
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderDetails,
-  shipOrder
+  shipOrder,
+  cancelOrdersAtBooked
 }
