@@ -244,6 +244,53 @@ const createNDR = async (req, res) => {
     }
 };
 
+const checkServiceabilityXpressBees= async (service,payload) => {
+
+    console.log("I am in xpress serviceability");
+
+     const{origin, destination, payment_type, order_amount, weight, length, breadth, height}=payload;
+     
+    try {
+
+      const token = await getAuthToken();
+     
+      const response = await axios.post(
+        'https://shipment.xpressbees.com/api/courier/serviceability',
+        {
+          origin,
+          destination,
+          payment_type,
+          order_amount,
+          weight,
+          length,
+          breadth,
+          height,
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        }
+      );
+
+      if(response.data.status){
+        const result = response.data?.data;
+        const filteredData = result.filter((item) => item.name=== service);
+        if (filteredData.length > 0) {
+            return true;
+          } else {
+            console.log(`No courier service found matching: ${service}`);
+            return false;
+          }
+      }
+      
+    } catch (error) {
+      console.log(error);  
+      return false;
+    }
+  };
+  
+
 module.exports={
   createShipment,
   reverseBooking,
@@ -251,5 +298,6 @@ module.exports={
   exceptionList,
   cancelShipment,
   pickup,
-  trackShipment
+  trackShipment,
+  checkServiceabilityXpressBees
 }
