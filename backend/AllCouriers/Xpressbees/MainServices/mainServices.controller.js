@@ -46,6 +46,8 @@ const createShipment = async (req, res) => {
             collectable_amount:currentOrder.sub_total,
             courier_id: selectedServiceDetails.provider_courier_id
           };
+
+          console.log(shipmentData);
     
           
     
@@ -59,11 +61,15 @@ const createShipment = async (req, res) => {
             }
         });
 
+        console.log("XpressBees Create Shipment",response.data);
+
         if (response.data.status) {
             const result=response.data.data;
             currentOrder.status='Booked';
+            currentOrder.cancelledAtStage=null;
             currentOrder.awb_number=result.awb_number;
             currentOrder.shipment_id=`${result.awb_number}`;
+            currentOrder.service_details=selectedServiceDetails._id;
             await currentOrder.save();
  
             return res.status(201).json({message:"Shipment Created Succesfully"});
@@ -72,6 +78,7 @@ const createShipment = async (req, res) => {
             return res.status(400).json({ error: 'Error creating shipment', details: response.data });
         }
     } catch (error) {
+        console.log(error);
         console.error('Error in creating shipment:', error.message);
         return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
@@ -148,6 +155,8 @@ const pickup = async (awbNumbers) => {
             },
         });
 
+        console.log("response of xpressbees pickup",response.data);
+
         if (response.data.status) {
             return { success: true, data: response.data.data };
         } else {
@@ -162,8 +171,7 @@ const pickup = async (awbNumbers) => {
 
 
 
-const cancelShipment = async (req, res) => {
-    const { awb } = req.body;
+const cancelShipmentXpressBees= async (awb) => {
 
     if (!awb) {
         return res.status(400).json({ error: 'AWB number is required' });
@@ -182,14 +190,26 @@ const cancelShipment = async (req, res) => {
             }
         });
 
-        if (response.data.status) {
-            return res.status(200).json(response.data.data);
+        const { status, data } = response.data;
+        if (status) {
+            return { data, code: 201};
         } else {
-            return res.status(400).json({ error: 'Error in shipment cancellation', details: response.data });
+            return {
+                error: 'Error in shipment cancellation',
+                details: response.data,
+                code: 400,
+            };
         }
     } catch (error) {
-        console.error('Error in cancelling shipment:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        console.error(
+            'Error in cancelling shipment:',
+            error.response?.data || error.message
+        );
+        return {
+            error: 'Internal Server Error',
+            message: error.message,
+            code: 500,
+        };
     }
 };
 
@@ -296,7 +316,7 @@ module.exports={
   reverseBooking,
   createNDR,
   exceptionList,
-  cancelShipment,
+  cancelShipmentXpressBees,
   pickup,
   trackShipment,
   checkServiceabilityXpressBees
