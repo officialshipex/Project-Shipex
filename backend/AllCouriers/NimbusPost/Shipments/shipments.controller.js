@@ -60,7 +60,6 @@ const createShipment = async (req, res) => {
 
         if (response.data.status) {
            const result=response.data.data;
-           console.log(result);
            currentOrder.status='Booked';
            currentOrder.cancelledAtStage=null;
            currentOrder.awb_number=result.awb_number;

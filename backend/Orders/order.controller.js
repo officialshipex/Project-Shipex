@@ -5,7 +5,7 @@ const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
 const { requestShipmentPickup,cancelOrder} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
-const { pickup } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const { pickup,cancelShipmentXpressBees} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const {cancelShipment}=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 
 // Utility function to calculate order totals
@@ -322,7 +322,13 @@ const cancelOrdersAtBooked = async (req, res) => {
         } else if (currentOrder.service_details.courierProviderName === 'Shiprocket') {
           const result=await cancelOrder(currentOrder._id);
           if (!result.success) {
-            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+            return { error: 'Failed to cancel shipment with Shiprocket', details: result, orderId: currentOrder._id };
+          }
+          else if (currentOrder.service_details.courierProviderName ==='Xpressbees') {
+            const result=await cancelShipmentXpressBees(currentOrder.awb_number);
+            if (result.error) {
+              return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+            }
           }
 
         } else {
