@@ -116,7 +116,8 @@ const createCustomOrder = async (req, res) => {
       const { shipment_id } = response.data;
       const courier_id = selectedServiceDetails.provider_courier_id;
     
-      await assignAWB(shipment_id, courier_id);
+      const result=await assignAWB(shipment_id, courier_id);
+      console.log("Shiprocket result is",result);
     
       if (!result || !result.awb_code) {
         console.error("Invalid response from assignAWB:", result);
@@ -126,10 +127,12 @@ const createCustomOrder = async (req, res) => {
         });
       }
     
-      currentOrder.status = 'Booked';
+      currentOrder.status='Booked';
+      currentOrder.cancelledAtStage=null;
       currentOrder.awb_number =result.awb_code;
       currentOrder.shipment_id =shipment_id;
-      await currentOrder.save();
+      currentOrder.service_details=selectedServiceDetails._id;
+      const savedOrder=await currentOrder.save();
     
       return res.status(201).json({ message: "Shipment Created Successfully" });
     } else {
@@ -167,8 +170,7 @@ const updateOrder = async (req, res) => {
 };
 
 // 3. Cancel an Order
-const cancelOrder = async (req, res) => {
-  const { order_id } = req.params;
+const cancelOrder = async (order_id) => {
   try {
     const token = await getToken();
     const response = await axios.post(
@@ -176,11 +178,12 @@ const cancelOrder = async (req, res) => {
       { ids: [order_id] },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    res.json(response.data);
+    return { success: true, data: response.data };
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    return { success: false, error: error.response?.data || error.message };
   }
 };
+
 
 // 4. List of Couriers
 const listCouriers = async (req, res) => {
@@ -217,7 +220,9 @@ async function checkServiceability(service, payload) {
     });
 
     const result = response.data?.data?.available_courier_companies || [];
-    const filteredData = result.filter((item) => item.courier_name === service && item.pickup_availability!='0');
+    console.log(result);
+    const filteredData = result.filter((item) => item.courier_name === service && item.blocked==0);
+   
 
     if (filteredData.length > 0) {
       return true;
@@ -247,8 +252,9 @@ const requestShipmentPickup = async (shipment_id) => {
           Authorization: `Bearer ${token}`,
        } }
     );
+
     
-    if (response.data.status) {
+    if (response.data.pickup_status==1) {
       return {
         success: true,
         data: response.data,

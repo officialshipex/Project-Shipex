@@ -4,7 +4,7 @@ const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
-const { requestShipmentPickup } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { requestShipmentPickup,cancelOrder} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const {cancelShipment}=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 
@@ -242,6 +242,9 @@ const requestPickup = async (req, res) => {
           const result = await requestShipmentPickup(currentOrder.shipment_id);
           if (result.success) {
             currentOrder.status = "WaitingPickup";
+            currentOrder.pickup_details.pickup_scheduled_date=result.data.response.pickup_scheduled_date;
+            currentOrder.pickup_details.pickup_token_number=result.data.response.pickup_token_number;
+            currentOrder.pickup_details.pickup_generated_date=result.data.response.pickup_generated_date.date;
             await currentOrder.save();
             updateStatus.status = "WaitingPickup";
           } else {
@@ -316,8 +319,12 @@ const cancelOrdersAtBooked = async (req, res) => {
           if (result.error) {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
           }
-        } else if (currentOrder.service_details.courierProviderName === 'OtherProvider') {
-          // Implement cancellation logic for other providers
+        } else if (currentOrder.service_details.courierProviderName === 'Shiprocket') {
+          const result=await cancelOrder(currentOrder._id);
+          if (!result.success) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+
         } else {
           return { error: 'Unsupported courier provider', orderId: currentOrder._id };
         }

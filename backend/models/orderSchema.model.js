@@ -99,6 +99,18 @@ const orderSchema = new mongoose.Schema({
         default: false
     },
 
+    pickup_details:{
+        pickup_scheduled_date:{
+            type:String
+        },
+        pickup_token_number:{
+            type:String
+        },
+        pickup_generated_date:{
+            type:String
+        }
+    }
+
 }, {
     timestamps: true
 });
