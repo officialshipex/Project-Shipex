@@ -4,10 +4,13 @@ const validateShippingRule = require('../utils/shippingRulesValidation');
 
 const createShippingRule = async (req, res) => {
     try {
+        // console.log(req.body);
+        const user = req.user._id;
 
         const { error } = validateShippingRule.validate(req.body);
 
         if (error) {
+            console.log(error);
             return res.status(400).json({
                 status: false,
                 message: 'Validation error',
@@ -24,7 +27,6 @@ const createShippingRule = async (req, res) => {
         }
 
         const {
-            user,
             status,
             ruleType,
             ruleName,
@@ -157,7 +159,7 @@ const changeRuleStatus = async (req, res) => {
 const getAllRules = async (req, res) => {
     try {
 
-        const user = req.params.id;
+        const user = req.user._id;
 
         const rules = await ShippingRules.find({ user });
         if (!rules) {
@@ -170,7 +172,7 @@ const getAllRules = async (req, res) => {
         res.status(200).json({
             status: true,
             message: 'Shipping rules fetched successfully',
-            rules,
+            data: rules,
         });
 
     } catch (error) {
