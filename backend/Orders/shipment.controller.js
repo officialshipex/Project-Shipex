@@ -1,6 +1,7 @@
 const Order = require("../models/orderSchema.model");
 const { getServiceablePincodesData } = require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
 const{checkServiceability}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const{checkServiceabilityXpressBees}=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 
 const checkServiceabilityAll= async (service, id,pincode) => {
     try {
@@ -42,7 +43,22 @@ const checkServiceabilityAll= async (service, id,pincode) => {
         }
 
         if (service.courierProviderName === "Xpressbees") {
-            return true;
+            
+            const payload = {
+                    origin:pincode,
+                    destination: currentOrder.shipping_details.pinCode,
+                    payment_type: currentOrder.order_type === 'Cash on Delivery' ?"cod":"prepaid",
+                    order_amount:currentOrder.sub_total,
+                    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),parseInt(currentOrder.shipping_cost.volumetricWeight)),
+                    length: currentOrder.shipping_cost.dimensions.length,
+                    breadth: currentOrder.shipping_cost.dimensions.width,
+                    height: currentOrder.shipping_cost.dimensions.height,
+    
+            };
+
+            const result=await checkServiceabilityXpressBees(service.courierProviderServiceName,payload);
+            return result;
+
         }
 
         

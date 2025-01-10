@@ -220,7 +220,6 @@ async function checkServiceability(service, payload) {
     });
 
     const result = response.data?.data?.available_courier_companies || [];
-    console.log(result);
     const filteredData = result.filter((item) => item.courier_name === service && item.blocked==0);
    
 
