@@ -10,6 +10,6 @@ router.put('/shipping-rule/:id', updateShippingRule);
 
 router.patch('/shipping-rule/:id/status', changeRuleStatus);
 
-router.get('/shipping-rule/:id', getAllRules);
+router.get('/shipping-rule', getAllRules);
 
 module.exports = router;

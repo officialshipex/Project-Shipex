@@ -40,7 +40,6 @@ const shippingRulesSchema = new mongoose.Schema({
             operator: {
                 type: String,
                 required: true,
-                enum: ['is', 'is not'],
             },
             value: {
                 type: String,

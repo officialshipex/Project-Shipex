@@ -39,7 +39,7 @@ const WareHouse = require("./routes/warehouse.router");
 router.use('/external', authRouter);
 
 router.use('/merchant', isAuthorized, verficationRouter);
-router.use('/allocation', allocationRouter)
+router.use('/allocation',isAuthorized, allocationRouter);
 
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
