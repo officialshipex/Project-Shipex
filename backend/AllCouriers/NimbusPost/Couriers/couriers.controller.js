@@ -182,8 +182,6 @@ const getServiceablePincodesData = async (service, payload) => {
         });
 
         if (response.data.status) {
-            console.log("I am in nimbuspost services");
-            console.log(response.data.data);
             const filteredData = response.data.data.filter((item) => item.name === service);
             return filteredData.length > 0;
         } else {
