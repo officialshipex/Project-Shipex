@@ -33,6 +33,7 @@ const LabelRouter = require('./label/label.router');
 
 const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
+const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
 
 
 
@@ -67,5 +68,6 @@ router.use('/delhivery',DelhiveryController);
 router.use("/label", LabelRouter);
 router.use('/user',isAuthorized,userRouter);
 router.use('/warehouse',WareHouse);
+router.use('/bulkOrderUpload', bulkOrderUploadRoutes);
 
 module.exports = router;
