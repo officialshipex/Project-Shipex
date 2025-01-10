@@ -180,22 +180,38 @@ const shipOrder = async (req, res) => {
 const cancelOrdersAtNotShipped = async (req, res) => {
   const ordersToBeCancelled = req.body.items;
 
+  if (!Array.isArray(ordersToBeCancelled) || ordersToBeCancelled.length === 0) {
+    return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
+  }
+
   try {
-    for (let order of ordersToBeCancelled) {
+    const updatePromises = ordersToBeCancelled.map(async (order) => {
       const currentOrder = await Order.findById(order._id);
 
-      if (currentOrder) {
+      if (currentOrder && currentOrder.status !== 'Cancelled') {
         currentOrder.status = 'Cancelled';
         currentOrder.cancelledAtStage = 'Not-Shipped';
-        await currentOrder.save();
+        return currentOrder.save();
       }
-    }
-    res.status(201).send({ message: 'Orders has cancelled successfully' });
+    });
+
+    await Promise.all(updatePromises);
+
+    const message =
+      ordersToBeCancelled.length > 1
+        ? 'Orders cancelled successfully'
+        : 'Order has been cancelled successfully';
+
+    res.status(201).send({ message });
   } catch (error) {
-    console.error('Error canceling orders:', error);
+    console.error('Error canceling orders:', {
+      error,
+      orders: ordersToBeCancelled.map((order) => order._id),
+    });
     res.status(500).send({ error: 'An error occurred while cancelling orders.' });
   }
 };
+
 
 
 
@@ -255,7 +271,7 @@ const requestPickup = async (req, res) => {
     const successCount = results.filter(r => r.status === "WaitingPickup").length;
     const failedCount = results.filter(r => r.status === "Failed").length;
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: `${successCount} orders updated successfully, ${failedCount} failed.`,
       details: results
@@ -271,21 +287,73 @@ const requestPickup = async (req, res) => {
   }
 };
 
-const cancelOrdersAtBooked=async(req,res)=>{
-  
-  const allOrders=req.body.items;
-  for (let order of allOrders){
 
-    if (currentOrder.service_details.courierProviderName === "NimbusPost") {
-      const result=await cancelShipment(currentOrder.awb_number);
-      currentOrder.status = "Not-Shipped";
-      currentOrder.cancelledAtStage="Booked";
-      await currentOrder.save();
-    }
+
+const cancelOrdersAtBooked = async (req, res) => {
+  const allOrders = req.body.items;
+
+  if (!Array.isArray(allOrders) || allOrders.length === 0) {
+    return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
   }
 
+  try {
+    const ordersFromDb = await Promise.all(
+      allOrders.map(order => Order.findById(order._id).populate('service_details'))
+    );
 
-}
+    const cancellationResults = await Promise.all(
+      ordersFromDb.map(async (currentOrder) => {
+        if (!currentOrder) {
+          return { error: 'Order not found', orderId: currentOrder._id };
+        }
+
+        if (currentOrder.status === 'Not-Shipped' && currentOrder.cancelledAtStage == null) {
+          return { message: 'Order already cancelled', orderId: currentOrder._id };
+        }
+
+        if (currentOrder.service_details.courierProviderName === 'NimbusPost') {
+          const result = await cancelShipment(currentOrder.awb_number);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+        } else if (currentOrder.service_details.courierProviderName === 'OtherProvider') {
+          // Implement cancellation logic for other providers
+        } else {
+          return { error: 'Unsupported courier provider', orderId: currentOrder._id };
+        }
+
+        currentOrder.status = 'Not-Shipped';
+        currentOrder.cancelledAtStage = 'Booked';
+        await currentOrder.save();
+
+        return { message: 'Order cancelled successfully', orderId: currentOrder._id };
+      })
+    );
+
+    
+    let successCount = 0;
+    let failureCount = 0;
+    cancellationResults.forEach(result => {
+      if (result.error) {
+        failureCount++;
+      } else {
+        successCount++;
+      }
+    });
+
+    res.status(201).send({
+      results: cancellationResults,
+      successCount,
+      failureCount
+    });
+  } catch (error) {
+    console.error('Error cancelling orders:', error);
+    res.status(500).send({ error: 'An error occurred while cancelling orders.' });
+  }
+};
+
+
+
 
 
 

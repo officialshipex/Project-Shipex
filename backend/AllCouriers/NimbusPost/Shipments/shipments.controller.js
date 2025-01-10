@@ -62,16 +62,19 @@ const createShipment = async (req, res) => {
            const result=response.data.data;
            console.log(result);
            currentOrder.status='Booked';
+           currentOrder.cancelledAtStage=null;
            currentOrder.awb_number=result.awb_number;
            currentOrder.shipment_id=`${result.awb_number}`;
            currentOrder.service_details=selectedServiceDetails._id;
-           await currentOrder.save();
+           let savedOrder=await currentOrder.save();
+           
 
            return res.status(201).json({message:"Shipment Created Succesfully"});
         } else {
             return res.status(400).json({ error: 'Error creating shipment', details: response.data });
         }
     } catch (error) {
+        console.log(error);
         console.error('Error in creating shipment:', error.message);
         return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
