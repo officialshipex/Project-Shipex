@@ -2,6 +2,7 @@ const Order = require("../models/orderSchema.model");
 const { getServiceablePincodesData } = require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
 const{checkServiceability}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const{checkServiceabilityXpressBees}=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const{checkPincodeServiceabilityDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
 const checkServiceabilityAll= async (service, id,pincode) => {
     try {
@@ -59,6 +60,11 @@ const checkServiceabilityAll= async (service, id,pincode) => {
             const result=await checkServiceabilityXpressBees(service.courierProviderServiceName,payload);
             return result;
 
+        }
+
+        if (service.courierProviderName === "Delhivery"){
+            const result=await checkPincodeServiceabilityDelhivery(currentOrder.shipping_details.pinCode,currentOrder.order_type);
+            return result;
         }
 
         

@@ -143,7 +143,7 @@ const shipOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
-    console.log(filteredServices);
+    // console.log(filteredServices);
 
     const payload = {
       pickupPincode: req.body.pincode,
