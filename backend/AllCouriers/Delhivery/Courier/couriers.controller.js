@@ -203,35 +203,34 @@ const createPickupRequest = async (req, res) => {
 };
 
 
-const createClientWarehouse = async (req, res) => {
-  const { warehouseDetails } = req.body;
+const createClientWarehouse = async (payload) => {
+
+  const warehouseDetails={
+      name:payload.warehouseName,                     
+      address:`${payload.addressLine1} ${payload.addressLine2}`,
+      pincode:parseInt(payload.pinCode),
+      city:payload.city,                                                                      
+      state:payload.state
+  }
 
   if (!warehouseDetails) {
     return res.status(400).json({ error: "Warehouse details are required" });
   }
 
-  const url = 'https://staging-express.delhivery.com/api/backend/clientwarehouse/create/';
+  const url = 'https://track.delhivery.com/api/backend/clientwarehouse/create/';
 
   try {
     const response = await axios.post(url, warehouseDetails, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+        Authorization: `Token ${API_TOKEN}`
       },
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Client warehouse created successfully",
-      data: response.data,
-    });
+    return response.data;
   } catch (error) {
-    console.error("Error creating client warehouse:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create client warehouse",
-      error: error.message,
-    });
+    console.error('Error:', error.response ? error.response.data : error.message);
+    throw error; 
   }
 };
 
@@ -276,5 +275,5 @@ module.exports = {
   generateShippingLabel,
   createPickupRequest,
   createClientWarehouse,
-  updateClientWarehouse
+  updateClientWarehouse,
 };

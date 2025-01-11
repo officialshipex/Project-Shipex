@@ -4,6 +4,7 @@ const {
   generateShippingLabel,
   createPickupRequest,
   createClientWarehouse,
+  createOrder
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
 const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
@@ -22,6 +23,7 @@ router.post('/addService',addService);
 // router.get("/serviceability/:pincode", checkPincodeServiceability);
 // Route to track shipment
 router.get("/track/:waybill", trackShipment);
+router.post("/createShipment",createOrder);
 // Route to generate shipping label
 router.get("/label/:waybill", generateShippingLabel);
 // Route to create a pickup request
