@@ -62,10 +62,12 @@ router.use("/Xpressbees",XpressbeesController);
 router.use("/ShreeMaruti",shreeMarutiController);
 router.use("/SmartShip",SmartShipController);
 
-router.use('/delhivery',DelhiveryController);
+router.use('/Delhivery',DelhiveryController);
 
 router.use("/label", LabelRouter);
 router.use('/user',isAuthorized,userRouter);
 router.use('/warehouse',WareHouse);
+
+
 
 module.exports = router;

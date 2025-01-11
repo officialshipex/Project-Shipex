@@ -7,7 +7,17 @@ const {
   createClientWarehouse,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
+const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
+
 const router = express.Router();
+
+router.get('/saveNew',saveDelhivery);
+router.get('/isEnabeled',isEnabeled);
+router.get('/enable',enable);
+router.get('/disable',disable);
+router.get('/getCourierList',getCourierList);
+
+router.post('/addService',addService);
 
 // Route to check pincode serviceability
 router.get("/serviceability/:pincode", checkPincodeServiceability);
