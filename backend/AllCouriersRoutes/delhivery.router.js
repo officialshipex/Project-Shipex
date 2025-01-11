@@ -1,6 +1,5 @@
 const express = require("express");
 const {
-  checkPincodeServiceability,
   trackShipment,
   generateShippingLabel,
   createPickupRequest,
@@ -20,7 +19,7 @@ router.get('/getCourierList',getCourierList);
 router.post('/addService',addService);
 
 // Route to check pincode serviceability
-router.get("/serviceability/:pincode", checkPincodeServiceability);
+// router.get("/serviceability/:pincode", checkPincodeServiceability);
 // Route to track shipment
 router.get("/track/:waybill", trackShipment);
 // Route to generate shipping label
