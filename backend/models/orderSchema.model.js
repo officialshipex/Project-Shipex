@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
 const CourierServiceSecond= require("./courierServiceSecond.model");
 const User = require("./User.model");
+const Warehouse=require("./wareHouse.model");
 
 const orderSchema = new mongoose.Schema({
     order_id: {
@@ -109,6 +110,10 @@ const orderSchema = new mongoose.Schema({
         pickup_generated_date:{
             type:String
         }
+    },
+    warehouse:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Warehouse'  
     }
 
 }, {
