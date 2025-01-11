@@ -35,6 +35,7 @@ const createWareHouse = async (req, res) => {
       );
       
       if (existingLocation) {
+        console.log("EXISTING LOCATION",existingLocation);
         return res.status(400).json({
           message: "Pickup location with the same name or address already exists."
         });

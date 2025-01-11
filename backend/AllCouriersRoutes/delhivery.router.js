@@ -19,11 +19,13 @@ router.get('/getCourierList',getCourierList);
 
 router.post('/addService',addService);
 
+router.post("/createShipment",createOrder);
+
 // Route to check pincode serviceability
 // router.get("/serviceability/:pincode", checkPincodeServiceability);
 // Route to track shipment
 router.get("/track/:waybill", trackShipment);
-router.post("/createShipment",createOrder);
+
 // Route to generate shipping label
 router.get("/label/:waybill", generateShippingLabel);
 // Route to create a pickup request
