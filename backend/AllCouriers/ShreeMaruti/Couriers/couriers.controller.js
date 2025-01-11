@@ -54,12 +54,14 @@ const addService = async (req, res) => {
         });
 
         const name = req.body.service;
+        
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'SmartShip'
+                courierProviderName:'ShreeMaruti',
+                
             });
 
             const S2 = await Courier.findOne({ provider: 'ShreeMaruti'});

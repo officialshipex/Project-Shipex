@@ -1,0 +1,169 @@
+const axios = require('axios');
+const Courier = require("../../../models/courierSecond");
+const Services=require("../../../models/courierServiceSecond.model");
+const{getUniqueId}=require("../../getUniqueId");
+
+
+const saveDelhivery = async (req, res) => {
+    try {
+        const existingCourier = await Courier.findOne({ provider: 'Delhivery' });
+
+        if (existingCourier) {
+            return res.status(400).json({ message: 'Delhivery service is already added' });
+        }
+
+        const newCourier = new Courier({
+            provider: 'Delhivery'
+        });
+        await newCourier.save();
+        res.status(201).json({ message: 'Delhivery Integrated Successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'An error has occurred', error: error.message });
+    }
+};
+
+
+const isEnabeled = async (req, res) => {
+    try {
+        const existingCourier = await Courier.findOne({ provider: 'Delhivery' });
+
+        if (!existingCourier) {
+            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+        }
+
+        if (existingCourier.isEnabeled && !existingCourier.toEnabeled) {
+            return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+
+        } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
+            return res.status(201).json({ isEnabeled: false, toEnabeled: true });
+
+        } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
+            return res.status(201).json({ isEnabeled: true, toEnabeled: true });
+
+        } else {
+            return res.status(201).json({ isEnabeled: false, toEnabeled: false });
+        }
+
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+const getCourierList = async (req, res) => {
+
+    try {
+        const hardCoreServices = [
+            { name: "Delhivery  service1" },
+            { name: "Delhivery  service2" },
+            { name: " Delhivery service3" }
+        ];
+
+        if (hardCoreServices && hardCoreServices.length > 0) {
+            const servicesData = hardCoreServices;
+            const currCourier = await Courier.findOne({ provider: 'Delhivery' }).populate('services');
+            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+
+            const allServices = servicesData.map(element => ({
+                service: element.name,
+                isAdded: prevServices.has(element.name)
+            }));
+
+            return res.status(201).json(allServices);
+        }
+
+        res.status(400).json({ message: 'Failed to fetch services' });
+    } catch (error) {
+        res.status(500).json({
+            error: "Failed to fetch courier list",
+            details: error.response?.data || error.message,
+        });
+    }
+};
+
+
+const enable = async (req, res) => {
+
+    try {
+      const existingCourier = await Courier.findOne({ provider:'Delhivery'});
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      existingCourier.isEnabeled = true;
+      existingCourier.toEnabeled = false;
+      const result = await existingCourier.save();
+      return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+    }
+    catch (error) {
+      onsole.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  
+  }
+
+  const disable = async (req, res) => {
+
+    try {
+      const existingCourier = await Courier.findOne({ provider:'Delhivery'});
+  
+      if (!existingCourier) {
+        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+      }
+  
+      existingCourier.isEnabeled = true;
+      existingCourier.toEnabeled = true;
+      const result=await existingCourier.save();
+      return res.status(201).json({ isEnabeled: true, toEnabeled:true});
+    }
+    catch (error) {
+      onsole.error("Error:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  
+  }
+
+
+  const addService = async (req, res) => {
+    try {
+        console.log("I am in addService of Delhivery");
+
+        const currCourier = await Courier.findOne({ provider:'Delhivery'});
+
+        const prevServices = new Set();
+        const services = await Services.find({ '_id': { $in: currCourier.services } });
+
+        services.forEach(service => {
+            prevServices.add(service.courierProviderServiceName);
+        });
+
+        const name = req.body.service;
+        
+
+        if (!prevServices.has(name)) {
+            const newService = new Services({
+                courierProviderServiceId: getUniqueId(),
+                courierProviderServiceName: name,
+                courierProviderName:'Delhivery',
+            });
+
+            const S2 = await Courier.findOne({ provider:'Delhivery'});
+            S2.services.push(newService._id);
+
+            await newService.save();
+            await S2.save();
+
+            // console.log(`New service saved: ${name}`);
+
+            return res.status(201).json({ message: `${name} has been successfully added` });
+        }
+
+        return res.status(400).json({ message: `${name} already exists` });
+    } catch (error) {
+        console.error(`Error adding service: ${error.message}`);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    }
+};
+
+module.exports = { saveDelhivery, isEnabeled, getCourierList,enable,disable,addService};
