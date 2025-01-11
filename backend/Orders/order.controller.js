@@ -7,6 +7,7 @@ const User = require("../models/User.model");
 const { requestShipmentPickup,cancelOrder} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup,cancelShipmentXpressBees} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const {cancelShipment}=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
+const{createPickupRequest}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -224,7 +225,7 @@ const requestPickup = async (req, res) => {
 
   try {
     const results = await Promise.all(allOrders.map(async (order) => {
-      let currentOrder = await Order.findById(order._id).populate('service_details');
+      let currentOrder = await Order.findById(order._id).populate('service_details').populate('warehouse');
       let updateStatus = { orderId: order._id, status: "Failed" };
 
       if (!currentOrder) {
@@ -260,7 +261,11 @@ const requestPickup = async (req, res) => {
           } else {
             updateStatus.error = "Xpressbees pickup failed";
           }
-        } else {
+        } 
+        else if(currentOrder.service_details.courierProviderName === "Delhivery"){
+         const result=await createPickupRequest(currentOrder.warehouse.warehouseName);
+        }
+        else {
           updateStatus.error = "Unsupported courier provider";
         }
 

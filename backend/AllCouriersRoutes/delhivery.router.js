@@ -2,7 +2,6 @@ const express = require("express");
 const {
   trackShipment,
   generateShippingLabel,
-  createPickupRequest,
   createClientWarehouse,
   createOrder
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
@@ -29,7 +28,7 @@ router.get("/track/:waybill", trackShipment);
 // Route to generate shipping label
 router.get("/label/:waybill", generateShippingLabel);
 // Route to create a pickup request
-router.post("/pickup", createPickupRequest);
+// router.post("/pickup", createPickupRequest);
 // Route to create a client warehouse
 router.post("/warehouse", createClientWarehouse);
 

@@ -7,6 +7,20 @@ const Order = require("../../../models/orderSchema.model");
 const crypto = require("crypto");
 
 
+// HELPER FUNCTIONS
+const getCurrentDateTime = () => {
+  const now = new Date();
+
+  // Format date as YYYY-MM-DD
+  const pickup_date = now.toISOString().split("T")[0];
+
+  // Format time as HH:mm:ss
+  const pickup_time = now.toTimeString().split(" ")[0];
+
+  return { pickup_date, pickup_time };
+};
+
+
 const createOrder = async (req, res) => {
   const url = `https://track.delhivery.com/api/cmu/create.json`;
 
@@ -72,6 +86,7 @@ const createOrder = async (req, res) => {
       currentOrder.awb_number=result.waybill;
       currentOrder.shipment_id=`${result.refnum}`;
       currentOrder.service_details=selectedServiceDetails._id;
+      currentOrder.warehouse=wh._id;
       let savedOrder=await currentOrder.save();
      
       return res.status(201).json({message:"Shipment Created Succesfully"});
@@ -195,35 +210,39 @@ const generateShippingLabel = async (req, res) => {
   }
 };
 
-const createPickupRequest = async (req, res) => {
-  const { pickupDetails } = req.body;
-  console.log(pickupDetails)
-  if (!pickupDetails) {
-    return res.status(400).json({ error: "Pickup details are required" });
-  }
+const createPickupRequest = async (warehouse_name) => {
+
+  const result=getCurrentDateTime();
+  console.log(result);
+  console.log(warehouse_name);
+  // const { pickupDetails } = req.body;
+  // console.log(pickupDetails)
+  // if (!pickupDetails) {
+  //   return res.status(400).json({ error: "Pickup details are required" });
+  // }
 
   // const url = `https://staging-express.delhivery.com/fm/request/new/`;
 
-  try {
-    const response = await axios.post(`${url}/fm/request/new/`, pickupDetails, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+  // try {
+  //   const response = await axios.post(`${url}/fm/request/new/`, pickupDetails, {
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
 
-    return res.status(201).json({
-      success: true,
-      message: "Pickup request created successfully",
-      data: response.data,
-    });
-  } catch (error) {
-    console.error("Error creating pickup request:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create pickup request",
-      error: error.message,
-    });
-  }
+  //   return res.status(201).json({
+  //     success: true,
+  //     message: "Pickup request created successfully",
+  //     data: response.data,
+  //   });
+  // } catch (error) {
+  //   console.error("Error creating pickup request:", error.message);
+  //   return res.status(500).json({
+  //     success: false,
+  //     message: "Failed to create pickup request",
+  //     error: error.message,
+  //   });
+  // }
 };
 
 
