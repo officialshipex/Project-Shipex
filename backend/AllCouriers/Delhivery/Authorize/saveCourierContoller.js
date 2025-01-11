@@ -1,8 +1,10 @@
+require('dotenv').config();
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
-const Services=require("../../../models/courierServiceSecond.model");
-const{getUniqueId}=require("../../getUniqueId");
+const Services = require("../../../models/courierServiceSecond.model");
+const { getUniqueId } = require("../../getUniqueId");
 
+const API_TOKEN = process.env.DEL_API_TOKEN;
 
 const saveDelhivery = async (req, res) => {
     try {
@@ -85,51 +87,51 @@ const getCourierList = async (req, res) => {
 const enable = async (req, res) => {
 
     try {
-      const existingCourier = await Courier.findOne({ provider:'Delhivery'});
-  
-      if (!existingCourier) {
-        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-      }
-  
-      existingCourier.isEnabeled = true;
-      existingCourier.toEnabeled = false;
-      const result = await existingCourier.save();
-      return res.status(201).json({ isEnabeled: true, toEnabeled: false });
+        const existingCourier = await Courier.findOne({ provider: 'Delhivery' });
+
+        if (!existingCourier) {
+            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+        }
+
+        existingCourier.isEnabeled = true;
+        existingCourier.toEnabeled = false;
+        const result = await existingCourier.save();
+        return res.status(201).json({ isEnabeled: true, toEnabeled: false });
     }
     catch (error) {
-      onsole.error("Error:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+        onsole.error("Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-  
-  }
 
-  const disable = async (req, res) => {
+}
+
+const disable = async (req, res) => {
 
     try {
-      const existingCourier = await Courier.findOne({ provider:'Delhivery'});
-  
-      if (!existingCourier) {
-        return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-      }
-  
-      existingCourier.isEnabeled = true;
-      existingCourier.toEnabeled = true;
-      const result=await existingCourier.save();
-      return res.status(201).json({ isEnabeled: true, toEnabeled:true});
+        const existingCourier = await Courier.findOne({ provider: 'Delhivery' });
+
+        if (!existingCourier) {
+            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
+        }
+
+        existingCourier.isEnabeled = true;
+        existingCourier.toEnabeled = true;
+        const result = await existingCourier.save();
+        return res.status(201).json({ isEnabeled: true, toEnabeled: true });
     }
     catch (error) {
-      onsole.error("Error:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+        onsole.error("Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-  
-  }
+
+}
 
 
-  const addService = async (req, res) => {
+const addService = async (req, res) => {
     try {
         console.log("I am in addService of Delhivery");
 
-        const currCourier = await Courier.findOne({ provider:'Delhivery'});
+        const currCourier = await Courier.findOne({ provider: 'Delhivery' });
 
         const prevServices = new Set();
         const services = await Services.find({ '_id': { $in: currCourier.services } });
@@ -139,16 +141,16 @@ const enable = async (req, res) => {
         });
 
         const name = req.body.service;
-        
+
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'Delhivery',
+                courierProviderName: 'Delhivery',
             });
 
-            const S2 = await Courier.findOne({ provider:'Delhivery'});
+            const S2 = await Courier.findOne({ provider: 'Delhivery' });
             S2.services.push(newService._id);
 
             await newService.save();
@@ -166,4 +168,30 @@ const enable = async (req, res) => {
     }
 };
 
-module.exports = { saveDelhivery, isEnabeled, getCourierList,enable,disable,addService};
+const fetchBulkWaybills = async (count) => {
+    const url = `https://track.delhivery.com/waybill/api/bulk/json/?count=${count}`;
+
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Token ${API_TOKEN}`,
+            }
+        });
+
+
+        const result = response.data.split(',')
+
+        if (response.data) {
+            return result
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.log(error);
+        return null
+
+    }
+};
+
+module.exports = { saveDelhivery, isEnabeled, getCourierList, enable, disable, addService, fetchBulkWaybills };

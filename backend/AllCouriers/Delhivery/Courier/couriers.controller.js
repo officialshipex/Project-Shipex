@@ -1,62 +1,85 @@
 require('dotenv').config();
 const axios = require('axios');
+const{fetchBulkWaybills}=require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
+const Order = require("../../../models/orderSchema.model");
+const crypto = require("crypto");
+
 
 const createOrder = async (req, res) => {
-  const {
-    orderId,
-    waybill,
-    pin,
-    phone,
-    address,
-    paymentMode,
-    pickupLocation,
-    clientName,
-    fragileShipment,
-    sellerGstTin,
-    hsnCode,
-    invoiceReference,
-    country = "India",
-  } = req.body;
+  const url = `https://track.delhivery.com/api/cmu/create.json`;
 
-  if (!orderId || !pin || !phone || !address || !sellerGstTin || !hsnCode) {
-    return res.status(400).json({
-      error: "Missing mandatory fields: orderId, pin, phone, address, sellerGstTin, or hsnCode.",
-    });
-  }
+  const { selectedServiceDetails, id, wh } = req.body;
+  const currentOrder = await Order.findById(id);
+  
 
-  const url = `https://staging-express.delhivery.com/api/cmu/create.json`; // Change to production URL for live environment.
 
-  const payload = {
-    waybill: waybill || undefined, // Omit if not provided
-    order: orderId,
-    pin,
-    phone,
-    address,
-    payment_mode: paymentMode,
-    pickup_location: pickupLocation,
-    client: clientName,
-    fragile_shipment: fragileShipment === true ? true : undefined, // Omit if not applicable
-    seller_gst_tin: sellerGstTin,
-    hsn_code: hsnCode,
-    invoice_reference: invoiceReference,
-    country,
+  const waybills = await fetchBulkWaybills(1);
+  
+
+  const payment_type =
+    currentOrder.order_type === "Cash on Delivery" ? "COD" : "Pre-paid";
+
+  const payloadData = {
+    pickup_location: {
+      name: wh.warehouseName || "Default Warehouse",
+    },
+      shipments: [{
+      Waybill:waybills[0],
+      country: "India",
+      city: currentOrder.shipping_details.city,
+      return_phone: wh.contactNo,
+      pin: currentOrder.shipping_details.pinCode,
+      state: currentOrder.shipping_details.state,
+      order: currentOrder.order_id,
+      add: `${currentOrder.shipping_details.address} ${currentOrder.shipping_details.address2}`,
+      payment_mode: payment_type,
+      quantity:currentOrder.Product_details.length.toString(),
+      return_add: `${wh.addressLine1}`,
+      phone: currentOrder.shipping_details.phone,
+      total_amount:currentOrder.sub_total,
+      name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
+      return_country: "India",
+      return_city: wh.city ,
+      return_state: wh.state ,
+      return_pin: wh.pinCode ,
+      shipment_height: currentOrder.shipping_cost.dimensions.height ,
+      shipment_width: currentOrder.shipping_cost.dimensions.width ,
+      shipment_length: currentOrder.shipping_cost.dimensions.heightlength ,
+      cod_amount: payment_type === "COD" ? `${currentOrder.sub_total}`:"0",
+    }],
   };
 
+  
+
+  const payload = `format=json&data=${encodeURIComponent(JSON.stringify(payloadData))}`;
+  
+
   try {
-    const response = await axios.post(url, {
-      format: "json",
-      data: JSON.stringify(payload),
+    const response = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Token ${API_TOKEN}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Order created successfully.",
-      data: response.data,
-    });
+   
+    if (response.data.success) {
+      const result=response.data.packages[0];
+      currentOrder.status='Booked';
+      currentOrder.cancelledAtStage=null;
+      currentOrder.awb_number=result.waybill;
+      currentOrder.shipment_id=`${result.refnum}`;
+      currentOrder.service_details=selectedServiceDetails._id;
+      let savedOrder=await currentOrder.save();
+     
+      return res.status(201).json({message:"Shipment Created Succesfully"});
+   } else {
+       return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+   }
   } catch (error) {
-    console.error("Error creating order:", error.message);
+    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Failed to create order.",
@@ -66,8 +89,9 @@ const createOrder = async (req, res) => {
 };
 
 
+
 const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
-  console.log("I am in check pincode delivery");
+  
   if (!pincode) {
     return res.status(400).json({ error: "Pincode is required" });
   }
@@ -86,7 +110,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 
 
     let result = response.data.delivery_codes;
-    let finalResult=false;
+    let finalResult = false;
 
     if (result.length > 0) {
       let data = result[0].postal_code;
@@ -98,11 +122,11 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
         ? (cash === 'Y' && pickup === 'Y' && remarks === "")
         : (pre_paid === 'Y' && pickup === 'Y' && remarks === "");
 
-      
+
     }
     return finalResult;
   } catch (error) {
-    
+
     console.error("Error fetching pincode serviceability:", error.message);
 
     return false;
@@ -111,7 +135,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 
 const trackShipment = async (req, res) => {
   const { waybill } = req.params;
-  console.log(waybill)
+  
 
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
@@ -205,12 +229,15 @@ const createPickupRequest = async (req, res) => {
 
 const createClientWarehouse = async (payload) => {
 
-  const warehouseDetails={
-      name:payload.warehouseName,                     
-      address:`${payload.addressLine1} ${payload.addressLine2}`,
-      pincode:parseInt(payload.pinCode),
-      city:payload.city,                                                                      
-      state:payload.state
+  const warehouseDetails = {
+    name: payload.warehouseName,
+    phone: payload.contactNo,
+    address: `${payload.addressLine1} ${payload.addressLine2}`,
+    pin: payload.pinCode,
+    city: payload.city,
+    state: payload.state,
+    return_address: `${payload.addressLine1} ${payload.addressLine2}`,
+    return_pin: payload.pinCode
   }
 
   if (!warehouseDetails) {
@@ -230,7 +257,7 @@ const createClientWarehouse = async (payload) => {
     return response.data;
   } catch (error) {
     console.error('Error:', error.response ? error.response.data : error.message);
-    throw error; 
+    throw error;
   }
 };
 
