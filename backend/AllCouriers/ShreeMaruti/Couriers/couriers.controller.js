@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getToken } = require('../Authorize/shreeMaruti.controller');
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
-const {getUniqueId}=require("../../getUniqueId");
+const { getUniqueId } = require("../../getUniqueId");
 
 // Configuration (replace with actual values)
 const BASE_URL = 'https://qaapis.delcaper.com'; // Replace with the actual base URL
@@ -13,14 +13,14 @@ const getCourierList = async (req, res) => {
 
     try {
         const hardCoreServices = [
-        { name: "Shree Maruti service1" },
-        { name: "Shree Maruti service2" },
-        { name: " Shree Maruti service3" }
-    ];
-      
+            { name: "Shree Maruti service1" },
+            { name: "Shree Maruti service2" },
+            { name: " Shree Maruti service3" }
+        ];
+
         if (hardCoreServices && hardCoreServices.length > 0) {
             const servicesData = hardCoreServices;
-            const currCourier = await Courier.findOne({ provider:'ShreeMaruti'}).populate('services');
+            const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' }).populate('services');
             const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
             const allServices = servicesData.map(element => ({
@@ -54,17 +54,17 @@ const addService = async (req, res) => {
         });
 
         const name = req.body.service;
-        
+
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'ShreeMaruti',
-                
+                courierProviderName: 'ShreeMaruti',
+
             });
 
-            const S2 = await Courier.findOne({ provider: 'ShreeMaruti'});
+            const S2 = await Courier.findOne({ provider: 'ShreeMaruti' });
             S2.services.push(newService._id);
 
             await newService.save();
@@ -201,32 +201,38 @@ const trackOrder = async (req, res) => {
 
 
 // Serviceability
-const checkServiceability = async (req, res) => {
-    const { fromPincode, toPincode, isCodOrder, deliveryMode } = req.body;
+const checkServiceabilityShreeMaruti = async (payload) => {
+    console.log("I am in chcekServiceability for shreeMaruti");
+    const { fromPincode, toPincode, isCodOrder, deliveryMode } = payload;
 
-    // Validate required fields
     if (!fromPincode || !toPincode || isCodOrder === undefined || !deliveryMode) {
-        return res.status(400).json({ error: 'Missing required fields: fromPincode, toPincode, isCodOrder, and deliveryMode are mandatory.' });
+        return{ error: 'Missing required fields: fromPincode, toPincode, isCodOrder, and deliveryMode are mandatory.' }
     }
 
+
     try {
+        const token = await getToken();
+        console.log(token);
         const response = await axios.post(
             `${BASE_URL}/fulfillment/public/seller/order/check-ecomm-order-serviceability`,
             { fromPincode, toPincode, isCodOrder, deliveryMode },
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`, // Ensure `getToken()` returns a valid token
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
-        res.status(200).json(response.data);
+        if(response?.data?.data?.serviceability){
+           return true
+        }
+        else{
+            return false;
+        }
+        
     } catch (error) {
         console.error('Error checking serviceability:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
-            error: 'Serviceability check failed',
-            details: error.response?.data || error.message,
-        });
+        return false;
     }
 };
 
@@ -237,7 +243,7 @@ module.exports = {
     downloadLabelInvoice,
     createManifest,
     trackOrder,
-    checkServiceability,
+    checkServiceabilityShreeMaruti,
     getCourierList,
     addService
 };

@@ -3,6 +3,7 @@ const { getServiceablePincodesData } = require("../AllCouriers/NimbusPost/Courie
 const{checkServiceability}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const{checkServiceabilityXpressBees}=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const{checkPincodeServiceabilityDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const{checkServiceabilityShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 const checkServiceabilityAll= async (service, id,pincode) => {
     try {
@@ -63,8 +64,21 @@ const checkServiceabilityAll= async (service, id,pincode) => {
         }
 
         if (service.courierProviderName === "Delhivery"){
-            const result=await checkPincodeServiceabilityDelhivery(currentOrder.shipping_details.pinCode,currentOrder.order_type);
+            const result=await checkPincodeServiceabilityDelhivery(pincode,currentOrder.order_type);
             return result;
+        }
+
+        if(service.courierProviderName==="ShreeMaruti"){
+          
+            const payload={
+                fromPincode:parseInt(pincode),
+                toPincode:parseInt(currentOrder.shipping_details.pinCode),
+                isCodOrder:currentOrder.order_type === 'Cash on Delivery' ?true:false,
+                deliveryMode:'SURFACE'
+            }
+            const result=await checkServiceabilityShreeMaruti(payload);
+            return result;
+            
         }
 
         

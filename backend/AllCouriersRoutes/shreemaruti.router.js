@@ -30,7 +30,7 @@ router.delete('/cancel-order/:orderId', shreeMarutiController.cancelOrder);
 router.get('/download-label-invoice/:orderId', shreeMarutiController.downloadLabelInvoice);
 router.post('/create-manifest', shreeMarutiController.createManifest);
 router.get('/track-order/:orderId', shreeMarutiController.trackOrder);
-router.post('/serviceability', shreeMarutiController.checkServiceability);
+// router.post('/serviceability', shreeMarutiController.checkServiceability);
 
 
 module.exports = router;
