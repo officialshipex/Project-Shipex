@@ -10,13 +10,9 @@ const crypto = require("crypto");
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
   const now = new Date();
-
-  // Format date as YYYY-MM-DD
+  now.setSeconds(now.getSeconds() + 30);
   const pickup_date = now.toISOString().split("T")[0];
-
-  // Format time as HH:mm:ss
   const pickup_time = now.toTimeString().split(" ")[0];
-
   return { pickup_date, pickup_time };
 };
 
@@ -210,39 +206,54 @@ const generateShippingLabel = async (req, res) => {
   }
 };
 
-const createPickupRequest = async (warehouse_name) => {
+const createPickupRequest = async (warehouse_name, awb, res) => {
+  
+  const result = getCurrentDateTime();
 
-  const result=getCurrentDateTime();
-  console.log(result);
-  console.log(warehouse_name);
-  // const { pickupDetails } = req.body;
-  // console.log(pickupDetails)
-  // if (!pickupDetails) {
-  //   return res.status(400).json({ error: "Pickup details are required" });
-  // }
+  const pickupDetails = {
+    pickup_time: result.pickup_time,
+    pickup_date: result.pickup_date,
+    pickup_location: warehouse_name,
+    expected_package_count: 1,
+    waybill: `${awb}`,
+  };
 
-  // const url = `https://staging-express.delhivery.com/fm/request/new/`;
+  if (!pickupDetails.pickup_time || !pickupDetails.pickup_date || !pickupDetails.pickup_location || !pickupDetails.waybill) {
+    return ({ error: "All pickup details are required" });
+  }
 
-  // try {
-  //   const response = await axios.post(`${url}/fm/request/new/`, pickupDetails, {
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //   });
+  const url = `https://track.delhivery.com/fm/request/new/`;
 
-  //   return res.status(201).json({
-  //     success: true,
-  //     message: "Pickup request created successfully",
-  //     data: response.data,
-  //   });
-  // } catch (error) {
-  //   console.error("Error creating pickup request:", error.message);
-  //   return res.status(500).json({
-  //     success: false,
-  //     message: "Failed to create pickup request",
-  //     error: error.message,
-  //   });
-  // }
+  try {
+    const response = await axios.post(url, pickupDetails, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Token ${API_TOKEN}`,
+      },
+    });
+
+    if(response?.data?.success){
+      return ({
+        success: true,
+        message: "Pickup request created successfully",
+        data: response.data,
+        pickupDate:pickup_date
+      });
+    }
+    else{
+      return ({
+        success:false,
+        message: "Failed to create pickup request",
+      });
+    }
+  } catch (error) {
+   
+    return ({
+      success: false,
+      message: "Failed to create pickup request",
+      error: error.message,
+    });
+  }
 };
 
 

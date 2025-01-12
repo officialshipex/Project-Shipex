@@ -109,6 +109,9 @@ const orderSchema = new mongoose.Schema({
         },
         pickup_generated_date:{
             type:String
+        },
+        pickup_time:{
+            type:String
         }
     },
     warehouse:{

@@ -4,10 +4,10 @@ const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
-const { requestShipmentPickup,cancelOrder} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
-const { pickup,cancelShipmentXpressBees} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
-const {cancelShipment}=require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
-const{createPickupRequest}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { requestShipmentPickup, cancelOrder } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const { cancelShipment } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
+const { createPickupRequest } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -218,7 +218,7 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 
 const requestPickup = async (req, res) => {
   const allOrders = req.body.items;
-  
+
   if (!allOrders || allOrders.length === 0) {
     return res.status(400).json({ error: "No orders provided." });
   }
@@ -243,9 +243,9 @@ const requestPickup = async (req, res) => {
           const result = await requestShipmentPickup(currentOrder.shipment_id);
           if (result.success) {
             currentOrder.status = "WaitingPickup";
-            currentOrder.pickup_details.pickup_scheduled_date=result.data.response.pickup_scheduled_date;
-            currentOrder.pickup_details.pickup_token_number=result.data.response.pickup_token_number;
-            currentOrder.pickup_details.pickup_generated_date=result.data.response.pickup_generated_date.date;
+            currentOrder.pickup_details.pickup_scheduled_date = result.data.response.pickup_scheduled_date;
+            currentOrder.pickup_details.pickup_token_number = result.data.response.pickup_token_number;
+            currentOrder.pickup_details.pickup_generated_date = result.data.response.pickup_generated_date.date;
             await currentOrder.save();
             updateStatus.status = "WaitingPickup";
           } else {
@@ -261,9 +261,21 @@ const requestPickup = async (req, res) => {
           } else {
             updateStatus.error = "Xpressbees pickup failed";
           }
-        } 
-        else if(currentOrder.service_details.courierProviderName === "Delhivery"){
-         const result=await createPickupRequest(currentOrder.warehouse.warehouseName);
+        }
+        else if (currentOrder.service_details.courierProviderName === "Delhivery") {
+          const result = await createPickupRequest(currentOrder.warehouse.warehouseName, currentOrder.awb_number);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            currentOrder.pickup_details.pickup_scheduled_date = result?.data?.pickup_date;
+            currentOrder.pickup_details.pickup_token_number = `${result?.data?.pickup_id}`;
+            currentOrder.pickup_details.pickup_time = result?.data?.pickup_time;
+            currentOrder.pickup_details.pickup_generated_date = result?.pickupDate;
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          }
+          else {
+            updateStatus.error = "Xpressbees pickup failed";
+          }
         }
         else {
           updateStatus.error = "Unsupported courier provider";
@@ -325,12 +337,12 @@ const cancelOrdersAtBooked = async (req, res) => {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
           }
         } else if (currentOrder.service_details.courierProviderName === 'Shiprocket') {
-          const result=await cancelOrder(currentOrder._id);
+          const result = await cancelOrder(currentOrder._id);
           if (!result.success) {
             return { error: 'Failed to cancel shipment with Shiprocket', details: result, orderId: currentOrder._id };
           }
-          else if (currentOrder.service_details.courierProviderName ==='Xpressbees') {
-            const result=await cancelShipmentXpressBees(currentOrder.awb_number);
+          else if (currentOrder.service_details.courierProviderName === 'Xpressbees') {
+            const result = await cancelShipmentXpressBees(currentOrder.awb_number);
             if (result.error) {
               return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
             }
@@ -348,7 +360,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       })
     );
 
-    
+
     let successCount = 0;
     let failureCount = 0;
     cancellationResults.forEach(result => {
