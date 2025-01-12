@@ -102,7 +102,7 @@ const createOrder = async (req, res) => {
                 quantity: parseInt(item.quantity),
                 price: item.amount * item.quantity,
                 unitPrice: parseInt(item.amount),
-                weight:parseInt(currentOrder.shipping_cost.weight/currentOrder.Product_details.length)
+                weight: parseInt(currentOrder.shipping_cost.weight / currentOrder.Product_details.length)
                 // sku: item.sku||null
             };
         });
@@ -112,7 +112,7 @@ const createOrder = async (req, res) => {
         let payment_status = currentOrder.order_type === "Cash on Delivery" ? "PENDING" : "PAID"
 
         const payload = {
-            orderId: currentOrder._id,
+            orderId: currentOrder.order_id,
             orderSubtype: "FORWARD",
             currency: "INR",
             amount: currentOrder.sub_total,
@@ -125,43 +125,43 @@ const createOrder = async (req, res) => {
             width: parseInt(currentOrder.shipping_cost.dimensions.width),
             billingAddress: {
                 name: `${currentOrder.Biling_details.firstName} ${currentOrder.Biling_details.lastName}`,
-                phone:currentOrder.Biling_details.phone.toString(),
+                phone: currentOrder.Biling_details.phone.toString(),
                 address1: currentOrder.Biling_details.address,
                 address2: currentOrder.Biling_details.address2,
                 city: currentOrder.Biling_details.city,
                 state: currentOrder.Biling_details.state,
                 country: "India",
-                zip:`${currentOrder.Biling_details.pinCode}`,
+                zip: `${currentOrder.Biling_details.pinCode}`,
             },
             shippingAddress: {
-                name:`${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
-                phone:currentOrder.shipping_details.phone.toString(),
-                address1:currentOrder.shipping_details.address,
-                address2:currentOrder.shipping_details.address2,
-                city:currentOrder.shipping_details.city,
-                state:currentOrder.shipping_details.state,
-                country:"India",
-                zip:`${currentOrder.shipping_details.pinCode}`,
+                name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
+                phone: currentOrder.shipping_details.phone.toString(),
+                address1: currentOrder.shipping_details.address,
+                address2: currentOrder.shipping_details.address2,
+                city: currentOrder.shipping_details.city,
+                state: currentOrder.shipping_details.state,
+                country: "India",
+                zip: `${currentOrder.shipping_details.pinCode}`,
             },
             pickupAddress: {
-                name:wh.contactName,
-                phone:wh.contactNo.toString(),
-                address1:wh.addressLine1,
-                address2:wh.addressLine2,
-                city:wh.city,
-                state:wh.state,
+                name: wh.contactName,
+                phone: wh.contactNo.toString(),
+                address1: wh.addressLine1,
+                address2: wh.addressLine2,
+                city: wh.city,
+                state: wh.state,
                 country: "India",
-                zip:wh.pinCode,
+                zip: wh.pinCode,
             },
             returnAddress: {
-                name:wh.contactName,
-                phone:wh.contactNo.toString(),
-                address1:wh.addressLine1,
-                address2:wh.addressLine2,
-                city:wh.city,
-                state:wh.state,
+                name: wh.contactName,
+                phone: wh.contactNo.toString(),
+                address1: wh.addressLine1,
+                address2: wh.addressLine2,
+                city: wh.city,
+                state: wh.state,
                 country: "India",
-                zip:wh.pinCode,
+                zip: wh.pinCode,
             }
 
         }
@@ -176,7 +176,7 @@ const createOrder = async (req, res) => {
         });
 
 
-        if (response.data.status==200) {
+        if (response.data.status == 200) {
             const result = response.data.data;
             currentOrder.status = 'Booked';
             currentOrder.cancelledAtStage = null;
@@ -200,15 +200,41 @@ const createOrder = async (req, res) => {
 
 
 // Cancel Order
-const cancelOrder = async (req, res) => {
+const cancelOrderShreeMaruti= async (order_Id) => {
+    const payload = {
+        orderId: `${order_Id}`,
+        cancelReason: "Cancel Test"
+    }
     try {
-        const response = await axios.post(`${BASE_URL}/booking/order/cancel/`, req.body, {
-            headers: { Authorization: `Bearer ${token}` },
+        const token = await getToken();
+        const response = await axios.post(`${BASE_URL}/booking/order/cancel/`, payload, {
+            headers: {
+                'Content-Type': 'application / json',
+
+                Authorization: `Bearer ${token}`
+            },
         });
-        res.status(200).json(response.data);
+
+        if(response.data.staus==200){
+          return{
+            success:true,
+            data:response.data
+          }
+        }
+        else {
+            return {
+                error: 'Error in shipment cancellation',
+                details: response.data,
+                code: 400,
+            };
+        }
+
     } catch (error) {
-        console.error('Error cancelling order:', error.response?.data || error.message);
-        res.status(500).json({ error: 'Order cancellation failed', details: error.response?.data || error.message });
+        return {
+            error: 'Internal Server Error',
+            message: error.message,
+            code: 500,
+        };
     }
 };
 
@@ -235,7 +261,7 @@ const downloadLabelInvoice = async (req, res) => {
 
 // Create Manifest
 const createManifest = async (req, res) => {
-    
+
     console.log(req.body);
 
     try {
@@ -286,7 +312,7 @@ const checkServiceabilityShreeMaruti = async (payload) => {
         return { error: 'Missing required fields: fromPincode, toPincode, isCodOrder, and deliveryMode are mandatory.' }
     }
 
-    
+
 
     try {
         const token = await getToken();
@@ -316,7 +342,7 @@ const checkServiceabilityShreeMaruti = async (payload) => {
 
 module.exports = {
     createOrder,
-    cancelOrder,
+    cancelOrderShreeMaruti,
     downloadLabelInvoice,
     createManifest,
     trackOrder,
