@@ -7,7 +7,8 @@ const User = require("../models/User.model");
 const { requestShipmentPickup, cancelOrder } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
-const { createPickupRequest,cancelOrderDelhivery} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { createPickupRequest, cancelOrderDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const{cancelOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -277,6 +278,11 @@ const requestPickup = async (req, res) => {
             updateStatus.error = "Xpressbees pickup failed";
           }
         }
+        else if (currentOrder.service_details.courierProviderName === "ShreeMaruti") {
+          currentOrder.status = "WaitingPickup";
+          await currentOrder.save();
+          updateStatus.status = "WaitingPickup";
+        }
         else {
           updateStatus.error = "Unsupported courier provider";
         }
@@ -348,10 +354,19 @@ const cancelOrdersAtBooked = async (req, res) => {
             }
           }
 
-        } 
-        else if(currentOrder.service_details.courierProviderName === "Delhivery"){
+        }
+        else if (currentOrder.service_details.courierProviderName === "Delhivery") {
           console.log("I am in it");
-          const result=await cancelOrderDelhivery(currentOrder.awb_number);
+          const result = await cancelOrderDelhivery(currentOrder.awb_number);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+        }
+        else if(currentOrder.service_details.courierProviderName === "ShreeMaruti"){
+          const result=await cancelOrderShreeMaruti(currentOrder.order_id);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
         }
         else {
           return { error: 'Unsupported courier provider', orderId: currentOrder._id };
