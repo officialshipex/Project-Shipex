@@ -1,6 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
-const{fetchBulkWaybills}=require("../Authorize/saveCourierContoller");
+const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../../../models/orderSchema.model");
@@ -22,11 +22,11 @@ const createOrder = async (req, res) => {
 
   const { selectedServiceDetails, id, wh } = req.body;
   const currentOrder = await Order.findById(id);
-  
+
 
 
   const waybills = await fetchBulkWaybills(1);
-  
+
 
   const payment_type =
     currentOrder.order_type === "Cash on Delivery" ? "COD" : "Pre-paid";
@@ -35,8 +35,8 @@ const createOrder = async (req, res) => {
     pickup_location: {
       name: wh.warehouseName || "Default Warehouse",
     },
-      shipments: [{
-      Waybill:waybills[0],
+    shipments: [{
+      Waybill: waybills[0],
       country: "India",
       city: currentOrder.shipping_details.city,
       return_phone: wh.contactNo,
@@ -45,26 +45,26 @@ const createOrder = async (req, res) => {
       order: currentOrder.order_id,
       add: `${currentOrder.shipping_details.address} ${currentOrder.shipping_details.address2}`,
       payment_mode: payment_type,
-      quantity:currentOrder.Product_details.length.toString(),
+      quantity: currentOrder.Product_details.length.toString(),
       return_add: `${wh.addressLine1}`,
       phone: currentOrder.shipping_details.phone,
-      total_amount:currentOrder.sub_total,
+      total_amount: currentOrder.sub_total,
       name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
       return_country: "India",
-      return_city: wh.city ,
-      return_state: wh.state ,
-      return_pin: wh.pinCode ,
-      shipment_height: currentOrder.shipping_cost.dimensions.height ,
-      shipment_width: currentOrder.shipping_cost.dimensions.width ,
-      shipment_length: currentOrder.shipping_cost.dimensions.heightlength ,
-      cod_amount: payment_type === "COD" ? `${currentOrder.sub_total}`:"0",
+      return_city: wh.city,
+      return_state: wh.state,
+      return_pin: wh.pinCode,
+      shipment_height: currentOrder.shipping_cost.dimensions.height,
+      shipment_width: currentOrder.shipping_cost.dimensions.width,
+      shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
+      cod_amount: payment_type === "COD" ? `${currentOrder.sub_total}` : "0",
     }],
   };
 
-  
+
 
   const payload = `format=json&data=${encodeURIComponent(JSON.stringify(payloadData))}`;
-  
+
 
   try {
     const response = await axios.post(url, payload, {
@@ -74,21 +74,21 @@ const createOrder = async (req, res) => {
       },
     });
 
-   
+
     if (response.data.success) {
-      const result=response.data.packages[0];
-      currentOrder.status='Booked';
-      currentOrder.cancelledAtStage=null;
-      currentOrder.awb_number=result.waybill;
-      currentOrder.shipment_id=`${result.refnum}`;
-      currentOrder.service_details=selectedServiceDetails._id;
-      currentOrder.warehouse=wh._id;
-      let savedOrder=await currentOrder.save();
-     
-      return res.status(201).json({message:"Shipment Created Succesfully"});
-   } else {
-       return res.status(400).json({ error: 'Error creating shipment', details: response.data });
-   }
+      const result = response.data.packages[0];
+      currentOrder.status = 'Booked';
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.waybill;
+      currentOrder.shipment_id = `${result.refnum}`;
+      currentOrder.service_details = selectedServiceDetails._id;
+      currentOrder.warehouse = wh._id;
+      let savedOrder = await currentOrder.save();
+
+      return res.status(201).json({ message: "Shipment Created Succesfully" });
+    } else {
+      return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+    }
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -102,7 +102,7 @@ const createOrder = async (req, res) => {
 
 
 const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
-  
+
   if (!pincode) {
     return res.status(400).json({ error: "Pincode is required" });
   }
@@ -146,7 +146,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 
 const trackShipment = async (req, res) => {
   const { waybill } = req.params;
-  
+
 
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
@@ -206,8 +206,8 @@ const generateShippingLabel = async (req, res) => {
   }
 };
 
-const createPickupRequest = async (warehouse_name, awb, res) => {
-  
+const createPickupRequest = async (warehouse_name, awb) => {
+
   const result = getCurrentDateTime();
 
   const pickupDetails = {
@@ -232,22 +232,22 @@ const createPickupRequest = async (warehouse_name, awb, res) => {
       },
     });
 
-    if(response?.data?.success){
+    if (response?.data?.success) {
       return ({
         success: true,
         message: "Pickup request created successfully",
         data: response.data,
-        pickupDate:pickup_date
+        pickupDate: pickup_date
       });
     }
-    else{
+    else {
       return ({
-        success:false,
+        success: false,
         message: "Failed to create pickup request",
       });
     }
   } catch (error) {
-   
+
     return ({
       success: false,
       message: "Failed to create pickup request",
@@ -324,6 +324,43 @@ const updateClientWarehouse = async (req, res) => {
   }
 };
 
+const cancelOrderDelhivery = async (awb_number) => {
+  console.log("I am in cancel order");
+  const payload = {
+    waybill: `${awb_number}`,
+    cancellation: true
+  }
+  const url = 'https://track.delhivery.com/api/p/edit';
+
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Token ${API_TOKEN}`,
+      },
+    });
+
+    if (response?.data?.status) {
+      return { data: response.data, code: 201 };
+    }
+    else {
+      return {
+        error: 'Error in shipment cancellation',
+        details: response.data,
+        code: 400,
+      };
+    }
+  }
+  catch (error) {
+    return {
+      error: 'Internal Server Error',
+      message: error.message,
+      code: 500,
+    };
+  }
+
+}
+
 
 module.exports = {
   createOrder,
@@ -333,4 +370,5 @@ module.exports = {
   createPickupRequest,
   createClientWarehouse,
   updateClientWarehouse,
+  cancelOrderDelhivery
 };
