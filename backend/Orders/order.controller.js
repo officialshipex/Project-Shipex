@@ -7,7 +7,7 @@ const User = require("../models/User.model");
 const { requestShipmentPickup, cancelOrder } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
-const { createPickupRequest } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { createPickupRequest,cancelOrderDelhivery} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -348,7 +348,12 @@ const cancelOrdersAtBooked = async (req, res) => {
             }
           }
 
-        } else {
+        } 
+        else if(currentOrder.service_details.courierProviderName === "Delhivery"){
+          console.log("I am in it");
+          const result=await cancelOrderDelhivery(currentOrder.awb_number);
+        }
+        else {
           return { error: 'Unsupported courier provider', orderId: currentOrder._id };
         }
 
