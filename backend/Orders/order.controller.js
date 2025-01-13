@@ -237,6 +237,9 @@ const requestPickup = async (req, res) => {
       try {
         if (currentOrder.service_details.courierProviderName === "NimbusPost") {
           currentOrder.status = "WaitingPickup";
+          currentOrder.tracking.push({
+            stage: 'Pickup Generated'
+          });
           await currentOrder.save();
           updateStatus.status = "WaitingPickup";
 
@@ -374,6 +377,9 @@ const cancelOrdersAtBooked = async (req, res) => {
 
         currentOrder.status = 'Not-Shipped';
         currentOrder.cancelledAtStage = 'Booked';
+        currentOrder.tracking.push({
+          stage: 'Cancelled'
+        });
         await currentOrder.save();
 
         return { message: 'Order cancelled successfully', orderId: currentOrder._id };
@@ -420,14 +426,30 @@ const tracking = async (req, res) => {
             if (status === "cancelled") {
               order.status = "Not-Shipped";
               order.cancelledAtStage = "Booked";
+              order.tracking.push({
+                stage: 'Cancelled'
+              });
+              await order.save();
             } else if (status === "out for delivery") {
               order.status = "Out For Delivery";
+              order.tracking.push({
+                stage: 'Out For Delivery'
+              });
+              await order.save();
 
             } else if (status === "in transit") {
-              order.status == "In Transit"
+              order.status == "In Transit";
+              order.tracking.push({
+                stage: 'In Transit'
+              });
+              await order.save();
             }
             else if (status === "delivered") {
-              order.status = "Delivered"
+              order.status = "Delivered";
+              order.tracking.push({
+                stage: 'Delivered'
+              });
+              await order.save();
             }
           }
         } catch (error) {
