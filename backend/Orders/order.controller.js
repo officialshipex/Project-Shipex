@@ -7,8 +7,8 @@ const User = require("../models/User.model");
 const { requestShipmentPickup, cancelOrder, getTrackingByAWB } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup, cancelShipmentXpressBees,trackShipment} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
-const { createPickupRequest, cancelOrderDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const { cancelOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const { createPickupRequest, cancelOrderDelhivery,trackShipmentDelhivery} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { cancelOrderShreeMaruti} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -280,6 +280,9 @@ const requestPickup = async (req, res) => {
             currentOrder.pickup_details.pickup_token_number = `${result?.data?.pickup_id}`;
             currentOrder.pickup_details.pickup_time = result?.data?.pickup_time;
             currentOrder.pickup_details.pickup_generated_date = result?.pickupDate;
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
             await currentOrder.save();
             updateStatus.status = "WaitingPickup";
           }
@@ -443,7 +446,10 @@ const tracking = async (req, res) => {
           result = await getTrackingByAWB(awb_number);
         }
         else if(courierProviderName==="Xpressbees"){
-          result=await getTrackingByAWB(awb_number);
+          result=await trackShipment(awb_number);
+        }
+        else if(courierProviderName==="Delhivery"){
+          result=await trackShipmentDelhivery(awb_number);
         }
 
         if (result && result.success) {

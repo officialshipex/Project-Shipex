@@ -1,6 +1,6 @@
 const express = require("express");
 const {
-  trackShipment,
+  // trackShipment,
   generateShippingLabel,
   createClientWarehouse,
   createOrder
@@ -23,7 +23,7 @@ router.post("/createShipment",createOrder);
 // Route to check pincode serviceability
 // router.get("/serviceability/:pincode", checkPincodeServiceability);
 // Route to track shipment
-router.get("/track/:waybill", trackShipment);
+// router.get("/track/:waybill", trackShipment);
 
 // Route to generate shipping label
 router.get("/label/:waybill", generateShippingLabel);
