@@ -6,9 +6,9 @@ const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
 const { requestShipmentPickup, cancelOrder } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
-const { cancelShipment } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
+const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const{cancelOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const { cancelOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -362,8 +362,8 @@ const cancelOrdersAtBooked = async (req, res) => {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
           }
         }
-        else if(currentOrder.service_details.courierProviderName === "ShreeMaruti"){
-          const result=await cancelOrderShreeMaruti(currentOrder.order_id);
+        else if (currentOrder.service_details.courierProviderName === "ShreeMaruti") {
+          const result = await cancelOrderShreeMaruti(currentOrder.order_id);
           if (result.error) {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
           }
@@ -403,6 +403,52 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 
 
+const tracking = async (req, res) => {
+  console.log("I am in tracking");
+
+  try {
+    const allOrders = await Promise.all(
+      req.body.items.map(order => Order.findById(order._id).populate('service_details'))
+    );
+
+    const trackingPromises = allOrders.map(async (order) => {
+      if (order.service_details.courierProviderName === "NimbusPost") {
+        try {
+          const result = await trackShipmentNimbuspost(order.awb_number);
+          if (result.success) {
+            const status = result.data.toLowerCase();
+            if (status === "cancelled") {
+              order.status = "Not-Shipped";
+              order.cancelledAtStage = "Booked";
+            } else if (status === "out for delivery") {
+              order.status = "Out For Delivery";
+
+            } else if (status === "in transit") {
+              order.status == "In Transit"
+            }
+            else if (status === "delivered") {
+              order.status = "Delivered"
+            }
+          }
+        } catch (error) {
+          console.error(`Error tracking shipment for AWB: ${order.awb_number}`, error);
+        }
+      } else if (order.service_details.courierProviderName === "Shiprocket") {
+
+      }
+    });
+
+
+    await Promise.all(trackingPromises);
+
+    res.status(200).send("Tracking completed");
+  } catch (error) {
+    console.error("Error during tracking:", error);
+    res.status(500).send("An error occurred during tracking");
+  }
+};
+
+
 
 
 
@@ -415,5 +461,6 @@ module.exports = {
   shipOrder,
   cancelOrdersAtNotShipped,
   requestPickup,
-  cancelOrdersAtBooked
+  cancelOrdersAtBooked,
+  tracking
 }
