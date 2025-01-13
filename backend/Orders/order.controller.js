@@ -4,7 +4,7 @@ const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
-const { requestShipmentPickup, cancelOrder } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { requestShipmentPickup, cancelOrder,getTrackingByAWB} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
 const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
@@ -250,6 +250,9 @@ const requestPickup = async (req, res) => {
             currentOrder.pickup_details.pickup_scheduled_date = result.data.response.pickup_scheduled_date;
             currentOrder.pickup_details.pickup_token_number = result.data.response.pickup_token_number;
             currentOrder.pickup_details.pickup_generated_date = result.data.response.pickup_generated_date.date;
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
             await currentOrder.save();
             updateStatus.status = "WaitingPickup";
           } else {
@@ -410,63 +413,59 @@ const cancelOrdersAtBooked = async (req, res) => {
 
 
 const tracking = async (req, res) => {
-  console.log("I am in tracking");
+  console.log("Tracking initiated");
 
   try {
     const allOrders = await Promise.all(
-      req.body.items.map(order => Order.findById(order._id).populate('service_details'))
+      req.body.items.map(order => 
+        Order.findById(order._id).populate('service_details')
+      )
     );
 
+    const updateOrderStatus = async (order, status, stage) => {
+      order.status = status;
+      order.tracking.push({ stage });
+      await order.save();
+    };
+
     const trackingPromises = allOrders.map(async (order) => {
-      if (order.service_details.courierProviderName === "NimbusPost") {
-        try {
-          const result = await trackShipmentNimbuspost(order.awb_number);
-          if (result.success) {
-            const status = result.data.toLowerCase();
-            if (status === "cancelled") {
-              order.status = "Not-Shipped";
-              order.cancelledAtStage = "Booked";
-              order.tracking.push({
-                stage: 'Cancelled'
-              });
-              await order.save();
-            } else if (status === "out for delivery") {
-              order.status = "Out For Delivery";
-              order.tracking.push({
-                stage: 'Out For Delivery'
-              });
-              await order.save();
+      try {
+        const { courierProviderName } = order.service_details;
+        const { awb_number } = order;
+        let result;
 
-            } else if (status === "in transit") {
-              order.status == "In Transit";
-              order.tracking.push({
-                stage: 'In Transit'
-              });
-              await order.save();
-            }
-            else if (status === "delivered") {
-              order.status = "Delivered";
-              order.tracking.push({
-                stage: 'Delivered'
-              });
-              await order.save();
-            }
-          }
-        } catch (error) {
-          console.error(`Error tracking shipment for AWB: ${order.awb_number}`, error);
+        if (courierProviderName === "NimbusPost") {
+          result = await trackShipmentNimbuspost(awb_number);
+        } else if (courierProviderName === "Shiprocket") {
+          result = await getTrackingByAWB(awb_number);
         }
-      } else if (order.service_details.courierProviderName === "Shiprocket") {
 
+        if (result && result.success) {
+          const status = result.data.toLowerCase();
+
+          const statusMap = {
+            "cancelled": () => updateOrderStatus(order, "Not-Shipped", "Cancelled"),
+            "out for delivery": () => updateOrderStatus(order, "Out For Delivery", "Out For Delivery"),
+            "in transit": () => updateOrderStatus(order, "In Transit", "In Transit"),
+            "delivered": () => updateOrderStatus(order, "Delivered", "Delivered"),
+            "delayed": () => updateOrderStatus(order, "Delayed", "Delayed"),
+          };
+
+          if (statusMap[status]) {
+            await statusMap[status]();
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing order ID: ${order._id}, AWB: ${order.awb_number}`, error);
       }
     });
 
-
     await Promise.all(trackingPromises);
 
-    res.status(200).send("Tracking completed");
+    res.status(200).json({ message: "Tracking updated successfully" });
   } catch (error) {
-    console.error("Error during tracking:", error);
-    res.status(500).send("An error occurred during tracking");
+    console.error("Error in tracking:", error);
+    res.status(500).json({ message: "Internal server error", error });
   }
 };
 
