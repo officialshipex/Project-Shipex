@@ -83,6 +83,9 @@ const createOrder = async (req, res) => {
       currentOrder.shipment_id = `${result.refnum}`;
       currentOrder.service_details = selectedServiceDetails._id;
       currentOrder.warehouse = wh._id;
+      currentOrder.tracking.push({
+        stage:'Order Booked'
+       });
       let savedOrder = await currentOrder.save();
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
@@ -144,31 +147,34 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   }
 };
 
-const trackShipment = async (req, res) => {
-  const { waybill } = req.params;
-
+const trackShipmentDelhivery= async (waybill) => {
 
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
   }
 
-  // const url = `https://staging-express.delhivery.com/api/v1/packages/json/`;
 
   try {
-    const response = await axios.get(`${url}/api/v1/packages/json/`, {
-      params: { waybill },
-    });
+    const response = await axios.get(`${url}/api/v1/packages/json/waybill=${waybill}&token=${API_TOKEN}`);
+    console.log(response);
+    if(response?.data?.success){
+      return({
+        succes:true,
+        data:response.data
+      })
+    }
+    else{
+      return({
+        success:false,
+        data:"Error in tracking"
+      });
+    }
 
-    return res.status(200).json({
-      success: true,
-      data: response.data,
-    });
   } catch (error) {
     console.error("Error tracking shipment:", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch shipment tracking details",
-      error: error.message,
+    return({
+      success:false,
+      data:"Error in tracking"
     });
   }
 };
@@ -365,7 +371,7 @@ const cancelOrderDelhivery = async (awb_number) => {
 module.exports = {
   createOrder,
   checkPincodeServiceabilityDelhivery,
-  trackShipment,
+  trackShipmentDelhivery,
   generateShippingLabel,
   createPickupRequest,
   createClientWarehouse,
