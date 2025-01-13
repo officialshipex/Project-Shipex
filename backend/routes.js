@@ -35,6 +35,7 @@ const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
 const PrintLabelRoute=require("./label/printLabel.controller")
+const PrintInvoice=require("./label/printInvoice.controller")
 
 
 
@@ -71,5 +72,6 @@ router.use('/user',isAuthorized,userRouter);
 router.use('/warehouse',WareHouse);
 router.use('/bulkOrderUpload', bulkOrderUploadRoutes);
 router.use('/printlabel',PrintLabelRoute)
+router.use('/printinvoice',PrintInvoice)
 
 module.exports = router;
