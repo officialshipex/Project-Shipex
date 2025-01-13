@@ -4,6 +4,7 @@ const orderRouter = require('express').Router();
 const {createOrder,getAllOrders,getOrderDetails,shipOrder,cancelOrdersAtNotShipped,requestPickup,cancelOrdersAtBooked} = require('../Orders/order.controller');
 const {bulkOrder} = require('../Orders/bulkOrders.controller');
 const {createQuickOrder} = require('../Orders/quickOrder.controller');
+const{generateOrderId}=require("../Orders/generateOrderId");
 
 
 
@@ -30,5 +31,6 @@ orderRouter.post("/shipOrder",shipOrder);
 orderRouter.post("/cancel",cancelOrdersAtNotShipped);
 orderRouter.post("/requestPickup",requestPickup);
 orderRouter.post("/cancelAtBooked",cancelOrdersAtBooked);
+orderRouter.get("/generateOrderId",generateOrderId);
 
 module.exports = orderRouter;
