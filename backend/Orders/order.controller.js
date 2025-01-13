@@ -5,10 +5,10 @@ const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
 const { requestShipmentPickup, cancelOrder, getTrackingByAWB } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
-const { pickup, cancelShipmentXpressBees,trackShipment} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const { pickup, cancelShipmentXpressBees, trackShipment } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
-const { createPickupRequest, cancelOrderDelhivery,trackShipmentDelhivery} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const { cancelOrderShreeMaruti,trackOrderShreeMaruti} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const { createPickupRequest, cancelOrderDelhivery, trackShipmentDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -432,10 +432,22 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, stage) => {
-      order.status = status;
-      order.tracking.push({ stage });
-      await order.save();
+      if (
+        !order.tracking ||
+        order.tracking.length === 0 ||
+        (order.tracking.length >= 1 && order.tracking[order.tracking.length - 1].stage !== stage)
+      ) {
+        order.status = status;
+        order.tracking = order.tracking || [];
+        order.tracking.push({ stage });
+        if (status == "cancelled" || status == "canceled") {
+          order.status == "Not-Shipped";
+          order.cancelledAtStage == null;
+        }
+        await order.save();
+      }
     };
+
 
     const trackingPromises = allOrders.map(async (order) => {
       try {
@@ -448,21 +460,22 @@ const tracking = async (req, res) => {
         } else if (courierProviderName === "Shiprocket") {
           result = await getTrackingByAWB(awb_number);
         }
-        else if(courierProviderName==="Xpressbees"){
-          result=await trackShipment(awb_number);
+        else if (courierProviderName === "Xpressbees") {
+          result = await trackShipment(awb_number);
         }
-        else if(courierProviderName==="Delhivery"){
-          result=await trackShipmentDelhivery(awb_number);
+        else if (courierProviderName === "Delhivery") {
+          result = await trackShipmentDelhivery(awb_number);
         }
-        else if(courierProviderName==="ShreeMaruti"){
-          result=await trackOrderShreeMaruti(awb_number);
+        else if (courierProviderName === "ShreeMaruti") {
+          result = await trackOrderShreeMaruti(awb_number);
         }
 
         if (result && result.success) {
-          const status = result.data.toLowerCase();
+          const status = result.data.toLowerCase().replace(/_/g, ' ');
 
           const statusMap = {
             "cancelled": () => updateOrderStatus(order, "Not-Shipped", "Cancelled"),
+            "canceled": () => updateOrderStatus(order, "Not-Shipped", "Cancelled"),
             "out for delivery": () => updateOrderStatus(order, "Out For Delivery", "Out For Delivery"),
             "in transit": () => updateOrderStatus(order, "In Transit", "In Transit"),
             "delivered": () => updateOrderStatus(order, "Delivered", "Delivered"),

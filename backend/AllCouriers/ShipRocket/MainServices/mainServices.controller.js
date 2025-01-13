@@ -132,6 +132,7 @@ const createCustomOrder = async (req, res) => {
       currentOrder.awb_number = result.awb_code;
       currentOrder.shipment_id = shipment_id;
       currentOrder.service_details = selectedServiceDetails._id;
+      currentOrder.tracking=[];
       currentOrder.tracking.push({
         stage: 'Order Booked'
       });

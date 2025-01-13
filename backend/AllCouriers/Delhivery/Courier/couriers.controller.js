@@ -83,6 +83,7 @@ const createOrder = async (req, res) => {
       currentOrder.shipment_id = `${result.refnum}`;
       currentOrder.service_details = selectedServiceDetails._id;
       currentOrder.warehouse = wh._id;
+      currentOrder.tracking=[];
       currentOrder.tracking.push({
         stage:'Order Booked'
        });
