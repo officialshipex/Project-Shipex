@@ -4,8 +4,8 @@ const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
-const { requestShipmentPickup, cancelOrder,getTrackingByAWB} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
-const { pickup, cancelShipmentXpressBees } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const { requestShipmentPickup, cancelOrder, getTrackingByAWB } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { pickup, cancelShipmentXpressBees,trackShipment} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const { cancelOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
@@ -263,6 +263,9 @@ const requestPickup = async (req, res) => {
           const result = await pickup([currentOrder.awb_number]);
           if (result.success) {
             currentOrder.status = "WaitingPickup";
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
             await currentOrder.save();
             updateStatus.status = "WaitingPickup";
           } else {
@@ -417,7 +420,7 @@ const tracking = async (req, res) => {
 
   try {
     const allOrders = await Promise.all(
-      req.body.items.map(order => 
+      req.body.items.map(order =>
         Order.findById(order._id).populate('service_details')
       )
     );
@@ -438,6 +441,9 @@ const tracking = async (req, res) => {
           result = await trackShipmentNimbuspost(awb_number);
         } else if (courierProviderName === "Shiprocket") {
           result = await getTrackingByAWB(awb_number);
+        }
+        else if(courierProviderName==="Xpressbees"){
+          result=await getTrackingByAWB(awb_number);
         }
 
         if (result && result.success) {
