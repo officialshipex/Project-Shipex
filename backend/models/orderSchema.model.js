@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
-const CourierServiceSecond= require("./courierServiceSecond.model");
+const CourierServiceSecond = require("./courierServiceSecond.model");
 const User = require("./User.model");
-const Warehouse=require("./wareHouse.model");
+const Warehouse = require("./wareHouse.model");
 
 const orderSchema = new mongoose.Schema({
     order_id: {
@@ -73,7 +73,7 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled','WaitingPickup'],
+        enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled', 'WaitingPickup'],
         required: true
     },
     cancelledAtStage: {
@@ -82,8 +82,8 @@ const orderSchema = new mongoose.Schema({
         default: null
     },
     service_details: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'CourierServiceSecond'       
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CourierServiceSecond'
     },
 
     order_shipped_date: {
@@ -100,24 +100,30 @@ const orderSchema = new mongoose.Schema({
         default: false
     },
 
-    pickup_details:{
-        pickup_scheduled_date:{
-            type:String
+    pickup_details: {
+        pickup_scheduled_date: {
+            type: String
         },
-        pickup_token_number:{
-            type:String
+        pickup_token_number: {
+            type: String
         },
-        pickup_generated_date:{
-            type:String
+        pickup_generated_date: {
+            type: String
         },
-        pickup_time:{
-            type:String
+        pickup_time: {
+            type: String
         }
     },
-    warehouse:{
+    warehouse: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Warehouse'  
-    }
+        ref: 'Warehouse'
+    },
+    tracking: [
+        {
+            stage: { type: String, required: true },
+            timestamp: { type: Date, required: true },
+        },
+    ],
 
 }, {
     timestamps: true
