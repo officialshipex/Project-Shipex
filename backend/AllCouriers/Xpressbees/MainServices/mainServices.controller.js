@@ -70,6 +70,9 @@ const createShipment = async (req, res) => {
             currentOrder.awb_number=result.awb_number;
             currentOrder.shipment_id=`${result.awb_number}`;
             currentOrder.service_details=selectedServiceDetails._id;
+            currentOrder.tracking.push({
+                stage:'Order Booked'
+            });
             await currentOrder.save();
  
             return res.status(201).json({message:"Shipment Created Succesfully"});
@@ -111,11 +114,13 @@ const reverseBooking = async (req, res) => {
     }
 };
 
-const trackShipment = async (req, res) => {
-    const { trackingNumber } = req.body;
+const trackShipment = async (trackingNumber) => {
 
     if (!trackingNumber) {
-        return res.status(400).json({ error: 'Tracking number is required' });
+        return ({
+            success:false,
+            data:"Error in tracking"
+        });
     }
 
     const url = `https://shipment.xpressbees.com/api/shipments2/track/${trackingNumber}`;
@@ -129,10 +134,25 @@ const trackShipment = async (req, res) => {
             }
         });
 
-        return res.status(200).json(response.data);
+        if(response.data.status){
+            return({
+                success:true,
+                data:response.data.data.status
+            })
+        }
+        else{
+            return({
+                success:false,
+                data:"Error in message"
+            })
+
+        }
     } catch (error) {
-        console.error('Error in tracking shipment:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        console.log(error);
+        return({
+            success:false,
+            data:"Error in message"
+        })
     }
 };
 
