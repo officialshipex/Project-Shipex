@@ -8,7 +8,7 @@ const { requestShipmentPickup, cancelOrder, getTrackingByAWB } = require("../All
 const { pickup, cancelShipmentXpressBees,trackShipment} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery,trackShipmentDelhivery} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const { cancelOrderShreeMaruti} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const { cancelOrderShreeMaruti,trackOrderShreeMaruti} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -292,6 +292,9 @@ const requestPickup = async (req, res) => {
         }
         else if (currentOrder.service_details.courierProviderName === "ShreeMaruti") {
           currentOrder.status = "WaitingPickup";
+          currentOrder.tracking.push({
+            stage: 'Pickup Generated'
+          });
           await currentOrder.save();
           updateStatus.status = "WaitingPickup";
         }
@@ -450,6 +453,9 @@ const tracking = async (req, res) => {
         }
         else if(courierProviderName==="Delhivery"){
           result=await trackShipmentDelhivery(awb_number);
+        }
+        else if(courierProviderName==="ShreeMaruti"){
+          result=await trackOrderShreeMaruti(awb_number);
         }
 
         if (result && result.success) {

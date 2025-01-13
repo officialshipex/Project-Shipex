@@ -183,6 +183,9 @@ const createOrder = async (req, res) => {
             currentOrder.awb_number = result.awb_number;
             currentOrder.shipment_id = `${result.shipperOrderId}`;
             currentOrder.service_details = selectedServiceDetails._id;
+            currentOrder.tracking.push({
+                stage:'Order Booked'
+            });
             let savedOrder = await currentOrder.save();
 
 
@@ -277,10 +280,9 @@ const createManifest = async (req, res) => {
 
 
 // Track Order
-const trackOrder = async (req, res) => {
-    const { awbNumber, cAwbNumber } = req.query; // Expecting AWB Number or CAWB Number in query params
-
-    if (!awbNumber && !cAwbNumber) {
+const trackOrderShreeMaruti= async (awbNumber) => {
+    
+    if (!awbNumber) {
         return res.status(400).json({ error: 'Either awbNumber or cAwbNumber is required' });
     }
 
@@ -288,18 +290,32 @@ const trackOrder = async (req, res) => {
         const response = await axios.get(`${BASE_URL}/fulfillment/public/seller/order/order-tracking`, {
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`, // Ensure `getToken()` returns a valid token
+                Authorization: `Bearer ${token}`,
             },
-            params: { awbNumber, cAwbNumber }, // Query parameters
+            params: { awbNumber}, 
         });
 
-        res.status(200).json(response.data);
+        if(response.data.status==200){
+            return({
+             success:true,   
+             data:response.data.data.orderStatus
+            });
+        }
+        else{
+            return({
+                success:false,
+                data:"Error in tracking"
+            })
+        }
     } catch (error) {
         console.error('Error tracking order:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
-            error: 'Tracking failed',
-            details: error.response?.data || error.message,
-        });
+        console.log(error);
+
+        return({
+            success:false,
+            data:"Error in tracking"
+        })
+      
     }
 };
 
@@ -345,7 +361,7 @@ module.exports = {
     cancelOrderShreeMaruti,
     downloadLabelInvoice,
     createManifest,
-    trackOrder,
+    trackOrderShreeMaruti,
     checkServiceabilityShreeMaruti,
     getCourierList,
     addService
