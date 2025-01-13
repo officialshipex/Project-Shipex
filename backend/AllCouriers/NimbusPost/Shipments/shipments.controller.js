@@ -81,9 +81,8 @@ const createShipment = async (req, res) => {
 
 
 
-const trackShipment = async (req, res) => {
-    const { trackingNumber } = req.body;
-
+const trackShipmentNimbuspost= async (trackingNumber) => {
+   
     if (!trackingNumber) {
         return res.status(400).json({ error: 'Tracking number is required' });
     }
@@ -98,11 +97,26 @@ const trackShipment = async (req, res) => {
                 Authorization: `Bearer ${token}`
             }
         });
+        if(response.data.status){
+        const result=response.data.data;
+        return({
+            success:true,
+            data:result.status
+        });    
+        }
+        else{
+            return({
+                success:false,
+                data:"Error in tracking"
+            });  
+        }
 
-        return res.status(200).json(response.data);
     } catch (error) {
-        console.error('Error in tracking shipment:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+       console.log(error);
+       return({
+        success:false,
+        data:"Error in tracking"
+    }); 
     }
 };
 
@@ -269,7 +283,7 @@ const createHyperlocalShipment = async (req, res) => {
 
 module.exports = {
     createShipment,
-    trackShipment,
+    trackShipmentNimbuspost,
     trackShipmentsInBulk,
     manifest,
     cancelShipment,
