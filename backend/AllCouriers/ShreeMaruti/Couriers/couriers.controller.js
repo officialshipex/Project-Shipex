@@ -211,7 +211,7 @@ const cancelOrderShreeMaruti= async (order_Id) => {
     }
     try {
         const token = await getToken();
-        const response = await axios.post(`${BASE_URL}/booking/order/cancel/`, payload, {
+        const response = await axios.put(`${BASE_URL}/booking/order/cancel/`, payload, {
             headers: {
                 'Content-Type': 'application / json',
 
@@ -219,7 +219,7 @@ const cancelOrderShreeMaruti= async (order_Id) => {
             },
         });
 
-        if(response.data.staus==200){
+        if(response.data.status==200){
           return{
             success:true,
             data:response.data
