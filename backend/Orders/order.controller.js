@@ -96,7 +96,7 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({});
+    const orders = await Order.find({}).populate('service_details');
     return res.status(201).json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -106,7 +106,7 @@ const getAllOrders = async (req, res) => {
 const getOrderDetails = async (req, res) => {
   try {
     let id = req.body.id;
-    let result = await Order.findById(id);
+    let result = await Order.findById(id).populate('service_details');
 
     if (!result) {
       return res.status(404).json({ message: "Order not found" });

@@ -121,7 +121,7 @@ const orderSchema = new mongoose.Schema({
     tracking: [
         {
             stage: { type: String, required: true },
-            timestamp: { type: Date, default: Date.now },
+            timestamp: { type: mongoose.Schema.Types.Mixed, default: Date.now },
         },
     ],
 
