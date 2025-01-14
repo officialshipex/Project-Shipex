@@ -4,13 +4,15 @@ const axios = require('axios');
 async function phonePe(req, res) {
     try {
         const merchantTransactionId = 'M' + Date.now();
-        
+        const amount = req.query.amount;
+        console.log("Amount : ", amount)
+        console.log(req.query)
         const data = {
             merchantId: process.env.PHONE_PE_MERCHANT_ID,
             merchantTransactionId: merchantTransactionId,
             merchantUserId: 'MUID' + `${Date.now()}`,
             name: "Kuldeep", // User Name
-            amount: 1 * 100, // Amount in paise
+            amount: amount * 100, // Amount in paise
             redirectUrl: `http://localhost:3000/status/${merchantTransactionId}`,
             redirectMode: 'POST',
             mobileNumber: 7828153133,
@@ -40,10 +42,13 @@ async function phonePe(req, res) {
         };
         axios.request(options).then(function (response) {
             // console.log("Response : ",response)
-            return res.redirect(response.data.data.instrumentResponse.redirectInfo.url)
+            // return res.redirect(response.data.data.instrumentResponse.redirectInfo.url)
+            return res.json({
+                redirectUrl: response.data.data.instrumentResponse.redirectInfo.url,
+              });
         })
         .catch(function (error) {
-                console.error(error);
+                console.error(error.message);
                 res.status(500).send({
                     message: error.message,
                     success: false
