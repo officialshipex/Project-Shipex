@@ -55,24 +55,17 @@ const isEnabeled = async (req, res) => {
 const getCourierList = async (req, res) => {
 
     try {
-        const hardCoreServices = [
-            { name: "Delhivery  service1" },
-            { name: "Delhivery  service2" },
-            { name: " Delhivery service3" }
-        ];
-
-        if (hardCoreServices && hardCoreServices.length > 0) {
-            const servicesData = hardCoreServices;
+       
             const currCourier = await Courier.findOne({ provider: 'Delhivery' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            const servicesData = currCourier.services;
 
             const allServices = servicesData.map(element => ({
-                service: element.name,
-                isAdded: prevServices.has(element.name)
+                service: element.courierProviderServiceName,
+                isAdded: true
             }));
 
             return res.status(201).json(allServices);
-        }
+        
 
         res.status(400).json({ message: 'Failed to fetch services' });
     } catch (error) {
@@ -148,6 +141,7 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName: 'Delhivery',
+                createdName:req.body.name
             });
 
             const S2 = await Courier.findOne({ provider: 'Delhivery' });

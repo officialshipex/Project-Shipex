@@ -12,34 +12,23 @@ const BASE_URL = process.env.SHREEMA_URL; // Replace with the actual base URL
 
 
 const getCourierList = async (req, res) => {
-
     try {
-        const hardCoreServices = [
-            { name: "Shree Maruti service1" },
-            { name: "Shree Maruti service2" },
-            { name: " Shree Maruti service3" }
-        ];
+       
+        const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' }).populate('services');
+        const servicesData = currCourier.services;
 
-        if (hardCoreServices && hardCoreServices.length > 0) {
-            const servicesData = hardCoreServices;
-            const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+        const allServices = servicesData.map(element => ({
+            service: element.courierProviderServiceName,
+            isAdded: true
+        }));
 
-            const allServices = servicesData.map(element => ({
-                service: element.name,
-                isAdded: prevServices.has(element.name)
-            }));
-
-            return res.status(201).json(allServices);
-        }
-
-        res.status(400).json({ message: 'Failed to fetch services' });
-    } catch (error) {
-        res.status(500).json({
-            error: "Failed to fetch courier list",
-            details: error.response?.data || error.message,
-        });
-    }
+        return res.status(201).json(allServices);
+} catch (error) {
+    res.status(500).json({
+        error: "Failed to fetch courier list",
+        details: error.response?.data || error.message,
+    });
+}
 };
 
 
@@ -63,6 +52,7 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName: 'ShreeMaruti',
+                createdName:req.body.name
 
             });
 
