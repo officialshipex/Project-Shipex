@@ -77,9 +77,8 @@ const paytmCallback = (req, res) => {
 
 // router.post("/payment", (req, res) => {
 const initiatePayment = (req, res) => {
-  // const { amount, email } = req.body;
-  const amount = 1;
-  const email = "kulmc01@gmail.com";
+  const { amount, email } = req.body;
+  
 
   /* import checksum generation utility */
   const totalAmount = JSON.stringify(amount);
