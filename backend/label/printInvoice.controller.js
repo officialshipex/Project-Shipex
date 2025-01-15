@@ -3,6 +3,7 @@ const Invoice=require("./printInvoice.model")
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const{generateStyledInvoiceWithPages}=require("./InvoiceStyle");
 
 const router = express.Router();
 router.use(express.json());
@@ -27,56 +28,29 @@ const invoiceDemo={
   }
   
 
-router.get("/generate-invoice/:id", async (req, res) => {
+  router.get("/generate-invoice/:id", async (req, res) => {
     try {
-    //   const invoice = await Invoice.findById(req.params.id);
-    const invoice=invoiceDemo;
+      const selectedItems = req.headers['custom-data']
+        ? JSON.parse(req.headers['custom-data'])
+        : null;
   
-      if (!invoice) {
+      if (selectedItems==null) {
         return res.status(404).json({ message: "Invoice not found" });
       }
   
-      // Create PDF
-      const pdfDoc = new PDFDocument();
-      res.setHeader("Content-Type","application/pdf");
-      res.setHeader("Content-Disposition",`attachment; filename="shipping_invoice.pdf"`);
-    //   const filePath = path.join(__dirname, `invoice_${invoice.invoiceNumber}.pdf`);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="shipping_invoice.pdf"`
+      );
   
-    //   pdfDoc.pipe(fs.createWriteStream(filePath));
-  
-      // Add content to PDF
-      pdfDoc
-        .fontSize(20)
-        .text("TAX INVOICE", { align: "center" })
-        .moveDown();
-  
-      pdfDoc.fontSize(12).text(`Invoice Number: ${invoice.invoiceNumber}`);
-      pdfDoc.text(`Invoice Date: ${invoice.invoiceDate}`);
-      pdfDoc.text(`Order Date: ${invoice.invoiceDate}`);
-      pdfDoc.text(`Payment Method: ${invoice.paymentMethod}`);
-      pdfDoc.text(`AWB: ${invoice.AWB}`);
-      pdfDoc.moveDown();
-  
-      pdfDoc.text(`Bill To:`);
-      pdfDoc.text(invoice.billingAddress);
-      pdfDoc.moveDown();
-  
-      pdfDoc.text(`Ship To:`);
-      pdfDoc.text(invoice.shippingAddress);
-      pdfDoc.moveDown();
-  
-      pdfDoc.text(`Product Details:`);
-      pdfDoc.text(`Name: ${invoice.product.name}`);
-      pdfDoc.text(`Quantity: ${invoice.product.quantity}`);
-      pdfDoc.text(`Unit Price: Rs. ${invoice.product.unitPrice}`);
-      pdfDoc.text(`Total Amount: Rs. ${invoice.totalAmount}`);
-      pdfDoc.end();
-  
-      pdfDoc.pipe(res);
-    
+      generateStyledInvoiceWithPages(selectedItems,res);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.log(error);
+      console.error("Error generating the invoice:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   });
+  
 
   module.exports=router
