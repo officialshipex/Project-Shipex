@@ -35,6 +35,9 @@ const couriersB2CRoutes=require("./routes/couriersB2C.router");
 
 const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
+const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
+const PrintLabelRoute=require("./label/printLabel.controller")
+const PrintInvoice=require("./label/printInvoice.controller")
 
 
 
@@ -69,6 +72,9 @@ router.use('/Delhivery',DelhiveryController);
 router.use("/label", LabelRouter);
 router.use('/user',isAuthorized,userRouter);
 router.use('/warehouse',WareHouse);
+router.use('/bulkOrderUpload', bulkOrderUploadRoutes);
+router.use('/printlabel',PrintLabelRoute)
+router.use('/printinvoice',PrintInvoice)
 
 router.use("/B2Ccouries",couriersB2CRoutes);
 // app.use("/v1/courierServices", courierServicesRoutes);

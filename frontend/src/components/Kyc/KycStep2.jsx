@@ -40,7 +40,7 @@ const KycStep2 = (props) => {
     setError("");
 
     if (!validateGST(gstNumber)) {
-      setMessage({gst:"Invalid GST Number"});
+      setMessage({ gst: "Invalid GST Number" });
       return;
     }
 
@@ -59,20 +59,21 @@ const KycStep2 = (props) => {
         setDocumentVerified(prevState => ({ ...prevState, gstVerified: true }));
         setSuccess(true);
         setMessage("GST Verified Successfully!");
-      if (response?.data?.success) {
-        setDocumentVerified(prevState => ({
-          ...prevState,
-          gstin: true,
-        }));
-        setSuccess({ gst: response.data.success });
-        setMessage({ gst: response.data.message });
-        setDataModalIsOpen(prevState => ({ ...prevState, gst: true }));
-        setModalData(response.data.data);
-      } else {
-        setMessage({ gst: response.data.message });
-      }
+        if (response?.data?.success) {
+          setDocumentVerified(prevState => ({
+            ...prevState,
+            gstin: true,
+          }));
+          setSuccess({ gst: response.data.success });
+          setMessage({ gst: response.data.message });
+          setDataModalIsOpen(prevState => ({ ...prevState, gst: true }));
+          setModalData(response.data.data);
+        } else {
+          setMessage({ gst: response.data.message });
+        }
 
-    }} catch (error) {
+      }
+    } catch (error) {
       console.error("GST Verification Error:", error);
       if (error?.response?.data?.message) {
         setMessage({ gst: error.response.data.message });
@@ -230,18 +231,18 @@ const KycStep2 = (props) => {
               Verify
             </button>
 
-          {/* KYC Illustration */}
-<div className="mt-9 lg:mt-0">
-  <img
-    src={KycLogo}
-    alt="KYC Illustration"
-    className="w-full sm:w-3/4 mx-auto mt-6"
-  />
- <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
-  This will be used as your company address for the pick-up location.
-</p>
+            {/* KYC Illustration */}
+            <div className="mt-9 lg:mt-0">
+              <img
+                src={KycLogo}
+                alt="KYC Illustration"
+                className="w-full sm:w-3/4 mx-auto mt-6"
+              />
+              <p className="text-xs sm:text-sm text-gray-600 mt-4 font-bold text-center lg:text-left w-full sm:w-[80%] lg:w-[70%] mx-auto lg:mx-0 lg:ml-20 lg:mr-20">
+                This will be used as your company address for the pick-up location.
+              </p>
 
-</div>
+            </div>
 
 
             {/* Next Button */}

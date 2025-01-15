@@ -7,54 +7,91 @@ const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
+
+// const dburl =process.env.MONGODB_URI;
+// mongoose.connect(dburl, {})
+//     .then(() => {
+//         console.log('Connected to MongoDB Atlas');
+//     })
+//     .catch((err) => {
+//         console.error('Connection error', err);
+//     });
+
+
+
 const getAllActiveCourierServices = async (req, res) => {
-
     try {
+        // Get the authentication token
         const token = await getToken();
-        const response = await axios.get(
-            "https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts?type=active",
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
+
+        // Define request options
+        const options = {
+            method: "GET",
+            url: "https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts?type=active",
+            headers: {
+                "content-type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        };
+
+        // Make the API request
+        const response = await axios.request(options);
+
+        if (response.status === 200) {
+            const servicesData = response.data;
+            // console.log(servicesData)
+            // Fetch current courier and existing services
+            const currCourier = await Courier.findOne({ provider: 'Shiprocket' });
+            // console.log(currCourier)
+            if (!currCourier) {
+                return res.status(404).send("Courier provider 'Shiprocket' not found.");
             }
-        );
 
-      const result= response.data.courier_data;
-      
+            const existingServices = await Services.find({ '_id': { $in: currCourier.services } });
+            const prevServicesSet = new Set(existingServices.map(service => service.courierProviderServiceName));
 
-      const currCourier = await Courier.findOne({ provider: 'Shiprocket' }).populate('services');
-      const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            const newServices = []; // To track newly added services
+            const errors = []; // To track errors while saving services
 
-      const allServices = result.map(element => ({
-        service: element.master_company,
-        provider_courier_id: `${element.id}`,
-        isAdded: prevServices.has(element.master_company)
-    }));
-    
+            // Iterate over the fetched services
+            for (const element of servicesData) {
+                const name = element.name;
+                if (!prevServicesSet.has(name)) {
+                    try {
+                        const newService = new Services({
+                            courierProviderServiceId: getUniqueId(),
+                            courierProviderServiceName: name,
+                        });
+                        currCourier.services.push(newService._id);
+                        await newService.save();
+                        newServices.push(name);
+                    } catch (error) {
+                        errors.push({ name, error: error.message });
+                    }
+                }
+            }
 
-    return res.status(201).json(allServices);
+            // Save updated courier data
+            await currCourier.save();
 
-      
-    } catch (error) {
-        console.error("Error encountered while fetching courier services:");
-
-        if (error.response) {
-           
-            console.error("Error Response Data:", error.response.data);
-            console.error("Status Code:", error.response.status);
-            res.status(error.response.status || 500).json({
-                message: "Error fetching courier services",
-                error: error.response.data,
+            // Send the response with new services and any errors
+            return res.status(200).send({
+                message: "Service update completed.",
+                newServices,
+                errors,
             });
         } else {
-            console.error("Error Message:", error.message);
-            res.status(500).json({
-                message: "Error fetching courier services",
-                error: error.message,
+            return res.status(response.status).send({
+                message: "Failed to fetch courier services from Shiprocket.",
+                details: response.data,
             });
         }
+    } catch (error) {
+        console.error("Error fetching couriers:", error);
+        return res.status(500).send({
+            message: "Error fetching courier services.",
+            error: error.response?.data || error.message,
+        });
     }
 };
 

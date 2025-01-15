@@ -21,17 +21,18 @@ require("dotenv").config();
 // // const editBaseRateController=require("./routes/editBaseRate.router");
 
 // const NimbusPostController=require("./AllCouriersRoutes/nimbuspost.router");
-// const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
-// const XpressbeesController=require("./AllCouriersRoutes/xpressbee.router");
-// const shreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router");
-// const SmartShipController=require("./AllCouriersRoutes/smartShip.router");
-// // const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
+const ShipRocketController=require("./AllCouriersRoutes/shiprocket.router");
+// const EcomExpressController=require("./AllCouriersRoutes/ecom.router");
+const ShreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router")
 
 // const verficationRouter = require("./routes/kyc.router");
 // const paytmRoutes = require("./routes/paytm.router");
 // const authRouter = require("./routes/auth.router");
 
-// const couriersB2CRoutes=require("./routes/couriersB2C.router");
+// const WoocommerceController=require("./AllCouriersRoutes/woocommerce.router")
+const delhiveryRouter=require("./AllCouriersRoutes/delhivery.router")
+
+
 
 // const WareHouse=require("./routes/warehouse.router");
 
@@ -89,5 +90,12 @@ app.use('/v1', router);
 app.get("/*", (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+// app.use("/v1/NimbusPost",NimbusPostController);
+app.use("/v1/Shiprocket",ShipRocketController);
+// app.use("/v1/EcomExpress",EcomExpressController);
+app.use("/v1/shreeMaruti",ShreeMarutiController);
+// app.use("/v1/woocommerce",WoocommerceController);
+app.use("/v1/delhivery",delhiveryRouter)
+
 
 module.exports = app;

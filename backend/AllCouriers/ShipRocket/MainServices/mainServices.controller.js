@@ -213,15 +213,8 @@ async function checkServiceability(service, payload) {
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      params: {
-        pickup_postcode,
-        delivery_postcode,
-        cod,
-        weight
-      },
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pickup_postcode, delivery_postcode, cod, weight},
     });
 
     const result = response.data?.data?.available_courier_companies || [];
