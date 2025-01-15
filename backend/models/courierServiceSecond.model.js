@@ -29,6 +29,10 @@ const courierServiceSecondSchema = new mongoose.Schema(
     isEnabeled:{
       type:Boolean,
       default:true
+    },
+    createdName:{
+      type:String,
+      required:true
     }
   },
   {
