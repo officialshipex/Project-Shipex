@@ -18,7 +18,7 @@ router.post("/getServiceablePincodes",nimbuspostCourierController.getServiceable
 // router.post("/getServiceablePincodesData",nimbuspostCourierController.getServiceablePincodesData);
 
 router.post("/createShipment",nimbuspostShipmentController.createShipment);
-router.post("/trackShipment",nimbuspostShipmentController.trackShipment);
+// router.post("/trackShipment",nimbuspostShipmentController.trackShipment);
 router.post("/trackShipmentInBulk",nimbuspostShipmentController.trackShipmentsInBulk);
 router.post("/manifest",nimbuspostShipmentController.manifest);
 router.post("/cancelShipment",nimbuspostShipmentController.cancelShipment);

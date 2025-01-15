@@ -65,7 +65,8 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName:'Xpressbees',
-                provider_courier_id
+                provider_courier_id,
+                createdName:req.body.name
             });
 
             const Xpress = await Courier.findOne({ provider:'Xpressbees' });

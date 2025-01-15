@@ -30,6 +30,8 @@ const shreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router");
 const SmartShipController=require("./AllCouriersRoutes/smartShip.router");
 const DelhiveryController=require("./AllCouriersRoutes/delhivery.router");
 const LabelRouter = require('./label/label.router');
+const couriersB2CRoutes=require("./routes/couriersB2C.router");
+// const courierServicesRoutes=require('./routes/courierServiceB2C.router');
 
 const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
@@ -65,7 +67,7 @@ router.use("/Xpressbees",XpressbeesController);
 router.use("/ShreeMaruti",shreeMarutiController);
 router.use("/SmartShip",SmartShipController);
 
-router.use('/delhivery',DelhiveryController);
+router.use('/Delhivery',DelhiveryController);
 
 router.use("/label", LabelRouter);
 router.use('/user',isAuthorized,userRouter);
@@ -73,5 +75,10 @@ router.use('/warehouse',WareHouse);
 router.use('/bulkOrderUpload', bulkOrderUploadRoutes);
 router.use('/printlabel',PrintLabelRoute)
 router.use('/printinvoice',PrintInvoice)
+
+router.use("/B2Ccouries",couriersB2CRoutes);
+// app.use("/v1/courierServices", courierServicesRoutes);
+
+
 
 module.exports = router;

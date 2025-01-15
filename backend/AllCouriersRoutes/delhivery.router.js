@@ -1,22 +1,34 @@
 const express = require("express");
 const {
-  checkPincodeServiceability,
-  trackShipment,
+  // trackShipment,
   generateShippingLabel,
-  createPickupRequest,
   createClientWarehouse,
+  createOrder
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+
+const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
 
 const router = express.Router();
 
+router.get('/saveNew',saveDelhivery);
+router.get('/isEnabeled',isEnabeled);
+router.get('/enable',enable);
+router.get('/disable',disable);
+router.get('/getCourierList',getCourierList);
+
+router.post('/addService',addService);
+
+router.post("/createShipment",createOrder);
+
 // Route to check pincode serviceability
-router.get("/serviceability/:pincode", checkPincodeServiceability);
+// router.get("/serviceability/:pincode", checkPincodeServiceability);
 // Route to track shipment
-router.get("/track/:waybill", trackShipment);
+// router.get("/track/:waybill", trackShipment);
+
 // Route to generate shipping label
 router.get("/label/:waybill", generateShippingLabel);
 // Route to create a pickup request
-router.post("/pickup", createPickupRequest);
+// router.post("/pickup", createPickupRequest);
 // Route to create a client warehouse
 router.post("/warehouse", createClientWarehouse);
 

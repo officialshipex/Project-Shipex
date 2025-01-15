@@ -8,14 +8,14 @@ const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
 
-const dburl =process.env.MONGODB_URI;
-mongoose.connect(dburl, {})
-    .then(() => {
-        console.log('Connected to MongoDB Atlas');
-    })
-    .catch((err) => {
-        console.error('Connection error', err);
-    });
+// const dburl =process.env.MONGODB_URI;
+// mongoose.connect(dburl, {})
+//     .then(() => {
+//         console.log('Connected to MongoDB Atlas');
+//     })
+//     .catch((err) => {
+//         console.error('Connection error', err);
+//     });
 
 
 
@@ -118,7 +118,8 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName:'Shiprocket',
-                provider_courier_id
+                provider_courier_id,
+                createdName:req.body.name
             });
 
             currCourier.services.push(newService._id);

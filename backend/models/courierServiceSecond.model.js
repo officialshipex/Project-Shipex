@@ -14,6 +14,9 @@ const courierServiceSecondSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    custom_name:{
+      type:String
+    },
     rateCards: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RateCard',
@@ -21,12 +24,15 @@ const courierServiceSecondSchema = new mongoose.Schema(
 
     provider_courier_id:{
       type:String,
-      required:true
     },
     
     isEnabeled:{
       type:Boolean,
       default:true
+    },
+    createdName:{
+      type:String,
+      required:true
     }
   },
   {
