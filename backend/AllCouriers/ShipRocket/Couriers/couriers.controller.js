@@ -81,7 +81,8 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName:'Shiprocket',
-                provider_courier_id
+                provider_courier_id,
+                createdName:req.body.name
             });
 
             currCourier.services.push(newService._id);
