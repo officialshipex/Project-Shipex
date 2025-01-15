@@ -502,6 +502,42 @@ const tracking = async (req, res) => {
 
 
 
+const editOrder = async (req, res) => {
+  try {
+    const { formData, isSame, id } = req.body;
+
+    if (!id || !formData) {
+      return res.status(400).json({ message: "Order ID and form data are required" });
+    }
+
+    const result = await Order.findByIdAndUpdate(
+      id,
+      {
+        order_id: formData.orderInfo.orderID,
+        order_type: formData.orderInfo.orderType,
+        orderCategory: 'B2C-forward',
+        shipping_details: formData.shippingInfo,
+        billing_details: formData.billingInfo,
+        product_details: formData.productDetails,
+        shipping_cost: formData.shippingCost,
+        status: 'Not-Shipped',
+        sub_total: formData.sub_total,
+        shipping_is_billing: isSame
+      },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(201).json({ message: "Order updated successfully", order: result });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update order", error: error.message });
+  }
+};
+
+
 
 
 
@@ -514,5 +550,6 @@ module.exports = {
   cancelOrdersAtNotShipped,
   requestPickup,
   cancelOrdersAtBooked,
-  tracking
+  tracking,
+  editOrder
 }
