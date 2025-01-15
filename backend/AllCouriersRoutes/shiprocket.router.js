@@ -69,7 +69,7 @@ router.post('/invoice/generate', generateInvoice);
 router.get('/ndr/all', getAllNDRShipments);
 
 // Get Tracking through AWB
-router.get('/track/awb/:awb_code', getTrackingByAWB);
+// router.get('/track/awb/:awb_code', getTrackingByAWB);
 
 // Get Tracking Data through Order ID
 router.get('/track/order/:order_id', getTrackingByOrderID);

@@ -29,7 +29,7 @@ const ShreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router")
 // const paytmRoutes = require("./routes/paytm.router");
 // const authRouter = require("./routes/auth.router");
 
-const WoocommerceController=require("./AllCouriersRoutes/woocommerce.router")
+// const WoocommerceController=require("./AllCouriersRoutes/woocommerce.router")
 const delhiveryRouter=require("./AllCouriersRoutes/delhivery.router")
 
 
@@ -94,7 +94,7 @@ app.get("/*", (req, res) => {
 app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/shreeMaruti",ShreeMarutiController);
-app.use("/v1/woocommerce",WoocommerceController);
+// app.use("/v1/woocommerce",WoocommerceController);
 app.use("/v1/delhivery",delhiveryRouter)
 
 
