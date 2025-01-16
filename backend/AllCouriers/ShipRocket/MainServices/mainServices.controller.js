@@ -14,17 +14,17 @@ const getCurrentDateTime = () => {
 };
 
 function generateSKU(productName) {
-  const timestamp = Date.now(); 
-  const randomPart = Math.floor(1000 + Math.random() * 9000); 
+  const timestamp = Date.now();
+  const randomPart = Math.floor(1000 + Math.random() * 9000);
   const sanitizedProductName = productName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
 
   return `${sanitizedProductName}-${timestamp}-${randomPart}`;
 }
 // 1. Create Custom Order
 
-const assignAWB =async(shipment_id, courier_id) => {
+const assignAWB = async (shipment_id, courier_id) => {
   try {
-    const token = await getToken(); 
+    const token = await getToken();
     const response = await axios.post(
       `${BASE_URL}/courier/assign/awb`,
       {
@@ -39,11 +39,11 @@ const assignAWB =async(shipment_id, courier_id) => {
       }
     );
 
-   return response.data.response.data;
-       
+    return response.data.response.data;
+
   } catch (error) {
     return null;
-    
+
   }
 };
 
@@ -67,9 +67,9 @@ const createCustomOrder = async (req, res) => {
   let payment_type = currentOrder.order_type === "Cash on Delivery" ? "COD" : "Prepaid";
   const currentDateTime = getCurrentDateTime();
   const shipmentData = {
-    order_id:`${currentOrder.order_id}`,
+    order_id: `${currentOrder.order_id}`,
     order_date: currentDateTime,
-    pickup_location:wh.warehouseName,
+    pickup_location: wh.warehouseName,
     billing_customer_name: `${currentOrder.Biling_details.firstName}`,
     billing_last_name: `${currentOrder.Biling_details.lastName}`,
     billing_address: currentOrder.Biling_details.address,
@@ -78,27 +78,27 @@ const createCustomOrder = async (req, res) => {
     billing_pincode: `${currentOrder.shipping_details.pinCode}`,
     billing_state: currentOrder.shipping_details.state,
     billing_country: "India",
-    billing_email:currentOrder.shipping_details.email,
+    billing_email: currentOrder.shipping_details.email,
     billing_phone: currentOrder.Biling_details.phone,
-    shipping_is_billing:currentOrder.shipping_is_billing,
+    shipping_is_billing: currentOrder.shipping_is_billing,
     order_items,
-    payment_method:payment_type,
+    payment_method: payment_type,
     sub_total: currentOrder.sub_total,
-    length:currentOrder.shipping_cost.dimensions.length,
-    breadth:currentOrder.shipping_cost.dimensions.width,
-    height:currentOrder.shipping_cost.dimensions.height,
-    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),currentOrder.shipping_cost.volumetricWeight)/1000
+    length: currentOrder.shipping_cost.dimensions.length,
+    breadth: currentOrder.shipping_cost.dimensions.width,
+    height: currentOrder.shipping_cost.dimensions.height,
+    weight: Math.max(parseInt(currentOrder.shipping_cost.weight), currentOrder.shipping_cost.volumetricWeight) / 1000
   };
 
   if (!currentOrder.shipping_is_billing) {
-    shipmentData.shipping_customer_name =currentOrder.shipping_details.firstName;
+    shipmentData.shipping_customer_name = currentOrder.shipping_details.firstName;
     shipmentData.shipping_last_name = currentOrder.shipping_details.lastName;
     shipmentData.shipping_address = currentOrder.shipping_details.address;
     shipmentData.shipping_address_2 = currentOrder.shipping_details.address2;
     shipmentData.shipping_city = currentOrder.shipping_details.city;
     shipmentData.shipping_pincode = `${currentOrder.shipping_details.pinCode}`;
     shipmentData.shipping_state = currentOrder.shipping_details.state;
-     shipmentData.shipping_email=currentOrder.shipping_details.email;
+    shipmentData.shipping_email = currentOrder.shipping_details.email;
     shipmentData.shipping_country = "India";
     shipmentData.shipping_phone = currentOrder.shipping_details.phone;
   }
@@ -115,9 +115,10 @@ const createCustomOrder = async (req, res) => {
     if (response.data.status) {
       const { shipment_id } = response.data;
       const courier_id = selectedServiceDetails.provider_courier_id;
-    
-      await assignAWB(shipment_id, courier_id);
-    
+
+      const result = await assignAWB(shipment_id, courier_id);
+      console.log("Shiprocket result is", result);
+
       if (!result || !result.awb_code) {
         console.error("Invalid response from assignAWB:", result);
         return res.status(400).json({
@@ -125,12 +126,19 @@ const createCustomOrder = async (req, res) => {
           details: result,
         });
       }
-    
+
       currentOrder.status = 'Booked';
-      currentOrder.awb_number =result.awb_code;
-      currentOrder.shipment_id =shipment_id;
-      await currentOrder.save();
-    
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.awb_code;
+      currentOrder.shipment_id = shipment_id;
+      currentOrder.service_details = selectedServiceDetails._id;
+      currentOrder.tracking=[];
+      currentOrder.tracking.push({
+        stage: 'Order Booked'
+      });
+
+      const savedOrder = await currentOrder.save();
+
       return res.status(201).json({ message: "Shipment Created Successfully" });
     } else {
       return res.status(400).json({
@@ -167,8 +175,7 @@ const updateOrder = async (req, res) => {
 };
 
 // 3. Cancel an Order
-const cancelOrder = async (req, res) => {
-  const { order_id } = req.params;
+const cancelOrder = async (order_id) => {
   try {
     const token = await getToken();
     const response = await axios.post(
@@ -176,11 +183,12 @@ const cancelOrder = async (req, res) => {
       { ids: [order_id] },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    res.json(response.data);
+    return { success: true, data: response.data };
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    return { success: false, error: error.response?.data || error.message };
   }
 };
+
 
 // 4. List of Couriers
 const listCouriers = async (req, res) => {
@@ -205,19 +213,13 @@ async function checkServiceability(service, payload) {
   try {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      params: {
-        pickup_postcode,
-        delivery_postcode,
-        cod,
-        weight
-      },
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pickup_postcode, delivery_postcode, cod, weight},
     });
 
     const result = response.data?.data?.available_courier_companies || [];
-    const filteredData = result.filter((item) => item.courier_name === service && item.pickup_availability!='0');
+    const filteredData = result.filter((item) => item.courier_name === service && item.blocked == 0);
+
 
     if (filteredData.length > 0) {
       return true;
@@ -236,21 +238,43 @@ async function checkServiceability(service, payload) {
 
 
 // 6. Request for Shipment Pickup
-const requestShipmentPickup = async (req, res) => {
-  const { shipment_id, pickup_location_id } = req.body;
-
+const requestShipmentPickup = async (shipment_id) => {
   try {
     const token = await getToken();
     const response = await axios.post(
       `${BASE_URL}/courier/generate/pickup`,
-      { shipment_id, pickup_location_id },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { shipment_id: [shipment_id] },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        }
+      }
     );
-    res.json(response.data);
+
+
+    if (response.data.pickup_status == 1) {
+      return {
+        success: true,
+        data: response.data,
+        message: "Pickup request generated successfully",
+      };
+    } else {
+      return {
+        success: false,
+        message: "Failed to generate pickup request. Please check the shipment details.",
+      };
+    }
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    console.error("Error generating shipment pickup:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "An unexpected error occurred.",
+      error: error.response?.data || error.message,
+    };
   }
 };
+
 
 // 7. Create a Return Order
 const createReturnOrder = async (req, res) => {
@@ -340,8 +364,7 @@ const getAllNDRShipments = async (req, res) => {
 };
 
 // 12. Get Tracking through AWB
-const getTrackingByAWB = async (req, res) => {
-  const { awb_code } = req.params;
+const getTrackingByAWB = async (awb_code) => {
 
   try {
     const token = await getToken();
@@ -349,9 +372,24 @@ const getTrackingByAWB = async (req, res) => {
       `${BASE_URL}/courier/track/awb/${awb_code}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    res.json(response.data);
+    if (response?.data?.tracking_data?.shipment_track.length > 0) {
+      return ({
+        success: true,
+        data: response.data.tracking_data.shipment_track[0].current_status
+      });
+    }
+    else {
+      return ({
+        success: false,
+        data: "Error in tracking"
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.response?.data || error.message });
+    console.log(error);
+    return ({
+      success: false,
+      data: "Error in tracking"
+    });
   }
 };
 
@@ -397,15 +435,15 @@ const addPickupLocation = async (data, email) => {
         }
       }
     );
-    
+
     return response.data;
   } catch (error) {
     console.error('Error:', error.response ? error.response.data : error.message);
-    throw error; 
+    throw error;
   }
 };
 
-const getAllPickupLocations= async () => {
+const getAllPickupLocations = async () => {
   try {
     const token = await getToken();
     const response = await axios.get(

@@ -1,9 +1,14 @@
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
-const Courier=require("../models/courierSecond");
+const Courier = require("../models/courierSecond");
 const { checkServiceabilityAll } = require("./shipment.controller");
-const{calculateRateForService}=require("../Rate/calculateRateController");
-const User=require("../models/User.model");
+const { calculateRateForService } = require("../Rate/calculateRateController");
+const User = require("../models/User.model");
+const { requestShipmentPickup, cancelOrder, getTrackingByAWB } = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const { pickup, cancelShipmentXpressBees, trackShipment } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
+const { createPickupRequest, cancelOrderDelhivery, trackShipmentDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -58,10 +63,10 @@ const createOrder = async (req, res) => {
   try {
     console.log("I am in createOrder");
     const data = req.body.formData;
-    const id=req.body.user._id;
-    const shipping_is_billing=req.body.isSame;
+    const id = req.body.user._id;
+    const shipping_is_billing = req.body.isSame;
 
-    const currentUser=await User.findById(id);
+    const currentUser = await User.findById(id);
 
     let newOrder = new Order({
       order_id: data.orderInfo.orderID,
@@ -75,7 +80,7 @@ const createOrder = async (req, res) => {
       sub_total: data.sub_total,
       shipping_is_billing
     });
-    
+
     let result = await newOrder.save();
     currentUser.orders.push(result._id);
     await currentUser.save();
@@ -91,7 +96,7 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({});
+    const orders = await Order.find({}).populate('service_details');
     return res.status(201).json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -101,7 +106,7 @@ const getAllOrders = async (req, res) => {
 const getOrderDetails = async (req, res) => {
   try {
     let id = req.body.id;
-    let result = await Order.findById(id);
+    let result = await Order.findById(id).populate('service_details');
 
     if (!result) {
       return res.status(404).json({ message: "Order not found" });
@@ -121,10 +126,10 @@ const shipOrder = async (req, res) => {
 
     const servicesCursor = Services.find({ isEnabeled: true });
     const enabledServices = [];
-  
+
     for await (const srvc of servicesCursor) {
       const provider = await Courier.findOne({ provider: srvc.courierProviderName });
-  
+
       if (provider?.isEnabeled === true && provider?.toEnabeled === false) {
         enabledServices.push(srvc);
       }
@@ -132,7 +137,7 @@ const shipOrder = async (req, res) => {
 
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
-        let result = await checkServiceabilityAll(item, req.body.id,req.body.pincode);
+        let result = await checkServiceabilityAll(item, req.body.id, req.body.pincode);
         if (result) {
           return item;
         }
@@ -140,22 +145,22 @@ const shipOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
-    console.log(filteredServices);
+    // console.log(filteredServices);
 
     const payload = {
-      pickupPincode:req.body.pincode,
+      pickupPincode: req.body.pincode,
       deliveryPincode: currentOrder.Biling_details.pinCode,
-      length:currentOrder.shipping_cost.dimensions.length,
-      breadth:currentOrder.shipping_cost.dimensions.width,                         
-      height:currentOrder.shipping_cost.dimensions.height,             
-      weight:currentOrder.shipping_cost.weight,                         
-      cod:currentOrder.order_type==='Cash on Delivery'?"Yes":"No",
-      valueInINR:currentOrder.sub_total,
+      length: currentOrder.shipping_cost.dimensions.length,
+      breadth: currentOrder.shipping_cost.dimensions.width,
+      height: currentOrder.shipping_cost.dimensions.height,
+      weight: currentOrder.shipping_cost.weight,
+      cod: currentOrder.order_type === 'Cash on Delivery' ? "Yes" : "No",
+      valueInINR: currentOrder.sub_total,
       filteredServices,
-      rateCardType:"Basic"
+      rateCardType: "Basic"
     };
 
-    let rates=await calculateRateForService(payload);
+    let rates = await calculateRateForService(payload);
 
 
     res.status(201).json({
@@ -174,9 +179,377 @@ const shipOrder = async (req, res) => {
 };
 
 
+const cancelOrdersAtNotShipped = async (req, res) => {
+  const ordersToBeCancelled = req.body.items;
+
+  if (!Array.isArray(ordersToBeCancelled) || ordersToBeCancelled.length === 0) {
+    return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
+  }
+
+  try {
+    const updatePromises = ordersToBeCancelled.map(async (order) => {
+      const currentOrder = await Order.findById(order._id);
+
+      if (currentOrder && currentOrder.status !== 'Cancelled') {
+        currentOrder.status = 'Cancelled';
+        currentOrder.cancelledAtStage = 'Not-Shipped';
+        return currentOrder.save();
+      }
+    });
+
+    await Promise.all(updatePromises);
+
+    const message =
+      ordersToBeCancelled.length > 1
+        ? 'Orders cancelled successfully'
+        : 'Order has been cancelled successfully';
+
+    res.status(201).send({ message });
+  } catch (error) {
+    console.error('Error canceling orders:', {
+      error,
+      orders: ordersToBeCancelled.map((order) => order._id),
+    });
+    res.status(500).send({ error: 'An error occurred while cancelling orders.' });
+  }
+};
+
+
+
+
+const requestPickup = async (req, res) => {
+  const allOrders = req.body.items;
+
+  if (!allOrders || allOrders.length === 0) {
+    return res.status(400).json({ error: "No orders provided." });
+  }
+
+  try {
+    const results = await Promise.all(allOrders.map(async (order) => {
+      let currentOrder = await Order.findById(order._id).populate('service_details').populate('warehouse');
+      let updateStatus = { orderId: order._id, status: "Failed" };
+
+      if (!currentOrder) {
+        updateStatus.error = "Order not found";
+        return updateStatus;
+      }
+
+      try {
+        if (currentOrder.service_details.courierProviderName === "NimbusPost") {
+          currentOrder.status = "WaitingPickup";
+          currentOrder.tracking.push({
+            stage: 'Pickup Generated'
+          });
+          await currentOrder.save();
+          updateStatus.status = "WaitingPickup";
+
+        } else if (currentOrder.service_details.courierProviderName === "Shiprocket") {
+          const result = await requestShipmentPickup(currentOrder.shipment_id);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            currentOrder.pickup_details.pickup_scheduled_date = result.data.response.pickup_scheduled_date;
+            currentOrder.pickup_details.pickup_token_number = result.data.response.pickup_token_number;
+            currentOrder.pickup_details.pickup_generated_date = result.data.response.pickup_generated_date.date;
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          } else {
+            updateStatus.error = "Shiprocket pickup failed";
+          }
+
+        } else if (currentOrder.service_details.courierProviderName === "Xpressbees") {
+          const result = await pickup([currentOrder.awb_number]);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          } else {
+            updateStatus.error = "Xpressbees pickup failed";
+          }
+        }
+        else if (currentOrder.service_details.courierProviderName === "Delhivery") {
+          const result = await createPickupRequest(currentOrder.warehouse.warehouseName, currentOrder.awb_number);
+          if (result.success) {
+            currentOrder.status = "WaitingPickup";
+            currentOrder.pickup_details.pickup_scheduled_date = result?.data?.pickup_date;
+            currentOrder.pickup_details.pickup_token_number = `${result?.data?.pickup_id}`;
+            currentOrder.pickup_details.pickup_time = result?.data?.pickup_time;
+            currentOrder.pickup_details.pickup_generated_date = result?.pickupDate;
+            currentOrder.tracking.push({
+              stage: 'Pickup Generated'
+            });
+            await currentOrder.save();
+            updateStatus.status = "WaitingPickup";
+          }
+          else {
+            updateStatus.error = "Xpressbees pickup failed";
+          }
+        }
+        else if (currentOrder.service_details.courierProviderName === "ShreeMaruti") {
+          currentOrder.status = "WaitingPickup";
+          currentOrder.tracking.push({
+            stage: 'Pickup Generated'
+          });
+          await currentOrder.save();
+          updateStatus.status = "WaitingPickup";
+        }
+        else {
+          updateStatus.error = "Unsupported courier provider";
+        }
+
+      } catch (error) {
+        updateStatus.error = error.message || "Unknown error";
+      }
+
+      return updateStatus;
+    }));
+
+    const successCount = results.filter(r => r.status === "WaitingPickup").length;
+    const failedCount = results.filter(r => r.status === "Failed").length;
+
+    return res.status(201).json({
+      success: true,
+      message: `${successCount} orders updated successfully, ${failedCount} failed.`,
+      details: results
+    });
+
+  } catch (error) {
+    console.error('Error processing pickup requests:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
+
+
+const cancelOrdersAtBooked = async (req, res) => {
+  const allOrders = req.body.items;
+
+  if (!Array.isArray(allOrders) || allOrders.length === 0) {
+    return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
+  }
+
+  try {
+    const ordersFromDb = await Promise.all(
+      allOrders.map(order => Order.findById(order._id).populate('service_details'))
+    );
+
+    const cancellationResults = await Promise.all(
+      ordersFromDb.map(async (currentOrder) => {
+        if (!currentOrder) {
+          return { error: 'Order not found', orderId: currentOrder._id };
+        }
+
+        if (currentOrder.status === 'Not-Shipped' && currentOrder.cancelledAtStage == null) {
+          return { message: 'Order already cancelled', orderId: currentOrder._id };
+        }
+
+        if (currentOrder.service_details.courierProviderName === 'NimbusPost') {
+          const result = await cancelShipment(currentOrder.awb_number);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+        } else if (currentOrder.service_details.courierProviderName === 'Shiprocket') {
+          const result = await cancelOrder(currentOrder._id);
+          if (!result.success) {
+            return { error: 'Failed to cancel shipment with Shiprocket', details: result, orderId: currentOrder._id };
+          }
+          else if (currentOrder.service_details.courierProviderName === 'Xpressbees') {
+            const result = await cancelShipmentXpressBees(currentOrder.awb_number);
+            if (result.error) {
+              return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+            }
+          }
+
+        }
+        else if (currentOrder.service_details.courierProviderName === "Delhivery") {
+          console.log("I am in it");
+          const result = await cancelOrderDelhivery(currentOrder.awb_number);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+        }
+        else if (currentOrder.service_details.courierProviderName === "ShreeMaruti") {
+          const result = await cancelOrderShreeMaruti(currentOrder.order_id);
+          if (result.error) {
+            return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
+          }
+        }
+        else {
+          return { error: 'Unsupported courier provider', orderId: currentOrder._id };
+        }
+
+        currentOrder.status = 'Not-Shipped';
+        currentOrder.cancelledAtStage = 'Booked';
+        currentOrder.tracking.push({
+          stage: 'Cancelled'
+        });
+        await currentOrder.save();
+
+        return { message: 'Order cancelled successfully', orderId: currentOrder._id };
+      })
+    );
+
+
+    let successCount = 0;
+    let failureCount = 0;
+    cancellationResults.forEach(result => {
+      if (result.error) {
+        failureCount++;
+      } else {
+        successCount++;
+      }
+    });
+
+    res.status(201).send({
+      results: cancellationResults,
+      successCount,
+      failureCount
+    });
+  } catch (error) {
+    console.error('Error cancelling orders:', error);
+    res.status(500).send({ error: 'An error occurred while cancelling orders.' });
+  }
+};
+
+
+const tracking = async (req, res) => {
+  console.log("Tracking initiated");
+
+  try {
+    const allOrders = await Promise.all(
+      req.body.items.map(order =>
+        Order.findById(order._id).populate('service_details')
+      )
+    );
+
+    const updateOrderStatus = async (order, status, stage) => {
+      if (
+        !order.tracking ||
+        order.tracking.length === 0 ||
+        (order.tracking.length >= 1 && order.tracking[order.tracking.length - 1].stage !== stage)
+      ) {
+        order.status = status;
+        order.tracking = order.tracking || [];
+        order.tracking.push({ stage });
+        if (status == "cancelled" || status == "canceled") {
+          order.status == "Not-Shipped";
+          order.cancelledAtStage == null;
+        }
+        await order.save();
+      }
+    };
+
+
+    const trackingPromises = allOrders.map(async (order) => {
+      try {
+        const { courierProviderName } = order.service_details;
+        const { awb_number } = order;
+        let result;
+
+        if (courierProviderName === "NimbusPost") {
+          result = await trackShipmentNimbuspost(awb_number);
+        } else if (courierProviderName === "Shiprocket") {
+          result = await getTrackingByAWB(awb_number);
+        }
+        else if (courierProviderName === "Xpressbees") {
+          result = await trackShipment(awb_number);
+        }
+        else if (courierProviderName === "Delhivery") {
+          result = await trackShipmentDelhivery(awb_number);
+        }
+        else if (courierProviderName === "ShreeMaruti") {
+          result = await trackOrderShreeMaruti(awb_number);
+        }
+
+        if (result && result.success) {
+          const status = result.data.toLowerCase().replace(/_/g, ' ');
+
+          const statusMap = {
+            "cancelled": () => updateOrderStatus(order, "Not-Shipped", "Cancelled"),
+            "canceled": () => updateOrderStatus(order, "Not-Shipped", "Cancelled"),
+            "out for delivery": () => updateOrderStatus(order, "Out For Delivery", "Out For Delivery"),
+            "in transit": () => updateOrderStatus(order, "In Transit", "In Transit"),
+            "delivered": () => updateOrderStatus(order, "Delivered", "Delivered"),
+            "delayed": () => updateOrderStatus(order, "Delayed", "Delayed"),
+          };
+
+          if (statusMap[status]) {
+            await statusMap[status]();
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing order ID: ${order._id}, AWB: ${order.awb_number}`, error);
+      }
+    });
+
+    await Promise.all(trackingPromises);
+
+    res.status(200).json({ message: "Tracking updated successfully" });
+  } catch (error) {
+    console.error("Error in tracking:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
+
+
+const editOrder = async (req, res) => {
+  try {
+    const { formData, isSame, id } = req.body;
+
+    if (!id || !formData) {
+      return res.status(400).json({ message: "Order ID and form data are required" });
+    }
+
+    const result = await Order.findByIdAndUpdate(
+      id,
+      {
+        order_id: formData.orderInfo.orderID,
+        order_type: formData.orderInfo.orderType,
+        orderCategory: 'B2C-forward',
+        shipping_details: formData.shippingInfo,
+        billing_details: formData.billingInfo,
+        product_details: formData.productDetails,
+        shipping_cost: formData.shippingCost,
+        status: 'Not-Shipped',
+        sub_total: formData.sub_total,
+        shipping_is_billing: isSame
+      },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(201).json({ message: "Order updated successfully", order: result });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update order", error: error.message });
+  }
+};
+
+
+
+
+
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderDetails,
-  shipOrder
+  shipOrder,
+  cancelOrdersAtNotShipped,
+  requestPickup,
+  cancelOrdersAtBooked,
+  tracking,
+  editOrder
 }

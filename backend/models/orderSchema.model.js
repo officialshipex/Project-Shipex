@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const CourierSecond = require("./courierSecond");
 const CourierServiceSecond = require("./courierServiceSecond.model");
 const User = require("./User.model");
+const Warehouse = require("./wareHouse.model");
 
 const orderSchema = new mongoose.Schema({
     order_id: {
@@ -72,18 +73,17 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled'],
+        enum: ['Not-Shipped', 'Booked', 'Pending', 'Cancelled', 'Fulfilled', 'WaitingPickup'],
         required: true
     },
-    courier_details: {
-        courier: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'CourierSecond'
-        },
-        service: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'CourierServiceSecond'
-        }
+    cancelledAtStage: {
+        type: String,
+        enum: ['Booked', 'Not-Shipped', 'Pending'],
+        default: null
+    },
+    service_details: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CourierServiceSecond'
     },
 
     order_shipped_date: {
@@ -95,10 +95,35 @@ const orderSchema = new mongoose.Schema({
     shipment_id: {
         type: String
     },
-    shipping_is_billing:{
-        type:Boolean,
-        default:false
+    shipping_is_billing: {
+        type: Boolean,
+        default: false
     },
+
+    pickup_details: {
+        pickup_scheduled_date: {
+            type: String
+        },
+        pickup_token_number: {
+            type: String
+        },
+        pickup_generated_date: {
+            type: String
+        },
+        pickup_time: {
+            type: String
+        }
+    },
+    warehouse: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Warehouse'
+    },
+    tracking: [
+        {
+            stage: { type: String, required: true },
+            timestamp: { type: mongoose.Schema.Types.Mixed, default: Date.now },
+        },
+    ],
 
 }, {
     timestamps: true
