@@ -7,8 +7,10 @@ const getToken = async () => {
     const password = process.env.SHIPR_PASS;
 
     if (!email || !password) {
-        throw new Error("Email and password are required as environment variables.");
-    }
+        return res.status(400).json({
+            message: "Email and password are required.",
+        });
+    } 
 
     try {
         const options = {
