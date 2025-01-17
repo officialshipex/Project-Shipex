@@ -110,6 +110,7 @@ const addService = async (req, res) => {
                 courierProviderServiceName: name,
                 courierProviderName:'NimbusPost',
                 provider_courier_id,
+                createdName:req.body.name
             });
 
             const Nimb = await Courier.findOne({ provider: 'NimbusPost' });
