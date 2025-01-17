@@ -1,14 +1,16 @@
 const axios = require('axios');
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const Order=require("../../../models/orderSchema.model");
+const Wallet=require("../../../models/wallet");
 
 
 const createShipment = async (req, res) => {
 
     const url = 'https://api.nimbuspost.com/v1/shipments';
 
-    const {selectedServiceDetails,id,wh}=req.body;
+    const {selectedServiceDetails,id,wh}=req.body.payload;
     const currentOrder = await Order.findById(id);
+    const currentWallet=await Wallet.findById(req.body.walletId);
     const order_items = new Array(currentOrder.Product_details.length);
     
     currentOrder.Product_details.map((item, index) => {
@@ -70,6 +72,9 @@ const createShipment = async (req, res) => {
             stage:'Order Booked'
            });
            let savedOrder=await currentOrder.save();
+           let balanceToBeDeducted=req.body.finalCharges==="N/A"? 0 :parseInt(req.body.finalCharges);
+           currentWallet.balance-=balanceToBeDeducted;
+           await currentWallet.save();
            
 
            return res.status(201).json({message:"Shipment Created Succesfully"});

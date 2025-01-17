@@ -5,6 +5,7 @@ const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
 const Order = require("../../../models/orderSchema.model");
 const { getUniqueId } = require("../../getUniqueId");
+const Wallet=require("../../../models/wallet");
 
 // Configuration (replace with actual values)
 const BASE_URL = process.env.SHREEMA_URL; // Replace with the actual base URL
@@ -13,7 +14,7 @@ const BASE_URL = process.env.SHREEMA_URL; // Replace with the actual base URL
 
 const getCourierList = async (req, res) => {
     try {
-       
+
         const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' }).populate('services');
         const servicesData = currCourier.services;
 
@@ -23,12 +24,12 @@ const getCourierList = async (req, res) => {
         }));
 
         return res.status(201).json(allServices);
-} catch (error) {
-    res.status(500).json({
-        error: "Failed to fetch courier list",
-        details: error.response?.data || error.message,
-    });
-}
+    } catch (error) {
+        res.status(500).json({
+            error: "Failed to fetch courier list",
+            details: error.response?.data || error.message,
+        });
+    }
 };
 
 
@@ -52,7 +53,7 @@ const addService = async (req, res) => {
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
                 courierProviderName: 'ShreeMaruti',
-                createdName:req.body.name
+                createdName: req.body.name
 
             });
 
@@ -82,8 +83,9 @@ const createOrder = async (req, res) => {
 
 
     try {
-        const { selectedServiceDetails, id, wh } = req.body;
+        const { selectedServiceDetails, id, wh } = req.body.payload;
         const currentOrder = await Order.findById(id);
+        const currentWallet = await Wallet.findById(req.body.walletId);
 
         const order_items = new Array(currentOrder.Product_details.length);
         currentOrder.Product_details.map((item, index) => {
@@ -173,11 +175,14 @@ const createOrder = async (req, res) => {
             currentOrder.awb_number = result.awb_number;
             currentOrder.shipment_id = `${result.shipperOrderId}`;
             currentOrder.service_details = selectedServiceDetails._id;
-            currentOrder.tracking=[];
+            currentOrder.tracking = [];
             currentOrder.tracking.push({
-                stage:'Order Booked'
+                stage: 'Order Booked'
             });
             let savedOrder = await currentOrder.save();
+            let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+            currentWallet-= balanceToBeDeducted;
+            await currentWallet.save();
 
 
             return res.status(201).json({ message: "Shipment Created Succesfully" });
@@ -194,7 +199,7 @@ const createOrder = async (req, res) => {
 
 
 // Cancel Order
-const cancelOrderShreeMaruti= async (order_Id) => {
+const cancelOrderShreeMaruti = async (order_Id) => {
     const payload = {
         orderId: `${order_Id}`,
         cancelReason: "Cancel Test"
@@ -209,11 +214,11 @@ const cancelOrderShreeMaruti= async (order_Id) => {
             },
         });
 
-        if(response.data.status==200){
-          return{
-            success:true,
-            data:response.data
-          }
+        if (response.data.status == 200) {
+            return {
+                success: true,
+                data: response.data
+            }
         }
         else {
             return {
@@ -271,8 +276,8 @@ const createManifest = async (req, res) => {
 
 
 // Track Order
-const trackOrderShreeMaruti= async (awbNumber) => {
-    
+const trackOrderShreeMaruti = async (awbNumber) => {
+
     if (!awbNumber) {
         return res.status(400).json({ error: 'Either awbNumber or cAwbNumber is required' });
     }
@@ -283,30 +288,30 @@ const trackOrderShreeMaruti= async (awbNumber) => {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
             },
-            params: { awbNumber}, 
+            params: { awbNumber },
         });
 
-        if(response.data.status==200){
-            return({
-             success:true,   
-             data:response.data.data.orderStatus
+        if (response.data.status == 200) {
+            return ({
+                success: true,
+                data: response.data.data.orderStatus
             });
         }
-        else{
-            return({
-                success:false,
-                data:"Error in tracking"
+        else {
+            return ({
+                success: false,
+                data: "Error in tracking"
             })
         }
     } catch (error) {
         console.error('Error tracking order:', error.response?.data || error.message);
         console.log(error);
 
-        return({
-            success:false,
-            data:"Error in tracking"
+        return ({
+            success: false,
+            data: "Error in tracking"
         })
-      
+
     }
 };
 
