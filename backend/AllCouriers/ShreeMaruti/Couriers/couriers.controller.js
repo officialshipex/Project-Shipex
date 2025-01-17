@@ -1,43 +1,34 @@
+require('dotenv').config();
 const axios = require('axios');
 const { getToken } = require('../Authorize/shreeMaruti.controller');
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
-const {getUniqueId}=require("../../getUniqueId");
+const Order = require("../../../models/orderSchema.model");
+const { getUniqueId } = require("../../getUniqueId");
 
 // Configuration (replace with actual values)
-const BASE_URL = 'https://qaapis.delcaper.com'; // Replace with the actual base URL
+const BASE_URL = process.env.SHREEMA_URL; // Replace with the actual base URL
 
 
 
 const getCourierList = async (req, res) => {
-
     try {
-        const hardCoreServices = [
-        { name: "Shree Maruti service1" },
-        { name: "Shree Maruti service2" },
-        { name: " Shree Maruti service3" }
-    ];
-      
-        if (hardCoreServices && hardCoreServices.length > 0) {
-            const servicesData = hardCoreServices;
-            const currCourier = await Courier.findOne({ provider:'ShreeMaruti'}).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+       
+        const currCourier = await Courier.findOne({ provider: 'ShreeMaruti' }).populate('services');
+        const servicesData = currCourier.services;
 
-            const allServices = servicesData.map(element => ({
-                service: element.name,
-                isAdded: prevServices.has(element.name)
-            }));
+        const allServices = servicesData.map(element => ({
+            service: element.courierProviderServiceName,
+            isAdded: true
+        }));
 
-            return res.status(201).json(allServices);
-        }
-
-        res.status(400).json({ message: 'Failed to fetch services' });
-    } catch (error) {
-        res.status(500).json({
-            error: "Failed to fetch courier list",
-            details: error.response?.data || error.message,
-        });
-    }
+        return res.status(201).json(allServices);
+} catch (error) {
+    res.status(500).json({
+        error: "Failed to fetch courier list",
+        details: error.response?.data || error.message,
+    });
+}
 };
 
 
@@ -55,14 +46,17 @@ const addService = async (req, res) => {
 
         const name = req.body.service;
 
+
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'SmartShip'
+                courierProviderName: 'ShreeMaruti',
+                createdName:req.body.name
+
             });
 
-            const S2 = await Courier.findOne({ provider: 'ShreeMaruti'});
+            const S2 = await Courier.findOne({ provider: 'ShreeMaruti' });
             S2.services.push(newService._id);
 
             await newService.save();
@@ -83,52 +77,158 @@ const addService = async (req, res) => {
 
 // Create Order
 const createOrder = async (req, res) => {
-    const API_URL = "https://qaapis.delcaper.com/booking/order/";
+    const API_URL = `${BASE_URL}/fulfillment/public/seller/order/ecomm/push-order`;
     const token = await getToken();
 
+
     try {
-        // Ensure the request body contains the required data
-        if (!req.body || !Array.isArray(req.body) || req.body.length === 0) {
-            return res.status(400).json({ error: "Invalid or missing request body" });
+        const { selectedServiceDetails, id, wh } = req.body;
+        const currentOrder = await Order.findById(id);
+
+        const order_items = new Array(currentOrder.Product_details.length);
+        currentOrder.Product_details.map((item, index) => {
+            order_items[index] = {
+                name: item.product,
+                quantity: parseInt(item.quantity),
+                price: item.amount * item.quantity,
+                unitPrice: parseInt(item.amount),
+                weight: parseInt(currentOrder.shipping_cost.weight / currentOrder.Product_details.length)
+                // sku: item.sku||null
+            };
+        });
+
+
+        let payment_type = currentOrder.order_type === "Cash on Delivery" ? "COD" : "ONLINE";
+        let payment_status = currentOrder.order_type === "Cash on Delivery" ? "PENDING" : "PAID"
+
+        const payload = {
+            orderId: currentOrder.order_id,
+            orderSubtype: "FORWARD",
+            currency: "INR",
+            amount: currentOrder.sub_total,
+            weight: parseInt(currentOrder.shipping_cost.weight),
+            lineItems: order_items,
+            paymentType: payment_type,
+            paymentStatus: payment_status,
+            length: parseInt(currentOrder.shipping_cost.dimensions.length),
+            height: parseInt(currentOrder.shipping_cost.dimensions.height),
+            width: parseInt(currentOrder.shipping_cost.dimensions.width),
+            billingAddress: {
+                name: `${currentOrder.Biling_details.firstName} ${currentOrder.Biling_details.lastName}`,
+                phone: currentOrder.Biling_details.phone.toString(),
+                address1: currentOrder.Biling_details.address,
+                address2: currentOrder.Biling_details.address2,
+                city: currentOrder.Biling_details.city,
+                state: currentOrder.Biling_details.state,
+                country: "India",
+                zip: `${currentOrder.Biling_details.pinCode}`,
+            },
+            shippingAddress: {
+                name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
+                phone: currentOrder.shipping_details.phone.toString(),
+                address1: currentOrder.shipping_details.address,
+                address2: currentOrder.shipping_details.address2,
+                city: currentOrder.shipping_details.city,
+                state: currentOrder.shipping_details.state,
+                country: "India",
+                zip: `${currentOrder.shipping_details.pinCode}`,
+            },
+            pickupAddress: {
+                name: wh.contactName,
+                phone: wh.contactNo.toString(),
+                address1: wh.addressLine1,
+                address2: wh.addressLine2,
+                city: wh.city,
+                state: wh.state,
+                country: "India",
+                zip: wh.pinCode,
+            },
+            returnAddress: {
+                name: wh.contactName,
+                phone: wh.contactNo.toString(),
+                address1: wh.addressLine1,
+                address2: wh.addressLine2,
+                city: wh.city,
+                state: wh.state,
+                country: "India",
+                zip: wh.pinCode,
+            }
+
         }
 
-        // Make the API call
-        const response = await axios.post(API_URL, req.body, {
+
+
+        const response = await axios.post(API_URL, payload, {
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`, // Add the authentication token here
-                async: false, // This makes the API wait for process completion
+                Authorization: `Bearer ${token}`,
             },
         });
 
-        // Log the successful response
-        console.log("Order created successfully:", response.data);
 
-        // Return the response to the client
-        res.status(200).json(response.data);
+        if (response.data.status == 200) {
+            const result = response.data.data;
+            currentOrder.status = 'Booked';
+            currentOrder.cancelledAtStage = null;
+            currentOrder.awb_number = result.awb_number;
+            currentOrder.shipment_id = `${result.shipperOrderId}`;
+            currentOrder.service_details = selectedServiceDetails._id;
+            currentOrder.tracking=[];
+            currentOrder.tracking.push({
+                stage:'Order Booked'
+            });
+            let savedOrder = await currentOrder.save();
+
+
+            return res.status(201).json({ message: "Shipment Created Succesfully" });
+        } else {
+            return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+        }
+
     } catch (error) {
-        // Log the error details
-        console.error("Error creating order:", error.response?.data || error.message);
-
-        // Send error response to the client
-        res.status(500).json({
-            error: "Order creation failed",
-            details: error.response?.data || error.message,
-        });
+        console.log(error.response);
+        console.error('Error in creating shipment:', error.message);
+        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
 };
 
 
 // Cancel Order
-const cancelOrder = async (req, res) => {
+const cancelOrderShreeMaruti= async (order_Id) => {
+    const payload = {
+        orderId: `${order_Id}`,
+        cancelReason: "Cancel Test"
+    }
     try {
-        const response = await axios.post(`${BASE_URL}/booking/order/cancel/`, req.body, {
-            headers: { Authorization: `Bearer ${token}` },
+        const token = await getToken();
+        const response = await axios.put(`${BASE_URL}/booking/order/cancel/`, payload, {
+            headers: {
+                'Content-Type': 'application / json',
+
+                Authorization: `Bearer ${token}`
+            },
         });
-        res.status(200).json(response.data);
+
+        if(response.data.status==200){
+          return{
+            success:true,
+            data:response.data
+          }
+        }
+        else {
+            return {
+                error: 'Error in shipment cancellation',
+                details: response.data,
+                code: 400,
+            };
+        }
+
     } catch (error) {
-        console.error('Error cancelling order:', error.response?.data || error.message);
-        res.status(500).json({ error: 'Order cancellation failed', details: error.response?.data || error.message });
+        return {
+            error: 'Internal Server Error',
+            message: error.message,
+            code: 500,
+        };
     }
 };
 
@@ -155,7 +255,7 @@ const downloadLabelInvoice = async (req, res) => {
 
 // Create Manifest
 const createManifest = async (req, res) => {
-    console.log("hii");
+
     console.log(req.body);
 
     try {
@@ -171,10 +271,9 @@ const createManifest = async (req, res) => {
 
 
 // Track Order
-const trackOrder = async (req, res) => {
-    const { awbNumber, cAwbNumber } = req.query; // Expecting AWB Number or CAWB Number in query params
-
-    if (!awbNumber && !cAwbNumber) {
+const trackOrderShreeMaruti= async (awbNumber) => {
+    
+    if (!awbNumber) {
         return res.status(400).json({ error: 'Either awbNumber or cAwbNumber is required' });
     }
 
@@ -182,60 +281,79 @@ const trackOrder = async (req, res) => {
         const response = await axios.get(`${BASE_URL}/fulfillment/public/seller/order/order-tracking`, {
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`, // Ensure `getToken()` returns a valid token
+                Authorization: `Bearer ${token}`,
             },
-            params: { awbNumber, cAwbNumber }, // Query parameters
+            params: { awbNumber}, 
         });
 
-        res.status(200).json(response.data);
+        if(response.data.status==200){
+            return({
+             success:true,   
+             data:response.data.data.orderStatus
+            });
+        }
+        else{
+            return({
+                success:false,
+                data:"Error in tracking"
+            })
+        }
     } catch (error) {
         console.error('Error tracking order:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
-            error: 'Tracking failed',
-            details: error.response?.data || error.message,
-        });
+        console.log(error);
+
+        return({
+            success:false,
+            data:"Error in tracking"
+        })
+      
     }
 };
 
 
 // Serviceability
-const checkServiceability = async (req, res) => {
-    const { fromPincode, toPincode, isCodOrder, deliveryMode } = req.body;
+const checkServiceabilityShreeMaruti = async (payload) => {
+    const { fromPincode, toPincode, isCodOrder, deliveryMode } = payload;
 
-    // Validate required fields
     if (!fromPincode || !toPincode || isCodOrder === undefined || !deliveryMode) {
-        return res.status(400).json({ error: 'Missing required fields: fromPincode, toPincode, isCodOrder, and deliveryMode are mandatory.' });
+        return { error: 'Missing required fields: fromPincode, toPincode, isCodOrder, and deliveryMode are mandatory.' }
     }
 
+
+
     try {
+        const token = await getToken();
         const response = await axios.post(
             `${BASE_URL}/fulfillment/public/seller/order/check-ecomm-order-serviceability`,
             { fromPincode, toPincode, isCodOrder, deliveryMode },
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`, // Ensure `getToken()` returns a valid token
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
-        res.status(200).json(response.data);
+        if (response?.data?.data?.serviceability) {
+            return true
+        }
+        else {
+            return false;
+        }
+
     } catch (error) {
         console.error('Error checking serviceability:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
-            error: 'Serviceability check failed',
-            details: error.response?.data || error.message,
-        });
+        return false;
     }
 };
 
 
 module.exports = {
     createOrder,
-    cancelOrder,
+    cancelOrderShreeMaruti,
     downloadLabelInvoice,
     createManifest,
-    trackOrder,
-    checkServiceability,
+    trackOrderShreeMaruti,
+    checkServiceabilityShreeMaruti,
     getCourierList,
     addService
 };

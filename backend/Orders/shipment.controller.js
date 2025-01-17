@@ -1,6 +1,9 @@
 const Order = require("../models/orderSchema.model");
 const { getServiceablePincodesData } = require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
 const{checkServiceability}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const{checkServiceabilityXpressBees}=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const{checkPincodeServiceabilityDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const{checkServiceabilityShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
 const checkServiceabilityAll= async (service, id,pincode) => {
     try {
@@ -42,7 +45,40 @@ const checkServiceabilityAll= async (service, id,pincode) => {
         }
 
         if (service.courierProviderName === "Xpressbees") {
-            return true;
+            
+            const payload = {
+                    origin:pincode,
+                    destination: currentOrder.shipping_details.pinCode,
+                    payment_type: currentOrder.order_type === 'Cash on Delivery' ?"cod":"prepaid",
+                    order_amount:currentOrder.sub_total,
+                    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),parseInt(currentOrder.shipping_cost.volumetricWeight)),
+                    length: currentOrder.shipping_cost.dimensions.length,
+                    breadth: currentOrder.shipping_cost.dimensions.width,
+                    height: currentOrder.shipping_cost.dimensions.height,
+    
+            };
+
+            const result=await checkServiceabilityXpressBees(service.courierProviderServiceName,payload);
+            return result;
+
+        }
+
+        if (service.courierProviderName === "Delhivery"){
+            const result=await checkPincodeServiceabilityDelhivery(pincode,currentOrder.order_type);
+            return result;
+        }
+
+        if(service.courierProviderName==="ShreeMaruti"){
+          
+            const payload={
+                fromPincode:parseInt(pincode),
+                toPincode:parseInt(currentOrder.shipping_details.pinCode),
+                isCodOrder:currentOrder.order_type === 'Cash on Delivery' ?true:false,
+                deliveryMode:'SURFACE'
+            }
+            const result=await checkServiceabilityShreeMaruti(payload);
+            return result;
+            
         }
 
         
