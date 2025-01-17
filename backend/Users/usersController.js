@@ -1,5 +1,6 @@
 const User = require("../models/User.model");
 const Plan =require("../models/Plan.model");
+const RateCard=require("../models/rateCards");
 
 
 const getUsers = async (req, res) => {
@@ -22,7 +23,7 @@ const getUsers = async (req, res) => {
 const getUserDetails = async (req, res) => {
     try {
     
-        const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate({path:'orders',populate:{path:'service_details'}}).populate('Wallet');
+        const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate({path:'orders',populate:{path:'service_details'}}).populate('Wallet').populate('plan');
         res.status(201).json({
             success: true,
             user:existsingUser,
@@ -75,4 +76,42 @@ const assignPlan=async(req,res)=>{
     }
 }
 
-module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan};
+
+const getRatecards = async (req, res) => {
+    try {
+        const { plan: currentPlan } = req.body;
+
+        // Validate input
+        if (!currentPlan) {
+            return res.status(400).json({
+                success: false,
+                message: "Plan is required.",
+            });
+        }
+
+        
+        const rateCard = await RateCard.find({ type: currentPlan });
+
+        if (!rateCard || rateCard.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No rate cards found for the specified plan.",
+            });
+        }
+        res.status(201).json({
+            success: true,
+            message: "Rate cards retrieved successfully.",
+            data: rateCard,
+        });
+    } catch (error) {
+        console.error("Error fetching rate cards:", error)
+        res.status(500).json({
+            success: false,
+            message: "An error occurred while fetching rate cards. Please try again later.",
+            error: error.message,
+        });
+    }
+};
+
+
+module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan,getRatecards};

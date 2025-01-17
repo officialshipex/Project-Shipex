@@ -9,7 +9,7 @@ const calculateRate = async (req, res) => {
     let result = await getZone(req.body.pickupPincode, req.body.deliveryPincode);
     let currentZone = result.zone;
     let ans = [];
-    let rateCards = await RateCard.find({ defaultRate: true });
+    let rateCards = await RateCard.find({type:req.body.plan});
    
 
     let l = parseFloat(req.body.length);
@@ -77,6 +77,7 @@ const calculateRate = async (req, res) => {
 
       ans.push(allRates);
     }
+    console.log(ans);
 
     res.status(201).json(ans);
   } catch (error) {
