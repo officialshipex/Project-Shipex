@@ -72,14 +72,26 @@ const createShipment = async (req, res) => {
             currentOrder.awb_number = result.awb_number;
             currentOrder.shipment_id = `${result.awb_number}`;
             currentOrder.service_details = selectedServiceDetails._id;
+            currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
             currentOrder.tracking = [];
             currentOrder.tracking.push({
                 stage: 'Order Booked'
             });
             await currentOrder.save();
             let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-            currentWallet -= balanceToBeDeducted;
-            await currentWallet.save();
+            let currentBalance = currentWallet.balance - balanceToBeDeducted;
+            await currentWallet.updateOne({
+                $inc: { balance: -balanceToBeDeducted },
+                $push: {
+                    transactions: {
+                        txnType: "Shipping",
+                        action: "debit",
+                        amount: currentBalance,
+                        balanceAfterTransaction: currentWallet.balance - balanceToBeDeducted,
+                        awb_number: `${result.awb_number}`,
+                    },
+                },
+            });
 
             return res.status(201).json({ message: "Shipment Created Succesfully" });
 

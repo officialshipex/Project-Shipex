@@ -86,14 +86,27 @@ const createOrder = async (req, res) => {
       currentOrder.service_details = selectedServiceDetails._id;
       currentOrder.warehouse = wh._id;
       currentOrder.tracking = [];
+      currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       currentOrder.tracking.push({
         stage: 'Order Booked'
       });
       let savedOrder = await currentOrder.save();
 
       let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      currentWallet -= balanceToBeDeducted;
-      await currentWallet.save();
+      let currentBalance=currentWallet.balance-balanceToBeDeducted;
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            txnType: "Shipping",
+            action: "debit",
+            amount: currentBalance,
+            balanceAfterTransaction: currentWallet.balance - balanceToBeDeducted,
+            awb_number: `${result.waybill}`,
+          },
+        },
+      });
+      
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {

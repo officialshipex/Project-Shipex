@@ -157,7 +157,7 @@ const shipOrder = async (req, res) => {
       cod: currentOrder.order_type === 'Cash on Delivery' ? "Yes" : "No",
       valueInINR: currentOrder.sub_total,
       filteredServices,
-      rateCardType: "Basic"
+      rateCardType:req.body.plan
     };
 
     let rates = await calculateRateForService(payload);
