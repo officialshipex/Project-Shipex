@@ -5,6 +5,7 @@ const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../../../models/orderSchema.model");
 const crypto = require("crypto");
+const Wallet = require("../../../models/wallet");
 
 
 // HELPER FUNCTIONS
@@ -20,8 +21,9 @@ const getCurrentDateTime = () => {
 const createOrder = async (req, res) => {
   const url = `https://track.delhivery.com/api/cmu/create.json`;
 
-  const { selectedServiceDetails, id, wh } = req.body;
+  const { selectedServiceDetails, id, wh } = req.body.payload;
   const currentOrder = await Order.findById(id);
+  const currentWallet = await Wallet.findById(req.body.walletId);
 
 
 
@@ -83,11 +85,15 @@ const createOrder = async (req, res) => {
       currentOrder.shipment_id = `${result.refnum}`;
       currentOrder.service_details = selectedServiceDetails._id;
       currentOrder.warehouse = wh._id;
-      currentOrder.tracking=[];
+      currentOrder.tracking = [];
       currentOrder.tracking.push({
-        stage:'Order Booked'
-       });
+        stage: 'Order Booked'
+      });
       let savedOrder = await currentOrder.save();
+
+      let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      currentWallet -= balanceToBeDeducted;
+      await currentWallet.save();
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
@@ -148,7 +154,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   }
 };
 
-const trackShipmentDelhivery= async (waybill) => {
+const trackShipmentDelhivery = async (waybill) => {
 
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
@@ -158,24 +164,24 @@ const trackShipmentDelhivery= async (waybill) => {
   try {
     const response = await axios.get(`${url}/api/v1/packages/json/waybill=${waybill}&token=${API_TOKEN}`);
     console.log(response);
-    if(response?.data?.success){
-      return({
-        succes:true,
-        data:response.data
+    if (response?.data?.success) {
+      return ({
+        succes: true,
+        data: response.data
       })
     }
-    else{
-      return({
-        success:false,
-        data:"Error in tracking"
+    else {
+      return ({
+        success: false,
+        data: "Error in tracking"
       });
     }
 
   } catch (error) {
     console.error("Error tracking shipment:", error.message);
-    return({
-      success:false,
-      data:"Error in tracking"
+    return ({
+      success: false,
+      data: "Error in tracking"
     });
   }
 };

@@ -2,6 +2,7 @@ require('dotenv').config();
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
+const Wallet=require("../../../models/wallet");
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -50,8 +51,9 @@ const assignAWB = async (shipment_id, courier_id) => {
 
 
 const createCustomOrder = async (req, res) => {
-  const { selectedServiceDetails, id, wh } = req.body;
+  const { selectedServiceDetails, id, wh } = req.body.payload;
   const currentOrder = await Order.findById(id);
+  const currentWallet = await Wallet.findById(req.body.walletId);
   const order_items = new Array(currentOrder.Product_details.length);
 
   currentOrder.Product_details.map((item, index) => {
@@ -132,12 +134,15 @@ const createCustomOrder = async (req, res) => {
       currentOrder.awb_number = result.awb_code;
       currentOrder.shipment_id = shipment_id;
       currentOrder.service_details = selectedServiceDetails._id;
-      currentOrder.tracking=[];
+      currentOrder.tracking = [];
       currentOrder.tracking.push({
         stage: 'Order Booked'
       });
 
       const savedOrder = await currentOrder.save();
+      let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      currentWallet-= balanceToBeDeducted;
+      await currentWallet.save();
 
       return res.status(201).json({ message: "Shipment Created Successfully" });
     } else {
@@ -214,7 +219,7 @@ async function checkServiceability(service, payload) {
     const token = await getToken();
     const response = await axios.get(`${BASE_URL}/courier/serviceability/`, {
       headers: { Authorization: `Bearer ${token}` },
-      params: { pickup_postcode, delivery_postcode, cod, weight},
+      params: { pickup_postcode, delivery_postcode, cod, weight },
     });
 
     const result = response.data?.data?.available_courier_companies || [];
