@@ -1,10 +1,11 @@
 const User = require("../models/User.model");
+const Plan =require("../models/Plan.model");
 
 
 const getUsers = async (req, res) => {
     try {
         const allUsers = await User.find({});
-        res.status(200).json({
+        res.status(201).json({
             success: true,
             data: allUsers,
         });
@@ -35,4 +36,21 @@ const getUserDetails = async (req, res) => {
     }
 }
 
-module.exports = { getUsers,getUserDetails};
+const getAllPlans=async(req,res)=>{
+    try{
+       const allPlans=await Plan.find({});
+       res.status(201).json({
+        success: true,
+        data: allPlans,
+    });
+    }
+    catch(error){
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch plans",
+            error: error.message,
+        });
+    }
+}
+
+module.exports = { getUsers,getUserDetails,getAllPlans};
