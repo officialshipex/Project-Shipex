@@ -53,4 +53,26 @@ const getAllPlans=async(req,res)=>{
     }
 }
 
-module.exports = { getUsers,getUserDetails,getAllPlans};
+const assignPlan=async(req,res)=>{
+
+    try{
+    let userId=req.params.userId;
+    let planId=req.params.planId;
+
+    const currentUser=await User.findById(userId);
+    const currentPlan=await Plan.findById(planId);
+
+    currentUser.plan=currentPlan._id;
+    await currentUser.save();
+    res.status(201).json({
+       success:true,
+    });
+    }
+    catch(error){
+        res.status(500).json({
+            success:true,
+         });
+    }
+}
+
+module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan};
