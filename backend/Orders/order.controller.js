@@ -1,6 +1,7 @@
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
 const Courier = require("../models/courierSecond");
+const Wallet=require("../models/wallet");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
@@ -332,12 +333,16 @@ const requestPickup = async (req, res) => {
 
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body.items;
+  const walletId=req.body.walletId;
 
   if (!Array.isArray(allOrders) || allOrders.length === 0) {
     return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
   }
 
   try {
+
+    const currentWallet=await Wallet.findById(walletId);
+
     const ordersFromDb = await Promise.all(
       allOrders.map(order => Order.findById(order._id).populate('service_details'))
     );
@@ -392,7 +397,10 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.tracking.push({
           stage: 'Cancelled'
         });
+        currentWallet.balance-=currentOrder.freightCharges;
+        currentOrder.freightCharges=0;
         await currentOrder.save();
+        await currentWallet.save();
 
         return { message: 'Order cancelled successfully', orderId: currentOrder._id };
       })
