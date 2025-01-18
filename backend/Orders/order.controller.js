@@ -1,7 +1,7 @@
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
 const Courier = require("../models/courierSecond");
-const Wallet=require("../models/wallet");
+const Wallet = require("../models/wallet");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const User = require("../models/User.model");
@@ -19,33 +19,33 @@ function calculateOrderTotals(orderData) {
   // Calculate sub-total and product discounts
   orderData.productDetails.forEach(product => {
     const { quantity, unitPrice, discount = 0 } = product;
-    console.log("quantity:", quantity, "unitprice:", unitPrice, "discount:", discount);
+    // console.log("quantity:", quantity, "unitprice:", unitPrice, "discount:", discount);
 
     const productTotal = quantity * unitPrice;
-    console.log("productTotal:", productTotal);
+    // console.log("productTotal:", productTotal);
 
     subTotal += productTotal;
-    console.log("subtotal:", subTotal);
+    // console.log("subtotal:", subTotal);
 
     productDiscount += (productTotal * discount) / 100;  // Assuming discount is a percentage
-    console.log("productDiscount:", productDiscount);
+    // console.log("productDiscount:", productDiscount);
 
   });
 
   // Calculate other charges
   const shipping = orderData.orderDetails.shippingCharges || 0;
-  console.log("shiping:", shipping);
+  // console.log("shiping:", shipping);
 
   const giftWrap = orderData.orderDetails.giftWrap || 0;
-  console.log("giftwrap:", giftWrap);
+  // console.log("giftwrap:", giftWrap);
 
 
   // Calculate additional discount on the whole order
   const additionalDiscount = orderData.orderDetails?.additionalDiscount || 0;
-  console.log("additionalDiscount:", additionalDiscount);
+  // console.log("additionalDiscount:", additionalDiscount);
 
   const discountAmount = (subTotal * additionalDiscount) / 100;
-  console.log("discountAmauont:", discountAmount);
+  // console.log("discountAmauont:", discountAmount);
 
 
   // Total order value calculation
@@ -62,7 +62,7 @@ function calculateOrderTotals(orderData) {
 
 const createOrder = async (req, res) => {
   try {
-    console.log("I am in createOrder");
+    // console.log("I am in createOrder");
     const data = req.body.formData;
     const id = req.body.user._id;
     const shipping_is_billing = req.body.isSame;
@@ -122,7 +122,7 @@ const getOrderDetails = async (req, res) => {
 
 const shipOrder = async (req, res) => {
   try {
-    // const enabledServices = await Services.find({ isEnabeled: true });
+
     const currentOrder = await Order.findById(req.body.id);
 
     const servicesCursor = Services.find({ isEnabeled: true });
@@ -158,7 +158,7 @@ const shipOrder = async (req, res) => {
       cod: currentOrder.order_type === 'Cash on Delivery' ? "Yes" : "No",
       valueInINR: currentOrder.sub_total,
       filteredServices,
-      rateCardType:req.body.plan
+      rateCardType: req.body.plan
     };
 
     let rates = await calculateRateForService(payload);
@@ -178,6 +178,8 @@ const shipOrder = async (req, res) => {
     });
   }
 };
+
+
 
 
 const cancelOrdersAtNotShipped = async (req, res) => {
@@ -333,7 +335,7 @@ const requestPickup = async (req, res) => {
 
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body.items;
-  const walletId=req.body.walletId;
+  const walletId = req.body.walletId;
 
   if (!Array.isArray(allOrders) || allOrders.length === 0) {
     return res.status(400).send({ error: 'Invalid input. Please provide a valid list of orders to cancel.' });
@@ -341,7 +343,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 
   try {
 
-    const currentWallet=await Wallet.findById(walletId);
+    const currentWallet = await Wallet.findById(walletId);
 
     const ordersFromDb = await Promise.all(
       allOrders.map(order => Order.findById(order._id).populate('service_details'))
@@ -376,7 +378,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 
         }
         else if (currentOrder.service_details.courierProviderName === "Delhivery") {
-          console.log("I am in it");
+          // console.log("I am in it");
           const result = await cancelOrderDelhivery(currentOrder.awb_number);
           if (result.error) {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
@@ -397,8 +399,22 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.tracking.push({
           stage: 'Cancelled'
         });
-        currentWallet.balance-=currentOrder.freightCharges;
-        currentOrder.freightCharges=0;
+        let balanceTobeAdded = currentOrder.freightCharges;
+        let currentBalance = currentWallet.balance + balanceTobeAdded;
+
+        await currentWallet.updateOne({
+          $inc: { balance: balanceTobeAdded },
+          $push: {
+            transactions: {
+              txnType: "Shipping",
+              action: "credit",
+              amount: currentBalance,
+              balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
+              awb_number: `${currentOrder.awb_number}`,
+            },
+          },
+        });
+        currentOrder.freightCharges = 0;
         await currentOrder.save();
         await currentWallet.save();
 
@@ -430,7 +446,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 
 
 const tracking = async (req, res) => {
-  console.log("Tracking initiated");
+  // console.log("Tracking initiated");
 
   try {
     const allOrders = await Promise.all(
@@ -545,6 +561,48 @@ const editOrder = async (req, res) => {
   }
 };
 
+const shipBulkOrder = async (req, res) => {
+  try {
+    const { id, pincode, plan, isBulkShip } = req.body;
+    const servicesCursor = Services.find({ isEnabeled: true });
+    const enabledServices = [];
+
+    for await (const srvc of servicesCursor) {
+      const provider = await Courier.findOne({ provider: srvc.courierProviderName });
+      if (provider?.isEnabeled === true && provider?.toEnabeled === false) {
+        enabledServices.push(srvc);
+      }
+    }
+
+    const availableServices = await Promise.all(
+      id.map(async (item) => {
+        const serviceable = await Promise.all(
+          enabledServices.map(async (svc) => {
+            const result = await checkServiceabilityAll(svc, item._id, pincode);
+            return result ? svc : null;
+          })
+        );
+        return serviceable.filter(Boolean);
+      })
+    );
+
+    const flattenedAvailableServices = [...new Set(availableServices.flat())];
+    
+
+    res.status(201).json({
+      success: true,
+      services: flattenedAvailableServices,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch services",
+      error: error.message,
+    });
+  }
+};
+
 
 
 
@@ -559,5 +617,7 @@ module.exports = {
   requestPickup,
   cancelOrdersAtBooked,
   tracking,
-  editOrder
+  editOrder,
+  shipBulkOrder,
+  shipBulkOrder
 }
