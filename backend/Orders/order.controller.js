@@ -1,3 +1,4 @@
+require('dotenv').config();
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
 const Courier = require("../models/courierSecond");
@@ -10,6 +11,7 @@ const { pickup, cancelShipmentXpressBees, trackShipment } = require("../AllCouri
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery, trackShipmentDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const{createShipmentFunctionNimbusPost}=require("../AllCouriers/NimbusPost/Shipments/bulkShipment.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -150,7 +152,7 @@ const shipOrder = async (req, res) => {
 
     const payload = {
       pickupPincode: req.body.pincode,
-      deliveryPincode: currentOrder.Biling_details.pinCode,
+      deliveryPincode: currentOrder.shipping_details.pinCode,
       length: currentOrder.shipping_cost.dimensions.length,
       breadth: currentOrder.shipping_cost.dimensions.width,
       height: currentOrder.shipping_cost.dimensions.height,
@@ -606,6 +608,75 @@ const shipBulkOrder = async (req, res) => {
 
 
 
+const createBulkOrder = async (req, res) => {
+  console.log("Bulk order creation initiated");
+
+  const { walletId } = req.body;
+  const { selectedServiceDetails, id, wh } = req.body.payload;
+
+  console.log("Selected service details: ", selectedServiceDetails);
+
+  try {
+    if (!Array.isArray(id) || id.length === 0) {
+      return res.status(400).json({ error: 'No orders provided for bulk creation.' });
+    }
+
+    const orderPromises = id.map(async (item) => {
+      const details = {
+        pickupPincode: `${wh.pinCode}`,
+        deliveryPincode: `${item.shipping_details.pinCode}`,
+        length: item.shipping_cost.dimensions.length,
+        breadth: item.shipping_cost.dimensions.width,
+        height: item.shipping_cost.dimensions.height,
+        weight: item.shipping_cost.weight,
+        cod: item.order_type === 'Cash on Delivery' ? "Yes" : "No",
+        valueInINR: item.sub_total,
+        filteredServices: [selectedServiceDetails],
+        rateCardType: req.body.plan,
+      };
+
+      let rates;
+      try {
+        rates = await calculateRateForService(details);
+      } catch (error) {
+        console.error("Error calculating rate for service:", error);
+        return { error: `Error calculating rate for order ${item._id}` };
+      }
+
+      const charges = parseInt(rates[0].forward.finalCharges);
+
+      try {
+        if (selectedServiceDetails.courierProviderName === "NimbusPost") {
+          await createShipmentFunctionNimbusPost(selectedServiceDetails, item._id, wh, walletId, charges);
+        } else if (selectedServiceDetails.courierProviderName === "Xpressbees") {
+          
+        } else {
+          console.log(`No function defined for ${selectedServiceDetails.courierProviderName}`);
+        }
+      } catch (error) {
+        console.error(`Error creating shipment for order ${item._id}:`, error);
+        return { error: `Error creating shipment for order ${item._id}` };
+      }
+    });
+
+    const results = await Promise.all(orderPromises);
+
+    const errors = results.filter(result => result.error);
+    if (errors.length > 0) {
+      return res.status(500).json({ message: "Some shipments failed", errors });
+    }
+
+    return res.status(201).json({ message: 'Bulk orders created successfully' });
+
+  } catch (error) {
+    console.error('Error in creating bulk order:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+  }
+};
+
+
+
+
 
 
 module.exports = {
@@ -619,5 +690,6 @@ module.exports = {
   tracking,
   editOrder,
   shipBulkOrder,
-  shipBulkOrder
+  shipBulkOrder,
+  createBulkOrder
 }
