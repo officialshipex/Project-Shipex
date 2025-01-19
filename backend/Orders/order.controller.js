@@ -13,7 +13,9 @@ const { createPickupRequest, cancelOrderDelhivery, trackShipmentDelhivery } = re
 const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 const { createShipmentFunctionNimbusPost } = require("../AllCouriers/NimbusPost/Shipments/bulkShipment.controller");
 const { createShipmentFunctionShipRocket } = require("../AllCouriers/ShipRocket/MainServices/bulkShipment.controller");
-const {createShipmentFunctionXpressBees}=require("../AllCouriers/Xpressbees/MainServices/bulkShipment.controller");
+const { createShipmentFunctionXpressBees } = require("../AllCouriers/Xpressbees/MainServices/bulkShipment.controller");
+const {createShipmentFunctionDelhivery}=require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
+const {createShipmentFunctionShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/bulkShipment.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -667,14 +669,29 @@ const createBulkOrder = async (req, res) => {
             successCount++;
             return { success: true };
           }
-          else if(selectedServiceDetails.courierProviderName === "Xpressbees"){
-             let result=createShipmentFunctionXpressBees(selectedServiceDetails, item._id, wh, walletId, charges);
-             if (result.status === 200) {
+          else if (selectedServiceDetails.courierProviderName === "Xpressbees") {
+            let result = createShipmentFunctionXpressBees(selectedServiceDetails, item._id, wh, walletId, charges);
+            if (result.status === 200) {
               successCount++;
               return { success: true };
             }
           }
-           else {
+          else if (selectedServiceDetails.courierProviderName === "Delhivery") {
+            let result =await createShipmentFunctionDelhivery(selectedServiceDetails, item._id, wh, walletId, charges);
+            if (result.status === 200) {
+              successCount++;
+              return { success: true };
+            }
+          }
+          else if(selectedServiceDetails.courierProviderName === "ShreeMaruti"){
+            let result =await createShipmentFunctionShreeMaruti(selectedServiceDetails, item._id, wh, walletId, charges);
+            if (result.status === 200) {
+              successCount++;
+              return { success: true };
+            }
+
+          }
+          else {
             failureCount++;
           }
         } else {
