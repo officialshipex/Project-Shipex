@@ -14,8 +14,10 @@ const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCourier
 const { createShipmentFunctionNimbusPost } = require("../AllCouriers/NimbusPost/Shipments/bulkShipment.controller");
 const { createShipmentFunctionShipRocket } = require("../AllCouriers/ShipRocket/MainServices/bulkShipment.controller");
 const { createShipmentFunctionXpressBees } = require("../AllCouriers/Xpressbees/MainServices/bulkShipment.controller");
-const {createShipmentFunctionDelhivery}=require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
-const {createShipmentFunctionShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/bulkShipment.controller");
+const { createShipmentFunctionDelhivery } = require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
+const { createShipmentFunctionShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/bulkShipment.controller");
+
+const {AutoShip}=require("../Orders/AutoShipB2c.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -614,9 +616,18 @@ const shipBulkOrder = async (req, res) => {
 
 const createBulkOrder = async (req, res) => {
   console.log("Bulk order creation initiated");
+  console.log(req.body);
 
   const { walletId } = req.body;
   const { selectedServiceDetails, id, wh } = req.body.payload;
+
+  if(selectedServiceDetails?.courierProviderName==="AutoShip"||selectedServiceDetails?.courierProviderServiceName==="AutoShip"){
+
+    id.map(async(order,wh)=>{
+      const priorityServices=await AutoShip(order);
+    })
+    return;
+  }
 
   console.log("Selected service details: ", selectedServiceDetails);
 
@@ -677,14 +688,14 @@ const createBulkOrder = async (req, res) => {
             }
           }
           else if (selectedServiceDetails.courierProviderName === "Delhivery") {
-            let result =await createShipmentFunctionDelhivery(selectedServiceDetails, item._id, wh, walletId, charges);
+            let result = await createShipmentFunctionDelhivery(selectedServiceDetails, item._id, wh, walletId, charges);
             if (result.status === 200) {
               successCount++;
               return { success: true };
             }
           }
-          else if(selectedServiceDetails.courierProviderName === "ShreeMaruti"){
-            let result =await createShipmentFunctionShreeMaruti(selectedServiceDetails, item._id, wh, walletId, charges);
+          else if (selectedServiceDetails.courierProviderName === "ShreeMaruti") {
+            let result = await createShipmentFunctionShreeMaruti(selectedServiceDetails, item._id, wh, walletId, charges);
             if (result.status === 200) {
               successCount++;
               return { success: true };
