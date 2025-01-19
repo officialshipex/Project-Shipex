@@ -7,8 +7,8 @@ const Order = require("../../../models/orderSchema.model");
 const { getUniqueId } = require("../../getUniqueId");
 const Wallet = require("../../../models/wallet");
 
-// Configuration (replace with actual values)
-const BASE_URL = process.env.SHREEMA_URL; // Replace with the actual base URL
+
+const BASE_URL = process.env.SHREEMA_URL; 
 
 
 
