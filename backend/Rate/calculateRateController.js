@@ -3,7 +3,6 @@ const zoneManagementController = require("./zoneManagementController.js");
 const getZone = zoneManagementController.getZone;
 
 
-
 const calculateRate = async (req, res) => {
   try {
     let result = await getZone(req.body.pickupPincode, req.body.deliveryPincode);
@@ -77,7 +76,7 @@ const calculateRate = async (req, res) => {
 
       ans.push(allRates);
     }
-    console.log(ans);
+   
 
     res.status(201).json(ans);
   } catch (error) {
@@ -97,7 +96,7 @@ async function calculateRateForService(payload) {
     const l = parseFloat(length);
     const b = parseFloat(breadth);
     const h = parseFloat(height);
-    const deadweight = parseFloat(weight);
+    const deadweight = parseFloat(weight)/1000;
     const volumetricWeight = (l * b * h) / 5000;
     const chargedWeight = Math.max(deadweight, volumetricWeight);
     let codCharge = 0;
@@ -136,6 +135,9 @@ async function calculateRateForService(payload) {
         }
       }
 
+      
+    
+
       const gstAmountForward = ((totalForwardCharge + codCharge) * (gstRate / 100)).toFixed(2);
       const totalChargesForward = ((totalForwardCharge + codCharge) + (totalForwardCharge + codCharge) * (gstRate / 100)).toFixed(2);
       const gstAmountRTO = ((totalRTOCharge + codCharge) * (gstRate / 100)).toFixed(2);
@@ -155,6 +157,7 @@ async function calculateRateForService(payload) {
           finalCharges: totalChargesRTO
         }
       };
+      
 
       ans.push(allRates);
     }

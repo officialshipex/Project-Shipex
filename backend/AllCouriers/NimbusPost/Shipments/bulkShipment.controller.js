@@ -7,6 +7,7 @@ const createShipmentFunctionNimbusPost= async (selectedServiceDetails, id, wh, w
   const url = 'https://api.nimbuspost.com/v1/shipments';
 
   try {
+    console.log("I am in bulk shipment");
     const currentOrder = await Order.findById(id);
     const currentWallet = await Wallet.findById(walletId);
 
@@ -52,6 +53,10 @@ const createShipmentFunctionNimbusPost= async (selectedServiceDetails, id, wh, w
 
     const token = await getAuthToken();
 
+    console.log(shipmentData);
+    console.log(token);
+    console.log(finalCharges);
+
     // Send shipment creation request
     const response = await axios.post(url, shipmentData, {
       headers: {
@@ -59,6 +64,7 @@ const createShipmentFunctionNimbusPost= async (selectedServiceDetails, id, wh, w
         Authorization: `Bearer ${token}`,
       },
     });
+    console.log("Response",response);
 
     if (response.data.status) {
       const result = response.data.data;
