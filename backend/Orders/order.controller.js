@@ -11,7 +11,9 @@ const { pickup, cancelShipmentXpressBees, trackShipment } = require("../AllCouri
 const { cancelShipment, trackShipmentNimbuspost } = require("../AllCouriers/NimbusPost/Shipments/shipments.controller");
 const { createPickupRequest, cancelOrderDelhivery, trackShipmentDelhivery } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const { cancelOrderShreeMaruti, trackOrderShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
-const{createShipmentFunctionNimbusPost}=require("../AllCouriers/NimbusPost/Shipments/bulkShipment.controller");
+const { createShipmentFunctionNimbusPost } = require("../AllCouriers/NimbusPost/Shipments/bulkShipment.controller");
+const { createShipmentFunctionShipRocket } = require("../AllCouriers/ShipRocket/MainServices/bulkShipment.controller");
+const {createShipmentFunctionXpressBees}=require("../AllCouriers/Xpressbees/MainServices/bulkShipment.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -589,7 +591,7 @@ const shipBulkOrder = async (req, res) => {
     );
 
     const flattenedAvailableServices = [...new Set(availableServices.flat())];
-    
+
 
     res.status(201).json({
       success: true,
@@ -616,6 +618,9 @@ const createBulkOrder = async (req, res) => {
 
   console.log("Selected service details: ", selectedServiceDetails);
 
+  let successCount = 0;
+  let failureCount = 0;
+
   try {
     if (!Array.isArray(id) || id.length === 0) {
       return res.status(400).json({ error: 'No orders provided for bulk creation.' });
@@ -640,37 +645,66 @@ const createBulkOrder = async (req, res) => {
         rates = await calculateRateForService(details);
       } catch (error) {
         console.error("Error calculating rate for service:", error);
+        failureCount++;
         return { error: `Error calculating rate for order ${item._id}` };
       }
 
+      console.log(rates);
       const charges = parseInt(rates[0].forward.finalCharges);
 
       try {
         if (selectedServiceDetails.courierProviderName === "NimbusPost") {
-          await createShipmentFunctionNimbusPost(selectedServiceDetails, item._id, wh, walletId, charges);
-        } else if (selectedServiceDetails.courierProviderName === "Xpressbees") {
-          
+          let result = await createShipmentFunctionNimbusPost(selectedServiceDetails, item._id, wh, walletId, charges);
+          if (result.status === 200) {
+            successCount++;
+            return { success: true };
+          } else {
+            failureCount++;
+          }
+        } else if (selectedServiceDetails.courierProviderName === "Shiprocket") {
+          let result = createShipmentFunctionShipRocket(selectedServiceDetails, item._id, wh, walletId, charges);
+          if (result.status === 200) {
+            successCount++;
+            return { success: true };
+          }
+          else if(selectedServiceDetails.courierProviderName === "Xpressbees"){
+             let result=createShipmentFunctionXpressBees(selectedServiceDetails, item._id, wh, walletId, charges);
+             if (result.status === 200) {
+              successCount++;
+              return { success: true };
+            }
+          }
+           else {
+            failureCount++;
+          }
         } else {
           console.log(`No function defined for ${selectedServiceDetails.courierProviderName}`);
+          failureCount++;
+          return { error: `No function defined for ${selectedServiceDetails.courierProviderName}` };
         }
       } catch (error) {
         console.error(`Error creating shipment for order ${item._id}:`, error);
-        return { error: `Error creating shipment for order ${item._id}` };
+        failureCount++;
       }
     });
 
     const results = await Promise.all(orderPromises);
 
-    const errors = results.filter(result => result.error);
-    if (errors.length > 0) {
-      return res.status(500).json({ message: "Some shipments failed", errors });
-    }
-
-    return res.status(201).json({ message: 'Bulk orders created successfully' });
+    return res.status(201).json({
+      message: `${successCount} orders created successfully &  for ${failureCount} failed.
+      Please select Another Service`,
+      successCount,
+      failureCount,
+    });
 
   } catch (error) {
     console.error('Error in creating bulk order:', error);
-    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message,
+      successCount,
+      failureCount,
+    });
   }
 };
 
