@@ -1,39 +1,53 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
-const path = require("path"); // For resolving the image path
+const fs = require("fs");
+const path = require("path");
+const{generateStyledInvoiceWithPages}=require("./InvoiceStyle");
 
 const router = express.Router();
 router.use(express.json());
 
-const invoiceDemo = {
-  _id: "63bcd2f8e92f4700192f8a1d",
-  invoiceNumber: "1736312705",
-  invoiceDate: "Jan 08, 2025",
-  customerName: "Ravi Yadav",
-  billingAddress: "Main Road, Bus Stand, Vpo Chhillar, Rewari, Haryana, 123401",
-  shippingAddress:
-    "Main Road, Bus Stand, Vpo Chhillar, Rewari, Haryana, 123401",
-  paymentMethod: "COD",
-  AWB: "SF1544098244NIM",
-  product: {
-    name: "Shoes",
-    sku: "SH12345",
-    hsn: "640391",
-    quantity: 1,
-    unitPrice: 1100,
-  },
-  totalAmount: 1100,
-  orderDate: "Feb 03, 2024",
-  shipedBy: "Ravi Yadav",
-};
+// const invoiceDemo = {
+//   _id: "63bcd2f8e92f4700192f8a1d",
+//   invoiceNumber: "1736312705",
+//   invoiceDate: "Jan 08, 2025",
+//   customerName: "Ravi Yadav",
+//   billingAddress: "Main Road, Bus Stand, Vpo Chhillar, Rewari, Haryana, 123401",
+//   shippingAddress:
+//     "Main Road, Bus Stand, Vpo Chhillar, Rewari, Haryana, 123401",
+//   paymentMethod: "COD",
+//   AWB: "SF1544098244NIM",
+//   product: {
+//     name: "Shoes",
+//     sku: "SH12345",
+//     hsn: "640391",
+//     quantity: 1,
+//     unitPrice: 1100,
+//   },
+//   totalAmount: 1100,
+//   orderDate: "Feb 03, 2024",
+//   shipedBy: "Ravi Yadav",
+// };
 
-router.get("/generate-invoice/:id", async (req, res) => {
-  try {
-    const invoice = invoiceDemo;
+  router.get("/generate-invoice/:id", async (req, res) => {
+    try {
+      const selectedItems = req.headers['custom-data']
+        ? JSON.parse(req.headers['custom-data'])
+        : null;
+  
+      if (selectedItems==null) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+  
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="shipping_invoice.pdf"`
+      );
+  
+      generateStyledInvoiceWithPages(selectedItems,res);
+    
 
-    if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
-    }
 
     // Create the PDF document
     const pdfDoc = new PDFDocument({ margin: 30 });

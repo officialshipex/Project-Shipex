@@ -1,4 +1,4 @@
-const CourierSecond=require("../models/courierSecond");
+const CourierSecond=require("../models/courierServiceSecond.model");
 
 const getServices=async(req,res)=>{
  
@@ -17,4 +17,29 @@ const getServices=async(req,res)=>{
     }
 }
 
-module.exports={getServices};
+const getAllServices = async (req, res) => {
+  try {
+    const result = await CourierSecond.find({});
+    
+    if (!result || result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No services found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching services:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching services",
+      error: error.message,
+    });
+  }
+};
+
+module.exports={getAllServices,getServices};
