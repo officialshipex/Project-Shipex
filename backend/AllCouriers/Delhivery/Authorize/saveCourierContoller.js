@@ -1,10 +1,13 @@
+if(process.env.NODE_ENV!="production"){
 require('dotenv').config();
+}
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
 const { getUniqueId } = require("../../getUniqueId");
 
 const API_TOKEN = process.env.DEL_API_TOKEN;
+const BASE_URL=process.env.DELHIVERY_URL;
 
 const saveDelhivery = async (req, res) => {
     try {
@@ -163,7 +166,7 @@ const addService = async (req, res) => {
 };
 
 const fetchBulkWaybills = async (count) => {
-    const url = `https://track.delhivery.com/waybill/api/bulk/json/?count=${count}`;
+    const url = `${BASE_URL}/waybill/api/bulk/json/?count=${count}`;
 
     try {
         const response = await axios.get(url, {

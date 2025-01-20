@@ -1,11 +1,17 @@
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
+
+
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getAuthToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const Wallet = require("../../../models/wallet");
+const BASE_URL=process.env.XpreesbeesUrl;
 
 const createShipment = async (req, res) => {
 
-    const url = 'https://shipment.xpressbees.com/api/shipments2';
+    const url = `${BASE_URL}/api/shipments2`;
 
     const { selectedServiceDetails, id, wh } = req.body.payload;
     const currentOrder = await Order.findById(id);
@@ -108,7 +114,7 @@ const createShipment = async (req, res) => {
 
 const reverseBooking = async (req, res) => {
     const { shipmentData } = req.body;
-    const url = 'https://shipment.xpressbees.com/api/reverseshipments';
+    const url = `${BASE_URL}/api/reverseshipments`;
 
 
     try {
@@ -141,7 +147,7 @@ const trackShipment = async (trackingNumber) => {
         });
     }
 
-    const url = `https://shipment.xpressbees.com/api/shipments2/track/${trackingNumber}`;
+    const url = `${BASE_URL}/api/shipments2/track/${trackingNumber}`;
 
     try {
         const token = await getAuthToken();
@@ -180,7 +186,7 @@ const pickup = async (awbNumbers) => {
         return { error: 'AWB numbers must be a non-empty array' };
     }
 
-    const url = 'https://shipment.xpressbees.com/api/shipments2/manifest';
+    const url = `${BASE_URL}/api/shipments2/manifest`;
 
     try {
         const token = await getAuthToken();
@@ -215,7 +221,7 @@ const cancelShipmentXpressBees = async (awb) => {
         return res.status(400).json({ error: 'AWB number is required' });
     }
 
-    const url = 'https://shipment.xpressbees.com/api/shipments2/cancel';
+    const url = `${BASE_URL}/api/shipments2/cancel`;
 
     try {
         const token = await getAuthToken();
@@ -255,7 +261,7 @@ const cancelShipmentXpressBees = async (awb) => {
 const exceptionList = async (req, res) => {
     try {
         const token = await getAuthToken();
-        const url = 'https://shipment.xpressbees.com/api/ndr';
+        const url = `${BASE_URL}/api/ndr`;
         const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -272,7 +278,7 @@ const createNDR = async (req, res) => {
         return res.status(400).json({ error: 'Invalid input. NDR actions must be a non-empty array.' });
     }
 
-    const url = 'https://shipment.xpressbees.com/api/ndr/create';
+    const url = `${BASE_URL}/api/ndr/create`;
 
     try {
         const token = await getAuthToken();
@@ -313,7 +319,7 @@ const checkServiceabilityXpressBees = async (service, payload) => {
         const token = await getAuthToken();
 
         const response = await axios.post(
-            'https://shipment.xpressbees.com/api/courier/serviceability',
+            `${BASE_URL}/api/courier/serviceability`,
             {
                 origin,
                 destination,

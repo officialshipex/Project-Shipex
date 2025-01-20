@@ -1,6 +1,9 @@
-require('dotenv').config(); 
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const axios = require("axios");
 const Courier = require("../../../models/courierSecond");
+const BASE_URL=process.env.SHIPROCKET_URL;
 
 const getToken = async () => {
     const email = process.env.SHIPR_GMAIL;
@@ -15,7 +18,7 @@ const getToken = async () => {
     try {
         const options = {
             method: "POST",
-            url: "https://apiv2.shiprocket.in/v1/external/auth/login",
+            url: `${BASE_URL}/v1/external/auth/login`,
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
