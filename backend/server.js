@@ -35,6 +35,30 @@ const delhiveryRouter=require("./AllCouriersRoutes/delhivery.router")
 
 
 // const WareHouse=require("./routes/warehouse.router");
+const session=require('express-session');
+const MongoStore=require('connect-mongo');
+
+const store=MongoStore.create({
+    mongoUrl:process.env.MONGODB_URI,
+    crypto:{
+        secret:process.env.MONGO_SECRET,
+    },
+    touchAfter:24*3600
+});
+store.on("error",()=>{
+    console.log("ERROR IN MONGO STORE",err);
+    })
+    
+    const sessionOptions={
+        store,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 1000 * 60 * 60 * 24*7 
+        }
+    }
 
 const router = require("./routes");
 
@@ -44,6 +68,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 app.use(cors());
+
+    
+ app.use(session(sessionOptions));
 app.use(passport.initialize());
 
 app.use(express.static(path.join(__dirname, 'public')));
