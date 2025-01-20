@@ -63,6 +63,10 @@ const usersSchema = new mongoose.Schema({
     Wallet: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Wallet'
+    },
+    isAdmin:{
+        type:Boolean,
+        default:false
     }
 });
 
