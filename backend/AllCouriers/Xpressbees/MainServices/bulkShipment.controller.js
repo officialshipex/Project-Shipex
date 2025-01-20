@@ -1,13 +1,18 @@
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
+
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getAuthToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const Wallet = require("../../../models/wallet");
+const BASE_URL=process.env.XpreesbeesUrl;
 
 const createShipmentFunctionXpressBees = async (selectedServiceDetails, id, wh,
     walletId,
     finalCharges,
 ) => {
-    const url = 'https://shipment.xpressbees.com/api/shipments2';
+
 
     try {
         const currentOrder = await Order.findById(id);
@@ -50,7 +55,7 @@ const createShipmentFunctionXpressBees = async (selectedServiceDetails, id, wh,
         };
 
         const token = await getAuthToken();
-        const response = await axios.post(url, shipmentData, {
+        const response = await axios.post(`${BASE_URL}/api/shipments2`, shipmentData, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,

@@ -1,11 +1,12 @@
-
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const Wallet = require("../../../models/wallet");
 
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL=process.env.SHIPROCKET_URL;
 
 const getCurrentDateTime = () => {
     const now = new Date();
@@ -28,7 +29,7 @@ const assignAWB = async (shipment_id, courier_id) => {
     try {
         const token = await getToken();
         const response = await axios.post(
-            `${BASE_URL}/courier/assign/awb`,
+            `${BASE_URL}/v1/external/courier/assign/awb`,
             {
                 shipment_id,
                 courier_id,
@@ -114,7 +115,7 @@ const createShipmentFunctionShipRocket = async (
 
         const token = await getToken();
         const response = await axios.post(
-            `${BASE_URL}/orders/create/adhoc`,
+            `${BASE_URL}/v1/external/orders/create/adhoc`,
             shipmentData,
             { headers: { Authorization: `Bearer ${token}` } }
         );

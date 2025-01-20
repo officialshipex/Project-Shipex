@@ -1,17 +1,18 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
+const url=process.env.NIMBUSPOST_URL;
 
 const getAuthToken = async () => {
-
-  const url = 'https://api.nimbuspost.com/v1/users/login';
   const payload = {
     email: process.env.NIMBUS_GMAIL,
     password: process.env.NIMBUS_PASS
   };
 
   try {
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(`${url}/v1/users/login`, payload, {
       headers: { 'Content-Type': 'application/json' }
     });
     if (response.data.status) {

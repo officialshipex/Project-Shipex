@@ -1,4 +1,6 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const axios = require('axios');
 const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
@@ -19,7 +21,7 @@ const getCurrentDateTime = () => {
 
 
 const createOrder = async (req, res) => {
-  const url = `https://track.delhivery.com/api/cmu/create.json`;
+
 
   const { selectedServiceDetails, id, wh } = req.body.payload;
   const currentOrder = await Order.findById(id);
@@ -69,7 +71,7 @@ const createOrder = async (req, res) => {
 
 
   try {
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
         "Content-Type": "application/x-www-form-urlencoded",
@@ -130,10 +132,9 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
     return res.status(400).json({ error: "Pincode is required" });
   }
 
-  const url = "https://track.delhivery.com/c/api/pin-codes/json/?parameters";
 
   try {
-    const response = await axios.get(url, {
+    const response = await axios.get(`${url}/c/api/pin-codes/json/?parameters`, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
       },
@@ -206,7 +207,6 @@ const generateShippingLabel = async (req, res) => {
     return res.status(400).json({ error: "Waybill number is required" });
   }
 
-  // const url = `https://staging-express.delhivery.com/api/p/packing_slip`;
 
   try {
     const response = await axios.get(`${url}/api/p/packing_slip`, {
@@ -248,10 +248,9 @@ const createPickupRequest = async (warehouse_name, awb) => {
     return ({ error: "All pickup details are required" });
   }
 
-  const url = `https://track.delhivery.com/fm/request/new/`;
 
   try {
-    const response = await axios.post(url, pickupDetails, {
+    const response = await axios.post(`${url}/fm/request/new/`, pickupDetails, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Token ${API_TOKEN}`,
@@ -300,10 +299,9 @@ const createClientWarehouse = async (payload) => {
     return res.status(400).json({ error: "Warehouse details are required" });
   }
 
-  const url = 'https://track.delhivery.com/api/backend/clientwarehouse/create/';
 
   try {
-    const response = await axios.post(url, warehouseDetails, {
+    const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Token ${API_TOKEN}`
@@ -325,10 +323,9 @@ const updateClientWarehouse = async (req, res) => {
     return res.status(400).json({ error: "Warehouse details are required" });
   }
 
-  const url = 'https://staging-express.delhivery.com/api/backend/clientwarehouse/edit/';
 
   try {
-    const response = await axios.post(url, warehouseDetails, {
+    const response = await axios.post( `${url}/api/backend/clientwarehouse/edit/`, warehouseDetails, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
@@ -356,10 +353,10 @@ const cancelOrderDelhivery = async (awb_number) => {
     waybill: `${awb_number}`,
     cancellation: true
   }
-  const url = 'https://track.delhivery.com/api/p/edit';
+
 
   try {
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(`${url}/api/p/edit`, payload, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Token ${API_TOKEN}`,

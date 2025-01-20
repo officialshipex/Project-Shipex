@@ -1,11 +1,13 @@
-require('dotenv').config();
-const axios = require('axios');
-const Courier=require("../../../models/courierSecond");
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+}
+
+const BASE_URL=process.env.XpreesbeesUrl;
 
 
 const getAuthToken = async () => {
 
-    const url = 'https://shipment.xpressbees.com/api/users/login';
+    const url = `${BASE_URL}/api/users/login`;
     const payload = {
          email:process.env.XpreesbeesEmail,
          password:process.env.XpressbeesPassword
