@@ -1,4 +1,4 @@
-const Wallet = require("../models/Wallet");
+const Wallet = require("../models/wallet");
 const fetch = require('node-fetch');
 
 const adjustDispute = async (Info, req) => {
