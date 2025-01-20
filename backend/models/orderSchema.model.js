@@ -118,6 +118,9 @@ const orderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Warehouse'
     },
+    freightCharges:{
+        type:Number
+    },
     tracking: [
         {
             stage: { type: String, required: true },

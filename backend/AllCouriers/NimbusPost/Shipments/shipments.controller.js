@@ -1,14 +1,16 @@
 const axios = require('axios');
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const Order=require("../../../models/orderSchema.model");
+const Wallet=require("../../../models/wallet");
 
 
 const createShipment = async (req, res) => {
 
     const url = 'https://api.nimbuspost.com/v1/shipments';
 
-    const {selectedServiceDetails,id,wh}=req.body;
+    const {selectedServiceDetails,id,wh}=req.body.payload;
     const currentOrder = await Order.findById(id);
+    const currentWallet=await Wallet.findById(req.body.walletId);
     const order_items = new Array(currentOrder.Product_details.length);
     
     currentOrder.Product_details.map((item, index) => {
@@ -65,11 +67,26 @@ const createShipment = async (req, res) => {
            currentOrder.awb_number=result.awb_number;
            currentOrder.shipment_id=`${result.awb_number}`;
            currentOrder.service_details=selectedServiceDetails._id;
+           currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
            currentOrder.tracking=[];
            currentOrder.tracking.push({
             stage:'Order Booked'
            });
            let savedOrder=await currentOrder.save();
+           let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+           let currentBalance=currentWallet.balance-balanceToBeDeducted;
+           await currentWallet.updateOne({
+             $inc: { balance: -balanceToBeDeducted },
+             $push: {
+               transactions: {
+                 txnType: "Shipping",
+                 action: "debit",
+                 amount: currentBalance,
+                 balanceAfterTransaction: currentWallet.balance - balanceToBeDeducted,
+                 awb_number: `${result.awb_number}`,
+               },
+             },
+           });
            
 
            return res.status(201).json({message:"Shipment Created Succesfully"});
