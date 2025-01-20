@@ -1,4 +1,6 @@
-
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const { AxiosError } = require('axios');
 const express = require('express');
 const dotenv = require('dotenv');
@@ -13,7 +15,6 @@ const Pan = require('../models/Pan.model');
 const Kyc = require('../models/Kyc.model');
 const Kyc2Model = require('../models/Kyc2.model');
 
-dotenv.config();
 const verfication = express.Router();
 const cashfreeUrl = process.env.CASHFREE_URI;
 
