@@ -1,7 +1,10 @@
-const AutoShip = async (order, wh) => {
+const ShippingRules = require("../addons/orderAllocationEngine/OAE.model");
+
+const AutoShip = async (order, wh, userId) => {
     console.log(order);
 
-    const rules = await ShippingRules.find({ ruleType: "B2C order" });
+    const rules = await ShippingRules.find({ ruleType: "B2C order", status: true, user: userId });
+    console.log(rules);
     const sortedRules = rules.sort((a, b) => a.setPriority - b.setPriority);
 
     const services = [];
@@ -10,20 +13,20 @@ const AutoShip = async (order, wh) => {
         const { conditionType, conditions } = rule;
 
         if (conditionType === "Match Any of the Below") {
-            for (const condition of conditions) {
-                const { type, operator, value } = condition;
-
-                if (evaluateCondition(order, wh, type, operator, value)) {
-                    services.push(rule);
-                    break;
-                }
+            if (conditions.some((condition) => evaluateCondition(order, wh, condition.type, condition.operator, condition.value))) {
+                services.push(rule.courierPriority);
+            }
+        } else if (conditionType === "Match All of the Below") {
+            if (conditions.every((condition) => evaluateCondition(order, wh, condition.type, condition.operator, condition.value))) {
+                services.push(rule.courierPriority);
             }
         }
     }
 
-    console.log(services);
+    console.log("Priority Services are", services);
     return services;
 };
+
 
 const evaluateCondition = (order, wh, type, operator, value) => {
     let orderValue;
@@ -60,6 +63,7 @@ const evaluateCondition = (order, wh, type, operator, value) => {
     return evaluateOperator(orderValue, operator, value);
 };
 
+
 const evaluateOperator = (orderValue, operator, value) => {
     switch (operator) {
         case "is":
@@ -84,3 +88,5 @@ const evaluateOperator = (orderValue, operator, value) => {
             return false;
     }
 };
+
+module.exports = { AutoShip };

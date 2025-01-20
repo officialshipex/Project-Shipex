@@ -17,7 +17,7 @@ const { createShipmentFunctionXpressBees } = require("../AllCouriers/Xpressbees/
 const { createShipmentFunctionDelhivery } = require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
 const { createShipmentFunctionShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/bulkShipment.controller");
 
-const {AutoShip}=require("../Orders/AutoShipB2c.controller");
+const { AutoShip } = require("../Orders/AutoShipB2c.controller");
 
 // Utility function to calculate order totals
 function calculateOrderTotals(orderData) {
@@ -614,127 +614,286 @@ const shipBulkOrder = async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
 const createBulkOrder = async (req, res) => {
   console.log("Bulk order creation initiated");
   console.log(req.body);
 
-  const { walletId } = req.body;
-  const { selectedServiceDetails, id, wh } = req.body.payload;
-
-  if(selectedServiceDetails?.courierProviderName==="AutoShip"||selectedServiceDetails?.courierProviderServiceName==="AutoShip"){
-
-    id.map(async(order,wh)=>{
-      const priorityServices=await AutoShip(order);
-    })
-    return;
-  }
-
-  console.log("Selected service details: ", selectedServiceDetails);
+  
 
   let successCount = 0;
   let failureCount = 0;
 
+  const { walletId, availableServices, userId } = req.body;
+  const { selectedServiceDetails, id, wh } = req.body.payload;
+
+
+  const servicesToBeConsidered = availableServices.filter(
+    (item) => item.courierProviderServiceName !== "AutoShip"
+  );
+
+  const remainingOrders = [...id];
+
   try {
     if (!Array.isArray(id) || id.length === 0) {
-      return res.status(400).json({ error: 'No orders provided for bulk creation.' });
+      return res.status(400).json({ error: "No orders provided for bulk creation." });
     }
 
-    const orderPromises = id.map(async (item) => {
+    if (
+      selectedServiceDetails?.courierProviderName === "AutoShip" ||
+      selectedServiceDetails?.courierProviderServiceName === "AutoShip"
+    ) {
+      const autoShipPromises = id.map(async (order) => {
+        const priorityServices = await AutoShip(order, wh, userId);
+
+        if (priorityServices.length > 0) {
+          const validPriorityServices = priorityServices
+            .sort((a, b) => a.priority - b.priority)
+            .filter((service) =>
+              servicesToBeConsidered.some(
+                (availableService) =>
+                  availableService.courierProviderServiceName === service.courierProviderServiceName
+              )
+            );
+
+          for (let service of validPriorityServices) {
+            try {
+              const isServiceable = await checkServiceabilityAll(service, order, `${wh.pinCode}`);
+              if (!isServiceable) {
+                continue;
+              }
+
+              // Calculate charges before creating the shipment
+              const details = {
+                pickupPincode: `${wh.pinCode}`,
+                deliveryPincode: `${order.shipping_details.pinCode}`,
+                length: order.shipping_cost.dimensions.length,
+                breadth: order.shipping_cost.dimensions.width,
+                height: order.shipping_cost.dimensions.height,
+                weight: order.shipping_cost.weight,
+                cod: order.order_type === "Cash on Delivery" ? "Yes" : "No",
+                valueInINR: order.sub_total,
+              };
+
+              const rates = await calculateRateForService(details);
+              const charges = parseInt(rates[0]?.forward?.finalCharges);
+
+              if (!charges) {
+                throw new Error("Invalid charges calculated.");
+              }
+
+              const result = await createShipment(
+                service,
+                order,
+                wh,
+                walletId,
+                charges
+              );
+
+              if (result?.status === 200) {
+                successCount++;
+                remainingOrders.splice(remainingOrders.indexOf(order), 1);
+                break;
+              }
+            } catch (error) {
+              console.error(`Error processing AutoShip order ${order._id}:`, error);
+            }
+          }
+        }
+      });
+
+      await Promise.all(autoShipPromises);
+
+      // Handle fallback for remaining orders
+      if (remainingOrders.length > 0) {
+        const fallbackPromises = remainingOrders.map(async (order) => {
+          let shipmentCreated = false;
+
+          for (let service of servicesToBeConsidered) {
+            try {
+              const isServiceable = await checkServiceabilityAll(
+                service,
+                order,
+                `${wh.pinCode}`
+              );
+
+              if (isServiceable) {
+                const result = await createShipment(
+                  service,
+                  order,
+                  wh,
+                  walletId,
+                  selectedServiceDetails
+                );
+
+                if (result?.status === 200) {
+                  successCount++;
+                  shipmentCreated = true;
+                  remainingOrders.splice(remainingOrders.indexOf(order), 1);
+                  break;
+                } else {
+                  console.warn(`Shipment creation failed for order ${order._id} with service ${service.courierProviderName}.`);
+                }
+              }
+            } catch (error) {
+              console.error(`Error checking serviceability for order ${order._id} with service ${service.courierProviderName}:`, error);
+            }
+          }
+
+          if (!shipmentCreated) {
+            failureCount++;
+            console.warn(`No serviceable option found for order ${order._id}.`);
+          }
+        });
+
+        await Promise.all(fallbackPromises);
+      }
+
+      return res.status(201).json({
+        message: `${successCount} orders created successfully & ${failureCount} failed.`,
+        successCount,
+        failureCount,
+        remainingOrdersCount: remainingOrders.length,
+        remainingOrders,
+      });
+    }
+
+    // Handle non-AutoShip orders
+    const orderPromises = id.map(async (order) => {
       const details = {
         pickupPincode: `${wh.pinCode}`,
-        deliveryPincode: `${item.shipping_details.pinCode}`,
-        length: item.shipping_cost.dimensions.length,
-        breadth: item.shipping_cost.dimensions.width,
-        height: item.shipping_cost.dimensions.height,
-        weight: item.shipping_cost.weight,
-        cod: item.order_type === 'Cash on Delivery' ? "Yes" : "No",
-        valueInINR: item.sub_total,
+        deliveryPincode: `${order.shipping_details.pinCode}`,
+        length: order.shipping_cost.dimensions.length,
+        breadth: order.shipping_cost.dimensions.width,
+        height: order.shipping_cost.dimensions.height,
+        weight: order.shipping_cost.weight,
+        cod: order.order_type === "Cash on Delivery" ? "Yes" : "No",
+        valueInINR: order.sub_total,
         filteredServices: [selectedServiceDetails],
         rateCardType: req.body.plan,
       };
 
-      let rates;
       try {
-        rates = await calculateRateForService(details);
-      } catch (error) {
-        console.error("Error calculating rate for service:", error);
-        failureCount++;
-        return { error: `Error calculating rate for order ${item._id}` };
-      }
+        const rates = await calculateRateForService(details);
+        const charges = parseInt(rates[0]?.forward?.finalCharges);
 
-      console.log(rates);
-      const charges = parseInt(rates[0].forward.finalCharges);
+        if (!charges) {
+          throw new Error("Invalid charges calculated.");
+        }
 
-      try {
-        if (selectedServiceDetails.courierProviderName === "NimbusPost") {
-          let result = await createShipmentFunctionNimbusPost(selectedServiceDetails, item._id, wh, walletId, charges);
-          if (result.status === 200) {
-            successCount++;
-            return { success: true };
-          } else {
-            failureCount++;
-          }
-        } else if (selectedServiceDetails.courierProviderName === "Shiprocket") {
-          let result = createShipmentFunctionShipRocket(selectedServiceDetails, item._id, wh, walletId, charges);
-          if (result.status === 200) {
-            successCount++;
-            return { success: true };
-          }
-          else if (selectedServiceDetails.courierProviderName === "Xpressbees") {
-            let result = createShipmentFunctionXpressBees(selectedServiceDetails, item._id, wh, walletId, charges);
-            if (result.status === 200) {
-              successCount++;
-              return { success: true };
-            }
-          }
-          else if (selectedServiceDetails.courierProviderName === "Delhivery") {
-            let result = await createShipmentFunctionDelhivery(selectedServiceDetails, item._id, wh, walletId, charges);
-            if (result.status === 200) {
-              successCount++;
-              return { success: true };
-            }
-          }
-          else if (selectedServiceDetails.courierProviderName === "ShreeMaruti") {
-            let result = await createShipmentFunctionShreeMaruti(selectedServiceDetails, item._id, wh, walletId, charges);
-            if (result.status === 200) {
-              successCount++;
-              return { success: true };
-            }
+        const result = await createShipment(
+          selectedServiceDetails,
+          order,
+          wh,
+          walletId,
+          charges
+        );
 
-          }
-          else {
-            failureCount++;
-          }
+        if (result?.status === 200) {
+          successCount++;
+          remainingOrders.splice(remainingOrders.indexOf(order), 1);
         } else {
-          console.log(`No function defined for ${selectedServiceDetails.courierProviderName}`);
           failureCount++;
-          return { error: `No function defined for ${selectedServiceDetails.courierProviderName}` };
         }
       } catch (error) {
-        console.error(`Error creating shipment for order ${item._id}:`, error);
+        console.error(`Error processing order ${order._id}:`, error);
         failureCount++;
       }
     });
 
-    const results = await Promise.all(orderPromises);
+    await Promise.all(orderPromises);
 
     return res.status(201).json({
-      message: `${successCount} orders created successfully &  for ${failureCount} failed.
-      Please select Another Service`,
+      message: `${successCount} orders created successfully & ${failureCount} failed.`,
       successCount,
       failureCount,
+      remainingOrdersCount: remainingOrders.length,
+      remainingOrders,
     });
-
   } catch (error) {
-    console.error('Error in creating bulk order:', error);
+    console.error("Error in creating bulk orders:", error);
     return res.status(500).json({
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: error.message,
       successCount,
       failureCount,
+      remainingOrdersCount: remainingOrders.length,
+      remainingOrders,
     });
   }
 };
+
+
+
+const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
+  try {
+    let result;
+
+    switch (serviceDetails.courierProviderName) {
+      case "NimbusPost":
+        result = await createShipmentFunctionNimbusPost(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
+      case "Shiprocket":
+        result = await createShipmentFunctionShipRocket(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
+      case "Xpressbees":
+        result = await createShipmentFunctionXpressBees(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
+      case "Delhivery":
+        result = await createShipmentFunctionDelhivery(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
+      case "ShreeMaruti":
+        result = await createShipmentFunctionShreeMaruti(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
+      default:
+        console.error(`No function defined for ${serviceDetails.courierProviderName}`);
+        return false;
+    }
+
+    return result?.status === 200;
+  } catch (error) {
+    console.error(`Error creating shipment:`, error);
+    return false;
+  }
+};
+
 
 
 
