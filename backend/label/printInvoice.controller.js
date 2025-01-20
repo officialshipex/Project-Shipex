@@ -2,7 +2,7 @@ const express = require("express");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
-const{generateStyledInvoiceWithPages}=require("./InvoiceStyle");
+// const { generateStyledInvoiceWithPages } = require("./InvoiceStyle");
 
 const router = express.Router();
 router.use(express.json());
@@ -29,25 +29,26 @@ router.use(express.json());
 //   shipedBy: "Ravi Yadav",
 // };
 
-  router.get("/generate-invoice/:id", async (req, res) => {
-    try {
-      const selectedItems = req.headers['custom-data']
-        ? JSON.parse(req.headers['custom-data'])
-        : null;
+router.get("/generate-invoice", async (req, res) => {
+  try {
+    const selectedItems = req.headers["custom-data"]
+      ? JSON.parse(req.headers["custom-data"])
+      : null;
   
-      if (selectedItems==null) {
-        return res.status(404).json({ message: "Invoice not found" });
-      }
-  
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="shipping_invoice.pdf"`
-      );
-  
-      generateStyledInvoiceWithPages(selectedItems,res);
-    
+    if (selectedItems == null) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
 
+
+    // console.log(selectedItems)
+   
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="shipping_invoice.pdf"`
+    );
+
+    // generateStyledInvoiceWithPages(selectedItems, res);
 
     // Create the PDF document
     const pdfDoc = new PDFDocument({ margin: 30 });
@@ -85,8 +86,8 @@ router.use(express.json());
     pdfDoc
       .fontSize(12)
       .font("Helvetica")
-      .text(`Invoice Number: ${invoice.invoiceNumber}`, { align: "right" })
-      .text(`Invoice Date: ${invoice.invoiceDate}`, { align: "right" })
+      .text(`Invoice Number: ${selectedItems.invoiceNumber}`, { align: "right" })
+      .text(`Invoice Date: ${selectedItems.createdAt}`, { align: "right" })
       .moveDown()
       .moveDown();
 
@@ -113,14 +114,14 @@ router.use(express.json());
       .font("Helvetica-Bold")
       .text("Bill To:", leftColumnX, rowY, { width: leftColumnWidth })
       .font("Helvetica")
-      .text(`${invoice.customerName}`, leftColumnX, pdfDoc.y, {
+      .text(`${selectedItems.Biling_details.firstName} ${selectedItems.Biling_details.lastName}`, leftColumnX, pdfDoc.y, {
         width: leftColumnWidth,
       })
-      .text(`${invoice.billingAddress}`, leftColumnX, pdfDoc.y, {
+      .text(`${selectedItems.Biling_details.address}`, leftColumnX, pdfDoc.y, {
         width: leftColumnWidth,
       })
-      .text("GST No:", leftColumnX, pdfDoc.y, { width: leftColumnWidth })
-      .text("State code :123", leftColumnX, pdfDoc.y, {
+      .text(`GST No: ${selectedItems.Biling_details.gstNumber}`, leftColumnX, pdfDoc.y, { width: leftColumnWidth })
+      .text(`State Code: ${selectedItems.Biling_details.stateCode}`, leftColumnX, pdfDoc.y, {
         width: leftColumnWidth,
       });
 
@@ -130,8 +131,8 @@ router.use(express.json());
       .font("Helvetica-Bold")
       .text("Sold By:", rightColumnX, rowY, { align: "right" })
       .font("Helvetica")
-      .text("Rudra Enterprises", rightColumnX, pdfDoc.y, { align: "right" })
-      .text(`${invoice.shippingAddress}`, rightColumnX, pdfDoc.y, {
+      .text(`${selectedItems.shipping_details.firstName} ${selectedItems.shipping_details.lastName}`, rightColumnX, pdfDoc.y, { align: "right" })
+      .text(`${selectedItems.shipping_details.address}`, rightColumnX, pdfDoc.y, {
         align: "right",
       })
       .text("State code: 123", rightColumnX, pdfDoc.y, { align: "right" });
@@ -142,13 +143,14 @@ router.use(express.json());
       .font("Helvetica-Bold")
       .text("Ship To:", leftColumnX, pdfDoc.y + 20)
       .font("Helvetica")
-      .text("Ravi Yadav", leftColumnX, pdfDoc.y)
+      .text(`${selectedItems.shipping_details.firstName} ${selectedItems.shipping_details.lastName}`, leftColumnX, pdfDoc.y)
       .text(
-        "Main Road, Bus Stand, Vpo Chhillar, Rewari, Haryana, 123401",
+        `${selectedItems.shipping_details.address}`,
         leftColumnX,
         pdfDoc.y,
         { width: leftColumnWidth }
-      );
+      )
+      .text(`${selectedItems.shipping_details.pincode}`)
     pdfDoc.moveDown();
 
     const leftColumnX1 = 30; // X-coordinate for "Bill To:"
@@ -160,11 +162,11 @@ router.use(express.json());
     pdfDoc
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text(`Payment Method: ${invoice.paymentMethod}`, leftColumnX1, rowY1, {
+      .text(`Payment Method: ${selectedItems.order_type}`, leftColumnX1, rowY1, {
         width: leftColumnWidth1,
       })
       .font("Helvetica-Bold")
-      .text(`AWB No: ${invoice.AWB}`, leftColumnX1, pdfDoc.y, {
+      .text(`AWB No: ${selectedItems.awb_number}`, leftColumnX1, pdfDoc.y, {
         width: leftColumnWidth1,
       });
     pdfDoc.moveDown();
@@ -173,11 +175,11 @@ router.use(express.json());
     pdfDoc
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text(`Order Date: ${invoice.orderDate}`, rightColumnX1, rowY1, {
+      .text(`Order Date: ${selectedItems.createdAt}`, rightColumnX1, rowY1, {
         align: "right",
       })
       .font("Helvetica-Bold")
-      .text(`Shipped By: ${invoice.shipedBy}`, rightColumnX1, pdfDoc.y, {
+      .text(`Shipped By: ${selectedItems.Biling_details.firstName}`, rightColumnX1, pdfDoc.y, {
         align: "right",
       });
     pdfDoc.moveDown();
@@ -230,15 +232,15 @@ router.use(express.json());
       .fillAndStroke("#ffffff", "#000"); // White background with black border
 
     const productDetails = [
-      invoice.product.name,
-      invoice.product.sku,
-      invoice.product.hsn,
-      invoice.product.quantity,
-      invoice.product.unitPrice,
+      selectedItems.Product_details.product,
+      selectedItems.Product_details.sku,
+      selectedItems.Product_details.hsn,
+      selectedItems.Product_details.quantity,
+      selectedItems.Product_details.amount,
       "0",
       "0",
       "0",
-      invoice.totalAmount,
+      selectedItems.sub_total,
     ];
 
     productDetails.forEach((detail, index) => {
@@ -347,7 +349,7 @@ router.use(express.json());
         align: "left",
       })
       .text(
-        `Rs. ${invoice.totalAmount}`,
+        `Rs. ${selectedItems.totalAmount}`,
         tableStartX + 450,
         totalAmountRowY + 5,
         {
