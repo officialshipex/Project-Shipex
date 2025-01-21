@@ -51,6 +51,7 @@ store.on("error",()=>{
     
     const sessionOptions={
         store,
+        secret:process.env.MONGO_SECRET,
         resave: false,
         saveUninitialized: false,
         cookie: {
