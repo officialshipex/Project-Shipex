@@ -1,7 +1,5 @@
 const axios = require('axios');
 
-
-
 const ordersDatabase = [
     { orderId: 1, platform: 'shiprocket', details: 'Order details for Shiprocket' },
     { orderId: 2, platform: 'nimbust', details: 'Order details for Nimbust' },

@@ -1,4 +1,6 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const Order = require("../models/orderSchema.model");
 const Services = require("../models/courierServiceSecond.model");
 const Courier = require("../models/courierSecond");

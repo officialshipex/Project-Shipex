@@ -1,10 +1,14 @@
+if (process.env.NODE_ENV != "production") {
+  require('dotenv').config();
+}
+
 const axios = require('axios');
 const Order=require("../../../models/orderSchema.model");
 const Wallet=require("../../../models/wallet");
 const {getAuthToken} = require("../Authorize/nimbuspost.controller");
+const url=process.env.NIMBUSPOST_URL;
 
 const createShipmentFunctionNimbusPost= async (selectedServiceDetails, id, wh, walletId, finalCharges) => {
-  const url = 'https://api.nimbuspost.com/v1/shipments';
 
   try {
     console.log("I am in bulk shipment");
@@ -58,7 +62,7 @@ const createShipmentFunctionNimbusPost= async (selectedServiceDetails, id, wh, w
     console.log(finalCharges);
 
     // Send shipment creation request
-    const response = await axios.post(url, shipmentData, {
+    const response = await axios.post(`${url}/v1/shipments`, shipmentData, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,

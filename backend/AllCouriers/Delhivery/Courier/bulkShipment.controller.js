@@ -1,4 +1,6 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+ require('dotenv').config();
+}
 const axios = require('axios');
 const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
@@ -9,7 +11,7 @@ const Wallet = require("../../../models/wallet");
 
 
 const createShipmentFunctionDelhivery = async (selectedServiceDetails, id, wh,walletId,finalCharges) => {
-    const url = `https://track.delhivery.com/api/cmu/create.json`;
+    const url = `${url}/api/cmu/create.json`;
 
     try {
         const currentOrder = await Order.findById(id);

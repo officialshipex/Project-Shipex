@@ -1,10 +1,11 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const axios = require('axios');
 const Courier=require("../../../models/courierSecond");
 
 
-// Configuration (replace with actual values)
-const BASE_URL = 'https://qaapis.delcaper.com'; // Replace with the actual base URL
+const BASE_URL =process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_URL:process.env.SHREEMA_PRODUCTION_URL; 
 
 const saveShreeMaruti = async (req, res) => {
     console.log("I am in shreeMaruti");
@@ -98,8 +99,8 @@ const isEnabeled = async (req, res) => {
 
 
   const getToken = async () => {
-    const email = process.env.SHREEMA_GMAIL;
-    const password = process.env.SHREEMA_PASS;
+    const email = process.env?.NODE_ENV!="production"?SHREEMA_STAGING_GMAIL:SHREEMA_PRODUCTION_GMAIL;
+    const password = process.env?.NODE_ENV!="production"?SHREEMA_STAGING_PASS:SHREEMA_PRODUCTION_PASS;
     const vendorType = "SELLER";
 
     if (!email || !password) {
@@ -109,7 +110,7 @@ const isEnabeled = async (req, res) => {
     try {
         const options = {
             method: "POST",
-            url: "https://qaapis.delcaper.com/auth/login",
+            url: `${BASE_URL}/auth/login`,
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",

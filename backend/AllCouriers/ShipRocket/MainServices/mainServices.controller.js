@@ -1,4 +1,6 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+}
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");

@@ -1,6 +1,9 @@
-const dotenv = require('dotenv');
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
+
 const crypto = require('crypto');
-dotenv.config();
+
 
 
 function getSignature() {
