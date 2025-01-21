@@ -32,6 +32,7 @@ const router = express.Router();
 
 router.get("/generate-pdf", async (req, res) => {
   try {
+    console.log("I am being called");
     const orderData = Order;
     if (!orderData) {
       return res.status(404).send("Order not found");
