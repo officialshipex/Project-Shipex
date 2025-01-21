@@ -1,6 +1,12 @@
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
+
 const crypto = require('crypto');
 const axios = require('axios');
 const Wallet = require("../models/wallet");
+const FRONTEND_URL =process.env.NODE_ENV!="production"?"http://localhost:5173":process.env.FRONTEND_URL;
+const URL_CASHFREE=process.env.NODE_ENV!="production"?process.env.CASHFREE_BASE_URL:process.env.CASHFREE_PRODUCTION_BASE_URL;
 
 async function phonePe(req, res) {
     try {
@@ -67,7 +73,7 @@ async function phonePe(req, res) {
 
 const createPaymentOrder = async (orderDetails) => {
 
-    const url = `${process.env.CASHFREE_BASE_URL}/orders`;
+    const url = `${URL_CASHFREE}/orders`;
     const headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
@@ -90,7 +96,7 @@ const createPaymentOrder = async (orderDetails) => {
 
 const initiatePayment = async (paymentDetails) => {
 
-    const url = `${process.env.CASHFREE_BASE_URL}/orders/sessions`;
+    const url = `${URL_CASHFREE}/orders/sessions`;
     const headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
@@ -129,8 +135,8 @@ const handlePaymentOrder = async (req, res) => {
             customer_phone: phone,
         },
         order_meta: {
-            return_url: `http://localhost:5173/recharge`,
-            notify_url: "http://localhost:5173/recharge",
+            return_url:`${FRONTEND_URL}/recharge`,
+            notify_url:`${FRONTEND_URL}/recharge`,
         },
         order_note: `Wallet recharge for user ${userId}`,
     };
@@ -161,7 +167,7 @@ const handlePaymentRequest = (req, res) => {
     };
   
     axios
-      .get(`https://sandbox.cashfree.com/pg/orders/${orderId}`, options)
+      .get(`${URL_CASHFREE}/orders/${orderId}`, options)
       .then((response) => {
         if (response?.data?.order_status === "PAID") {
           const orderAmount = response.data.order_amount;
@@ -175,29 +181,29 @@ const handlePaymentRequest = (req, res) => {
                   .save()
                   .then(() => {
                     console.log("Wallet updated successfully");
-                    return res.redirect("http://localhost:5173/recharge");
+                    return res.redirect(`${FRONTEND_URL}/recharge`);
                   })
                   .catch((saveErr) => {
                     console.error("Error saving wallet:", saveErr);
-                    return res.redirect("http://localhost:5173/recharge");
+                    return res.redirect(`${FRONTEND_URL}/recharge`);
                   });
               } else {
                 console.error("Wallet not found for user");
-                return res.redirect("http://localhost:5173/recharge");
+                return res.redirect(`${FRONTEND_URL}/recharge`);
               }
             })
             .catch((findErr) => {
               console.error("Error finding wallet:", findErr);
-              return res.redirect("http://localhost:5173/recharge");
+              return res.redirect(`${FRONTEND_URL}/recharge`);
             });
         } else {
           console.log("Payment not successful");
-          return res.redirect("http://localhost:5173/recharge");
+          return res.redirect(`${FRONTEND_URL}/recharge`);
         }
       })
       .catch((err) => {
         console.error("Error verifying payment:", err);
-        return res.redirect("http://localhost:5173/recharge");
+        return res.redirect(`${FRONTEND_URL}/recharge`);
       });
   };
   

@@ -1,4 +1,6 @@
-require('dotenv').config(); 
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+} 
 
 const axios = require('axios');
 const mongoose = require("mongoose");
@@ -6,17 +8,7 @@ const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
-
-
-// const dburl =process.env.MONGODB_URI;
-// mongoose.connect(dburl, {})
-//     .then(() => {
-//         console.log('Connected to MongoDB Atlas');
-//     })
-//     .catch((err) => {
-//         console.error('Connection error', err);
-//     });
-
+const BASE_URL=process.env.SHIPROCKET_URL;
 
 
 const getAllActiveCourierServices = async (req, res) => {
@@ -27,7 +19,7 @@ const getAllActiveCourierServices = async (req, res) => {
         // Define request options
         const options = {
             method: "GET",
-            url: "https://apiv2.shiprocket.in/v1/external/courier/courierListWithCounts?type=active",
+            url: `${BASE_URL}/v1/external/courier/courierListWithCounts?type=active`,
             headers: {
                 "content-type": "application/json",
                 Authorization: `Bearer ${token}`,

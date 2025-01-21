@@ -1,4 +1,6 @@
-require('dotenv').config();
+if (process.env.NODE_ENV != "production") {
+    require('dotenv').config();
+}
 
 const axios = require('axios');
 const mongoose = require("mongoose");
@@ -6,23 +8,15 @@ const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const { getUniqueId } = require("../../getUniqueId");
-
-// const dburl =process.env.MONGODB_URI;
-// mongoose.connect(dburl, {})
-//     .then(() => {
-//         console.log('Connected to MongoDB Atlas');
-//     })
-//     .catch((err) => {
-//         console.error('Connection error', err);
-//     });
+const url=process.env.NIMBUSPOST_URL;
 
 
 const getCouriers = async (req, res) => {
-    const url = 'https://api.nimbuspost.com/v1/courier';
+
 
     try {
         const token = await getAuthToken();
-        const response = await axios.get(url, {
+        const response = await axios.get(`${url}/v1/courier`, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
@@ -33,11 +27,11 @@ const getCouriers = async (req, res) => {
             const servicesData = response.data.data;
             const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
             const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
-           
+
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
-                provider_courier_id:element.id,
+                provider_courier_id: element.id,
                 isAdded: prevServices.has(element.name)
             }));
 
@@ -54,43 +48,9 @@ const getCouriers = async (req, res) => {
 
 
 
-// if (response.data.status) {
-//     let servicesData = response.data.data;
-//     let currCourier = await Courier.find({ provider: 'NimbusPost' });
-
-
-//     const prevServices = new Set();
-//     const services = await Services.find({ '_id': { $in: currCourier[0].services } });
-
-
-//     services.forEach(service => {
-//         prevServices.add(service.courierProviderServiceName);
-//     });
-
-
-// //     servicesData.forEach(async (element) => {
-// //         let name = element.name;
-// //         if (!prevServices.has(name)) {
-// //             try {
-// //                 const newService = new Services({
-// //                     courierProviderServiceId: getUniqueId(),
-// //                     courierProviderServiceName: name,
-// //                 });
-// //                 const Nimb=await Courier.find({provider:'NimbusPost'});
-// //                 Nimb.services.push(newService._id);
-// //                 await newService.save();
-// //                 await Nimb.save();
-// //                 console.log(`New service saved: ${name}`);
-// //             } catch (error) {
-// //                 console.error(`Error saving service: ${name}`, error);
-// //             }
-// //         }
-// //     });
-// }
-
 const addService = async (req, res) => {
     try {
-        
+
 
         const currCourier = await Courier.findOne({ provider: 'NimbusPost' });
 
@@ -102,15 +62,15 @@ const addService = async (req, res) => {
         });
 
         const name = req.body.service;
-        const provider_courier_id=req.body.provider_courier_id;
+        const provider_courier_id = req.body.provider_courier_id;
 
         if (!prevServices.has(name)) {
             const newService = new Services({
                 courierProviderServiceId: getUniqueId(),
                 courierProviderServiceName: name,
-                courierProviderName:'NimbusPost',
+                courierProviderName: 'NimbusPost',
                 provider_courier_id,
-                createdName:req.body.name
+                createdName: req.body.name
             });
 
             const Nimb = await Courier.findOne({ provider: 'NimbusPost' });
@@ -136,13 +96,10 @@ const addService = async (req, res) => {
 const getServiceablePincodes = async (req, res) => {
 
     const { pincode } = req.body;
-
-    const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
-
     try {
         const token = await getAuthToken();
 
-        const response = await axios.get(url, {
+        const response = await axios.get(`${url}/v1/courier/serviceability`, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
@@ -170,12 +127,11 @@ const getServiceablePincodes = async (req, res) => {
 };
 
 const getServiceablePincodesData = async (service, payload) => {
-    const url = 'https://api.nimbuspost.com/v1/courier/serviceability';
 
     try {
         const token = await getAuthToken();
 
-        const response = await axios.post(url, payload, {
+        const response = await axios.post(`${url}/courier/serviceability`, payload, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
@@ -190,7 +146,7 @@ const getServiceablePincodesData = async (service, payload) => {
         }
     } catch (error) {
         console.error('Error in fetching serviceable pincodes:', error.response?.data || error.message);
-        throw new Error(error.response?.data || error.message); 
+        throw new Error(error.response?.data || error.message);
     }
 };
 

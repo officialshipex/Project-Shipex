@@ -1,4 +1,6 @@
-require('dotenv').config();
+if(process.env.NODE_ENV!="production"){
+    require('dotenv').config();
+}
 const axios = require('axios');
 const { getToken } = require('../Authorize/shreeMaruti.controller');
 const Courier = require("../../../models/courierSecond");
@@ -7,10 +9,7 @@ const Order = require("../../../models/orderSchema.model");
 const { getUniqueId } = require("../../getUniqueId");
 const Wallet = require("../../../models/wallet");
 
-
-const BASE_URL = process.env.SHREEMA_URL; 
-
-
+const BASE_URL =process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_URL:process.env.SHREEMA_PRODUCTION_URL;
 
 const getCourierList = async (req, res) => {
     try {

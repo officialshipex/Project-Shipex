@@ -1,11 +1,13 @@
-
+if(process.env.NODE_ENV!="production"){
+  require('dotenv').config();
+  }
 const { validateForm, validateEmail } = require("../utils/afv");
 const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+const FRONTEND_URL =process.env.NODE_ENV!="production"?"http://localhost:5173":process.env.FRONTEND_URL;
 
 //for User Registration
 const register = async (req, res) => {
