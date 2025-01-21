@@ -37,8 +37,8 @@ const allocationRouter = require('./addons/orderAllocationEngine/OAE.router');
 const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
-const PrintLabelRoute=require("./label/printLabel.controller")
-const PrintInvoice=require("./label/printInvoice.controller")
+const PrintLabelRoute=require("./label/printLabel.controller");
+const PrintInvoice=require("./label/printInvoice.controller");
 
 
 router.use('/external', authRouter);
