@@ -99,8 +99,10 @@ const isEnabeled = async (req, res) => {
 
 
   const getToken = async () => {
-    const email = process.env?.NODE_ENV!="production"?SHREEMA_STAGING_GMAIL:SHREEMA_PRODUCTION_GMAIL;
-    const password = process.env?.NODE_ENV!="production"?SHREEMA_STAGING_PASS:SHREEMA_PRODUCTION_PASS;
+    const email = process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_GMAIL:process.env.SHREEMA_PRODUCTION_GMAIL;
+    const password = process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_PASS:process.env.SHREEMA_PRODUCTION_PASS;
+    console.log(email);
+    console.log(password);
     const vendorType = "SELLER";
 
     if (!email || !password) {

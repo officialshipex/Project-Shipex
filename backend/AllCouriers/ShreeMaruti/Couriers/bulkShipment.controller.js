@@ -131,7 +131,7 @@ const createShipmentFunctionShreeMaruti = async (selectedServiceDetails, id, wh,
     } catch (error) {
         console.log(error);
         console.error('Error in creating shipment:', error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        return { status: 400, error: 'Error creating shipment', details: response.data };
     }
 };
 

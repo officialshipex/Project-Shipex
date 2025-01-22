@@ -214,39 +214,46 @@ const cancelOrderShreeMaruti = async (order_Id) => {
     const payload = {
         orderId: `${order_Id}`,
         cancelReason: "Cancel Test"
-    }
+    };
+
     try {
         const token = await getToken();
-        const response = await axios.put(`${BASE_URL}/booking/order/cancel/`, payload, {
-            headers: {
-                'Content-Type': 'application / json',
 
-                Authorization: `Bearer ${token}`
-            },
-        });
+        const response = await axios.put(
+            `${BASE_URL}/fulfillment/public/seller/order/cancel-order`,
+            payload,
+            {
+                headers: {
+                    'Content-Type': 'application/json', // Fixed header
+                    Authorization: `Bearer ${token}`, // Token added
+                },
+            }
+        );
 
-        if (response.data.status == 200) {
+        console.log("Response:", response.data);
+
+        if (response.status === 200) { // Correct status check
             return {
                 success: true,
-                data: response.data
-            }
-        }
-        else {
+                data: response.data,
+            };
+        } else {
             return {
                 error: 'Error in shipment cancellation',
                 details: response.data,
-                code: 400,
+                code: response.status,
             };
         }
-
     } catch (error) {
+        console.error("Error:", error.response?.data || error.message);
         return {
             error: 'Internal Server Error',
-            message: error.message,
-            code: 500,
+            message: error.response?.data || error.message,
+            code: error.response?.status || 500,
         };
     }
 };
+
 
 // Download Label and Invoice
 const downloadLabelInvoice = async (req, res) => {
