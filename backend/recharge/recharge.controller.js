@@ -85,13 +85,8 @@ const createPaymentOrder = async (orderDetails) => {
     };
 
     try {
-        console.log(URL_CASHFREE);
-        console.log(cashfreeId);
-        console.log(cashfreeSecret);
 
         const response = await axios.post(url, orderDetails, { headers });
-        console.log(response);
-
         return response.data;
     } catch (error) {
         console.error("Cashfree API Error:", error.response.data);
