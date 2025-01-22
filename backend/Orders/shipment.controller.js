@@ -24,7 +24,10 @@ const checkServiceabilityAll= async (service, id,pincode) => {
                 height: currentOrder.shipping_cost.dimensions.height,
             };
 
+            console.log("Paylod is",payload);
+
             const result = await getServiceablePincodesData(service.courierProviderServiceName, payload);
+
             return result;
         }
 

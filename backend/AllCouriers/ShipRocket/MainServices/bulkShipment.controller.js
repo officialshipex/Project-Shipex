@@ -57,6 +57,7 @@ const createShipmentFunctionShipRocket = async (
     finalCharges,
 ) => {
     try {
+        console.log("I am in createShipment BulkShiprocket");
         const currentOrder = await Order.findById(id);
         const currentWallet = await Wallet.findById(walletId);
 
@@ -122,13 +123,14 @@ const createShipmentFunctionShipRocket = async (
 
         console.log("Response from ShipRocket:",response);
 
-        if (!response.data.status) {
+        if (response.status!=200) {
             return { status: 400, error: 'Error creating shipment', details: response.data };
         }
 
         const { shipment_id } = response.data;
         const courier_id = selectedServiceDetails.provider_courier_id;
         const result = await assignAWB(shipment_id, courier_id);
+        console.log(result);
 
         if (!result || !result.awb_code) {
             throw new Error("Failed to assign AWB");
@@ -147,7 +149,7 @@ const createShipmentFunctionShipRocket = async (
         const balanceToBeDeducted =
             finalCharges === "N/A" ? 0 : parseInt(finalCharges);
 
-        await currentWallet.updateOne({
+        const saveWallet=await currentWallet.updateOne({
             $inc: { balance: -balanceToBeDeducted },
             $push: {
                 transactions: {
@@ -160,9 +162,12 @@ const createShipmentFunctionShipRocket = async (
             },
         });
 
+        console.log("Saved Wallet",saveWallet);
+
         return { status: 201, message: "Shipment Created Successfully" };
     } catch (error) {
         console.error('Error in creating shipment:', error.message);
+        console.log(error);
         return { status: 500, error: 'Internal Server Error', message: error.message };
     }
 };

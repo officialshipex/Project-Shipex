@@ -2,6 +2,9 @@ if(process.env.NODE_ENV!="production"){
   require('dotenv').config();
 }
 
+const Courier=require("../../../models/courierSecond");
+const Services = require("../../../models/courierServiceSecond.model");
+
 const BASE_URL=process.env.XpreesbeesUrl;
 
 
