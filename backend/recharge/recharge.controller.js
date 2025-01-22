@@ -72,17 +72,23 @@ async function phonePe(req, res) {
 }
 
 const createPaymentOrder = async (orderDetails) => {
+    let cashfreeId=process.env.NODE_ENV!="production"?process.env.process.env.CASHFREE_CLIENT_ID:process.env.CASHFREE_PRODUCTION_CLIENT_ID;
+    let cashfreeSecret=process.env.NODE_ENV!="production"?process.env.process.env.CASHFREE_CLIENT_SECRET:process.env.CASHFREE_PRODUCTION_CLIENT_SECRET;
 
     const url = `${URL_CASHFREE}/orders`;
     const headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
         "x-api-version": "2023-08-01",
-        "x-client-id": process.env.CASHFREE_CLIENT_ID,
-        "x-client-secret": process.env.CASHFREE_CLIENT_SECRET,
+        "x-client-id":cashfreeId,
+        "x-client-secret":cashfreeSecret,
     };
 
     try {
+        console.log(URL_CASHFREE);
+        console.log(cashfreeId);
+        console.log(cashfreeSecret);
+
         const response = await axios.post(url, orderDetails, { headers });
         console.log(response);
 
