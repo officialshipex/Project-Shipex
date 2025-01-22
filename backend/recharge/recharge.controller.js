@@ -117,7 +117,8 @@ const initiatePayment = async (paymentDetails) => {
 const handlePaymentOrder = async (req, res) => {
 
     const { userId, amount, name, email, phone } = req.body;
-    console.log("body", req.body);
+
+    console.log("FRONT-END URL",FRONTEND_URL);
 
     if (!userId || !amount || !email || !phone) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -144,6 +145,8 @@ const handlePaymentOrder = async (req, res) => {
 
     try {
         const order = await createPaymentOrder(orderDetails);
+
+        console.log("result is ",order);
 
         return res.status(201).json({
             success: true,
