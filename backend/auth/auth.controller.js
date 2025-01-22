@@ -1,6 +1,6 @@
 if(process.env.NODE_ENV!="production"){
   require('dotenv').config();
-  }
+}
 const { validateForm, validateEmail } = require("../utils/afv");
 const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");

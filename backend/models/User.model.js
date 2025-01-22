@@ -72,7 +72,8 @@ const usersSchema = new mongoose.Schema({
 
 usersSchema.pre("save", async function (next) {
 
-    if (this.new) {
+    
+    if (this.isNew) {
         try {
             const wallet = new Wallet({
                 balance: 0,

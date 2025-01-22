@@ -1,10 +1,10 @@
-if(process.env.NODE_ENV!="production"){
+if (process.env.NODE_ENV != "production") {
   require('dotenv').config();
 }
 const axios = require("axios");
 const Order = require("../../../models/orderSchema.model");
 const { getToken } = require("../Authorize/shiprocket.controller");
-const Wallet=require("../../../models/wallet");
+const Wallet = require("../../../models/wallet");
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -53,6 +53,8 @@ const assignAWB = async (shipment_id, courier_id) => {
 
 
 const createCustomOrder = async (req, res) => {
+
+  console.log("I am in customCreate");
   const { selectedServiceDetails, id, wh } = req.body.payload;
   const currentOrder = await Order.findById(id);
   const currentWallet = await Wallet.findById(req.body.walletId);
@@ -136,7 +138,7 @@ const createCustomOrder = async (req, res) => {
       currentOrder.awb_number = result.awb_code;
       currentOrder.shipment_id = shipment_id;
       currentOrder.service_details = selectedServiceDetails._id;
-      currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      currentOrder.freightCharges = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       currentOrder.tracking = [];
       currentOrder.tracking.push({
         stage: 'Order Booked'
@@ -144,7 +146,7 @@ const createCustomOrder = async (req, res) => {
 
       const savedOrder = await currentOrder.save();
       let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      let currentBalance=currentWallet.balance-balanceToBeDeducted;
+      let currentBalance = currentWallet.balance - balanceToBeDeducted;
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {
@@ -192,20 +194,32 @@ const updateOrder = async (req, res) => {
   }
 };
 
-// 3. Cancel an Order
-const cancelOrder = async (order_id) => {
+const cancelOrder = async (awb_number) => {
   try {
+    console.log("AWB Number:", awb_number);
+    console.log("I am being called");
+
     const token = await getToken();
+    console.log("Token:", token);
+
     const response = await axios.post(
-      `${BASE_URL}/orders/cancel`,
-      { ids: [order_id] },
-      { headers: { Authorization: `Bearer ${token}` } }
+      `${BASE_URL}/orders/cancel/shipment/awbs`,
+      { awbs: [`${awb_number}`] }, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json', 
+        },
+      }
     );
+
     return { success: true, data: response.data };
   } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
     return { success: false, error: error.response?.data || error.message };
   }
 };
+
 
 
 // 4. List of Couriers

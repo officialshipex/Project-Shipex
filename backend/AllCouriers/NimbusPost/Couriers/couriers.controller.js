@@ -8,6 +8,7 @@ const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
 const { getAuthToken } = require("../Authorize/nimbuspost.controller");
 const { getUniqueId } = require("../../getUniqueId");
+const crypto = require('crypto');
 const url=process.env.NIMBUSPOST_URL;
 
 
@@ -95,6 +96,8 @@ const addService = async (req, res) => {
 
 const getServiceablePincodes = async (req, res) => {
 
+    console.log("I am in serviceability pincode");
+
     const { pincode } = req.body;
     try {
         const token = await getAuthToken();
@@ -130,13 +133,16 @@ const getServiceablePincodesData = async (service, payload) => {
 
     try {
         const token = await getAuthToken();
+        console.log(token);
+        console.log(url);
 
         const response = await axios.post(`${url}/courier/serviceability`, payload, {
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${token}`
             },
         });
+
 
         if (response.data.status) {
             const filteredData = response.data.data.filter((item) => item.name === service);

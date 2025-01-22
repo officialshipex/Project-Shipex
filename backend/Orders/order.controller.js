@@ -375,7 +375,7 @@ const cancelOrdersAtBooked = async (req, res) => {
             return { error: 'Failed to cancel shipment with NimbusPost', details: result, orderId: currentOrder._id };
           }
         } else if (currentOrder.service_details.courierProviderName === 'Shiprocket') {
-          const result = await cancelOrder(currentOrder._id);
+          const result = await cancelOrder(currentOrder.awb_number);
           if (!result.success) {
             return { error: 'Failed to cancel shipment with Shiprocket', details: result, orderId: currentOrder._id };
           }
@@ -493,6 +493,7 @@ const tracking = async (req, res) => {
           result = await trackShipmentNimbuspost(awb_number);
         } else if (courierProviderName === "Shiprocket") {
           result = await getTrackingByAWB(awb_number);
+          console.log("Tracking result",result);
         }
         else if (courierProviderName === "Xpressbees") {
           result = await trackShipment(awb_number);
@@ -572,6 +573,7 @@ const editOrder = async (req, res) => {
 };
 
 const shipBulkOrder = async (req, res) => {
+  
   try {
     const { id, pincode, plan, isBulkShip } = req.body;
     const servicesCursor = Services.find({ isEnabeled: true });
@@ -686,6 +688,7 @@ const createBulkOrder = async (req, res) => {
 
               const rates = await calculateRateForService(details);
               const charges = parseInt(rates[0]?.forward?.finalCharges);
+              
 
               if (!charges) {
                 throw new Error("Invalid charges calculated.");
@@ -785,6 +788,7 @@ const createBulkOrder = async (req, res) => {
       try {
         const rates = await calculateRateForService(details);
         const charges = parseInt(rates[0]?.forward?.finalCharges);
+        // const charges=70;
 
         if (!charges) {
           throw new Error("Invalid charges calculated.");
@@ -798,7 +802,9 @@ const createBulkOrder = async (req, res) => {
           charges
         );
 
-        if (result?.status === 200) {
+        console.log("Bulk Shipment Result is:",result);
+
+        if (result) {
           successCount++;
           remainingOrders.splice(remainingOrders.indexOf(order), 1);
         } else {
@@ -889,7 +895,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
         return false;
     }
 
-    return result?.status === 200;
+    return result?.status === 200 ||result?.status===201;
   } catch (error) {
     console.error(`Error creating shipment:`, error);
     return false;

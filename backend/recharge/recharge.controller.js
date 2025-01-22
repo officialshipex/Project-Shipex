@@ -72,8 +72,8 @@ async function phonePe(req, res) {
 }
 
 const createPaymentOrder = async (orderDetails) => {
-    let cashfreeId=process.env.NODE_ENV!="production"?process.env.process.env.CASHFREE_CLIENT_ID:process.env.CASHFREE_PRODUCTION_CLIENT_ID;
-    let cashfreeSecret=process.env.NODE_ENV!="production"?process.env.process.env.CASHFREE_CLIENT_SECRET:process.env.CASHFREE_PRODUCTION_CLIENT_SECRET;
+    let cashfreeId=process.env.NODE_ENV!="production"?process.env.CASHFREE_CLIENT_ID:process.env.CASHFREE_PRODUCTION_CLIENT_ID;
+    let cashfreeSecret=process.env.NODE_ENV!="production"?process.env.CASHFREE_CLIENT_SECRET:process.env.CASHFREE_PRODUCTION_CLIENT_SECRET;
 
     const url = `${URL_CASHFREE}/orders`;
     const headers = {
@@ -87,6 +87,7 @@ const createPaymentOrder = async (orderDetails) => {
     try {
 
         const response = await axios.post(url, orderDetails, { headers });
+        console.log(response);
         return response.data;
     } catch (error) {
         console.error("Cashfree API Error:", error.response.data);
@@ -119,7 +120,6 @@ const handlePaymentOrder = async (req, res) => {
 
     const { userId, amount, name, email, phone } = req.body;
 
-    console.log("FRONT-END URL",FRONTEND_URL);
 
     if (!userId || !amount || !email || !phone) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -155,6 +155,7 @@ const handlePaymentOrder = async (req, res) => {
             data: order
         });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ error: "Failed to create order" });
     }
 };
