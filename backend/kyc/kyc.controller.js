@@ -5,6 +5,7 @@ const { AxiosError } = require('axios');
 const express = require('express');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const https = require('https');
 
 const { getSignature, validateGST, validatePAN, validateAadhaar, validateBankDetails, validateAccountNumber } = require('../utils/lib');
 const BankAccount = require('../models/BankAccount.model');
@@ -83,6 +84,7 @@ verfication.post('/gstin', async (req, res) => {
       },
       data: data
     };
+    // console.log(config)
 
     const response = await axios.request(config);
 
@@ -123,7 +125,7 @@ verfication.post('/gstin', async (req, res) => {
 
   } catch (err) {
 
-    // console.log("err:", err);
+    console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
@@ -141,16 +143,137 @@ verfication.post('/gstin', async (req, res) => {
 /**
  * verify Pan number
  */
+// verfication.post('/pan', async (req, res) => {
+//   try {
+
+//     const userId = req.user._id;
+//     const { pan, name } = req.body;
+// // console.log(pan)
+//     if (!pan) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "pan  is required"
+//       });
+//     }
+
+//     const validatePan = validatePAN(pan);
+// // console.log(validatePan)
+//     if (!validatePan) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid pan"
+//       });
+//     }
+
+//     const panExists = await Pan.findOne({ pan });
+
+//     if (panExists) {
+//       if (!panExists.user.equals(userId)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Pan already exists for another user",
+//         });
+//       }
+//       return res.status(200).json({
+//         success: true,
+//         message: "Pan already exists",
+//         data: panExists
+//       });
+//     }
+
+//     const data = JSON.stringify({
+//       "pan": pan,
+//       "name": name || ''
+//     });
+
+//     let signature = getSignature();
+//     // console.log(signature)
+
+//     let config = {
+//       method: 'post',
+//       maxBodyLength: Infinity,
+//       url: `${cashfreeUrl}/pan`,
+//       headers: {
+//         'accept': 'application/json',
+//         'content-type': 'application/json',
+//         'x-client-id': process.env.X_CLIENT_ID,
+//         'x-client-secret': process.env.X_CLIENT_SECRET,
+//         "x-cf-signature": signature,
+//         "x-api-version": "2024-10-18",
+//       },
+//       data: data
+//     };
+
+//     const response = await axios.request(config);
+
+//     console.log("response:", response);
+
+//     if (!response || !response.data) {
+//       return res.status(500).json({
+//         success: false,
+//         message: 'Internal error'
+//       });
+//     }
+
+//     if (!response.data.valid) {
+//       return res.status(400).json({
+//         success: false,
+//         "pan": response.data.pan,
+//         "reference_id": response.data.reference_id,
+//         "name_provided": response.data.name_provided,
+//         "valid": response.data.valid,
+//         "message": response.data.message,
+//       });
+//     }
+
+//     const newPan = new Pan({
+//       user: userId,
+//       nameProvided: response.data.name_provided,
+//       pan: response.data.pan,
+//       registeredName: response.data.registered_name,
+//       panType: response.data.type,
+//       panRefId: response.data.reference_id,
+//     });
+
+//     await newPan.save();
+
+//     // console.log("newPan:", newPan);
+
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Pan verified successfully',
+//       data: newPan,
+//     });
+
+
+//   } catch (err) {
+
+//     // console.log("err:", err);
+
+//     if (err.isAxiosError && err.response) {
+//       return res.status(err.response.status || 500).json({
+//         success: false,
+//         message: err.response.data.message || 'Error in Pan verification'
+//       });
+//     }
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Internal server error'
+//     });
+//   }
+// });
+
+// const https = require('https');
+
 verfication.post('/pan', async (req, res) => {
   try {
-
     const userId = req.user._id;
     const { pan, name } = req.body;
 
     if (!pan) {
       return res.status(400).json({
         success: false,
-        message: "pan  is required"
+        message: "PAN is required",
       });
     }
 
@@ -159,7 +282,7 @@ verfication.post('/pan', async (req, res) => {
     if (!validatePan) {
       return res.status(400).json({
         success: false,
-        message: "Invalid pan"
+        message: "Invalid PAN",
       });
     }
 
@@ -169,97 +292,119 @@ verfication.post('/pan', async (req, res) => {
       if (!panExists.user.equals(userId)) {
         return res.status(400).json({
           success: false,
-          message: "Pan already exists for another user",
+          message: "PAN already exists for another user",
         });
       }
-      return res.status(200).json({
+      return res.status(200).json({    
         success: true,
-        message: "Pan already exists",
-        data: panExists
+        message: "PAN already exists",
+        data: panExists,
       });
     }
 
     const data = JSON.stringify({
-      "pan": pan,
-      "name": name || ''
+      pan: pan,
+      name: name || '',
     });
 
     let signature = getSignature();
-    // console.log(signature)
 
-    let config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: `${cashfreeUrl}/pan`,
+    const options = {
+      hostname: new URL(cashfreeUrl).hostname, // Extract the hostname from cashfreeUrl
+      path: '/pan',
+      method: 'POST',
       headers: {
-        'accept': 'application/json',
-        'content-type': 'application/json',
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
         'x-client-id': process.env.X_CLIENT_ID,
         'x-client-secret': process.env.X_CLIENT_SECRET,
-        "x-cf-signature": signature,
-        "x-api-version": "2024-10-18",
+        'x-cf-signature': signature,
+        'x-api-version': '2024-10-18',
+        'Content-Length': data.length,
       },
-      data: data
     };
+    // console.log(options)
 
-    const response = await axios.request(config);
+    const request = https.request(options, (response) => {
+      let responseBody = '';
 
-    // console.log("response:", response);
+      // Accumulate data chunks
+      response.on('data', (chunk) => {
+        responseBody += chunk;
+        console.log("responseBody:", responseBody);
+      });
 
-    if (!response || !response.data) {
+      // Handle the complete response
+      response.on('end', async () => {
+        const responseData = JSON.parse(responseBody);
+       
+        if (!responseData) {
+          return res.status(500).json({
+            success: false,
+            message: 'Internal error',
+          });
+        }
+
+        if (!responseData.valid) {
+          return res.status(400).json({
+            success: false,
+            pan: responseData.pan,
+            reference_id: responseData.reference_id,
+            name_provided: responseData.name_provided,
+            valid: responseData.valid,
+            message: responseData.message,
+          });
+        }
+
+        const newPan = new Pan({
+          user: userId,
+          nameProvided: responseData.name_provided,
+          pan: responseData.pan,
+          registeredName: responseData.registered_name,
+          panType: responseData.type,
+          panRefId: responseData.reference_id,
+        });
+
+        await newPan.save();
+
+        return res.status(200).json({
+          success: true,
+          message: 'PAN verified successfully',
+          data: newPan,
+        });
+      });
+    });
+
+    // Handle request errors
+    request.on('error', (error) => {
+      console.error('Error with PAN verification request:', error);
       return res.status(500).json({
         success: false,
-        message: 'Internal error'
+        message: 'Internal server error',
       });
-    }
-
-    if (!response.data.valid) {
-      return res.status(400).json({
-        success: false,
-        "pan": response.data.pan,
-        "reference_id": response.data.reference_id,
-        "name_provided": response.data.name_provided,
-        "valid": response.data.valid,
-        "message": response.data.message,
-      });
-    }
-
-    const newPan = new Pan({
-      user: userId,
-      nameProvided: response.data.name_provided,
-      pan: response.data.pan,
-      registeredName: response.data.registered_name,
-      panType: response.data.type,
-      panRefId: response.data.reference_id,
     });
 
-    await newPan.save();
-
-    // console.log("newPan:", newPan);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Pan verified successfully',
-      data: newPan,
-    });
-
-
+    // Write data to the request body
+    request.write(data);
+    request.end();
   } catch (err) {
-
-    // console.log("err:", err);
+    console.error("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
         success: false,
-        message: err.response.data.message || 'Error in Pan verification'
+        message: err.response.data.message || 'Error in PAN verification',
       });
     }
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
     });
   }
 });
+
+
+
 
 /**
  * verify Aadhaar number, here we send the otp to the user's mobile number
@@ -439,21 +584,21 @@ verfication.post('/verify-otp', async (req, res) => {
   }
 });
 
-/**
- * verify bank account
- */
+
+
+
+
+
+
 verfication.post('/bank-account', async (req, res) => {
   try {
-
     const userId = req.user._id;
-    // const userId = "6711f5f10d7b30f7193c55fd";
-
     const { accountNo, ifsc, name, phone } = req.body;
 
     if (!accountNo || !ifsc || !name || !phone) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
@@ -462,7 +607,7 @@ verfication.post('/bank-account', async (req, res) => {
     if (!validateField.valid) {
       return res.status(400).json({
         success: false,
-        message: validateField.message
+        message: validateField.message,
       });
     }
 
@@ -478,79 +623,100 @@ verfication.post('/bank-account', async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Bank Account already exists",
-        data: bankAccountExists
+        data: bankAccountExists,
       });
     }
 
     const data = JSON.stringify({
-      "bank_account": accountNo,
-      "ifsc": ifsc,
-      "name": name,
-      "phone": phone,
-    })
-
-    let signature = getSignature();
-
-    let config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: `${cashfreeUrl}/bank-account/sync`,
-      headers: {
-        'accept': 'application/json',
-        'content-type': 'application/json',
-        'x-client-id': process.env.X_CLIENT_ID,
-        'x-client-secret': process.env.X_CLIENT_SECRET,
-        "x-cf-signature": signature,
-        "x-api-version": "2024-10-18",
-      },
-      data: data
-    };
-
-    const response = await axios.request(config);
-
-    if (response.data.account_status === 'INVALID') {
-      return res.status(400).json({
-        success: false,
-        message: response.data.account_status_code
-      });
-    }
-
-    const newBankAccount = new BankAccount({
-      user: userId,
-      accountNumber: accountNo,
-      nameProvided: name,
+      bank_account: accountNo,
       ifsc: ifsc,
-      AccountStatus: response.data.account_status,
-      nameAtBank: response.data.name_at_bank,
-      bank: response.data.bank_name,
-      branch: response.data.branch,
-      city: response.data.city,
-      nameMatchResult: response.data.name_match_result,
-    })
-
-    await newBankAccount.save();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Bank Account verified successfully',
-      data: newBankAccount,
+      name: name,
+      phone: phone,
     });
 
-  } catch (err) {
-    // console.log("err:", err);
+    const signature = getSignature();
 
-    if (err.isAxiosError && err.response) {
-      return res.status(err.response.status || 500).json({
-        success: false,
-        message: err.response.data.message || 'Error in Bank Account verification'
+    const options = {
+      hostname: new URL(cashfreeUrl).hostname, // Extract hostname from cashfreeUrl
+      path: '/bank-account/sync',
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'x-client-id': process.env.X_CLIENT_ID,
+        'x-client-secret': process.env.X_CLIENT_SECRET,
+        'x-cf-signature': signature,
+        'x-api-version': '2024-10-18',
+        'Content-Length': data.length,
+      },
+    };
+
+    const request = https.request(options, (response) => {
+      let responseBody = '';
+
+      // Accumulate data chunks
+      response.on('data', (chunk) => {
+        responseBody += chunk;
       });
-    }
+
+      // Handle the complete response
+      response.on('end', async () => {
+        const responseData = JSON.parse(responseBody);
+        console.log(responseData);
+
+        if (responseData.account_status === 'INVALID') {
+          return res.status(400).json({
+            success: false,
+            message: responseData.account_status_code,
+          });
+        }
+
+        const newBankAccount = new BankAccount({
+          user: userId,
+          accountNumber: accountNo,
+          nameProvided: name,
+          ifsc: ifsc,
+          AccountStatus: responseData.account_status,
+          nameAtBank: responseData.name_at_bank,
+          bank: responseData.bank_name,
+          branch: responseData.branch,
+          city: responseData.city,
+          nameMatchResult: responseData.name_match_result,
+        });
+
+        await newBankAccount.save();
+
+        return res.status(200).json({
+          success: true,
+          message: 'Bank Account verified successfully',
+          data: newBankAccount,
+        });
+      });
+    });
+
+    // Handle request errors
+    request.on('error', (error) => {
+      console.error('Error with request:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+      });
+    });
+
+    // Write data to the request body
+    request.write(data);
+    request.end();
+  } catch (err) {
+    console.log("err:", err);
+
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
     });
   }
 });
+
+
 
 
 verfication.post('/kyc', async (req, res) => {
