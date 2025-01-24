@@ -64,6 +64,7 @@ function validateBankDetails(bank_account, ifsc, name, phone ) {
         return { valid: false, message: "Invalid phone number" };
     }
 
+// console.log("all fields are valid");
     return { valid: true, message: "All fields are valid" };
 }
 
