@@ -53,6 +53,22 @@ const upload = multer({
     }
 });
 
+async function labelData(req,res){
+    const user_id = "67237ee56a42044404423c8e";
+    try{
+        const getData=await LabelSetting.findOne(
+            {user:user_id}  
+        )
+        res.status(200).json({
+            success: true,
+            message: 'Label setting fetched',
+            data: getData,
+        });
+    }catch(error){
+        res.status(400).json({ error: error.message });
+    }
+}
+
 async function setting(req, res) {
     const user_id = "67237ee56a42044404423c8e";
 
@@ -72,7 +88,7 @@ async function setting(req, res) {
             { new: true, runValidators: true }
         );
 
-        console.log(updatedLabelSetting);
+        // console.log(updatedLabelSetting);
 
         if (!updatedLabelSetting) {
             return res.status(404).json({ message: 'Label setting not found' });
@@ -92,4 +108,5 @@ async function setting(req, res) {
 module.exports = {
     setting,
     newLable,
+    labelData
 }
