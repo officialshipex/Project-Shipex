@@ -3,6 +3,8 @@ const PDFDocument = require("pdfkit");
 const LabelSetting = require("./label.model");
 const bwipjs = require("bwip-js");
 
+
+
 const Order = {
   customerName: "Sachin Kumar",
   address:
@@ -32,7 +34,7 @@ const router = express.Router();
 
 router.get("/generate-pdf", async (req, res) => {
   try {
-    console.log("I am being called");
+    // console.log("I am being called");
     const orderData = Order;
     if (!orderData) {
       return res.status(404).send("Order not found");
