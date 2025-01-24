@@ -20,23 +20,23 @@ const BankAccountSchema = new mongoose.Schema({
     },
     AccountStatus:{
         type: String,
-        required: true,
+        // required: true,
     },
     nameAtBank:{
         type: String,
-        required: true,
+        // required: true,
     },
     bank:{
         type: String,
-        required: true,
+        // required: true,
     },
     branch:{
         type: String,
-        required: true,
+        // required: true,
     },
     city:{
         type: String,
-        required: true,
+        // required: true,
     },
     nameMatchResult:{
         type: String,
