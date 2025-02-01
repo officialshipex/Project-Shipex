@@ -7,21 +7,24 @@ const crypto = require('crypto');
 
 
 function getSignature() {
-    // console.log("Generating signature");
+   
     let clientId = process.env.X_CLIENT_ID;
     
     let publicKey = process.env.PUBLIC_KEY;
-    // console.log(publicKey)
+   
     let timestamp = Math.floor(Date.now() / 1000);
-    // console.log(timestamp)
+    
     let dataToEncrypt = `${clientId}.${timestamp}`;
-    // console.log(dataToEncrypt);
+    
     let encryptedSignature = crypto.publicEncrypt(publicKey, Buffer.from(dataToEncrypt));
-    // console.log(encryptedSignature);
+   
     let signatureBase64 = encryptedSignature.toString('base64');
-    // console.log(`X-Cf-Signature: ${signatureBase64}`);
+   
     return signatureBase64;
 }
+
+
+
 
 function validateGST(gstNumber) {
     const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;

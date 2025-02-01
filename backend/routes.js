@@ -39,6 +39,7 @@ const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
 const PrintLabelRoute=require("./label/printLabel.controller");
 const PrintInvoice=require("./label/printInvoice.controller");
+const newOrderRoute=require("./routes/newOrder.router")
 
 
 router.use('/external', authRouter);
@@ -49,7 +50,8 @@ router.use('/allocation',isAuthorized, allocationRouter);
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
 
-router.use('/order', orderRouter);
+// router.use('/order', orderRouter);
+router.use('/order',isAuthorized,newOrderRoute);
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);
