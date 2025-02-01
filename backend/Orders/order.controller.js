@@ -92,6 +92,7 @@ const createOrder = async (req, res) => {
       shipping_is_billing
     });
 
+    
     let result = await newOrder.save();
     currentUser.orders.push(result._id);
     await currentUser.save();

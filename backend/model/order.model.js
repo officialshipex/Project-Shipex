@@ -1,15 +1,15 @@
 const mongoose = require("mongoose");
 
-const productSchema = new mongoose.Schema({
-  productName: { type: String, require: true },
-  quantity: { type: Number, require: true },
-  unitPrice: { type: Number, require: true },
-  SKU: { type: String },
-  HSN: { type: String },
-  taxRate: { type: Number },
-  productCategory: { type: String},
-  discount: { type: Number, default: 0}
-});
+// const productSchema = new mongoose.Schema({
+//   productName: { type: String, require: true },
+//   quantity: { type: Number, require: true },
+//   unitPrice: { type: Number, require: true },
+//   SKU: { type: String },
+//   HSN: { type: String },
+//   taxRate: { type: Number },
+//   productCategory: { type: String},
+//   discount: { type: Number, default: 0}
+// });
 
 const addressSchema = new mongoose.Schema({
   addressLine: {
