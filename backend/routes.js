@@ -39,7 +39,8 @@ const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
 const PrintLabelRoute=require("./label/printLabel.controller")
 const PrintInvoice=require("./label/printInvoice.controller")
-
+const AllCourierRoutes=require("./routes/allCourierRoutes")
+router.use("/allCourier",AllCourierRoutes)
 
 router.use('/external', authRouter);
 

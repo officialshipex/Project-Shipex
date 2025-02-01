@@ -3,11 +3,17 @@ if(process.env.NODE_ENV!="production"){
   }
 const axios = require("axios");
 const Courier = require("../../../models/courierSecond");
+const AllCourier = require("../../../models/AllCourierSchema");
 const BASE_URL=process.env.SHIPROCKET_URL;
 
-const getToken = async () => {
-    const email = process.env.SHIPR_GMAIL;
-    const password = process.env.SHIPR_PASS;
+const getToken = async (req,res) => {
+    const email = req.body.credentials.username;
+    const password = req.body.credentials.password;
+    const courierData ={
+          courierName : req.body.courierName,
+          courierProvider : req.body.courierProvider,
+
+    }
 
     if (!email || !password) {
         return res.status(400).json({
@@ -29,7 +35,10 @@ const getToken = async () => {
         const response = await axios.request(options);
 
         if (response.status === 200 && response.data.token) {
-            return response.data.token;
+          const newCourier = new AllCourier(courierData);
+          await newCourier.save();
+          return response.data.token;
+
         } else {
             throw new Error(`Login failed: Status ${response.status}`);
         }

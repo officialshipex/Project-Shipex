@@ -31,12 +31,13 @@ const ShreeMarutiController=require("./AllCouriersRoutes/shreemaruti.router")
 
 // const WoocommerceController=require("./AllCouriersRoutes/woocommerce.router")
 const delhiveryRouter=require("./AllCouriersRoutes/delhivery.router")
-
-
+// const nimbusPostRouter=require('./AllCouriersRoutes/nimbuspost.router')
+const nimbuspostRoutes = require('./AllCouriersRoutes/nimbuspost.router');
 
 // const WareHouse=require("./routes/warehouse.router");
 const session=require('express-session');
 const MongoStore=require('connect-mongo');
+
 
 const store=MongoStore.create({
     mongoUrl:process.env.MONGODB_URI,
@@ -102,7 +103,7 @@ app.use('/v1', router);
 
 
 
-// app.use("/v1/NimbusPost",NimbusPostController);
+// app.use("/api/nimbuspost", nimbuspostRoutes); // Add this line
 // app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/Xpressbees",XpressbeesController);
 // app.use("/v1/ShreeMaruti",shreeMarutiController);
@@ -125,5 +126,10 @@ app.use("/v1/shreeMaruti",ShreeMarutiController);
 // app.use("/v1/woocommerce",WoocommerceController);
 app.use("/v1/delhivery",delhiveryRouter)
 
+app.use(cors());
+const otpRouter = require('./auth/auth.otp');  // Import the OTP route
+
+// Use OTP route
+app.use("/v1/auth", otpRouter);  // Adjusted route path to include '/v1/auth'
 
 module.exports = app;
