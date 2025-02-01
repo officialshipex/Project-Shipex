@@ -4,23 +4,31 @@ if(process.env.NODE_ENV!="production"){
 
 const Courier=require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
+const AllCourier=require("../../../models/AllCourierSchema");
+const axios=require("axios");
 
 const BASE_URL=process.env.XpreesbeesUrl;
 
 
-const getAuthToken = async () => {
+const getAuthToken = async (req,res) => {
 
     const url = `${BASE_URL}/api/users/login`;
     const payload = {
-         email:process.env.XpreesbeesEmail,
-         password:process.env.XpressbeesPassword
+         email:req.body.credentials.email,
+         password:req.body.credentials.password
     };
-
+    const courierData= {
+      courierName: req.body.courierName,
+      courierProvider: req.body.courierProvider,
+      CODDays: req.body.CODDays
+    }
     try {
         const response = await axios.post(url, payload, {
             headers: { 'Content-Type': 'application/json' }
         });
         if (response.data.status) {
+            const newCourier = new AllCourier(courierData);
+            await newCourier.save();
             return response.data.data;
         }
         else {

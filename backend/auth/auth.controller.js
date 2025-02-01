@@ -143,6 +143,7 @@ const login = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         kyc: user.kycDone,
+        isAdmin: user.isAdmin,
       },
     }
 
@@ -236,12 +237,11 @@ const googleLoginFail = (req, res) => {
 const verifySession = async (req, res) => {
   try {
     const session = req.headers.authorization;
-    console.log("session", session);
 
     if (!session) {
       return res.status(400).json({
         success: false,
-        message: "session not found",
+        message: "Session not found",
       });
     }
 
@@ -255,6 +255,7 @@ const verifySession = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     if (!decoded) {
       return res.status(400).json({
         success: false,
@@ -262,14 +263,20 @@ const verifySession = async (req, res) => {
       });
     }
 
-    // console.log("decoded", decoded.user);
     const user = await User.findById(decoded.user.id);
-    // console.log("user", user.kycDone);
 
     if (!user) {
       return res.status(400).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // Check if user is admin
+    if (!user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have admin privileges",
       });
     }
 
@@ -286,7 +293,8 @@ const verifySession = async (req, res) => {
       message: "Internal server error",
     });
   }
-}
+};
+
 
 module.exports = {
   register,

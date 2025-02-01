@@ -5,6 +5,7 @@ const XpressbeesAuthorizeController=require("../AllCouriers/Xpressbees/Authorize
 const XpressbeesCouierController=require("../AllCouriers/Xpressbees/Courier/courier.controller");
 const XpressbeesMainServices=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 
+router.post('/getAuthToken',XpressbeesAuthorizeController.getAuthToken);
 router.get('/saveNew',XpressbeesAuthorizeController.saveXpressbees);
 router.get('/isEnabeled',XpressbeesAuthorizeController.isEnabeled);
 router.get('/disable',XpressbeesAuthorizeController.disable);
