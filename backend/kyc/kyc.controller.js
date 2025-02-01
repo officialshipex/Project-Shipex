@@ -1,11 +1,9 @@
-if(process.env.NODE_ENV!="production"){
-  require('dotenv').config();
-  }
+
 const { AxiosError } = require('axios');
 const express = require('express');
 const dotenv = require('dotenv');
 const axios = require('axios');
-const https = require('https');
+const crypto = require("crypto");
 
 const { getSignature, validateGST, validatePAN, validateAadhaar, validateBankDetails, validateAccountNumber } = require('../utils/lib');
 const BankAccount = require('../models/BankAccount.model');
@@ -14,8 +12,8 @@ const Gstin = require('../models/Gstin.model');
 const User = require('../models/User.model');
 const Pan = require('../models/Pan.model');
 const Kyc = require('../models/Kyc.model');
-const Kyc2Model = require('../models/Kyc2.model');
 
+dotenv.config();
 const verfication = express.Router();
 const cashfreeUrl = process.env.CASHFREE_URI;
 
@@ -28,7 +26,7 @@ verfication.post('/gstin', async (req, res) => {
     const userId = req.user._id;
     // console.log("userId:", userId);
     const { GSTIN, businessName } = req.body;
-    // console.log("GSTIN:", GSTIN);
+    console.log("GSTIN:", GSTIN);
     if (!GSTIN) {
       return res.status(400).json({
         success: false,
@@ -84,7 +82,6 @@ verfication.post('/gstin', async (req, res) => {
       },
       data: data
     };
-    // console.log(config)
 
     const response = await axios.request(config);
 
@@ -148,7 +145,7 @@ verfication.post('/gstin', async (req, res) => {
 
 //     const userId = req.user._id;
 //     const { pan, name } = req.body;
-// // console.log(pan)
+// console.log(pan)
 //     if (!pan) {
 //       return res.status(400).json({
 //         success: false,
@@ -157,7 +154,7 @@ verfication.post('/gstin', async (req, res) => {
 //     }
 
 //     const validatePan = validatePAN(pan);
-// // console.log(validatePan)
+
 //     if (!validatePan) {
 //       return res.status(400).json({
 //         success: false,
@@ -187,7 +184,7 @@ verfication.post('/gstin', async (req, res) => {
 //     });
 
 //     let signature = getSignature();
-//     // console.log(signature)
+//     console.log(signature)
 
 //     let config = {
 //       method: 'post',
@@ -204,9 +201,14 @@ verfication.post('/gstin', async (req, res) => {
 //       data: data
 //     };
 
-//     const response = await axios.request(config);
+//     try{
+//       const response = await axios.request(config);
+//     }
+//     catch(err){
+//       // console.log("Response error is ",err)
+//     }
 
-//     console.log("response:", response);
+//     // console.log("response:", response);
 
 //     if (!response || !response.data) {
 //       return res.status(500).json({
@@ -263,149 +265,94 @@ verfication.post('/gstin', async (req, res) => {
 //   }
 // });
 
-// const https = require('https');
 
-verfication.post('/pan', async (req, res) => {
+
+const BASE_URL = "https://payout-api.cashfree.com"; // or use sandbox URL if testing
+const AUTH_URL = `${BASE_URL}/payout/v1/authorize`;
+const PAN_VERIFY_URL = `${BASE_URL}/payout/v1/validation/pan`;
+const CLIENT_ID = process.env.X_CLIENT_ID;
+const CLIENT_SECRET = process.env.X_CLIENT_SECRET;
+function generateSignature(payload) {
+  return crypto
+    .createHmac("sha256", CLIENT_SECRET)
+    .update(JSON.stringify(payload))
+    .digest("base64");
+}
+
+// Function to get Cashfree authentication token
+async function getAuthToken() {
   try {
-    const userId = req.user._id;
-    const { pan, name } = req.body;
+    const payload = {}; // Empty payload for auth request
+    const signature = generateSignature(payload); // Generate signature
 
-    if (!pan) {
-      return res.status(400).json({
-        success: false,
-        message: "PAN is required",
-      });
-    }
-
-    const validatePan = validatePAN(pan);
-
-    if (!validatePan) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid PAN",
-      });
-    }
-
-    const panExists = await Pan.findOne({ pan });
-
-    if (panExists) {
-      if (!panExists.user.equals(userId)) {
-        return res.status(400).json({
-          success: false,
-          message: "PAN already exists for another user",
-        });
+    const response = await axios.post(
+      AUTH_URL,
+      payload,
+      {
+        headers: {
+          "X-Client-Id": CLIENT_ID,
+          "X-Signature": signature,
+          "Content-Type": "application/json",
+        },
       }
-      return res.status(200).json({    
-        success: true,
-        message: "PAN already exists",
-        data: panExists,
-      });
-    }
+    );
 
-    const data = JSON.stringify({
-      pan: pan,
-      name: name || '',
-    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error getting auth token:", error.response?.data || error.message);
+    throw new Error("Failed to get auth token");
+  }
+}
 
-    let signature = getSignature();
+// PAN Verification API Route
+verfication.post("/pan", async (req, res) => {
+  const { pan } = req.body;
 
-    const options = {
-      hostname: new URL(cashfreeUrl).hostname, // Extract the hostname from cashfreeUrl
-      path: '/pan',
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'x-client-id': process.env.X_CLIENT_ID,
-        'x-client-secret': process.env.X_CLIENT_SECRET,
-        'x-cf-signature': signature,
-        'x-api-version': '2024-10-18',
-        'Content-Length': data.length,
-      },
-    };
-    // console.log(options)
+  const authHeader = req.headers["authorization"];
+  let token;
 
-    const request = https.request(options, (response) => {
-      let responseBody = '';
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1]; // Extract token after "Bearer "
+  } else {
+    return res.status(401).json({ error: "Authorization token missing" });
+  }
 
-      // Accumulate data chunks
-      response.on('data', (chunk) => {
-        responseBody += chunk;
-        console.log("responseBody:", responseBody);
-      });
+ 
 
-      // Handle the complete response
-      response.on('end', async () => {
-        const responseData = JSON.parse(responseBody);
-       
-        if (!responseData) {
-          return res.status(500).json({
-            success: false,
-            message: 'Internal error',
-          });
-        }
 
-        if (!responseData.valid) {
-          return res.status(400).json({
-            success: false,
-            pan: responseData.pan,
-            reference_id: responseData.reference_id,
-            name_provided: responseData.name_provided,
-            valid: responseData.valid,
-            message: responseData.message,
-          });
-        }
+  if (!pan) {
+    return res.status(400).json({ error: "PAN number is required" });
+  }
 
-        const newPan = new Pan({
-          user: userId,
-          nameProvided: responseData.name_provided,
-          pan: responseData.pan,
-          registeredName: responseData.registered_name,
-          panType: responseData.type,
-          panRefId: responseData.reference_id,
-        });
+  try {
+    // const authToken = await getAuthToken();
+    
+    // Prepare request payload
+    const payload = { pan };
 
-        await newPan.save();
+    // Generate HMAC signature
+    const signature = generateSignature(payload);
 
-        return res.status(200).json({
-          success: true,
-          message: 'PAN verified successfully',
-          data: newPan,
-        });
-      });
-    });
+    const response = await axios.post(
+      PAN_VERIFY_URL,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Client-Id": CLIENT_ID,
+          "X-Signature": signature,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log(response.data);
 
-    // Handle request errors
-    request.on('error', (error) => {
-      console.error('Error with PAN verification request:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-      });
-    });
-
-    // Write data to the request body
-    request.write(data);
-    request.end();
-  } catch (err) {
-    console.error("err:", err);
-
-    if (err.isAxiosError && err.response) {
-      return res.status(err.response.status || 500).json({
-        success: false,
-        message: err.response.data.message || 'Error in PAN verification',
-      });
-    }
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-    });
+    res.json({ success: true, data: response.data });
+  } catch (error) {
+    console.error("PAN Verification Error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "PAN verification failed" });
   }
 });
-
-
-
-
 /**
  * verify Aadhaar number, here we send the otp to the user's mobile number
  */
@@ -444,7 +391,6 @@ verfication.post('/generate-otp', async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Aadhaar already exists",
-        data: aadhaarExists
       });
     }
 
@@ -469,21 +415,23 @@ verfication.post('/generate-otp', async (req, res) => {
       data: data
     };
 
-    const response = await axios.request(config);
-    // console.log("response : ", response);
+    try{
+      const response = await axios.request(config);
+    }catch(err){
+      console.log("Response error is ",err)
+    }
 
     if (response.data.status !== "SUCCESS") {
-      return res.status(200).json({
+      return res.status(400).json({
         success: false,
         message: response.data.message,
       });
     }
 
-    // console.log("response:", response);
+    console.log("response:", response);
 
     return res.status(200).json({
       success: true,
-      message: response.data.message,
       data: response.data
     });
 
@@ -512,8 +460,8 @@ verfication.post('/verify-otp', async (req, res) => {
 
     const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
-    const { otp, refId, aadhaarNo } = req.body;
-    // console.log("req body : ", req.body);
+    const { otp, refId } = req.body;
+
     if (!otp || !refId) {
       return res.status(400).json({
         success: false,
@@ -545,7 +493,7 @@ verfication.post('/verify-otp', async (req, res) => {
 
     const response = await axios.request(config);
 
-    // console.log("response:", response);
+    console.log("response:", response);
 
     const newAadhaar = new Aadhaar({
       user: userId,
@@ -563,13 +511,12 @@ verfication.post('/verify-otp', async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Aadhaar verified successfully',
       data: newAadhaar,
     });
 
   } catch (err) {
 
-    // console.log("err:", err);
+    console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
@@ -584,21 +531,21 @@ verfication.post('/verify-otp', async (req, res) => {
   }
 });
 
-
-
-
-
-
-
+/**
+ * verify bank account
+ */
 verfication.post('/bank-account', async (req, res) => {
   try {
+
     const userId = req.user._id;
+    // const userId = "6711f5f10d7b30f7193c55fd";
+
     const { accountNo, ifsc, name, phone } = req.body;
 
     if (!accountNo || !ifsc || !name || !phone) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "All fields are required"
       });
     }
 
@@ -607,7 +554,7 @@ verfication.post('/bank-account', async (req, res) => {
     if (!validateField.valid) {
       return res.status(400).json({
         success: false,
-        message: validateField.message,
+        message: validateField.message
       });
     }
 
@@ -623,108 +570,84 @@ verfication.post('/bank-account', async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Bank Account already exists",
-        data: bankAccountExists,
       });
     }
 
     const data = JSON.stringify({
-      bank_account: accountNo,
-      ifsc: ifsc,
-      name: name,
-      phone: phone,
-    });
+      "bank_account": accountNo,
+      "ifsc": ifsc,
+      "name": name,
+      "phone": phone,
+    })
 
-    const signature = getSignature();
+    let signature = getSignature();
 
-    const options = {
-      hostname: new URL(cashfreeUrl).hostname, // Extract hostname from cashfreeUrl
-      path: '/bank-account/sync',
-      method: 'POST',
+    let config = {
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: `${cashfreeUrl}/bank-account/sync`,
       headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'content-type': 'application/json',
         'x-client-id': process.env.X_CLIENT_ID,
         'x-client-secret': process.env.X_CLIENT_SECRET,
-        'x-cf-signature': signature,
-        'x-api-version': '2024-10-18',
-        'Content-Length': data.length,
+        "x-cf-signature": signature,
+        "x-api-version": "2024-10-18",
       },
+      data: data
     };
 
-    const request = https.request(options, (response) => {
-      let responseBody = '';
+    const response = await axios.request(config);
 
-      // Accumulate data chunks
-      response.on('data', (chunk) => {
-        responseBody += chunk;
-      });
-
-      // Handle the complete response
-      response.on('end', async () => {
-        const responseData = JSON.parse(responseBody);
-        console.log(responseData);
-
-        if (responseData.account_status === 'INVALID') {
-          return res.status(400).json({
-            success: false,
-            message: responseData.account_status_code,
-          });
-        }
-
-        const newBankAccount = new BankAccount({
-          user: userId,
-          accountNumber: accountNo,
-          nameProvided: name,
-          ifsc: ifsc,
-          AccountStatus: responseData.account_status,
-          nameAtBank: responseData.name_at_bank,
-          bank: responseData.bank_name,
-          branch: responseData.branch,
-          city: responseData.city,
-          nameMatchResult: responseData.name_match_result,
-        });
-
-        await newBankAccount.save();
-
-        return res.status(200).json({
-          success: true,
-          message: 'Bank Account verified successfully',
-          data: newBankAccount,
-        });
-      });
-    });
-
-    // Handle request errors
-    request.on('error', (error) => {
-      console.error('Error with request:', error);
-      return res.status(500).json({
+    if (response.data.account_status === 'INVALID') {
+      return res.status(400).json({
         success: false,
-        message: 'Internal server error',
+        message: response.data.account_status_code
       });
+    }
+
+    const newBankAccount = new BankAccount({
+      user: userId,
+      accountNumber: accountNo,
+      nameProvided: name,
+      ifsc: ifsc,
+      AccountStatus: response.data.account_status,
+      nameAtBank: response.data.name_at_bank,
+      bank: response.data.bank_name,
+      branch: response.data.branch,
+      city: response.data.city,
+      nameMatchResult: response.data.name_match_result,
+    })
+
+    await newBankAccount.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bank Account verified successfully',
+      data: newBankAccount,
     });
 
-    // Write data to the request body
-    request.write(data);
-    request.end();
   } catch (err) {
-    console.log("err:", err);
+    // console.log("err:", err);
 
+    if (err.isAxiosError && err.response) {
+      return res.status(err.response.status || 500).json({
+        success: false,
+        message: err.response.data.message || 'Error in Bank Account verification'
+      });
+    }
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: 'Internal server error'
     });
   }
 });
-
-
 
 
 verfication.post('/kyc', async (req, res) => {
   try {
 
     const userId = req.user._id;
-    // console.log("user id : ", userId);
-    // console.log("req body : ", req.body);
 
     const { businesstype, companyName, gstNumber, address, kycType, panNumber, panName, aadharNumber, accountNumber, ifscCode, accountHolderName, phoneNumber, documentVerified } = req.body;
 
@@ -887,152 +810,5 @@ verfication.get("/kyc", async (req, res) => {
     });
   }
 })
-
-
-verfication.post('/kyc2', async (req, res) => {
-  try {
-
-    const userId = req.user._id;
-
-    const {
-      companyDetails,
-      primaryAddress,
-      accountDetails,
-      isVerified,
-      companyCategory,
-      panNumber,
-      panHolderName,
-      gstNumber,
-      gstCompanyName,
-      aadhaarNumber,
-      verificationState
-    } = req.body;
-
-    // Validate required fields
-    if (!companyDetails || !primaryAddress || !accountDetails || !companyCategory || !panNumber || !panHolderName || !verificationState) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required"
-      });
-    }
-
-    if (!validatePAN(panNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid PAN number"
-      });
-    }
-
-    if (aadhaarNumber && !validateAadhaar(aadhaarNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Aadhaar number"
-      });
-    }
-
-    if (!validateBankDetails(accountDetails.accountNumber, accountDetails.ifscCode, accountDetails.accountHolderName, accountDetails.phoneNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid bank details"
-      });
-    }
-
-    if (gstNumber && !validateGST(gstNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid GST number"
-      });
-    }
-
-    const kycExists = await Kyc2Model.findOne({ user: userId });
-
-    // console.log("kycExists:", kycExists);
-    if (kycExists) {
-      // Update existing KYC
-      const updatedKyc = await Kyc2Model.findByIdAndUpdate(
-        kycExists._id,
-        {
-          companyDetails,
-          primaryAddress,
-          accountDetails,
-          isVerified,
-          companyCategory,
-          panNumber,
-          panHolderName,
-          gstNumber,
-          gstCompanyName,
-          aadhaarNumber,
-          verificationState,
-        }
-      );
-
-      return res.status(200).json({
-        success: true,
-        message: "KYC updated successfully",
-        data: updatedKyc,
-      });
-    }
-
-    // Create new KYC
-    const newKyc = new Kyc2Model({
-      user: userId,
-      companyDetails,
-      primaryAddress,
-      accountDetails,
-      isVerified,
-      companyCategory,
-      panNumber,
-      panHolderName,
-      gstNumber,
-      gstCompanyName,
-      aadhaarNumber,
-      verificationState,
-    });
-
-    await newKyc.save();
-
-    return res.status(201).json({
-      success: true,
-      message: "KYC created successfully",
-      data: newKyc,
-    });
-
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-verfication.get("/kyc2", async (req, res) => {
-  try {
-
-    const userId = req.user._id;
-
-    const kyc = await Kyc2Model.findOne({ user: userId });
-    // console.log("kyc:", kyc);
-
-    if (!kyc) {
-      return res.status(404).json({
-        success: false,
-        message: "KYC not found"
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: kyc
-    });
-
-  } catch (err) {
-    // console.log("err:", err);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-})
-
 
 module.exports = verfication;
