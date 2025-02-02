@@ -114,9 +114,6 @@ const disable = async (req, res) => {
   }
 
 }
-
-
-
 module.exports = { getAuthToken, saveNimbusPost, isEnabeled, disable ,enable};
 
 
