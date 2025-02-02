@@ -22,9 +22,8 @@ const getUsers = async (req, res) => {
 
 const getUserDetails = async (req, res) => {
     try {
-    // console.log(req.user._id)
+    
         const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate({path:'orders',populate:{path:'service_details'}}).populate('Wallet').populate('plan');
-        // console.log(existsingUser);
         res.status(201).json({
             success: true,
             user:existsingUser,

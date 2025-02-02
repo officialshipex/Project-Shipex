@@ -3,30 +3,43 @@ if(process.env.NODE_ENV!="production"){
   }
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
+const AllCourier = require("../../../models/AllCourierSchema");
 const url=process.env.NIMBUSPOST_URL;
 
-const getAuthToken = async () => {
-  const payload = {
-    email: process.env.NIMBUS_GMAIL,
-    password: process.env.NIMBUS_PASS
-  };
-
-  try {
-    const response = await axios.post(`${url}/v1/users/login`, payload, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (response.data.status) {
-      return response.data.data;
+  const getAuthToken = async (req,res) => {
+    const payload = {
+      email: req.body.credentials.email,
+      password: req.body.credentials.password
+    };
+    const CourierData= {
+      courierName: req.body.courierName,
+      courierProvider: req.body.courierProvider,
+      CODDays: req.body.CODDays
     }
-    else {
-      throw new Error(`Login failed: ${response.data.status}`);
+
+    try {
+      const response = await axios.post(`${url}/v1/users/login`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.data.status) {
+        const newCourier = new AllCourier(CourierData);
+        await newCourier.save();
+
+        res.status(200).json({ message: 'Login successful', token: response.data.data.token });
+      }
+      else {
+        throw new Error(`Login failed: ${response.data.status}`);
+      }
     }
-  }
-  catch (error) {
-    throw new Error(`Error in authentication: ${error.message}`);
+    catch (error) {
+      throw new Error(`Error in authentication: ${error.message}`);
+    }
+
   }
 
-}
+
+
+
 
 const saveNimbusPost = async (req, res) => {
   try {

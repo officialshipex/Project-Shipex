@@ -64,15 +64,13 @@ const usersSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Wallet'
     },
-    isAdmin:{
-        type:Boolean,
-        default:false
+    isAdmin: {
+        type: Boolean,
+        default: false
     }
 });
 
 usersSchema.pre("save", async function (next) {
-
-    
     if (this.isNew) {
         try {
             const wallet = new Wallet({
@@ -83,17 +81,14 @@ usersSchema.pre("save", async function (next) {
             this.Wallet = savedWallet._id;
             next();
         }
-        catch(error){
-            next(err); 
+        catch (error) {
+            next(error);
         }
+    } else {
+        next();
     }
-    else{
-        next(); 
-    }
-})
+});
 
-// Using existing model if it exists or defining a new one
 const User = mongoose.model('User', usersSchema);
 
 module.exports = User;
-

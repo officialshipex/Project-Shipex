@@ -88,7 +88,7 @@ async function setting(req, res) {
             { new: true, runValidators: true }
         );
 
-        // console.log(updatedLabelSetting);
+        console.log(updatedLabelSetting);
 
         if (!updatedLabelSetting) {
             return res.status(404).json({ message: 'Label setting not found' });
