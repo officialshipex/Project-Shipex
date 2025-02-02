@@ -34,6 +34,7 @@ router.get('/saveNew', shiprocketAuthorize.saveShipRocket);
 router.get('/isEnabeled', shiprocketAuthorize.isEnabeled);
 router.get('/disable',shiprocketAuthorize.disable);
 router.get('/enable',shiprocketAuthorize.enable);
+router.post('/getToken', shiprocketAuthorize.getToken);
 
 router.get("/getAllActiveCourierServices", getAllActiveCourierServices);
 
