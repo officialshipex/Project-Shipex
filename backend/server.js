@@ -131,5 +131,7 @@ const otpRouter = require('./auth/auth.otp');  // Import the OTP route
 
 // Use OTP route
 app.use("/v1/auth", otpRouter);  // Adjusted route path to include '/v1/auth'
-
+// email verification 
+const emailOtpRouter=require("./notification/emailOtpVerification")
+app.use("/v1/auth",emailOtpRouter)
 module.exports = app;

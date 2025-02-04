@@ -1024,7 +1024,7 @@ verfication.get("/kyc2", async (req, res) => {
       success: true,
       data: kyc
     });
-
+    
   } catch (err) {
     // console.log("err:", err);
     return res.status(500).json({
