@@ -5,14 +5,11 @@ const Order = require("../models/orderSchema.model");
 const Wallet = require("./wallet");
 
 const usersSchema = new mongoose.Schema({
-    firstName: {
+    fullname: {
         type: String,
         required: true,
     },
-    lastName: {
-        type: String,
-        required: true,
-    },
+    
     email: {
         type: String,
         unique: true,
