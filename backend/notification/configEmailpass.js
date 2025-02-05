@@ -15,8 +15,8 @@ const transporter = nodemailer.createTransport({
 //   port: 587, // Use 587 if needed
 //   secure: false, // Use false for port 587
 //   auth: {
-//     user: process.env.ZOHO_EMAIL, // Your Zoho email
-//     pass: process.env.ZOHO_PASSWORD, // Use App Password if 2FA is enabled
+//     user: process.env.NOTIFICATION_EMAIL, // Your Zoho email
+//     pass: process.env.NOTIFICATION_PASS, // Use App Password if 2FA is enabled
 //   },
 // });
 
