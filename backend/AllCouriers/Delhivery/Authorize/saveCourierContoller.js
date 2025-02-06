@@ -9,6 +9,26 @@ const { getUniqueId } = require("../../getUniqueId");
 const API_TOKEN = process.env.DEL_API_TOKEN;
 const BASE_URL=process.env.DELHIVERY_URL;
 
+const getToken = async (req, res) => {
+    const payload = {
+        apiKey: req.body.credentials.apiKey
+    };
+
+    try {
+        const response = await axios.post(`${BASE_URL}/v1/users/login`, payload, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.data.status) {
+            res.status(200).json({ message: 'Login successful', token: response.data.data.token });
+        } else {
+            throw new Error(`Login failed: ${response.data.status}`);
+        }
+    } catch (error) {
+        throw new Error(`Error in authentication: ${error.message}`);
+    }
+};
+
 const saveDelhivery = async (req, res) => {
     try {
         const existingCourier = await Courier.findOne({ provider: 'Delhivery' });

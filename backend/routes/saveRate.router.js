@@ -50,6 +50,8 @@ router.post("/upload", (req, res, next) => {
   });
 });
 
+router.get("/getRateCard",saveRateController.getRateCard)
+
 router.post("/saveB2CRate", saveRateController.saveRate);
 
 module.exports = router;
