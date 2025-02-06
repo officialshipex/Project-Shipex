@@ -39,7 +39,8 @@ const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
 const PrintLabelRoute=require("./label/printLabel.controller")
 const PrintInvoice=require("./label/printInvoice.controller")
-const AllCourierRoutes=require("./routes/allCourierRoutes")
+const AllCourierRoutes=require("./routes/allCourierRoutes");
+const CourierServiceRoutes=require("./routes/courierServies.router");
 router.use("/allCourier",AllCourierRoutes)
 
 router.use('/external', authRouter);
@@ -79,6 +80,8 @@ router.use('/printlabel',PrintLabelRoute)
 router.use('/printinvoice',PrintInvoice)
 
 router.use("/B2Ccouries",couriersB2CRoutes);
+
+router.use('/courierServices',CourierServiceRoutes);
 
 // app.use("/v1/courierServices", courierServicesRoutes);
 
