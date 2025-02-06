@@ -67,11 +67,11 @@ const uploadBaseRate = async (req, res) => {
 
           const transformedData = [{
             weight: parseFloat(item.Weight),
-            zoneA: { forward: item['Zone A Forward'], rto: item['Zone A RTO'] },
-            zoneB: { forward: item['Zone B Forward'], rto: item['Zone B RTO'] },
-            zoneC: { forward: item['Zone C Forward'], rto: item['Zone C RTO'] },
-            zoneD: { forward: item['Zone D Forward'], rto: item['Zone D RTO'] },
-            zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
+            zoneA: { forward: item['Zone A Forward']},
+            zoneB: { forward: item['Zone B Forward']},
+            zoneC: { forward: item['Zone C Forward']},
+            zoneD: { forward: item['Zone D Forward']},
+            zoneE: { forward: item['Zone E Forward']},
           }];
 
           if (existingBaseCard) {
@@ -101,11 +101,11 @@ const uploadBaseRate = async (req, res) => {
           const existingBaseCard = await BaseRateCard.findOne({ courierProviderName, courierServiceName: service, mode });
           const transformedData = [{
             weight: parseFloat(item.Weight.replace(/[^\d.-]/g, '')),
-            zoneA: { forward: item['Zone A Forward'], rto: item['Zone A RTO'] },
-            zoneB: { forward: item['Zone B Forward'], rto: item['Zone B RTO'] },
-            zoneC: { forward: item['Zone C Forward'], rto: item['Zone C RTO'] },
-            zoneD: { forward: item['Zone D Forward'], rto: item['Zone D RTO'] },
-            zoneE: { forward: item['Zone E Forward'], rto: item['Zone E RTO'] },
+            zoneA: { forward: item['Zone A Forward']},
+            zoneB: { forward: item['Zone B Forward']},
+            zoneC: { forward: item['Zone C Forward']},
+            zoneD: { forward: item['Zone D Forward']},
+            zoneE: { forward: item['Zone E Forward']},
           }];
 
           console.log(transformedData);
