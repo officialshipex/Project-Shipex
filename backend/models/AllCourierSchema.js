@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const allCourierSchema = new mongoose.Schema({
-    
     courierName: {
         type: String,
         required: true,
@@ -14,11 +13,15 @@ const allCourierSchema = new mongoose.Schema({
         type: Number,
         required: false,
     },
-    date:{
+    status: {
+        type: Boolean,
+        default: true, // Active by default
+    },
+    date: {
         type: Date,
         default: Date.now,
     },
 });
 
-const AllCourier = mongoose.model.AllCourier || mongoose.model('allCourier',allCourierSchema);
+const AllCourier = mongoose.models.AllCourier || mongoose.model('allCourier', allCourierSchema);
 module.exports = AllCourier;
