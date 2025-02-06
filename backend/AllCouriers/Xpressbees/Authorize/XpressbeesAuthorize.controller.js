@@ -20,7 +20,8 @@ const getAuthToken = async (req,res) => {
     const courierData= {
       courierName: req.body.courierName,
       courierProvider: req.body.courierProvider,
-      CODDays: req.body.CODDays
+      CODDays: req.body.CODDays,
+      status:req.body.status
     }
     try {
         const response = await axios.post(url, payload, {

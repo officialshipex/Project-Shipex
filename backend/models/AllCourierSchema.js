@@ -14,9 +14,10 @@ const allCourierSchema = new mongoose.Schema({
         required: false,
     },
     status: {
-        type: Boolean,
-        default: true, // Active by default
-    },
+        type: String,
+        required: true,
+        enum: ["Enable", "Disable"],
+      },
     date: {
         type: Date,
         default: Date.now,
