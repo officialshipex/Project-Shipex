@@ -9,55 +9,68 @@ const weightSchema = new mongoose.Schema({
     forward: {
       type: Number,
       required: true,
+      default: 0 // Set default to avoid undefined values
     },
     rto: {
       type: Number,
-      required: true,
+      required: false,
     }
   },
   zoneB: {
     forward: {
       type: Number,
       required: true,
+      default: 0
     },
     rto: {
       type: Number,
-      required: true,
+      required: false,
     }
   },
   zoneC: {
     forward: {
       type: Number,
       required: true,
+      default: 0
     },
     rto: {
       type: Number,
-      required: true,
+      required: false,
     }
   },
   zoneD: {
     forward: {
       type: Number,
       required: true,
+      default: 0
     },
     rto: {
       type: Number,
-      required: true,
+      required: false,
     }
   },
   zoneE: {
     forward: {
       type: Number,
       required: true,
+      default: 0
     },
     rto: {
       type: Number,
-      required: true,
+      required: false,
     }
   },
 });
 
 const baseRateCardSchema = new mongoose.Schema({
+  plan: {
+    type: String,
+    required: true
+  },
+  mode: {
+    type: String,
+    required: false
+  },
   courierProviderName: {
     type: String,
     required: true,
@@ -66,20 +79,39 @@ const baseRateCardSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  mode: {
+  courierProviderId: {
     type: String,
-    required: true,
+  },
+  courierServiceId: {
+    type: String,
   },
   weightPriceBasic: [weightSchema],
   weightPriceAdditional: [weightSchema],
-  codCharge: {
-    type: Number,
-    required: true,
-  },
   codPercent: {
     type: Number,
     required: true,
   },
+  codCharge: {
+    type: Number,
+    required: true,
+  },
+  gst: {
+    type: Number,
+  },
+  defaultRate: {
+    type: Boolean,
+    default: false
+  },
+  status: {
+    type: String,
+    enum: ["Active", "Inactive"],
+    required: true
+  },
+  shipmentType: {
+    type: String,
+    enum: ["Forward", "Reverse"],
+    required: true
+  }
 });
 
 // Create the model from the schema
