@@ -143,5 +143,47 @@ const isEnabeled = async (req, res) => {
   
   }
 
+  const getAuthToken = async ()=>{
+    
+        
+        const email= process.env.SHIPR_GMAIL
+        const password=process.env.SHIPR_PASS
+          
 
-module.exports = { saveShipRocket, getToken, isEnabeled, disable,enable };
+  
+  
+          
+        
+        if (!email || !password) {
+          return res.status(400).json({
+              message: "Email and password are required.",
+          });
+      } 
+  
+      try {
+          const options = {
+              method: "POST",
+              url: `${BASE_URL}/v1/external/auth/login`,
+              headers: {
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+              },
+              data: { email, password },
+          };
+  
+          const response = await axios.request(options);
+  
+          if (response.status === 200 && response.data.token) {
+            
+            
+            return response.data.token;
+  
+          } else {
+              throw new Error(`Login failed: Status ${response.status}`);
+          }
+      } catch (error) {
+            console.log(error)
+        }
+      }
+
+module.exports = { saveShipRocket, getToken, isEnabeled, disable,enable, getAuthToken };
