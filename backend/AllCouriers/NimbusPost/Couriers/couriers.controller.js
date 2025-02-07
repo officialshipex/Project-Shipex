@@ -6,7 +6,7 @@ const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
-const { getAuthToken } = require("../Authorize/nimbuspost.controller");
+const { getToken } = require("../Authorize/nimbuspost.controller");
 const { getUniqueId } = require("../../getUniqueId");
 const crypto = require('crypto');
 const url=process.env.NIMBUSPOST_URL;
@@ -14,28 +14,33 @@ const url=process.env.NIMBUSPOST_URL;
 
 const getCouriers = async (req, res) => {
 
-
+console.log('hiii')
     try {
-        const token = await getAuthToken();
+        const token = await getToken();
+        // console.log(token)
         const response = await axios.get(`${url}/v1/courier`, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
             }
         });
-
+        
+    
+        // console.log(response.data)  
         if (response.data.status) {
             const servicesData = response.data.data;
-            const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            // const currCourier = await Courier.findOne({ provider: 'NimbusPost' }).populate('services');
+            // console.log(currCourier)
 
+            // const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            // console.log(prevServices)
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
                 provider_courier_id: element.id,
-                isAdded: prevServices.has(element.name)
+                // isAdded: prevServices.has(element.name)
             }));
-
+            console.log(allServices)
             return res.status(201).json(allServices);
         }
 
@@ -46,6 +51,9 @@ const getCouriers = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch couriers', details: error.message });
     }
 };
+
+
+
 
 
 

@@ -6,7 +6,7 @@ const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
-const { getToken } = require("../Authorize/shiprocket.controller");
+const {getAuthToken, getToken } = require("../Authorize/shiprocket.controller");
 const { getUniqueId } = require("../../getUniqueId");
 const BASE_URL=process.env.SHIPROCKET_URL;
 
@@ -14,7 +14,7 @@ const BASE_URL=process.env.SHIPROCKET_URL;
 const getAllActiveCourierServices = async (req, res) => {
     try {
         // Get the authentication token
-        const token = await getToken();
+        const token = await getAuthToken();
 
         // Define request options
         const options = {
@@ -29,19 +29,19 @@ const getAllActiveCourierServices = async (req, res) => {
         // Make the API request
         const response = await axios.request(options);
 
-        console.log(token);
+        // console.log(token);
 
-        console.log(response);
+        // console.log(response);
 
         if (response?.data?.courier_data) {
             const servicesData = response.data.courier_data;
-            const currCourier = await Courier.findOne({ provider: 'Shiprocket' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            // const currCourier = await Courier.findOne({ provider: 'Shiprocket' }).populate('services');
+            // const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
                 provider_courier_id:element.id,
-                isAdded: prevServices.has(element.name)
+                // isAdded: prevServices.has(element.name)
             }));
 
             return res.status(201).json(allServices);
