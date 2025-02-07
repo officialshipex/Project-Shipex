@@ -3,8 +3,8 @@ const router = express.Router();
 
 const userController=require("../Users/usersController");
 
-router.get("/",userController.getUsers);
-
+router.get("/getUsers",userController.getUsers);
+router.put("/assignPlan", userController.assignPlan);
 
 router.post("/getRateCard",userController.getRatecards);
 

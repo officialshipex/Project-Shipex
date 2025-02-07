@@ -5,7 +5,7 @@ const axios = require('axios');
 const mongoose = require("mongoose");
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
-const { getAuthToken } = require("../Authorize/XpressbeesAuthorize.controller");
+const { getAuthToken, getToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const { getUniqueId } = require("../../getUniqueId");
 
   
@@ -14,7 +14,7 @@ const BASE_URL=process.env.XpreesbeesUrl;
 
 const getCourierList = async (req, res) => {
     try {
-        const token = await getAuthToken();
+        const token = await getToken();
 
         const response = await axios.get(`${BASE_URL}/api/courier`, {
             headers: {
@@ -25,13 +25,13 @@ const getCourierList = async (req, res) => {
 
         if (response.data.status) {
             const servicesData = response.data.data;
-            const currCourier = await Courier.findOne({ provider: 'Xpressbees' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
+            // const currCourier = await Courier.findOne({ provider: 'Xpressbees' }).populate('services');
+            // const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
 
             const allServices = servicesData.map(element => ({
                 service: element.name,
                 provider_courier_id:element.id,
-                isAdded: prevServices.has(element.name)
+                // isAdded: prevServices.has(element.name)
             }));
 
             return res.status(201).json(allServices);

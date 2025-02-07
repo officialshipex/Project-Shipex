@@ -130,4 +130,30 @@ const isEnabeled = async (req, res) => {
   }
 
 
-module.exports={getAuthToken,saveXpressbees,isEnabeled,disable,enable};
+  const getToken = async ()=>{
+  
+      const payload ={
+        email: process.env.XpreesbeesEmail,
+        password:process.env.XpressbeesPassword
+  
+
+
+        
+      };
+      const url = `${BASE_URL}/api/users/login`;
+      try {
+        
+        const response = await axios.post(url, payload, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data.data
+  
+      } catch (error) {
+          console.log(error)
+      }
+    }
+  
+    
+
+
+module.exports={getAuthToken,saveXpressbees,isEnabeled,disable,enable,getToken};
