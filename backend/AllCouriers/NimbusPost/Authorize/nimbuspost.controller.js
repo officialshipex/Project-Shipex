@@ -38,6 +38,27 @@ const url=process.env.NIMBUSPOST_URL;
   }
 
 
+  const getToken = async ()=>{
+
+    const payload ={
+      email: process.env.NIMBUS_GMAIL,
+      password:process.env.NIMBUS_PASS
+
+      
+    };
+    try {
+      
+      const response = await axios.post(`${url}/v1/users/login`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.data.data
+
+    } catch (error) {
+        console.log(error)
+    }
+  }
+
+
 
 
 
@@ -130,7 +151,7 @@ const disable = async (req, res) => {
 
 
 
-module.exports = { getAuthToken, saveNimbusPost, isEnabeled, disable ,enable};
+module.exports = { getAuthToken, getToken, saveNimbusPost, isEnabeled, disable ,enable};
 
 
 
