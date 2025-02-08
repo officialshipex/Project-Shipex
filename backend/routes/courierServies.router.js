@@ -15,10 +15,11 @@ router.get("/couriers", async (req, res) => {
 // ✅ Create New Courier Service
 router.post("/couriers", async (req, res) => {
   try {
-    const { provider, courierType, name, status } = req.body;
+    const { provider,courier, courierType, name, status } = req.body;
 
     const newCourier = new CourierService({
       provider,
+      courier,
       courierType,
       name,
       status,

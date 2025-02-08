@@ -10,7 +10,7 @@ const rechargeRouter = require("./recharge/recharge.route");
 
 
 const orderRouter = require("./routes/orders.router");
-
+const productRouter=require("./routes/CreateNewProduct.router")
 const userController = require("./routes/getUsers.router");
 const servicesController = require("./routes/getServices.router");
 const calculateRouter = require("./routes/calculateRate.router");
@@ -55,6 +55,10 @@ router.use('/recharge', rechargeRouter);
 
 // router.use('/order', orderRouter);
 router.use('/order',isAuthorized,newOrderRoute);
+router.use('/order', orderRouter);
+//create product route
+router.use("/products",productRouter)
+
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);

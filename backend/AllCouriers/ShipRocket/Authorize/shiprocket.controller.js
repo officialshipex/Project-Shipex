@@ -12,6 +12,8 @@ const getToken = async (req,res) => {
     const courierData ={
           courierName : req.body.courierName,
           courierProvider : req.body.courierProvider,
+          CODDays: req.body.CODDays,
+          status:req.body.status
 
     }
 

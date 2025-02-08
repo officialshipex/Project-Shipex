@@ -777,4 +777,34 @@ verfication.get("/kyc", async (req, res) => {
   }
 });
 
+verfication.get("/kyc2", async (req, res) => {
+  try {
+
+    const userId = req.user._id;
+
+    const kyc = await Kyc2Model.findOne({ user: userId });
+    // console.log("kyc:", kyc);
+
+    if (!kyc) {
+      return res.status(404).json({
+        success: false,
+        message: "KYC not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: kyc
+    });
+    
+  } catch (err) {
+    // console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+})
+
+
 module.exports = verfication;

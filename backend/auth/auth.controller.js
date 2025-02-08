@@ -5,23 +5,24 @@ const { validateForm, validateEmail } = require("../utils/afv");
 const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const {sendWelcomeEmail}=require("../notification/welcomeNotification")
 
 const FRONTEND_URL =process.env.NODE_ENV!="production"?"http://localhost:5173":process.env.FRONTEND_URL;
-
 //for User Registration
 const register = async (req, res) => {
   try {
-    const { firstName, lastName, email, phoneNumber, company, monthlyOrders, password, confirmedPassword, checked } = req.body;
+    const {fullname, email, phoneNumber, company, monthlyOrders, password, confirmedPassword, checked } = req.body;
+    console.log(req.body);
+    
 
-    if (!firstName || !lastName || !email || !phoneNumber || !company || !monthlyOrders || !password || !confirmedPassword) {
+    if (!fullname || !email || !phoneNumber || !company || !monthlyOrders || !password || !confirmedPassword) {
       return res.status(400).json({
         success: false,
         message: "Please fill all the fields",
       });
     }
 
-    const userData = { firstName, lastName, email, phoneNumber, company, monthlyOrders, password, confirmedPassword, checked };
+    const userData = { fullname, email, phoneNumber, company, monthlyOrders, password, confirmedPassword, checked };
 
     const validateFields = validateForm(userData);
 
@@ -61,8 +62,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
-      firstName,
-      lastName,
+     fullname,
       email,
       phoneNumber,
       company,
@@ -71,17 +71,18 @@ const register = async (req, res) => {
     });
 
     await newUser.save();
-
+    await sendWelcomeEmail(email,fullname)
     const payload = {
       user: {
         id: newUser._id,
         email: newUser.email,
-        firstName: newUser.firstName,
+        fullname: newUser.fullname,
       },
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
+     //welcome email
+    
     return res.status(200).json({
       success: true,
       message: "User registered successfully",
@@ -141,7 +142,7 @@ const login = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        firstName: user.firstName,
+        fullname: user.fullname,
         kyc: user.kycDone,
         isAdmin: user.isAdmin,
       },
@@ -175,8 +176,7 @@ const googleLogin = async (req, res) => {
     const userExist = await User.findOne({ email: profile.email });
     if (!userExist) {
       const newUser = new User({
-        firstName: profile.name.givenName,
-        lastName: profile.name.familyName,
+        fullname: profile.name.givenName,
         email: profile.email,
         monthlyOrders: profile.monthlyOrders || 0,
         googleOAuthID: profile.id,
@@ -192,7 +192,7 @@ const googleLogin = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        firstName: user.firstName,
+        fullname: user.fullname,
       },
     }
 

@@ -11,7 +11,6 @@ const checkServiceabilityAll= async (service, id,pincode) => {
         if (!currentOrder) throw new Error("Order not found");
 
         console.log("pincode",pincode);
-
         if (service.courierProviderName === "NimbusPost") {
             const payload = {
                 origin:pincode,
@@ -23,7 +22,6 @@ const checkServiceabilityAll= async (service, id,pincode) => {
                 breadth: currentOrder.shipping_cost.dimensions.width,
                 height: currentOrder.shipping_cost.dimensions.height,
             };
-
             console.log("Paylod is",payload);
 
             const result = await getServiceablePincodesData(service.courierProviderServiceName, payload);
