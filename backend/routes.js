@@ -42,6 +42,8 @@ const PrintInvoice=require("./label/printInvoice.controller")
 const AllCourierRoutes=require("./routes/allCourierRoutes");
 const CourierServiceRoutes=require("./routes/courierServies.router");
 router.use("/allCourier",AllCourierRoutes)
+const newOrderRoute=require("./routes/newOrder.router")
+
 
 router.use('/external', authRouter);
 
@@ -51,7 +53,8 @@ router.use('/allocation',isAuthorized, allocationRouter);
 router.use("/paytm", paytmRoutes);
 router.use('/recharge', rechargeRouter);
 
-router.use('/order', orderRouter);
+// router.use('/order', orderRouter);
+router.use('/order',isAuthorized,newOrderRoute);
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);

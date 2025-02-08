@@ -11,21 +11,22 @@ const isAuthorized = async (req, res, next) => {
     });
   }
 
-  // console.log(authorization);
 
-  const [bearer, token] = authorization.split(" ");
+  const [Bearer, token] = authorization.split(" ");
 
-  // console.log("bearer", bearer);
-  // console.log("token", token);
 
-  if (bearer !== "Bearer" || !token) {
+
+  if (Bearer !== "Bearer" || !token) {
+  
     return res.status(401).json({
       success: false,
       message: "You must be logged in",
     });
   }
+  // console.log(token)
 
   const { user } = jwt.verify(token, process.env.JWT_SECRET);
+  // console.log(user)
 
   // console.log("User : ", user);
 
