@@ -46,7 +46,8 @@ function validateAccountNumber(accountNumber) {
     return bankAccountRegex.test(accountNumber);
 }
 
-function validateBankDetails(bank_account, ifsc, name, phone ) {
+function validateBankDetails(bank_account, ifsc  ) {
+    // console.log(bank_account, ifsc, name, phone);
     // Bank account validation: alphanumeric, 6 to 40 characters
     const bankAccountRegex = /^[a-zA-Z0-9]{6,40}$/;
     if (!bankAccountRegex.test(bank_account)) {
@@ -60,17 +61,16 @@ function validateBankDetails(bank_account, ifsc, name, phone ) {
     }
 
     // Name validation: alphanumeric, space, period, hyphen, slash, ampersand
-    const nameRegex = /^[a-zA-Z0-9\s\.\-\/\&]+$/;
-    if (!nameRegex.test(name)) {
-        return { valid: false, message: "Invalid name format" };
-    }
+    // const nameRegex = /^[a-zA-Z0-9\s\.\-\/\&]+$/;
+    // if (!nameRegex.test(name)) {
+    //     return { valid: false, message: "Invalid name format" };
+    // }
 
     // Phone validation: numeric, 8 to 13 digits
-    const phoneRegex = /^[0-9]{8,13}$/;
-    if (!phoneRegex.test(phone)) {
-        return { valid: false, message: "Invalid phone number" };
-    }
-
+    // const phoneRegex = /^[0-9]{8,13}$/;
+    // if (!phoneRegex.test(phone)) {
+    //     return { valid: false, message: "Invalid phone number" };
+    // }
 // console.log("all fields are valid");
     return { valid: true, message: "All fields are valid" };
 }

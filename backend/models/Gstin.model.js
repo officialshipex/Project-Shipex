@@ -35,6 +35,18 @@ const gstinSchema = new mongoose.Schema({
         type : Date,
         required : true,
     },
+    address:{
+        type:String
+    },
+    city:{
+        type:String
+    },
+    state:{
+        type:String
+    },
+    pincode:{
+        type:Number
+    }
 });
 
 const Gstin = mongoose.model.Gstin || mongoose.model('gstin',gstinSchema);

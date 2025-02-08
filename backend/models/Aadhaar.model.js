@@ -39,6 +39,10 @@ const aadhaarSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    state:{
+        type:String,
+        required:true
+    }
 });
 
 const Aadhaar = mongoose.model.Aadhaar || mongoose.model('aadhaar',aadhaarSchema);

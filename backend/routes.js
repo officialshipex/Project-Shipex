@@ -37,8 +37,16 @@ const allocationRouter = require('./addons/orderAllocationEngine/OAE.router');
 const userRouter=require("./routes/user.router");
 const WareHouse=require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require('./routes/bulkOrderUpload.router');
+<<<<<<< HEAD
 const PrintLabelRoute=require("./label/printLabel.controller");
 const PrintInvoice=require("./label/printInvoice.controller");
+=======
+const PrintLabelRoute=require("./label/printLabel.controller")
+const PrintInvoice=require("./label/printInvoice.controller")
+const AllCourierRoutes=require("./routes/allCourierRoutes");
+const CourierServiceRoutes=require("./routes/courierServies.router");
+router.use("/allCourier",AllCourierRoutes)
+>>>>>>> dc5a85ed0fe61db9e74ecfe69c58ac27fd55a5b2
 const newOrderRoute=require("./routes/newOrder.router")
 
 
@@ -52,6 +60,10 @@ router.use('/recharge', rechargeRouter);
 
 // router.use('/order', orderRouter);
 router.use('/order',isAuthorized,newOrderRoute);
+router.use('/order', orderRouter);
+//create product route
+router.use("/products",productRouter)
+
 
 router.use('/users', userController);
 router.use('/calculateRate', calculateRouter);

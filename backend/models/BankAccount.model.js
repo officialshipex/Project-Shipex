@@ -10,10 +10,6 @@ const BankAccountSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    nameProvided : {
-        type: String,
-        required: true
-    },
     ifsc :{
         type: String,
         required: true,
