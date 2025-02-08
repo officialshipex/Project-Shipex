@@ -7,6 +7,7 @@ rechargeRouter.get("/phonepe", phonePe);
 // ---------------CASHFREE----------------------------------------------
 
 rechargeRouter.post('/recharge',handlePaymentOrder);
+// rechargeRouter.post('/createorder',RazorpayOrder);
 rechargeRouter.get('/payment/:orderId/:walletId',handlePaymentRequest);
 
 module.exports = rechargeRouter;
