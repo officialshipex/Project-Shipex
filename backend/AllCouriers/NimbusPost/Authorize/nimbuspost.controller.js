@@ -14,7 +14,8 @@ const url=process.env.NIMBUSPOST_URL;
     const CourierData= {
       courierName: req.body.courierName,
       courierProvider: req.body.courierProvider,
-      CODDays: req.body.CODDays
+      CODDays: req.body.CODDays,
+      status:req.body.status
     }
 
     try {
