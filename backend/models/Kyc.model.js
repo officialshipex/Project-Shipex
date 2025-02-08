@@ -7,10 +7,10 @@ const KycSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
-    businesstype: {
+    companyCategory: {
         type: String,
         default: "individual",
-        enum: ["individual", "soleProprietor", "company"],
+        enum: ["individual", "company"],
     },
     companyName: {
         type: String,
@@ -55,24 +55,9 @@ const KycSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
     },
-    documentVerified: {
-        gstin:{
-            type: Boolean,
-            default: false,
-        },
-        aadhar: {
-            type: Boolean,
-            default: false,
-        },
-        pan: {
-            type: Boolean,
-            default: false,
-        },
-        bank: {
-            type: Boolean,
-            default: false,
-        },
-    },
+    isVerified:{
+        type:Boolean
+    }
 }, { timestamps: true });
 
 const Kyc = mongoose.model('Kyc', KycSchema);

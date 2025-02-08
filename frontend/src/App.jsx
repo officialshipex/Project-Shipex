@@ -9,6 +9,10 @@ import Registeration from "./register/Registration";
 
 import KycRoutes from "./routes/KycRoutes";
 import DashBoardRoute from "./routes/DashboardRoute";
+import Track from "./trackByMobileAWBOrderID/Track";
+import PrivacyPolicy from "./trackByMobileAWBOrderID/PrivacyPolicies";
+import RefundAndCancellationPolicy from "./trackByMobileAWBOrderID/RefundAndCancellationPolicy";
+import TermsAndConditions from "./trackByMobileAWBOrderID/TermsAndConditions";
 
 
 
@@ -31,7 +35,7 @@ function App() {
       
       <Routes>
     
-        <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
+        {/* <Route path="/" element={<Registeration setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
 
         <Route path="/kyc" element={<PrivateRoute isAuthenticated={isAuthenticated} />}>
@@ -40,7 +44,12 @@ function App() {
 
         <Route element={<PrivateRoute isAuthenticated={true} />}>
           <Route path="/seller/*" element={<DashBoardRoute />} />
-        </Route>
+        </Route> */}
+
+<Route path='/' element={<Track/>}/>
+<Route path='/privacy-policy' element={<PrivacyPolicy/>}/>
+<Route path='/refund-cancellation' element={<RefundAndCancellationPolicy/>}/>
+<Route path="/terms-conditions" element={<TermsAndConditions/>}/>
 
       </Routes>
     </Router>
