@@ -11,11 +11,16 @@ const newOrder = async (req, res) => {
       receiverAddress,
       packageDetails,
       paymentDetails,
+      prodectDetails // Fix typo to productDetails
     } = req.body;
 
     // Validate request data
-    if (!pickupAddress || !receiverAddress || !packageDetails || !paymentDetails) {
+    if (!pickupAddress || !receiverAddress || !packageDetails || !paymentDetails || !prodectDetails) {
       return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (!Array.isArray(prodectDetails) || prodectDetails.length === 0) {
+      return res.status(400).json({ error: 'Product details must be a non-empty array' });
     }
 
     if (!['COD', 'Prepaid'].includes(paymentDetails.method)) {
@@ -34,12 +39,14 @@ const newOrder = async (req, res) => {
       }
     }
 
+    // Save pickup address
     const pickup = new pickAddress({
       userId: req.user._id,
       pickupAddress,
     });
     await pickup.save();
 
+    // Save receiver address
     const receiver = new receiveAddress({
       userId: req.user._id,
       receiverAddress,
@@ -49,11 +56,12 @@ const newOrder = async (req, res) => {
     // Create a new shipment
     const shipment = new Order({
       userId: req.user._id,  
-      orderId,  // Store the generated order ID
+      orderId,
       pickupAddress,
       receiverAddress,
       packageDetails,
       paymentDetails,
+      productDetails: prodectDetails, // Store product details correctly
       status: 'new',
     });
 
@@ -69,6 +77,7 @@ const newOrder = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 
 const getOrders = async (req, res) => {
