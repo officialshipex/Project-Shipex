@@ -1,6 +1,14 @@
 const mongoose = require("mongoose");
 // const { displayName } = require('react-quill');
 
+
+const ProductSchema = new mongoose.Schema({
+  productName: { type: String, required: true },
+  HSN: { type: String, required: true },
+  quantity: { type: Number, required: true },
+  unitPrice: { type: Number, required: true }
+});
+
 const orderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   orderId:{
@@ -48,6 +56,7 @@ const orderSchema = new mongoose.Schema({
       },
     },
   },
+  productDetails: { type: [ProductSchema], required: true },
   status: {type:String,required:true},
   createdAt: {
     type: Date,
