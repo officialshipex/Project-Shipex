@@ -104,6 +104,33 @@ const getRateCard = async (req, res) => {
   }
 };
 
+const getPlan = async (req, res) => {
+  try {
+    const allPlan = await Plan.findOne({ userId: req.user._id });
+
+    if (!allPlan) {
+      return res.status(404).json({
+        success: false,
+        message: "Plan not found for the user.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Plan retrieved successfully.",
+      data: allPlan.rateCard, // Sending only rateCard, modify if needed
+    });
+  } catch (error) {
+    console.error("Error fetching plan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error. Please try again later.",
+      error: error.message, // Optional, useful for debugging
+    });
+  }
+};
+
+
 
 
 
@@ -240,4 +267,4 @@ const uploadRate = async (req, res) => {
   }
 };
 
-module.exports = { saveRate, uploadRate, getRateCard };
+module.exports = { saveRate, uploadRate, getRateCard,getPlan };

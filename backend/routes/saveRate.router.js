@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const saveRateController = require("../Rate/saveRateCardController");
+const {isAuthorized}=require("../middleware/auth.middleware")
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -53,6 +54,8 @@ router.post("/upload", (req, res, next) => {
 router.get("/getRateCard",saveRateController.getRateCard)
 
 router.post("/saveB2CRate", saveRateController.saveRate);
+
+router.get("/getPlan",isAuthorized,saveRateController.getPlan)
 
 module.exports = router;
 
