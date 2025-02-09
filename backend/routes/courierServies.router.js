@@ -36,10 +36,12 @@ router.post("/couriers", async (req, res) => {
 // ✅ Update Courier Service
 router.put("/couriers/:id", async (req, res) => {
   try {
+    console.log(req.params.id)
     const updatedCourier = await CourierService.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
+
     );
 
     if (!updatedCourier) {
