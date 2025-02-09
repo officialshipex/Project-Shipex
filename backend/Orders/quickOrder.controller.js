@@ -15,7 +15,6 @@ const createQuickOrder = async (req,res) => {
           },
           paymentMethod: quickOrderData.paymentMethod,
         });
-    
         await quickOrders.save();
         return res.status(201).json({ message: "Order saved successfully" ,quickOrders});
     } catch (error) {

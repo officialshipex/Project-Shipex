@@ -13,6 +13,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
     } = req.body;
+// console.log(req.body);
 
     // Validate request data
     if (!pickupAddress || !receiverAddress ||!productDeatails || !packageDetails || !paymentDetails) {
@@ -71,8 +72,21 @@ const newOrder = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+// new pick up address
+// const newPickupAddress=async(req,res)=>{
+// try {
+//   const pickup = new pickAddress({
+//     userId: req.user._id,
+//     // pickupAddress,
+//   });
 
+// } catch (error) {
+  
+// }
+// }
+// const newReciveAddress=async(req,res)=>{
 
+// }
 const getOrders = async (req, res) => {
   try {
     // console.log(req.user._id)
