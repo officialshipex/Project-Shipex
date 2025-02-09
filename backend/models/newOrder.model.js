@@ -38,8 +38,16 @@ const orderSchema = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
   },
+  productDeatails:[{
+    quantity: { type: Number, required: true },
+    name: { type: String, required: true },
+    hsn: { type: String },
+    unitPrice: { type: String, required: true }
+  ,
+  }],
   packageDetails: {
     deadWeight: { type: Number, required: true },
+    applicableWeight:{type: Number, required: true},
     volumetricWeight: {
       length: { type: Number, required: true },
       width: { type: Number, required: true },

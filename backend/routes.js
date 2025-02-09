@@ -10,7 +10,7 @@ const rechargeRouter = require("./recharge/recharge.route");
 
 
 const orderRouter = require("./routes/orders.router");
-const productRouter=require("./routes/CreateNewProduct.router")
+
 const userController = require("./routes/getUsers.router");
 const servicesController = require("./routes/getServices.router");
 const calculateRouter = require("./routes/calculateRate.router");
@@ -57,7 +57,7 @@ router.use('/recharge', rechargeRouter);
 router.use('/order',isAuthorized,newOrderRoute);
 router.use('/order', orderRouter);
 //create product route
-router.use("/products",productRouter)
+// router.use("/products",productRouter)
 
 
 router.use('/users', userController);
@@ -87,8 +87,6 @@ router.use('/printlabel',PrintLabelRoute)
 router.use('/printinvoice',PrintInvoice)
 
 router.use("/B2Ccouries",couriersB2CRoutes);
-
-router.use('/courierServices',CourierServiceRoutes);
 
 // app.use("/v1/courierServices", courierServicesRoutes);
 

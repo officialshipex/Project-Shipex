@@ -9,13 +9,14 @@ const newOrder = async (req, res) => {
     const {
       pickupAddress,
       receiverAddress,
+      productDeatails,
       packageDetails,
       paymentDetails,
       prodectDetails // Fix typo to productDetails
     } = req.body;
 
     // Validate request data
-    if (!pickupAddress || !receiverAddress || !packageDetails || !paymentDetails || !prodectDetails) {
+    if (!pickupAddress || !receiverAddress ||!productDeatails || !packageDetails || !paymentDetails) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -59,6 +60,7 @@ const newOrder = async (req, res) => {
       orderId,
       pickupAddress,
       receiverAddress,
+      productDeatails,
       packageDetails,
       paymentDetails,
       productDetails: prodectDetails, // Store product details correctly
@@ -110,5 +112,21 @@ const getreceiverAddress = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
-
-module.exports = { newOrder, getOrders,getpickupAddress,getreceiverAddress };
+const ShipeNowOrder=async(req,res)=>{
+  try {
+    // console.log(req.params.id); 
+    
+    const order = await Order.findById({_id:req.params.id});
+    // console.log(order);
+    
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    // console.log(order);
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+ }
+module.exports = { newOrder, getOrders,getpickupAddress,getreceiverAddress,ShipeNowOrder };
