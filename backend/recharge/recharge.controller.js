@@ -77,8 +77,8 @@ const createPaymentOrder = async (orderDetails) => {
   let cashfreeId = process.env.PAYMENT_X_ID;
   let cashfreeSecret = process.env.PAYMENT_X_SECRET;
 
-//   console.log("cashfreeId", cashfreeId);
-//   console.log("cashfreeSecret", cashfreeSecret);
+  // console.log("cashfreeId", cashfreeId);
+  // console.log("cashfreeSecret", cashfreeSecret);
 
   const url = `${URL_CASHFREE}/orders`;
   const headers = {
@@ -146,7 +146,7 @@ const handlePaymentOrder = async (req, res) => {
 
   try {
     const order = await createPaymentOrder(orderDetails);
-
+    console.log(order)
     console.log(order.payment_session_id);
 
     return res.status(201).json({

@@ -28,12 +28,12 @@ const getUsers = async (req, res) => {
     try {
         // console.log("hiii")
       const allUsers = await User.find({}); // Get all users
-    //   console.log(allUsers)
+      // console.log(allUsers)
       res.status(201).json({
         success: true,
         sellers: allUsers.map(user => ({
           id: user._id,
-          name: `${user.firstName}`, // Ensure to format the name as needed
+          name: `${user.fullname}`, // Ensure to format the name as needed
         })),
       });
     } catch (error) {
