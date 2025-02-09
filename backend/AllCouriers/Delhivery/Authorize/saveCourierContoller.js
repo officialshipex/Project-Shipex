@@ -211,4 +211,4 @@ const fetchBulkWaybills = async (count) => {
     }
 };
 
-module.exports = { saveDelhivery, isEnabeled, getCourierList, enable, disable, addService, fetchBulkWaybills };
+module.exports = { saveDelhivery, isEnabeled, getCourierList, enable, disable, addService, fetchBulkWaybills, getToken };
