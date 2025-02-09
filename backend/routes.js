@@ -49,6 +49,7 @@ router.use("/allocation", isAuthorized, allocationRouter);
 
 router.use("/paytm", paytmRoutes);
 router.use("/recharge", rechargeRouter);
+router.use('/courierServices',CourierServiceRoutes)
 
 // router.use('/order', orderRouter);
 router.use("/order", isAuthorized, newOrderRoute);
