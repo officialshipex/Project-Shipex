@@ -2,7 +2,8 @@ const Order = require('../models/newOrder.model'); // Adjust the path to your mo
 const user=require('../models/User.model');
 const pickAddress=require('../models/pickupAddress.model');
 const receiveAddress=require('../models/deliveryAddress.model');
-
+const csv = require("csv-parser");
+const fs = require("fs");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -134,4 +135,34 @@ const ShipeNowOrder=async(req,res)=>{
     res.status(500).json({ error: "Server error" });
   }
  }
-module.exports = { newOrder, getOrders,getpickupAddress,getreceiverAddress,ShipeNowOrder };
+
+
+
+
+
+
+const pincodeData = [];
+
+fs.createReadStream("data/pincodes.csv")
+  .pipe(csv())
+  .on("data", (row) => {
+    pincodeData.push(row);
+    // console.log(row)
+  })
+  .on("end", () => {
+    console.log("CSV file successfully loaded.");
+  });
+
+const getPinCodeDetails=async (req, res) => {
+  const { pincode } = req.params;
+  console.log(pincode)
+  const foundEntry = pincodeData.find((entry) => entry.pincode === pincode);
+  // console.log(pincodeData)
+
+  if (foundEntry) {
+    res.json({ city: foundEntry.city, state: foundEntry.state });
+  } else {
+    res.status(404).json({ error: "Pincode not found" });
+  }
+};
+module.exports = { newOrder, getOrders,getpickupAddress,getreceiverAddress,ShipeNowOrder,getPinCodeDetails };
