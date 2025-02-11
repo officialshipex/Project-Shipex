@@ -30,7 +30,6 @@ const ZONE_E_STATES = [
 ];
 
 let pinCodeData = {};
-
 const getpinCodeData = async () => {
     const csvFilePath = path.join(__dirname, "../data/pincodes.csv");
 
