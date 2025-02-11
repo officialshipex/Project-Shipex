@@ -2,7 +2,7 @@ const { phonePe, pay ,handlePaymentOrder,handlePaymentRequest} = require("./rech
 const rechargeRouter = require("express").Router();
 
 // -----------PHONE PAY-------------------------------------------------------
-rechargeRouter.get("/phonepe", phonePe);
+rechargeRouter.post("/phonepe", phonePe);
 
 // ---------------CASHFREE----------------------------------------------
 

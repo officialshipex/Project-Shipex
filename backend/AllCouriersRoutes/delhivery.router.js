@@ -6,10 +6,10 @@ const {
   createOrder
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 
-const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
+const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService, getToken}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
 
 const router = express.Router();
-
+router.get('/getToken', getToken )
 router.get('/saveNew',saveDelhivery);
 router.get('/isEnabeled',isEnabeled);
 router.get('/enable',enable);
