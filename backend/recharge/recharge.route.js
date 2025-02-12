@@ -1,8 +1,8 @@
-const { phonePe, pay ,handlePaymentOrder,handlePaymentRequest} = require("./recharge.controller");
+const { phonePe, pay ,handlePaymentOrder,handlePaymentRequest,createOrder,verifyPayment} = require("./recharge.controller");
 const rechargeRouter = require("express").Router();
 
 // -----------PHONE PAY-------------------------------------------------------
-rechargeRouter.post("/phonepe", phonePe);
+// rechargeRouter.post("/phonepe", phonePe);
 
 // rechargeRouter.post('/redirect-url/:merchantTransactionId',(req,res)=>{
 //     const { merchantTransactionId } = req.params
@@ -16,8 +16,12 @@ rechargeRouter.post("/phonepe", phonePe);
 
 // ---------------CASHFREE----------------------------------------------
 
-rechargeRouter.post('/recharge',handlePaymentOrder);
+//=============Razorpay============
+rechargeRouter.post("/create-order",createOrder)
+rechargeRouter.post("/verify-payment",verifyPayment)
+//==============Razorpay================
+// rechargeRouter.post('/recharge',handlePaymentOrder);
 // rechargeRouter.post('/createorder',RazorpayOrder);
-rechargeRouter.get('/payment/:orderId/:walletId',handlePaymentRequest);
+// rechargeRouter.get('/payment/:orderId/:walletId',handlePaymentRequest);
 
 module.exports = rechargeRouter;
