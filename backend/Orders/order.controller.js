@@ -260,7 +260,7 @@ const cancelOrdersAtNotShipped = async (req, res) => {
       .status(500)
       .send({ error: "An error occurred while cancelling orders." });
   }
-};
+}; 
 
 const requestPickup = async (req, res) => {
   const allOrders = req.body.items;

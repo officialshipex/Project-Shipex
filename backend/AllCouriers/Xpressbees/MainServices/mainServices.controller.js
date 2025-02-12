@@ -10,9 +10,11 @@ const BASE_URL = process.env.XpreesbeesUrl;
 
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
-  const { selectedServiceDetails, id } = req.body;
+  const { selectedServiceDetails, id,provider } = req.body;
   const currentOrder = await Order.findById(id);
-  console.log(currentOrder)
+ 
+
+  // console.log(currentOrder)
   const currentWallet = await Wallet.findById(req.body.walletId);
   const order_items = new Array(currentOrder.productDetails.length);
 
@@ -24,6 +26,7 @@ const createShipment = async (req, res) => {
       sku: item.sku,
     };
   });
+// console.log("sadasdasd",currentOrder.receiverAddress.phoneNumber)
 
   let payment_type = currentOrder.paymentDetails.method === "COD" ? "cod" : "prepaid";
   const shipmentData = {
@@ -48,7 +51,7 @@ const createShipment = async (req, res) => {
         phone: currentOrder.pickupAddress.phoneNumber,
     },
     order_items,
-    collectable_amount: currentOrder.paymentDetails.amount,
+    collectable_amount: currentOrder.paymentDetails.method === "prepaid" ? 0 :currentOrder.paymentDetails.amount,
     courier_id: selectedServiceDetails,
   };
 
@@ -56,45 +59,50 @@ const createShipment = async (req, res) => {
 
   try {
     const token = await getToken();
+// console.log("sadasd",shipmentData)
     const response = await axios.post(url, shipmentData, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-
-    console.log("XpressBees Create Shipment", response.data);
+    
+    // console.log("XpressBees Create Shipment", response.data);
 
     if (response.data.status) {
       const result = response.data.data;
-      currentOrder.status = "Booked";
+      currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
+      currentOrder.label=result.label
+      currentOrder.provider=provider
       currentOrder.shipment_id = `${result.awb_number}`;
-      currentOrder.service_details = selectedServiceDetails._id;
-      currentOrder.freightCharges =
-        req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      currentOrder.tracking = [];
-      currentOrder.tracking.push({
-        stage: "Order Booked",
-      });
+      // currentOrder.service_details = selectedServiceDetails._id;
+      // currentOrder.freightCharges =
+      //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      // currentOrder.tracking = [];
+      // currentOrder.tracking.push({
+      //   stage: "Order Booked",
+      // });
+      // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
-      let balanceToBeDeducted =
-        req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      let currentBalance = currentWallet.balance - balanceToBeDeducted;
-      await currentWallet.updateOne({
-        $inc: { balance: -balanceToBeDeducted },
-        $push: {
-          transactions: {
-            txnType: "Shipping",
-            action: "debit",
-            amount: currentBalance,
-            balanceAfterTransaction:
-              currentWallet.balance - balanceToBeDeducted,
-            awb_number: `${result.awb_number}`,
-          },
-        },
-      });
+      // console.log("sahkdjhsakdsa",currentOrder)
+      // let balanceToBeDeducted =
+      //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      // let currentBalance = currentWallet.balance - balanceToBeDeducted;
+      // await currentWallet.updateOne({
+      //   $inc: { balance: -balanceToBeDeducted },
+      //   $push: {
+      //     transactions: {
+      //       txnType: "Shipping",
+      //       action: "debit",
+      //       amount: currentBalance,
+      //       balanceAfterTransaction:
+      //         currentWallet.balance - balanceToBeDeducted,
+      //       awb_number: `${result.awb_number}`,
+      //     },
+        // },
+      // });
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
@@ -103,8 +111,8 @@ const createShipment = async (req, res) => {
         .json({ error: "Error creating shipment", details: response.data });
     }
   } catch (error) {
-    console.log(error);
-    console.error("Error in creating shipment:", error.message);
+    // console.log(error);
+    console.error("Error in creating shipment:", error.response);
     return res
       .status(500)
       .json({ error: "Internal Server Error", message: error.message });
@@ -116,7 +124,7 @@ const reverseBooking = async (req, res) => {
   const url = `${BASE_URL}/api/reverseshipments`;
 
   try {
-    const token = await getAuthToken();
+    const token = await getToken();
     const response = await axios.post(url, shipmentData, {
       headers: {
         "Content-Type": "application/json",
@@ -153,7 +161,7 @@ const trackShipment = async (trackingNumber) => {
   const url = `${BASE_URL}/api/shipments2/track/${trackingNumber}`;
 
   try {
-    const token = await getAuthToken();
+    const token = await getToken();
     const response = await axios.get(url, {
       headers: {
         "Content-Type": "application/json",
@@ -189,7 +197,7 @@ const pickup = async (awbNumbers) => {
   const url = `${BASE_URL}/api/shipments2/manifest`;
 
   try {
-    const token = await getAuthToken();
+    const token = await getToken();
     const payload = { awbs: awbNumbers };
 
     const response = await axios.post(url, payload, {
@@ -224,23 +232,24 @@ const pickup = async (awbNumbers) => {
 };
 
 const cancelShipmentXpressBees = async (awb) => {
+ 
   if (!awb) {
     return res.status(400).json({ error: "AWB number is required" });
   }
 
   const url = `${BASE_URL}/api/shipments2/cancel`;
-
   try {
-    const token = await getAuthToken();
-    const payload = { awb };
-
+    const token = await getToken();
+    const payload = {awb} ;
+    // console.log("sadsdsads",awb)
+    // console.log("sadsdsads",token)
     const response = await axios.post(url, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-
+    console.log("42514251421245",response.data)
     const { status, data } = response.data;
     if (status) {
       return { data, code: 201 };
