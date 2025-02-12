@@ -8,6 +8,7 @@ const Wallet = require("../models/wallet");
 const Razorpay = require("razorpay");
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const URL_CASHFREE = "https://api.cashfree.com/pg"
+const sha256 = require('sha256')
 // process.env.CASHFREE_PRODUCTION_BASE_URL;
 
 async function phonePe(req, res) {
