@@ -8,36 +8,36 @@ const Wallet = require("../models/wallet");
 const Razorpay = require("razorpay");
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const URL_CASHFREE = "https://api.cashfree.com/pg"
-process.env.CASHFREE_PRODUCTION_BASE_URL;
+// process.env.CASHFREE_PRODUCTION_BASE_URL;
 
 async function phonePe(req, res) {
   // console.log('hiii')
   try {
     // console.log(req.body)
     const { amount, name, phone } = req.body; // Extract data from frontend
-    const merchantTransactionId = "M" + Date.now();
+    const merchantTransactionId = `TXN${Date.now()}`;
     // console.log(merchantTransactionId)
     // console.log("Received Data:", { amount, name, phone });
 
     const data = {
       merchantId: process.env.PHONE_PE_MERCHANT_ID,
       merchantTransactionId: merchantTransactionId,
-      merchantUserId: "MUID" + `${Date.now()}`,
+      merchantUserId: `MUID${Date.now()}`,
       name: name || "User", // Use provided name or default
       amount: amount * 100, // Convert amount to paise
-      redirectUrl: `http://localhost:3000/status/${merchantTransactionId}`,
+      redirectUrl: `https://ship.carryship.in/status/${merchantTransactionId}`,
       redirectMode: "POST",
-      mobileNumber: phone || 7828153133, // Use provided phone number or default
+      mobileNumber: phone , // Use provided phone number or default
       paymentInstrument: {
         type: "PAY_PAGE",
       },
     };
-    // console.log(data)
-    const payload = JSON.stringify(data);
-    const payloadMain = Buffer.from(payload).toString("base64");
+    console.log(data)
+    // const payload = JSON.stringify(data);
+    const payloadMain = Buffer.from(JSON.stringify(data),"utf-8").toString("base64");
     const keyIndex = 1;
     const string = payloadMain + "/pg/v1/pay" + process.env.PHONE_PE_SALT_KEY;
-const sha256 = crypto.createHash("sha256").update(string, "utf8").digest("hex");
+    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
     const checksum = sha256 + "###" + keyIndex;
     const prod_URL = "https://api.phonepe.com/apis/hermes/pg/v1/pay";
 
