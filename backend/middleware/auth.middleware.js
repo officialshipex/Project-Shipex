@@ -3,7 +3,7 @@ const User = require("../models/User.model");
 
 const isAuthorized = async (req, res, next) => {
   const { authorization } = req.headers;
-  console.log(authorization)
+  // console.log(authorization)
 
   if (!authorization) {
     return res.status(401).json({
@@ -15,7 +15,7 @@ const isAuthorized = async (req, res, next) => {
 
   const [Bearer, token] = authorization.split(" ");
 
-
+// console.log(Bearer,token)
 
   if (Bearer !== "Bearer" || !token) {
   
@@ -40,7 +40,7 @@ const isAuthorized = async (req, res, next) => {
 
   const userExists = await User.findOne({ _id: user.id });
 
-  // console.log("User Exists : ", userExists);
+ 
 
   if (!userExists) {
     return res.status(401).json({
@@ -48,6 +48,7 @@ const isAuthorized = async (req, res, next) => {
       message: "You must be logged in",
     });
   }
+ 
 
   req.user = userExists;
 

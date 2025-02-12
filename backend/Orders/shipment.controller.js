@@ -1,94 +1,138 @@
-const Order = require("../models/orderSchema.model");
-const { getServiceablePincodesData } = require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
-const{checkServiceability}=require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
-const{checkServiceabilityXpressBees}=require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
-const{checkPincodeServiceabilityDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const{checkServiceabilityShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const Order = require("../models/newOrder.model");
+const {
+  getServiceablePincodesData,
+} = require("../AllCouriers/NimbusPost/Couriers/couriers.controller");
+const {
+  checkServiceability,
+} = require("../AllCouriers/ShipRocket/MainServices/mainServices.controller");
+const {
+  checkServiceabilityXpressBees,
+} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const {
+  checkPincodeServiceabilityDelhivery,
+} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const {
+  checkServiceabilityShreeMaruti,
+} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 
-const checkServiceabilityAll= async (service, id,pincode) => {
-    try {
-        const currentOrder = await Order.findById(id);
-        if (!currentOrder) throw new Error("Order not found");
+const checkServiceabilityAll = async (service, id, pincode) => {
+  try {
 
-        console.log("pincode",pincode);
-        if (service.courierProviderName === "NimbusPost") {
-            const payload = {
-                origin:pincode,
-                destination: currentOrder.shipping_details.pinCode,
-                payment_type: currentOrder.order_type === 'Cash on Delivery' ? "cod" : "prepaid",
-                order_amount: currentOrder.sub_total,
-                weight:currentOrder.shipping_cost.weight,
-                length: currentOrder.shipping_cost.dimensions.length,
-                breadth: currentOrder.shipping_cost.dimensions.width,
-                height: currentOrder.shipping_cost.dimensions.height,
-            };
-            console.log("Paylod is",payload);
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) throw new Error("Order not found");
 
-            const result = await getServiceablePincodesData(service.courierProviderServiceName, payload);
-
-            return result;
-        }
-
-        if (service.courierProviderName === "Shiprocket") {
-            const payload = {
-                origin:pincode,
-                destination: currentOrder.shipping_details.pinCode,
-                payment_type: currentOrder.order_type === 'Cash on Delivery' ? true : false,
-                weight: `${parseInt(currentOrder.shipping_cost.weight)/1000}`,
-                length: currentOrder.shipping_cost.dimensions.length,
-                breadth: currentOrder.shipping_cost.dimensions.width,
-                height: currentOrder.shipping_cost.dimensions.height,
-
-            };
-
-            const result = await checkServiceability(service.courierProviderServiceName, payload);
-            return result;
-        }
-
-        if (service.courierProviderName === "Xpressbees") {
-            
-            const payload = {
-                    origin:pincode,
-                    destination: currentOrder.shipping_details.pinCode,
-                    payment_type: currentOrder.order_type === 'Cash on Delivery' ?"cod":"prepaid",
-                    order_amount:currentOrder.sub_total,
-                    weight:Math.max(parseInt(currentOrder.shipping_cost.weight),parseInt(currentOrder.shipping_cost.volumetricWeight)),
-                    length: currentOrder.shipping_cost.dimensions.length,
-                    breadth: currentOrder.shipping_cost.dimensions.width,
-                    height: currentOrder.shipping_cost.dimensions.height,
     
-            };
-
-            const result=await checkServiceabilityXpressBees(service.courierProviderServiceName,payload);
-            return result;
-
-        }
-
-        if (service.courierProviderName === "Delhivery"){
-            const result=await checkPincodeServiceabilityDelhivery(pincode,currentOrder.order_type);
-            return result;
-        }
-
-        if(service.courierProviderName==="ShreeMaruti"){
-          
-            const payload={
-                fromPincode:parseInt(pincode),
-                toPincode:parseInt(currentOrder.shipping_details.pinCode),
-                isCodOrder:currentOrder.order_type === 'Cash on Delivery' ?true:false,
-                deliveryMode:'SURFACE'
-            }
-            const result=await checkServiceabilityShreeMaruti(payload);
-            return result;
+// console.log(currentOrder)
+    // console.log("pincode",pincode);
+    // if (service.provider === "NimbusPost") {
+    //     const payload = {
+    //         origin: pincode,
+    //         destination: currentOrder.receiverAddress?.pinCode || "",
+    //         payment_type: currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+    //         order_amount: currentOrder.paymentDetails?.amount || 0,
+    //         weight: currentOrder.packageDetails?.applicableWeight || 0,
+    //         length: currentOrder.packageDetails.volumetricWeight?.length || 0,
+    //         breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
+    //         height: currentOrder.packageDetails.volumetricWeight?.height || 0
             
-        }
+    //       };
+    // //   console.log("Paylod is");
 
-        
+    //   const result = await getServiceablePincodesData(
+    //     service.courier,
+    //     payload
+    //   );
+    // //   console.log("das",result);
 
-        return false;
-    } catch (error) {
-        console.error("Error in checking serviceability:", error.message);
-        throw error;
+    //   return result;
+    // }
+    const weight= (currentOrder.packageDetails?.applicableWeight)*1000
+    if (service.provider === "Xpressbees") {
+      const payload = {
+        origin: pincode,
+        destination:currentOrder.receiverAddress?.pinCode || "",
+        payment_type:currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+        order_amount: currentOrder.paymentDetails?.amount || 0,
+        weight: weight || 0,
+        length:currentOrder.packageDetails.volumetricWeight?.length || 0,
+        breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
+        height: currentOrder.packageDetails.volumetricWeight?.height || 0
+      };
+
+      const result = await checkServiceabilityXpressBees(
+        service.courier,
+        payload
+      );
+      return result;
+      // console.log("4621516dsfds",result)
     }
+    // // if (service.courierProviderName === "Shiprocket") {
+    //   const payload = {
+    //     origin: pincode,
+    //     destination: currentOrder.shipping_details.pinCode,
+    //     payment_type:
+    //       currentOrder.order_type === "Cash on Delivery" ? true : false,
+    //     weight: `${parseInt(currentOrder.shipping_cost.weight) / 1000}`,
+    //     length: currentOrder.shipping_cost.dimensions.length,
+    //     breadth: currentOrder.shipping_cost.dimensions.width,
+    //     height: currentOrder.shipping_cost.dimensions.height,
+    //   };
+
+    //   const result = await checkServiceability(
+    //     service.courierProviderServiceName,
+    //     payload
+    //   );
+    //   return result;
+    // }
+
+    // if (service.courierProviderName === "Xpressbees") {
+    //   const payload = {
+    //     origin: pincode,
+    //     destination: currentOrder.shipping_details.pinCode,
+    //     payment_type:
+    //       currentOrder.order_type === "Cash on Delivery" ? "cod" : "prepaid",
+    //     order_amount: currentOrder.sub_total,
+    //     weight: Math.max(
+    //       parseInt(currentOrder.shipping_cost.weight),
+    //       parseInt(currentOrder.shipping_cost.volumetricWeight)
+    //     ),
+    //     length: currentOrder.shipping_cost.dimensions.length,
+    //     breadth: currentOrder.shipping_cost.dimensions.width,
+    //     height: currentOrder.shipping_cost.dimensions.height,
+    //   };
+
+    //   const result = await checkServiceabilityXpressBees(
+    //     service.courierProviderServiceName,
+    //     payload
+    //   );
+    //   return result;
+    // }
+
+    // if (service.courierProviderName === "Delhivery") {
+    //   const result = await checkPincodeServiceabilityDelhivery(
+    //     pincode,
+    //     currentOrder.order_type
+    //   );
+    //   return result;
+    // }
+
+    // if (service.courierProviderName === "ShreeMaruti") {
+    //   const payload = {
+    //     fromPincode: parseInt(pincode),
+    //     toPincode: parseInt(currentOrder.shipping_details.pinCode),
+    //     isCodOrder:
+    //       currentOrder.order_type === "Cash on Delivery" ? true : false,
+    //     deliveryMode: "SURFACE",
+    //   };
+    //   const result = await checkServiceabilityShreeMaruti(payload);
+    //   return result;
+    // }
+
+    // return false;
+  } catch (error) {
+    console.error("Error in checking serviceability:", error.message);
+    throw error;
+  }
 };
 
-module.exports = { checkServiceabilityAll};
+module.exports = { checkServiceabilityAll };
