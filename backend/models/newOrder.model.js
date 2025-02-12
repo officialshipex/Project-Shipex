@@ -1,20 +1,11 @@
 const mongoose = require("mongoose");
-// const { displayName } = require('react-quill');
 
-
-// const ProductSchema = new mongoose.Schema({
-//   productName: { type: String, required: true },
-//   HSN: { type: String, required: true },
-//   quantity: { type: Number, required: true },
-//   unitPrice: { type: Number, required: true }
-// });
 
 const orderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  orderId:{
-    type:Number,
-    required:true,
-    
+  orderId: {
+    type: Number,
+    required: true,
   },
   pickupAddress: {
     contactName: { type: String, required: true },
@@ -34,17 +25,18 @@ const orderSchema = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
   },
-  productDetails:[{
-    id:{type:Number,required:true},
-    quantity: { type: Number, required: true },
-    name: { type: String, required: true },
-    sku: { type: String },
-    unitPrice: { type: String, required: true }
-  ,
-  }],
+  productDetails: [
+    {
+      id: { type: Number, required: true },
+      quantity: { type: Number, required: true },
+      name: { type: String, required: true },
+      sku: { type: String },
+      unitPrice: { type: String, required: true },
+    },
+  ],
   packageDetails: {
     deadWeight: { type: Number, required: true },
-    applicableWeight:{type: Number, required: true},
+    applicableWeight: { type: Number, required: true },
     volumetricWeight: {
       length: { type: Number, required: true },
       width: { type: Number, required: true },
@@ -62,10 +54,19 @@ const orderSchema = new mongoose.Schema({
     },
   },
   awb_number: {
-    type: String
-},
-  // productDetails: { type: [ProductSchema], required: true },
-  status: {type:String,required:true},
+    type: String,
+  },
+  label: {
+    type: String,
+  },
+  shipment_id: {
+    type: String,
+  },
+  provider: {
+    type: String,
+  },
+
+  status: { type: String, required: true },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -5,11 +5,17 @@ const receiveAddress = require("../models/deliveryAddress.model");
 const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
+const {
+  pickup,
+  cancelShipmentXpressBees,
+  trackShipment,
+} = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
 const fs = require("fs");
 const { log } = require("console");
+const { message } = require("../addons/utils/shippingRulesValidation");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -171,20 +177,18 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-      
+
         if (result.success) {
-          return{
+          return {
             item,
-            Xid:result.Xpressbeesid
-          } ;
-        
+            Xid: result.Xpressbeesid,
+          };
         }
       })
     );
- 
+
     const filteredServices = availableServices.filter(Boolean);
     // console.log("oooooooooiou",availableServices)
-    
 
     // console.log("filteredServices", filteredServices);
     const payload = {
@@ -213,7 +217,7 @@ const ShipeNowOrder = async (req, res) => {
           ...rate,
           provider: matchedService.item.provider,
           courierType: matchedService.item.courierType,
-          Xid:matchedService.Xid[0]
+          Xid: matchedService.Xid[0],
         };
       }
       return rate;
@@ -258,6 +262,153 @@ const getPinCodeDetails = async (req, res) => {
     res.status(404).json({ error: "Pincode not found" });
   }
 };
+
+const cancelOrdersAtNotShipped = async (req, res) => {
+  const orderData = req.body;
+  try {
+    const currentOrder = await Order.findById({ _id: orderId._id });
+
+    if (currentOrder && currentOrder.status !== "Cancelled") {
+      currentOrder.status = "Cancelled";
+      return currentOrder.save();
+    }
+    res.status(201).send({ message });
+  } catch (error) {
+    console.error("Error canceling orders:", {
+      // error,
+      // orders: ordersToBeCancelled.map((order) => order._id),
+    });
+    res
+      .status(500)
+      .send({ error: "An error occurred while cancelling orders." });
+  }
+};
+const cancelOrdersAtBooked = async (req, res) => {
+  const allOrders = req.body;
+  const walletId = req.body.walletId;
+  try {
+    // const currentWallet = await Wallet.findById(walletId);
+
+    const currentOrder = await Order.findById({ _id: allOrders._id });
+    if (currentOrder.provider === "Xpressbees") {
+      const result = await cancelShipmentXpressBees(currentOrder.awb_number);
+      console.log("dsadsads",result)
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with Xpressbees",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      } else {
+        currentOrder.status = "new";
+      }
+    } else if (
+      currentOrder.service_details.courierProviderName === "Shiprocket"
+    ) {
+      const result = await cancelOrder(currentOrder.awb_number);
+      if (!result.success) {
+        return {
+          error: "Failed to cancel shipment with Shiprocket",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      } else if (
+        currentOrder.service_details.courierProviderName === "Nimuspost"
+      ) {
+        const result = await cancelShipmentXpressBees(currentOrder.awb_number);
+        if (result.error) {
+          return {
+            error: "Failed to cancel shipment with NimbusPost",
+            details: result,
+            orderId: currentOrder._id,
+          };
+        }
+      }
+    } else if (
+      currentOrder.service_details.courierProviderName === "Delhivery"
+    ) {
+      // console.log("I am in it");
+      const result = await cancelOrderDelhivery(currentOrder.awb_number);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with NimbusPost",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
+    } else if (
+      currentOrder.service_details.courierProviderName === "ShreeMaruti"
+    ) {
+      const result = await cancelOrderShreeMaruti(currentOrder.order_id);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with NimbusPost",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
+    } else {
+      return {
+        error: "Unsupported courier provider",
+        orderId: currentOrder._id,
+      };
+    }
+
+    // currentOrder.status = "Not-Shipped";
+    // currentOrder.cancelledAtStage = "Booked";
+    // currentOrder.tracking.push({
+    //   stage: "Cancelled",
+    // });
+    // let balanceTobeAdded = currentOrder.freightCharges;
+    // let currentBalance = currentWallet.balance + balanceTobeAdded;
+
+    // await currentWallet.updateOne({
+    //   $inc: { balance: balanceTobeAdded },
+    //   $push: {
+    //     transactions: {
+    //       txnType: "Shipping",
+    //       action: "credit",
+    //       amount: currentBalance,
+    //       balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
+    //       awb_number: `${currentOrder.awb_number}`,
+    //     },
+    //   },
+    // });
+    // currentOrder.freightCharges = 0;
+    // await currentOrder.save();
+    // await currentWallet.save();
+
+    // return {
+    //   message: "Order cancelled successfully",
+    //   orderId: currentOrder._id,
+    // };
+    // })
+    // );
+
+    // let successCount = 0;
+    // let failureCount = 0;
+    // cancellationResults.forEach((result) => {
+    //   if (result.error) {
+    //     failureCount++;
+    //   } else {
+    //     successCount++;
+    //   }
+    // });
+
+    res.status(201).send({
+      // results: cancellationResults,
+      // successCount,
+      // failureCount,
+      success:true
+    });
+  } catch (error) {
+    console.error("Error cancelling orders:", error);
+    res
+      .status(500)
+      .send({ error: "An error occurred while cancelling orders." });
+  }
+};
+
 module.exports = {
   newOrder,
   getOrders,
@@ -265,4 +416,6 @@ module.exports = {
   getreceiverAddress,
   ShipeNowOrder,
   getPinCodeDetails,
+  cancelOrdersAtNotShipped,
+  cancelOrdersAtBooked,
 };
