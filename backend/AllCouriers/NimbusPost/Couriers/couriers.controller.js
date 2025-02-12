@@ -141,7 +141,7 @@ const getServiceablePincodesData = async (service, payload) => {
 
     try {
         const token = await getAuthToken();
-        console.log(token);
+        // console.log(token);
         console.log(url);
 
         const response = await axios.post(`${url}/courier/serviceability`, payload, {
