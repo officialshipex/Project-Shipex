@@ -14,7 +14,7 @@ const url=process.env.NIMBUSPOST_URL;
 
 const getCouriers = async (req, res) => {
 
-console.log('hiii')
+// console.log('hiii')
     try {
         const token = await getToken();
         // console.log(token)
@@ -40,7 +40,7 @@ console.log('hiii')
                 provider_courier_id: element.id,
                 // isAdded: prevServices.has(element.name)
             }));
-            console.log(allServices)
+            // console.log(allServices)
             return res.status(201).json(allServices);
         }
 
@@ -108,7 +108,7 @@ const getServiceablePincodes = async (req, res) => {
 
     const { pincode } = req.body;
     try {
-        const token = await getAuthToken();
+        const token = await getToken();
 
         const response = await axios.get(`${url}/v1/courier/serviceability`, {
             headers: {
@@ -140,16 +140,25 @@ const getServiceablePincodes = async (req, res) => {
 const getServiceablePincodesData = async (service, payload) => {
 
     try {
-        const token = await getAuthToken();
+        const token = await getToken();
         // console.log(token);
-        console.log(url);
+        // console.log(url);
+        // console.log(service);
+        // console.log(payload);
+        
+        
 
-        const response = await axios.post(`${url}/courier/serviceability`, payload, {
+        const response = await axios.post(`${url}/v1/courier/serviceability`, payload, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
             },
         });
+        // console.log("sadkhsajkda");
+        
+// console.log("response",response.data.data);
+// console.log(service);
+
 
 
         if (response.data.status) {
