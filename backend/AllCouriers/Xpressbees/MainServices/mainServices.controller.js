@@ -80,7 +80,7 @@ const createShipment = async (req, res) => {
       currentOrder.totalFreightCharges=finalCharges
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.freightCharges =
-      //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       // currentOrder.tracking = [];
       // currentOrder.tracking.push({
       //   stage: "Order Booked",

@@ -118,7 +118,6 @@ const getOrders = async (req, res) => {
   }
 };
 
-
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
   console.log("Received ID:", id);
@@ -142,7 +141,7 @@ const getOrdersById = async (req, res) => {
 const updatedStatusOrders = async (req, res) => {
   try {
     // console.log(req.body.id);
-    
+
     // Ensure order ID is provided
     if (!req.body) {
       return res.status(400).json({ error: "Order ID is required" });
@@ -152,13 +151,12 @@ const updatedStatusOrders = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.body.id)) {
       return res.status(400).json({ error: "Invalid order ID format" });
     }
-    
+
     const order = await Order.findByIdAndUpdate(
       req.body.id,
       { $set: { status: "new" } },
       { new: true }
     );
-    
 
     // If order not found
     if (!order) {
@@ -176,7 +174,6 @@ const updatedStatusOrders = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 const getpickupAddress = async (req, res) => {
   try {
@@ -354,7 +351,6 @@ const cancelOrdersAtBooked = async (req, res) => {
     const currentOrder = await Order.findById({ _id: allOrders._id });
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
-      console.log("dsadsads",result)
       if (result.error) {
         return {
           error: "Failed to cancel shipment with Xpressbees",
@@ -461,13 +457,89 @@ const cancelOrdersAtBooked = async (req, res) => {
       // results: cancellationResults,
       // successCount,
       // failureCount,
-      success:true
+      success: true,
     });
   } catch (error) {
     console.error("Error cancelling orders:", error);
     res
       .status(500)
       .send({ error: "An error occurred while cancelling orders." });
+  }
+};
+const tracking = async (req, res) => {
+  
+  try {
+    const allOrders = await Promise.all(
+      req.body.map((order) => Order.findById(order._id))
+    );
+
+    
+    const updateOrderStatus = async (order, status,data) => {   
+      if(data=="booked"){
+        order.status = status;
+      }
+      if (data == "cancelled") {
+        order.status = status;
+      }
+      if (data == "in transit") {
+        order.status = status;
+      }
+      if (data == "delivered") {
+        order.status = status;
+      }
+      await order.save();
+    };
+
+    const trackingPromises = allOrders.map(async (order) => {
+      try {
+        const { provider } = order;
+        const { awb_number } = order;
+        let result;
+
+        if (provider === "NimbusPost") {
+          result = await trackShipmentNimbuspost(awb_number);
+        } else if (provider === "Shiprocket") {
+          result = await getTrackingByAWB(awb_number);
+        } else if (provider === "Xpressbees") {
+          result = await trackShipment(awb_number);
+          console.log("sadasdas43",result)
+          console.log("Tracking result", result);
+        } else if (provider === "Delhivery") {
+          result = await trackShipmentDelhivery(awb_number);
+        } else if (provider === "ShreeMaruti") {
+          result = await trackOrderShreeMaruti(awb_number);
+        }
+
+        if (result && result.success) {
+          const status = result.data.toLowerCase().replace(/_/g, " ");
+
+          const statusMap = {
+            "booked": () => updateOrderStatus(order, "Ready to Ship","booked"),
+            "cancelled": () => updateOrderStatus(order, "Cancelled","cancelled"),
+            "in transit": () => updateOrderStatus(order, "In-transit","in transit"),
+            
+             "delivered":()=>updateOrderStatus(order,"Delivered","delivered")
+            
+          };
+
+          if (statusMap[status]) {
+            await statusMap[status]();
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Error processing order ID: ${order._id}, AWB: ${order.awb_number}`,
+          error
+        );
+      }
+    });
+
+    await Promise.all(trackingPromises);
+
+    res.status(200).json({ message: "Tracking updated successfully" });
+  } catch (error) {
+    console.error("Error in tracking:", error);
+    res.status(500).json({ message: "Internal server error", error });
   }
 };
 
@@ -482,4 +554,5 @@ module.exports = {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
+  tracking,
 };
