@@ -117,6 +117,61 @@ const getOrders = async (req, res) => {
   }
 };
 
+
+const getOrdersById = async (req, res) => {
+  const { id } = req.params;  // Correct destructuring
+
+  console.log("Received ID:", id);
+
+  try {
+    const order = await Order.findById(id); // Correct findById usage
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    console.log(order);
+    res.status(200).json(order);
+  } catch (err) {
+    console.error("Error fetching order:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const updatedStatusOrders = async (req, res) => {
+  try {
+    // console.log(req.body.id);
+    
+    // Ensure order ID is provided
+    if (!req.body) {
+      return res.status(400).json({ error: "Order ID is required" });
+    }
+
+    // Update order status
+    const order = await Order.findByIdAndUpdate(
+      {_id:req.body.id},
+      { $set: { status: "new" } },
+      { new: true } // Return the updated order
+    );
+
+    // If order not found
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Respond with updated order
+    res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      order,
+    });
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
 const getpickupAddress = async (req, res) => {
   try {
     const pickup = await pickAddress.find({ userId: req.user._id });
@@ -412,6 +467,8 @@ const cancelOrdersAtBooked = async (req, res) => {
 module.exports = {
   newOrder,
   getOrders,
+  updatedStatusOrders,
+  getOrdersById,
   getpickupAddress,
   getreceiverAddress,
   ShipeNowOrder,

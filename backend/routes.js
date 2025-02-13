@@ -56,7 +56,7 @@ router.use('/courierServices',CourierServiceRoutes)
 
 // router.use('/order', orderRouter);
 router.use("/order", isAuthorized, newOrderRoute);
-router.use("/order", orderRouter);
+// router.use("/order", orderRouter);
 //create product route
 // router.use("/products",productRouter)
 
