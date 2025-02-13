@@ -119,6 +119,102 @@ const getOrders = async (req, res) => {
 };
 
 
+
+const updateOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { pickupAddress, receiverAddress, paymentDetails, packageDetails } = req.body;
+
+    console.log(req.body)
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid orderId format." });
+    }
+
+    const existingOrder = await Order.findById(orderId);
+    if (!existingOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+  //   if (!req.body.paymentDetails || !req.body.paymentDetails.amount) {
+  //     return res.status(400).json({ error: "paymentDetails and amount are required" });
+  // }
+  console.log(pickupAddress)
+  
+    const updateFields = {};
+
+    // Update pickupAddress if provided
+    if (pickupAddress) {
+      updateFields.pickupAddress = {
+        contactName: pickupAddress.contactName || existingOrder.pickupAddress.contactName,
+        phoneNumber: pickupAddress.phoneNumber || existingOrder.pickupAddress.phoneNumber,
+        email: pickupAddress.email || existingOrder.pickupAddress.email,
+        address: pickupAddress.address || existingOrder.pickupAddress.address,
+        city: pickupAddress.city || existingOrder.pickupAddress.city,
+        state: pickupAddress.state || existingOrder.pickupAddress.state,
+        pinCode: pickupAddress.pinCode || existingOrder.pickupAddress.pinCode,
+      };
+    }
+
+    // Update receiverAddress if provided
+    if (receiverAddress) {
+      updateFields.receiverAddress = {
+        contactName: receiverAddress.contactName || existingOrder.receiverAddress.contactName,
+        phoneNumber: receiverAddress.phoneNumber || existingOrder.receiverAddress.phoneNumber,
+        email: receiverAddress.email || existingOrder.receiverAddress.email,
+        address: receiverAddress.address || existingOrder.receiverAddress.address,
+        city: receiverAddress.city || existingOrder.receiverAddress.city,
+        state: receiverAddress.state || existingOrder.receiverAddress.state,
+        pinCode: receiverAddress.pinCode || existingOrder.receiverAddress.pinCode,
+      };
+    }
+
+    // Ensure paymentDetails exist before updating
+    if (paymentDetails) {
+      updateFields.paymentDetails = {
+        method: paymentDetails.method || existingOrder.paymentDetails.method,
+        amount: paymentDetails.amount || existingOrder.paymentDetails.amount,
+      };
+    }
+
+    // Ensure packageDetails exist before updating
+    if (packageDetails) {
+      updateFields.packageDetails = {
+        deadWeight: packageDetails.deadWeight || existingOrder.packageDetails.deadWeight,
+        applicableWeight: packageDetails.applicableWeight || existingOrder.packageDetails.applicableWeight,
+        volumetricWeight: {
+          length: packageDetails.volumetricWeight?.length || existingOrder.packageDetails.volumetricWeight.length,
+          width: packageDetails.volumetricWeight?.width || existingOrder.packageDetails.volumetricWeight.width,
+          height: packageDetails.volumetricWeight?.height || existingOrder.packageDetails.volumetricWeight.height,
+        },
+      };
+    }
+
+    // Update order in the database
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({
+      message: "Order updated successfully.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
   console.log("Received ID:", id);
@@ -481,4 +577,5 @@ module.exports = {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
+  updateOrder
 };

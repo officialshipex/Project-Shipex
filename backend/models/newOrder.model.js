@@ -25,7 +25,7 @@ const orderSchema = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
   },
-  productDetails: [
+  productDetails: [ 
     {
       id: { type: Number, required: true },
       quantity: { type: Number, required: true },
@@ -49,10 +49,12 @@ const orderSchema = new mongoose.Schema({
     amount: {
       type: Number,
       required: function () {
-        return this.paymentDetails.method === "Prepaid";
+        return this.paymentDetails?.method === "Prepaid";
       },
     },
+    default: {},
   },
+  
   awb_number: {
     type: String,
   },
