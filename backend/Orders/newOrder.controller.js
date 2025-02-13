@@ -16,6 +16,7 @@ const csv = require("csv-parser");
 const fs = require("fs");
 const { log } = require("console");
 const { message } = require("../addons/utils/shippingRulesValidation");
+const mongoose = require("mongoose");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -119,18 +120,18 @@ const getOrders = async (req, res) => {
 
 
 const getOrdersById = async (req, res) => {
-  const { id } = req.params;  // Correct destructuring
-
+  const { id } = req.params;
   console.log("Received ID:", id);
 
-  try {
-    const order = await Order.findById(id); // Correct findById usage
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid order ID format" });
+  }
 
+  try {
+    const order = await Order.findById(id);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-
-    console.log(order);
     res.status(200).json(order);
   } catch (err) {
     console.error("Error fetching order:", err);
@@ -148,11 +149,16 @@ const updatedStatusOrders = async (req, res) => {
     }
 
     // Update order status
+    if (!mongoose.Types.ObjectId.isValid(req.body.id)) {
+      return res.status(400).json({ error: "Invalid order ID format" });
+    }
+    
     const order = await Order.findByIdAndUpdate(
-      {_id:req.body.id},
+      req.body.id,
       { $set: { status: "new" } },
-      { new: true } // Return the updated order
+      { new: true }
     );
+    
 
     // If order not found
     if (!order) {

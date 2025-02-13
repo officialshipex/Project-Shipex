@@ -42,6 +42,8 @@ const CourierServiceRoutes = require("./routes/courierServies.router");
 router.use("/allCourier", AllCourierRoutes);
 const newOrderRoute = require("./routes/newOrder.router");
 
+const Razorpay=require("./recharge/recharge.route")
+
 router.use("/external", authRouter);
 
 router.use("/merchant", isAuthorized, verficationRouter);
@@ -49,6 +51,7 @@ router.use("/allocation", isAuthorized, allocationRouter);
 
 router.use("/paytm", paytmRoutes);
 router.use("/recharge", rechargeRouter);
+router.use("/razorpay",Razorpay)
 router.use('/courierServices',CourierServiceRoutes)
 
 // router.use('/order', orderRouter);
