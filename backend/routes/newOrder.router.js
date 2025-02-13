@@ -2,6 +2,8 @@ const express = require("express");
 const {
   newOrder,
   getOrders,
+  updatedStatusOrders,
+  getOrdersById,
   getpickupAddress,
   getreceiverAddress,
   ShipeNowOrder,
@@ -14,6 +16,8 @@ const router = express.Router();
 // Route to create a shipment
 router.post("/neworder", newOrder);
 router.get("/orders", getOrders);
+router.post("/clone",updatedStatusOrders)
+router.get("/getOrderById/:id",getOrdersById)
 router.get("/pickupAddress", getpickupAddress);
 router.get("/receiverAddress", getreceiverAddress);
 router.get("/ship/:id", ShipeNowOrder);

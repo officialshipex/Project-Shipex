@@ -249,7 +249,11 @@ const cancelShipmentXpressBees = async (awb) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("42514251421245",response.data)
+    await Order.updateOne(
+      { awb_number: awb }, 
+      { $set: { status: "Cancelled" } } 
+    );
+    
     const { status, data } = response.data;
     if (status) {
       return { data, code: 201 };
