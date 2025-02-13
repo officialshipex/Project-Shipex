@@ -10,7 +10,7 @@ const BASE_URL = process.env.XpreesbeesUrl;
 
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
-  const { selectedServiceDetails, id,provider } = req.body;
+  const { selectedServiceDetails, id,provider,finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
  
 
@@ -77,6 +77,7 @@ const createShipment = async (req, res) => {
       currentOrder.label=result.label
       currentOrder.provider=provider
       currentOrder.shipment_id = `${result.awb_number}`;
+      currentOrder.totalFreightCharges=finalCharges
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.freightCharges =
       //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);

@@ -232,6 +232,7 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
+        // log(result)
 
         if (result.success) {
           return {

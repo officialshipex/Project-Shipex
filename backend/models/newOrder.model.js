@@ -65,7 +65,9 @@ const orderSchema = new mongoose.Schema({
   provider: {
     type: String,
   },
-
+  totalFreightCharges:{
+    type:Number
+  },
   status: { type: String, required: true },
   createdAt: {
     type: Date,
