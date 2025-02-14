@@ -1,62 +1,79 @@
 const RateCard = require("../models/rateCards.js");
 const zoneManagementController = require("./zoneManagementController.js");
 const getZone = zoneManagementController.getZone;
+const Plan = require("../models/Plan.model.js");
 
 const calculateRate = async (req, res) => {
   try {
+    // const payload=req.body
+    // console.log("sdsadasdasd",payload)
+    const id = req.user._id;
+    // console.log(id)
     let result = await getZone(
-      req.body.pickupPincode,
+      req.body.pickUpPincode,
       req.body.deliveryPincode
     );
-    console.log("reterterterter", result);
+    // console.log("sdasdasd",result)
+    // console.log("reterterterter", result);
     let currentZone = result.zone;
 
+    const plan = await Plan.findOne({ userId: id });
+    // console.log(plan)
+
+    let rateCards = plan.rateCard;
+
     let ans = [];
-    let rateCards = await RateCard.find({ type: req.body.plan });
+    // let rateCards = await RateCard.find({ type: req.body.plan });
 
-    let l = parseFloat(req.body.length);
-    let b = parseFloat(req.body.breadth);
-    let h = parseFloat(req.body.height);
-    let deadweight = parseFloat(req.body.weight);
-    let volumetricWeight = (l * b * h) / 5000;
-    let chargedWeight = Math.max(deadweight, volumetricWeight);
-
+    // let l = parseFloat(req.body.length);
+    // let b = parseFloat(req.body.breadth);
+    // let h = parseFloat(req.body.height);
+    // let deadweight = parseFloat(req.body.weight);
+    // let volumetricWeight = (l * b * h) / 5000;
+    // let chargedWeight = Math.max(deadweight, volumetricWeight);
+    const chargedWeight = req.body.applicableWeight * 1000;
     let cod = 0;
     let gst = 18;
+    // console.log(chargedWeight);
 
     for (let rc of rateCards) {
-      let basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
-      let additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
+      // console.log(rc);
 
-      let basicChargef = parseFloat(
-        rc.weightPriceBasic[0][currentZone].forward
-      );
+      // let basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
+      // let additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
+
+      let basicChargef = parseFloat(rc.weightPriceBasic[0][currentZone]);
       let additionalChargef = parseFloat(
-        rc.weightPriceAdditional[0][currentZone].forward
+        rc.weightPriceAdditional[0][currentZone]
       );
 
-      let finalBasicChargef = basicChargef;
-      let finalAdditionalChargef = Math.max(
-        0,
-        Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
-          additionalChargef
-      );
-      let finalChargef = finalBasicChargef + finalAdditionalChargef;
+      let finalChargef;
 
-      let basicChargep = parseFloat(rc.weightPriceBasic[0][currentZone].rto);
-      let additionalChargep = parseFloat(
-        rc.weightPriceAdditional[0][currentZone].rto
-      );
+      if (rc.weightPriceBasic[0].weight <= chargedWeight) {
+        finalChargef = basicChargef;
+      } else {
+        finalChargef = basicChargef + additionalChargef;
+      }
+      // let finalAdditionalChargef = Math.max(
+      //   0,
+      //   Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
+      //     additionalChargef
+      // );
+      // let finalChargef = finalBasicChargef + finalAdditionalChargef;
 
-      let finalBasicChargep = basicChargep;
-      let finalAdditionalChargep =
-        Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
-        additionalChargep;
-      let finalChargep = finalBasicChargep + finalAdditionalChargep;
+      // let basicChargep = parseFloat(rc.weightPriceBasic[0][currentZone].rto);
+      // let additionalChargep = parseFloat(
+      //   rc.weightPriceAdditional[0][currentZone].rto
+      // );
 
-      if (req.body.cod === "Yes") {
-        const orderValue = Number(req.body.valueInINR) || 0;
-
+      // let finalBasicChargep = basicChargep;
+      // let finalAdditionalChargep =
+      //   Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
+      //   additionalChargep;
+      // let finalChargep = finalBasicChargep + finalAdditionalChargep;
+      if (req.body.paymentType === "COD") {
+        const orderValue = Number(req.body.declaredValue) || 0;
+        // console.log("dfgfgdfgdf",orderValue)
         if (
           typeof rc.codCharge === "number" &&
           typeof rc.codPercent === "number"
@@ -71,37 +88,40 @@ const calculateRate = async (req, res) => {
           console.error("COD charge or percentage is not properly defined.");
         }
       }
+     
 
-      let gstAmountf = ((finalChargef + cod) * (gst / 100)).toFixed(2);
+      let gstAmountf = (finalChargef + cod) * (gst / 100);
       let totchargesf = (
         finalChargef +
         cod +
-        (finalChargef + cod) * (gst / 100)
-      ).toFixed(2);
+        gstAmountf
+      )
 
-      let gstAmountp = ((finalChargep + cod) * (gst / 100)).toFixed(2);
-      let totchargesp = (
-        finalChargep +
-        cod +
-        (finalChargep + cod) * (gst / 100)
-      ).toFixed(2);
+      // let gstAmountp = ((finalChargep + cod) * (gst / 100)).toFixed(2);
+      // let totchargesp = (
+      //   finalChargep +
+      //   cod +
+      //   (finalChargep + cod) * (gst / 100)
+      // ).toFixed(2);
 
       let allRates = {};
       allRates.courierServiceName = rc.courierServiceName;
       allRates.cod = cod;
+
       allRates.forward = {
         charges: finalChargef,
         gst: gstAmountf,
         finalCharges: totchargesf,
       };
 
-      allRates.rto = {
-        charges: finalChargep,
-        gst: gstAmountp,
-        finalCharges: totchargesp,
-      };
-
+      // allRates.rto = {
+      //   charges: finalChargep,
+      //   gst: gstAmountp,
+      //   finalCharges: totchargesp,
+      // };
+      
       ans.push(allRates);
+      // console.log("Sadsdsad",ans)
     }
 
     res.status(201).json(ans);
@@ -112,6 +132,8 @@ const calculateRate = async (req, res) => {
 };
 
 async function calculateRateForService(payload) {
+  console.log(payload);
+
   try {
     const {
       pickupPincode,
@@ -128,12 +150,11 @@ async function calculateRateForService(payload) {
 
     // console.log("sasasdasd",payload);
 
-    const result = await getZone(
-      pickupPincode.toString(),
-      deliveryPincode.toString()
-    );
+    const result = await getZone(pickupPincode, deliveryPincode);
+    console.log("result", result);
+
     const currentZone = result.zone;
-// console.log("oasjdasdsa",filteredServices)
+    // console.log("oasjdasdsa",filteredServices)
     const ans = [];
     const l = parseFloat(length);
     const b = parseFloat(breadth);
@@ -141,7 +162,7 @@ async function calculateRateForService(payload) {
     const deadweight = parseFloat(weight) / 1000;
     const volumetricWeight = (l * b * h) / 5000;
     // const chargedWeight = Math.max(deadweight, volumetricWeight);
-    const chargedWeight=weight*1000;
+    const chargedWeight = weight * 1000;
     // console.log("jugbhjbj",chargedWeight);
 
     let codCharge = 0;
@@ -150,7 +171,7 @@ async function calculateRateForService(payload) {
     const rateCards = [];
     for (fls of filteredServices) {
       // console.log("1231323123",fls);
-// console.log("kjsadkjskd",fls)
+      // console.log("kjsadkjskd",fls)
       let currentRate = await RateCard.findOne({
         courierProviderName: fls.item.provider,
         courierServiceName: fls.item.name,
@@ -171,15 +192,15 @@ async function calculateRateForService(payload) {
 
       const finalBasicChargeForward = basicChargeForward;
       let totalForwardCharge;
-      if (rc.weightPriceBasic[0].weight<chargedWeight) {
+      if (rc.weightPriceBasic[0].weight <= chargedWeight) {
         const finalAdditionalChargeForward = Math.max(
           0,
           Math.ceil(weight / additionalWeight) * additionalChargeForward
         );
-        totalForwardCharge=finalBasicChargeForward+finalAdditionalChargeForward
-      }
-      else{
-        totalForwardCharge=finalBasicChargeForward
+        totalForwardCharge =
+          finalBasicChargeForward + finalAdditionalChargeForward;
+      } else {
+        totalForwardCharge = finalBasicChargeForward;
       }
 
       if (cod === "Yes") {
@@ -219,6 +240,7 @@ async function calculateRateForService(payload) {
       };
 
       ans.push(allRates);
+      
     }
     return ans;
   } catch (error) {
