@@ -325,7 +325,7 @@ const getPinCodeDetails = async (req, res) => {
 const cancelOrdersAtNotShipped = async (req, res) => {
   const orderData = req.body;
   try {
-    const currentOrder = await Order.findById({ _id: orderId._id });
+    const currentOrder = await Order.findById({ _id: orderData._id });
 
     if (currentOrder && currentOrder.status !== "Cancelled") {
       currentOrder.status = "Cancelled";

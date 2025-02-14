@@ -39,6 +39,11 @@ const PrintLabelRoute = require("./label/printLabel.controller");
 const PrintInvoice = require("./label/printInvoice.controller");
 const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
+
+//rate
+const RateCalculate=require("./routes/Ratecalculate.router")
+router.use("/ratecalculate",isAuthorized,RateCalculate)
+
 router.use("/allCourier", AllCourierRoutes);
 const newOrderRoute = require("./routes/newOrder.router");
 
