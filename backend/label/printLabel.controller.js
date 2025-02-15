@@ -79,7 +79,7 @@ router.get("/generate-pdf/:id", async (req, res) => {
       .text(`Order Date: `, { continued: true });
     doc.font("Helvetica").text(formattedOrderDate1);
     doc.font("Helvetica-Bold").text(`Invoice No: `, { continued: true });
-    doc.font("Helvetica").text(orderData[0].orderId);
+    doc.font("Helvetica").text(orderData.orderId);
 
     const barcodeX = 380; // X-coordinate for the barcode
     const barcodeY = doc.y - 40; // Y-coordinate for the barcode

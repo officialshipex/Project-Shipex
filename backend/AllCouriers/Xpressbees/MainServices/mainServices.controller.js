@@ -75,11 +75,11 @@ const createShipment = async (req, res) => {
       },
     });
 
-    // console.log("XpressBees Create Shipment", response.data);
+    console.log("XpressBees Create Shipment", response.data);
 
     if (response.data.status) {
       const result = response.data.data;
-      currentOrder.status = "Ready to Ship";
+      currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
       currentOrder.label = result.label;
@@ -107,15 +107,7 @@ const createShipment = async (req, res) => {
             amount: balanceToBeDeducted, // Fixing incorrect reference
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
-            // date: new Date().toISOString().slice(0, 16).replace("T", " "),
-            date: new Date().toLocaleString("en-US", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false, // Use 24-hour format
-            }),
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
             awb_number: result.awb_number || "", // Ensuring it follows the schema
             description: `Shipping charges for Order #${currentOrder.orderId} with ${provider}`,
           },
