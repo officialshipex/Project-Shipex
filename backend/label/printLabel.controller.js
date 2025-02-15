@@ -2,60 +2,41 @@ const express = require("express");
 const PDFDocument = require("pdfkit");
 const LabelSetting = require("./label.model");
 const bwipjs = require("bwip-js");
-
-
-
-const Order = {
-  customerName: "Sachin Kumar",
-  address:
-    "Main Bus Stand, Vpo Ismaila, 11B, Sampla, ROHTAK, Haryana, India - 124501",
-  mobile: "8607000463",
-  orderDate: "Dec 19, 2024",
-  invoiceNo: "1734587437",
-  amount: 700,
-  weight: "0.5 KG",
-  dimensions: "12 X 11 X 12",
-  sku: "Clothes",
-  itemName: "Clothes",
-  quantity: 1,
-  pickupAddress:
-    "Rajat Kumar Funky House, Dadri Gate, Kount Road Bhiwani, Haryana, India - 127021",
-  pickupMobile: "7988477367",
-  rtoAddress:
-    "Rajat Kumar Funky House, Dadri Gate, Kount Road Bhiwani, Haryana, India - 127021",
-  rtoMobileNo: "7988477367",
-  gstNo: "2134",
-  pickupContactName: "bijay",
-  rtoContactName: "bijay",
-  discountAmount: 200,
-};
+const Order = require("../models/newOrder.model");
 
 const router = express.Router();
 
-router.get("/generate-pdf", async (req, res) => {
+router.get("/generate-pdf/:id", async (req, res) => {
   try {
-    // console.log("I am being called");
-    const orderData = Order;
+    const orderData = await Order.findOne({ _id: req.params.id });
+    console.log(orderData);
     if (!orderData) {
       return res.status(404).send("Order not found");
     }
 
-    const user_id = "67237ee56a42044404423c8e";
-    const settings = await LabelSetting.findOne({ user: user_id });
-
-    if (!settings) {
-      return res.status(404).send("Label settings not found");
-    }
-    // Barcode generation
-    const barcodeBuffer = await bwipjs.toBuffer({
+    const barcodeBuffer1 = await bwipjs.toBuffer({
       bcid: "code128", // Barcode type
-      text: orderData.invoiceNo, // Text to encode
+      text: String(orderData.orderId), // Text to encode
       scale: 3, // Scale factor
       height: 10, // Bar height, in millimeters
       includetext: true, // Show human-readable text
       textxalign: "center", // Center-align the text
     });
 
+    const barcodeBuffer2 = await bwipjs.toBuffer({
+      bcid: "code128", // Barcode type
+      text: String(orderData.awb_number), // Text to encode
+      scale: 3, // Scale factor
+      height: 10, // Bar height, in millimeters
+      includetext: true, // Show human-readable text
+      textxalign: "center", // Center-align the text
+    });
+
+    const options1 = { year: "numeric", month: "short", day: "numeric" };
+    const formattedOrderDate1 = orderData.createdAt.toLocaleDateString(
+      "en-US",
+      options1
+    );
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -68,11 +49,20 @@ router.get("/generate-pdf", async (req, res) => {
     doc
       .fontSize(14)
       .font("Helvetica")
-      .text(orderData.customerName, { align: "left" });
-    doc.text(orderData.address, { align: "left" });
-    if (!settings.customerSetting.hidePhoneNumber) {
-      doc.text(`MOBILE NO: ${orderData.mobile}`, { align: "left" });
-    }
+      .text(orderData.receiverAddress.contactName, { align: "left" });
+    doc.text(
+      `${orderData.receiverAddress.address},${orderData.receiverAddress.city},${orderData.receiverAddress.state},${orderData.receiverAddress.pinCode}`,
+      { align: "left" }
+    );
+    doc.text(
+      `${orderData.receiverAddress.city},${orderData.receiverAddress.state},${orderData.receiverAddress.pinCode}`,
+      { align: "left" }
+    );
+    // if (!settings.customerSetting.hidePhoneNumber) {
+    doc.text(`MOBILE NO: ${orderData.receiverAddress.phoneNumber}`, {
+      align: "left",
+    });
+    // }
     doc.moveDown();
 
     const startX = 50;
@@ -87,22 +77,21 @@ router.get("/generate-pdf", async (req, res) => {
       .fontSize(14)
       .font("Helvetica-Bold")
       .text(`Order Date: `, { continued: true });
-    doc.font("Helvetica").text(orderData.orderDate);
+    doc.font("Helvetica").text(formattedOrderDate1);
     doc.font("Helvetica-Bold").text(`Invoice No: `, { continued: true });
-    doc.font("Helvetica").text(orderData.invoiceNo);
+    doc.font("Helvetica").text(orderData[0].orderId);
 
     const barcodeX = 380; // X-coordinate for the barcode
     const barcodeY = doc.y - 40; // Y-coordinate for the barcode
-    if (!settings.customerSetting.hideOrderBarcode) {
-      doc.image(barcodeBuffer, barcodeX, barcodeY, { width: 150, height: 50 });
-    }
+
+    doc.image(barcodeBuffer1, barcodeX, barcodeY, { width: 120, height: 50 });
+
     doc.moveDown();
     doc.moveDown();
 
     const startX2 = 50;
     const startY2 = doc.y || 0;
-    // const borderWidth = 500;
-    // const borderHeight = 1;
+
     doc
       .rect(startX2 - 0, startY2 - 10, borderWidth, borderHeight) // Add padding around the text
       .stroke(); // Draw the border
@@ -115,180 +104,164 @@ router.get("/generate-pdf", async (req, res) => {
     doc
       .fontSize(18)
       .font("Helvetica")
-      .text(`${orderData.amount}`, { align: "left", indent: 155 });
+      .text(`${orderData.paymentDetails.amount}`, {
+        align: "left",
+        indent: 155,
+      });
     doc
       .fontSize(12)
       .font("Helvetica")
-      .text(`WEIGHT: ${orderData.weight}`, { align: "left", indent: 120 });
-    doc.text(`Dimensions (cm): ${orderData.dimensions}`, {
-      align: "left",
-      indent: 290,
-    });
+      .text(`WEIGHT: ${orderData.packageDetails.applicableWeight}`, {
+        align: "left",
+        indent: 120,
+      });
+    doc.text(
+      `Dimensions (cm): ${orderData.packageDetails.volumetricWeight.length}*${orderData.packageDetails.volumetricWeight.width}*${orderData.packageDetails.volumetricWeight.height}`,
+      {
+        align: "left",
+        indent: 290,
+      }
+    );
 
     // Add the barcode to the right side of the section
     const barcodeX1 = 350; // X-coordinate for the barcode
     const barcodeY1 = doc.y - 80; // Y-coordinate for the barcode
-    doc.image(barcodeBuffer, barcodeX1, barcodeY1, { width: 150, height: 50 });
+    doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 150, height: 50 });
+    doc.moveDown(4);
+    let tableTop = doc.y - 40;
+    let columnWidths = [50, 250, 30, 80, 100];
 
-    doc.moveDown();
-    doc.moveDown();
-    doc.moveDown();
-    doc.moveDown();
-
-    const startX3 = 50;
-    const startY3 = doc.y - 40;
-    doc
-
-      .rect(startX3 - 0, startY3 - 10, borderWidth, borderHeight) // Add padding around the text
-      .stroke(); // Draw the border
-    doc.moveDown();
-
-    const fixedTableWidth = 500; // Set a fixed table width
-
-    // Headers and visible columns logic
-    const headers = [
-      { label: "SKU", key: "SKU", visible: !settings.productDetails.hideSKU },
-      {
-        label: "Item Name",
-        key: "Item Name",
-        visible: !settings.productDetails.hideProduct,
-      },
-      { label: "Qty.", key: "Qty.", visible: !settings.productDetails.hideQTY },
-      {
-        label: "Total Amount",
-        key: "Total Amount",
-        visible: !settings.productDetails.hideTotalAmount,
-      },
-      {
-        label: "Discount Amount",
-        key: "Discount Amount",
-        visible: !settings.productDetails.hideDiscountAmount,
-      },
-    ];
-
-    // Filter out headers that are not visible
-    const visibleHeaders = headers.filter((header) => header.visible);
-
-    // Calculate the width for each visible column
-    const colWidth = fixedTableWidth / visibleHeaders.length;
-
-    // Example data rows
-    const rows = [
-      {
-        SKU: "SKU1",
-        "Item Name": "Item 1",
-        "Qty.": 2,
-        "Total Amount": 500,
-        "Discount Amount": 50,
-      },
-      {
-        SKU: "SKU2",
-        "Item Name": "Item 2",
-        "Qty.": 3,
-        "Total Amount": 700,
-        "Discount Amount": 100,
-      },
-    ];
-
-    // Filter rows to match visible headers
-    const filteredRows = rows.map((row) =>
-      visibleHeaders.map((header) => row[header.key] || "")
-    );
-
-    const startX4 = 50; // Starting X coordinate for the table
-    const startY4 = 320; // Starting Y coordinate for the table
-    const rowHeight = 35; // Row height
-
-    // Draw table headers
-    visibleHeaders.forEach((header, i) => {
-      const x = startX4 + colWidth * i; // Adjust X coordinate for each column
-      doc.rect(x, startY4, colWidth, rowHeight).stroke();
-      doc.text(header.label, x + 5, startY4 + 10);
-    });
-
-    // Draw table rows
-    filteredRows.forEach((row, rowIndex) => {
-      const y = startY4 + rowHeight * (rowIndex + 1);
-      row.forEach((cell, colIndex) => {
-        const x = startX4 + colWidth * colIndex; // Adjust X coordinate for each column
-        doc.rect(x, y, colWidth, rowHeight).stroke();
-        doc.text(cell, x + 5, y + 10);
+    const drawTableRow = (y, row) => {
+      let x = 50;
+      row.forEach((text, i) => {
+        doc.text(text, x, y, { width: columnWidths[i], align: "center" });
+        x += columnWidths[i];
       });
+    };
+
+    doc.font("Helvetica-Bold").fontSize(12);
+    drawTableRow(tableTop, [
+      "SKU",
+      "Item Name",
+      "Qty.",
+      "Unit Price",
+      "Total Amount",
+    ]);
+
+    // Draw top border
+    doc
+      .moveTo(50, tableTop - 5)
+      .lineTo(550, tableTop - 5)
+      .stroke();
+
+    // Move down for first data row
+    tableTop += 20;
+    doc.font("Helvetica").fontSize(12);
+
+    let tableData = orderData.productDetails.map((product, index) => {
+      const totalPrice = product.quantity * product.unitPrice;
+
+      return [
+        product.sku,
+        product.name, // Product Name
+        product.quantity.toString(), // Quantity
+        product.unitPrice, // Unit Price
+        // product.sgst || "0.00", // SGST
+        // product.cgst || "0.00", // CGST
+        totalPrice, // Total
+      ];
     });
 
+    tableData.forEach((row, i) => {
+      drawTableRow(tableTop + i * 20, row);
+    });
+
+    // Draw bottom border
+    doc
+      .moveTo(50, tableTop + tableData.length * 20 - 5)
+      .lineTo(550, tableTop + tableData.length * 20 - 5)
+      .stroke();
+
+    doc.moveDown(1);
+
+    const leftMargin = 50; // Define a consistent left margin
     doc.moveDown();
-    // Add Pickup Address
+    doc.font("Helvetica-Bold").text(`Pickup Address:`, leftMargin, doc.y);
     doc
-      .moveDown()
-      .font("Helvetica-Bold")
-      .text(`Pickup Address:`, { align: "left", indent: -405 });
-
-    if (!settings.wareHouseSetting.hidePickupContactName) {
-      doc.font("Helvetica").text("bijay", { indent: -405 });
-    }
-    // .text(orderData.pickupAddress, { indent: -345 })
-    // .text(`Mobile No: ${orderData.pickupMobile}`, { indent: -345 })
-
-    if (!settings.wareHouseSetting.hidePickupAddress) {
-      doc.font("Helvetica").text(orderData.pickupAddress, { indent: -405 });
-    }
-
-    if (!settings.wareHouseSetting.hidePickupPhoneNumber) {
-      doc
-        .font("Helvetica")
-        .text(`Mobile No: ${orderData.pickupMobile}`, { indent: -405 });
-    }
-    if (!settings.wareHouseSetting.hideGstNumber) {
-      doc
-        .font("Helvetica")
-        .text(`GST No: ${orderData.gstNo}`, { indent: -405 });
-    }
-
-    // Add Return Address
+      .font("Helvetica")
+      .text(`${orderData.pickupAddress.contactName}`, leftMargin, doc.y);
     doc
-      .moveDown()
-      .font("Helvetica-Bold")
-      .text(`Return Address:`, { align: "left", indent: -405 });
-
-    if (!settings.wareHouseSetting.hideRtoContactName) {
-      doc.font("Helvetica").text(orderData.rtoContactName, { indent: -405 });
-    }
-
-    if (!settings.wareHouseSetting.hideRtoAddress) {
-      doc.font("Helvetica").text(orderData.rtoAddress, { indent: -405 });
-    }
-
-    if (!settings.wareHouseSetting.hideRtoPhoneNumber) {
-      doc.font("Helvetica").text(orderData.rtoMobileNo, { indent: -405 });
-    }
-
-    // doc
-    //   .font("Helvetica")
-    //   .text("bijay", { indent: -345 })
-    //   .text(orderData.pickupAddress, { indent: -345 })
-    //   .text(`Mobile No: ${orderData.pickupMobile}`, { indent: -345 })
-    //   .moveDown();
-
-    // Footer
+      .font("Helvetica")
+      .text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
     doc
-      .moveDown()
+      .font("Helvetica")
+      .text(
+        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
+        leftMargin,
+        doc.y
+      );
+    doc
+      .font("Helvetica")
+      .text(
+        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
+        leftMargin,
+        doc.y
+      );
+
+    doc.moveDown();
+    doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
+    doc
+      .font("Helvetica")
+      .text(orderData.receiverAddress.contactName, leftMargin, doc.y);
+    doc
+      .font("Helvetica")
+      .text(`${orderData.receiverAddress.address}`, leftMargin, doc.y);
+    doc
+      .font("Helvetica")
+      .text(
+        `${orderData.receiverAddress.city}, ${orderData.receiverAddress.state}, ${orderData.receiverAddress.pinCode}`,
+        leftMargin,
+        doc.y
+      );
+    doc
+      .font("Helvetica")
+      .text(
+        `Mobile No: ${orderData.receiverAddress.phoneNumber}`,
+        leftMargin,
+        doc.y
+      );
+
+    // Ensure a gap after receiverAddress section
+    doc.moveDown(2);
+
+    // Draw a horizontal line for separation
+    const lineStartX = 50;
+    const lineWidth = 500;
+    doc
+      .moveTo(lineStartX, doc.y)
+      .lineTo(lineStartX + lineWidth, doc.y)
+      .stroke();
+
+    // Move down for legal text
+    doc.moveDown(1);
+    doc
       .font("Helvetica")
       .fontSize(10)
       .text(
         "This is a computer-generated document, hence does not require a signature.",
-        { align: "left", indent: -405 }
+        { align: "left", width: 500 }
       );
+
     doc
       .text(
         "Note: All disputes are subject to Delhi jurisdiction. Goods once sold will only be taken back or exchanged as per",
-        { align: "left", indent: -405 }
+        { align: "left", width: 500 }
       )
       .text("the store’s exchange/return policy.", {
         align: "left",
-        indent: -405,
+        width: 500,
       });
 
-    // Pipe PDF to response
     doc.pipe(res);
     doc.end();
   } catch (error) {
