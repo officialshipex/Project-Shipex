@@ -5,8 +5,8 @@ const transactionSchema = new mongoose.Schema(
     txnType:{type: String,enum: ['Shipping']},
     action: { type: String, enum: ['credit', 'debit'], required: true }, 
     amount: { type: Number, required: true }, 
-    balanceAfterTransaction: { type: Number, required: true },
-    date: { type: Date, default: Date.now }, 
+    // balanceAfterTransaction: { type: Number, required: true },
+    date: { type: Date, default: Date.now },  
     awb_number:{type:String}
   },
   { timestamps: true }
