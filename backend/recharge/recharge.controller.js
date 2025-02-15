@@ -251,6 +251,7 @@ const createOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
+    console.log("12345676",order)
     res.json({ success: true, order });
   } catch (error) {
     res
@@ -269,13 +270,13 @@ const verifyPayment = async (req, res) => {
     amount
   } = req.body;
 
-  // console.log(walletId);
+  console.log("ooooooooooooooooo",req.body);
 
   const generated_signature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
     .update(razorpay_order_id + "|" + razorpay_payment_id)
     .digest("hex");
-
+    console.log("uiwyiuqwiuer",generated_signature)
   if (generated_signature === razorpay_signature) {
     console.log("payment done");
     Wallet.findOne({ _id: walletId })
