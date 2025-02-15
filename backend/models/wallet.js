@@ -2,12 +2,13 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema(
   {
-    txnType:{type: String,enum: ['Shipping']},
-    action: { type: String, enum: ['credit', 'debit'], required: true }, 
+    channelOrderId:{type: String},
+    category: { type: String, enum: ['credit', 'debit'], required: true }, 
     amount: { type: Number, required: true }, 
-    // balanceAfterTransaction: { type: Number, required: true },
+    balanceAfterTransaction: { type: Number, required: true },
     date: { type: Date, default: Date.now },  
-    awb_number:{type:String}
+    awb_number:{type:String},
+    description:{type:String}
   },
   { timestamps: true }
 );

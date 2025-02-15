@@ -10,11 +10,14 @@ const {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
-  tracking
+  tracking,
+  updateOrder,
+  passbook
 } = require("../Orders/newOrder.controller"); // Adjust path to your controller
 const router = express.Router();
 
 // Route to create a shipment
+router.put("/updateOrder/:orderId", updateOrder);
 router.post("/neworder", newOrder);
 router.get("/orders", getOrders);
 router.post("/clone",updatedStatusOrders)
@@ -26,4 +29,5 @@ router.get("/pincode/:pincode", getPinCodeDetails);
 router.post("/cancelOrdersAtNotShipped",cancelOrdersAtNotShipped)
 router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
 router.post("/tracking",tracking)
+router.get("/passbook",passbook)
 module.exports = router;

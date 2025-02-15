@@ -109,7 +109,7 @@ async function calculateRateForService(payload) {
     // console.log("sasasdasd",payload);
 
     const result = await getZone(pickupPincode, deliveryPincode);
-    console.log("result", result);
+    // console.log("result", result);
 
     const currentZone = result.zone;
     // console.log("oasjdasdsa",filteredServices)
