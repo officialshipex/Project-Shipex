@@ -5,6 +5,7 @@ const receiveAddress = require("../models/deliveryAddress.model");
 const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
+const Wallet=require("../models/wallet")
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -118,6 +119,103 @@ const getOrders = async (req, res) => {
   }
 };
 
+
+
+const updateOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { pickupAddress, receiverAddress, paymentDetails, packageDetails } = req.body;
+
+    console.log(req.body)
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid orderId format." });
+    }
+
+    const existingOrder = await Order.findById(orderId);
+    if (!existingOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+  //   if (!req.body.paymentDetails || !req.body.paymentDetails.amount) {
+  //     return res.status(400).json({ error: "paymentDetails and amount are required" });
+  // }
+  console.log(pickupAddress)
+  
+    const updateFields = {};
+
+    // Update pickupAddress if provided
+    if (pickupAddress) {
+      updateFields.pickupAddress = {
+        contactName: pickupAddress.contactName || existingOrder.pickupAddress.contactName,
+        phoneNumber: pickupAddress.phoneNumber || existingOrder.pickupAddress.phoneNumber,
+        email: pickupAddress.email || existingOrder.pickupAddress.email,
+        address: pickupAddress.address || existingOrder.pickupAddress.address,
+        city: pickupAddress.city || existingOrder.pickupAddress.city,
+        state: pickupAddress.state || existingOrder.pickupAddress.state,
+        pinCode: pickupAddress.pinCode || existingOrder.pickupAddress.pinCode,
+      };
+    }
+
+    // Update receiverAddress if provided
+    if (receiverAddress) {
+      updateFields.receiverAddress = {
+        contactName: receiverAddress.contactName || existingOrder.receiverAddress.contactName,
+        phoneNumber: receiverAddress.phoneNumber || existingOrder.receiverAddress.phoneNumber,
+        email: receiverAddress.email || existingOrder.receiverAddress.email,
+        address: receiverAddress.address || existingOrder.receiverAddress.address,
+        city: receiverAddress.city || existingOrder.receiverAddress.city,
+        state: receiverAddress.state || existingOrder.receiverAddress.state,
+        pinCode: receiverAddress.pinCode || existingOrder.receiverAddress.pinCode,
+      };
+    }
+
+    // Ensure paymentDetails exist before updating
+    if (paymentDetails) {
+      updateFields.paymentDetails = {
+        method: paymentDetails.method || existingOrder.paymentDetails.method,
+        amount: paymentDetails.amount || existingOrder.paymentDetails.amount,
+      };
+    }
+
+    // Ensure packageDetails exist before updating
+    if (packageDetails) {
+      updateFields.packageDetails = {
+        deadWeight: packageDetails.deadWeight || existingOrder.packageDetails.deadWeight,
+        applicableWeight: packageDetails.applicableWeight || existingOrder.packageDetails.applicableWeight,
+        volumetricWeight: {
+          length: packageDetails.volumetricWeight?.length || existingOrder.packageDetails.volumetricWeight.length,
+          width: packageDetails.volumetricWeight?.width || existingOrder.packageDetails.volumetricWeight.width,
+          height: packageDetails.volumetricWeight?.height || existingOrder.packageDetails.volumetricWeight.height,
+        },
+      };
+    }
+
+    // Update order in the database
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({
+      message: "Order updated successfully.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
   console.log("Received ID:", id);
@@ -206,7 +304,9 @@ const ShipeNowOrder = async (req, res) => {
     //  console.log("dsfdsfdsfs",order.userId);
 
     const plan = await Plan.findOne({ userId: order.userId });
-    // console.log(plan.planName)
+    const users=await user.findOne({_id:order.userId })
+    const userWallet=await Wallet.findOne({_id:users.Wallet})
+    // console.log("ahsaisa",userWallet)
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -287,10 +387,6 @@ const ShipeNowOrder = async (req, res) => {
       services: filteredServices,
       updatedRates,
     });
-    // console.log(availableServices);
-
-    // Respond with order and available courier services
-    // res.json(order);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
@@ -344,9 +440,9 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
-  const walletId = req.body.walletId;
   try {
-    // const currentWallet = await Wallet.findById(walletId);
+    const users=await user.findOne({_id:allOrders.userId})
+    const currentWallet = await Wallet.findById({_id:users.Wallet});
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
     if (currentOrder.provider === "Xpressbees") {
@@ -417,21 +513,22 @@ const cancelOrdersAtBooked = async (req, res) => {
     // currentOrder.tracking.push({
     //   stage: "Cancelled",
     // });
-    // let balanceTobeAdded = currentOrder.freightCharges;
-    // let currentBalance = currentWallet.balance + balanceTobeAdded;
-
-    // await currentWallet.updateOne({
-    //   $inc: { balance: balanceTobeAdded },
-    //   $push: {
-    //     transactions: {
-    //       txnType: "Shipping",
-    //       action: "credit",
-    //       amount: currentBalance,
-    //       balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
-    //       awb_number: `${currentOrder.awb_number}`,
-    //     },
-    //   },
-    // });
+    let balanceTobeAdded = allOrders.totalFreightCharges === "N/A" ? 0 : parseInt(allOrders.totalFreightCharges);
+    await currentWallet.updateOne({
+      $inc: { balance: balanceTobeAdded },
+      $push: {
+        transactions: {
+          channelOrderId: currentOrder.orderId|| null, // Include if available
+          category: "credit",
+          amount: balanceTobeAdded, // Fixing incorrect reference
+          balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
+          date: new Date().toISOString().slice(0, 16).replace("T", " "), // Format date & time
+          awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
+          description: `Order #${currentOrder.orderId} Shipment cancelled by ${allOrders.receiverAddress.contactName}`,
+        }
+        
+      },
+    });
     // currentOrder.freightCharges = 0;
     // await currentOrder.save();
     // await currentWallet.save();
@@ -502,7 +599,7 @@ const tracking = async (req, res) => {
           result = await getTrackingByAWB(awb_number);
         } else if (provider === "Xpressbees") {
           result = await trackShipment(awb_number);
-          console.log("sadasdas43",result)
+          // console.log("sadasdas43",result)
           console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
@@ -543,6 +640,31 @@ const tracking = async (req, res) => {
   }
 };
 
+
+const passbook=async(req,res)=>{
+  try {
+    const  userId  = req.user._id;
+  // console.log("sdadasdas",userId)
+  const users=await user.findOne({_id:userId})
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const wallet = await Wallet.findOne({ _id:users.Wallet });
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    return res.status(200).json({
+      message: "Passbook fetched successfully",
+      transactions: wallet.transactions,
+    });
+  } catch (error) {
+    console.error("Error fetching passbook:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
 module.exports = {
   newOrder,
   getOrders,
@@ -555,4 +677,6 @@ module.exports = {
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
   tracking,
+  updateOrder,
+  passbook
 };

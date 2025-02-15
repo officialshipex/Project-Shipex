@@ -5,40 +5,28 @@ const Plan = require("../models/Plan.model.js");
 
 const calculateRate = async (req, res) => {
   try {
-    // const payload=req.body
-    // console.log("sdsadasdasd",payload)
     const id = req.user._id;
-    // console.log(id)
     let result = await getZone(
       req.body.pickUpPincode,
       req.body.deliveryPincode
     );
-    // console.log("sdasdasd",result)
-    // console.log("reterterterter", result);
     let currentZone = result.zone;
-
-    const plan = await Plan.findOne({ userId: id });
-    // console.log(plan)
-
+    const plan = await Plan.findOne({ userId: id })
+    
     let rateCards = plan.rateCard;
 
     let ans = [];
-    // let rateCards = await RateCard.find({ type: req.body.plan });
-
-    // let l = parseFloat(req.body.length);
-    // let b = parseFloat(req.body.breadth);
-    // let h = parseFloat(req.body.height);
-    // let deadweight = parseFloat(req.body.weight);
-    // let volumetricWeight = (l * b * h) / 5000;
-    // let chargedWeight = Math.max(deadweight, volumetricWeight);
     const chargedWeight = req.body.applicableWeight * 1000;
     let cod = 0;
-    let gst = 18;
+    let gst = 18; 
     // console.log(chargedWeight);
-
+     let provider;
+     let mode;
     for (let rc of rateCards) {
       // console.log(rc);
-
+        provider=rc.courierProviderName
+        mode=rc.mode
+        // console.log("sadsdasd",provider)
       // let basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
       // let additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
 
@@ -54,26 +42,8 @@ const calculateRate = async (req, res) => {
       } else {
         finalChargef = basicChargef + additionalChargef;
       }
-      // let finalAdditionalChargef = Math.max(
-      //   0,
-      //   Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
-      //     additionalChargef
-      // );
-      // let finalChargef = finalBasicChargef + finalAdditionalChargef;
-
-      // let basicChargep = parseFloat(rc.weightPriceBasic[0][currentZone].rto);
-      // let additionalChargep = parseFloat(
-      //   rc.weightPriceAdditional[0][currentZone].rto
-      // );
-
-      // let finalBasicChargep = basicChargep;
-      // let finalAdditionalChargep =
-      //   Math.ceil((chargedWeight - basicWeight) / additionalWeight) *
-      //   additionalChargep;
-      // let finalChargep = finalBasicChargep + finalAdditionalChargep;
       if (req.body.paymentType === "COD") {
         const orderValue = Number(req.body.declaredValue) || 0;
-        // console.log("dfgfgdfgdf",orderValue)
         if (
           typeof rc.codCharge === "number" &&
           typeof rc.codPercent === "number"
@@ -90,35 +60,23 @@ const calculateRate = async (req, res) => {
       }
      
 
-      let gstAmountf = (finalChargef + cod) * (gst / 100);
+      let gstAmountf = (finalChargef + cod) * (gst / 100).toFixed(2);
       let totchargesf = (
         finalChargef +
         cod +
         gstAmountf
       )
 
-      // let gstAmountp = ((finalChargep + cod) * (gst / 100)).toFixed(2);
-      // let totchargesp = (
-      //   finalChargep +
-      //   cod +
-      //   (finalChargep + cod) * (gst / 100)
-      // ).toFixed(2);
-
       let allRates = {};
       allRates.courierServiceName = rc.courierServiceName;
       allRates.cod = cod;
-
+      allRates.provider=provider
+      allRates.mode=mode
       allRates.forward = {
         charges: finalChargef,
         gst: gstAmountf,
         finalCharges: totchargesf,
       };
-
-      // allRates.rto = {
-      //   charges: finalChargep,
-      //   gst: gstAmountp,
-      //   finalCharges: totchargesp,
-      // };
       
       ans.push(allRates);
       // console.log("Sadsdsad",ans)
@@ -151,7 +109,7 @@ async function calculateRateForService(payload) {
     // console.log("sasasdasd",payload);
 
     const result = await getZone(pickupPincode, deliveryPincode);
-    console.log("result", result);
+    // console.log("result", result);
 
     const currentZone = result.zone;
     // console.log("oasjdasdsa",filteredServices)
