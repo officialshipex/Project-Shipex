@@ -611,7 +611,7 @@ const tracking = async (req, res) => {
           const status = result.data.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
-            "booked": () => updateOrderStatus(order, "Ready to Ship","booked"),
+            "booked": () => updateOrderStatus(order, "Ready To Ship","booked"),
             "cancelled": () => updateOrderStatus(order, "Cancelled","cancelled"),
             "in transit": () => updateOrderStatus(order, "In-transit","in transit"),
             

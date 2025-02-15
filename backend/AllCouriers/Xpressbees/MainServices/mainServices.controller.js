@@ -75,11 +75,11 @@ const createShipment = async (req, res) => {
       },
     });
 
-    // console.log("XpressBees Create Shipment", response.data);
+    console.log("XpressBees Create Shipment", response.data);
 
     if (response.data.status) {
       const result = response.data.data;
-      currentOrder.status = "Ready to Ship";
+      currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
       currentOrder.label = result.label;
