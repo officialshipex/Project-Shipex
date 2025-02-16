@@ -63,7 +63,7 @@ const createShipment = async (req, res) => {
     courier_id: selectedServiceDetails,
   };
 
-  console.log("hjjhjjhj", shipmentData);
+  // console.log("hjjhjjhj", shipmentData);
 
   try {
     const token = await getToken();
@@ -95,9 +95,8 @@ const createShipment = async (req, res) => {
       // });
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
-      // console.log("sahkdjhsakdsa",currentOrder)
-      let balanceToBeDeducted =
-        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {
