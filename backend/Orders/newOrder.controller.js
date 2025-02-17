@@ -452,8 +452,10 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
+  console.log(allOrders)
   try {
     const users=await user.findOne({_id:allOrders.userId})
+    console.log(users)
     const currentWallet = await Wallet.findById({_id:users.Wallet});
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
