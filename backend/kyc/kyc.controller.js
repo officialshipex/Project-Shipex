@@ -554,21 +554,7 @@ verfication.post("/kyc", async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // const {
-    //   businesstype,
-    //   companyName,
-    //   gstNumber,
-    //   address,
-    //   kycType,
-    //   panNumber,
-    //   panName,
-    //   aadharNumber,
-    //   accountNumber,
-    //   ifscCode,
-    //   accountHolderName,
-    //   phoneNumber, 
-    //   documentVerified,
-    // } = req.body;
+    
 
     // const { companyName } = req.body.companyDetails;
     const companyCategory=req.body.payload.selectedType
@@ -577,15 +563,15 @@ verfication.post("/kyc", async (req, res) => {
     const panNumber=req.body.payload.documentDetails.pan
     const isVerified=req.body.payload.isVerified
     const panHolderName=req.body.payload.documentDetails.panName
-    const contactNumber=req.body.payload.bankDetails.mobileNo
+    // const contactNumber=req.body.payload.bankDetails.mobileNo
     const ifscCode=req.body.payload.bankDetails.ifsc
-    const accountHolderName=req.body.payload.bankDetails.beneficiaryName
+    // const accountHolderName=req.body.payload.bankDetails.beneficiaryName
     const accountNumber=req.body.payload.bankDetails.accountNumber
     // const {gstNumber,panNumber,aadhaarNumber,isVerified,panHolderName}=req.body.payload
     // const {contactNumber}=req.body.primaryAddress
     // const {ifscCode,accountHolderName,accountNumber}=req.body.accountDetails
 
-   console.log(companyCategory,aadhaarNumber,gstNumber,panNumber,isVerified,panHolderName,contactNumber,ifscCode,accountHolderName,accountNumber)
+   console.log(companyCategory,aadhaarNumber,gstNumber,panNumber,isVerified,panHolderName,ifscCode,accountNumber)
 
     if (
       // !businesstype ||
@@ -596,8 +582,8 @@ verfication.post("/kyc", async (req, res) => {
       !panHolderName ||
       !accountNumber ||
       !ifscCode ||
-      !accountHolderName ||
-      !contactNumber ||
+      // !accountHolderName ||
+      // !contactNumber ||
       !isVerified||
       !aadhaarNumber
     ) {
@@ -637,8 +623,8 @@ verfication.post("/kyc", async (req, res) => {
       !validateBankDetails(
         accountNumber,
         ifscCode,
-        accountHolderName,
-        contactNumber
+        // accountHolderName,
+        // contactNumber
       )
     ) {
       return res.status(400).json({
@@ -655,8 +641,10 @@ verfication.post("/kyc", async (req, res) => {
     // }
 
     const kycExists = await Kyc.findOne({ user: userId });
+    console.log(kycExists)
 
     if (kycExists) {
+      
       const data = await Kyc.findByIdAndUpdate(
         {
           _id: kycExists._id,
@@ -672,15 +660,15 @@ verfication.post("/kyc", async (req, res) => {
           aadhaarNumber,
           accountNumber,
           ifscCode,
-          accountHolderName,
-          contactNumber,
+          // accountHolderName,
+          // contactNumber,
           isVerified,
         },
         {
           new: true,
         }
       ).lean();
-
+      console.log('hoioii')
       await User.findByIdAndUpdate(
         {
           _id: userId,
@@ -697,6 +685,8 @@ verfication.post("/kyc", async (req, res) => {
       });
     }
 
+    // console.log("hi")
+
     const newKyc = new Kyc({
       user: userId,
       companyCategory,
@@ -709,10 +699,12 @@ verfication.post("/kyc", async (req, res) => {
       aadhaarNumber,
       accountNumber,
       ifscCode,
-      accountHolderName,
-      contactNumber,
+      // accountHolderName,
+      // contactNumber,
       isVerified,
     });
+
+    // console.log("hii")
 
     await newKyc.save();
 
