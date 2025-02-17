@@ -10,7 +10,10 @@ const {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
-  updateOrder
+  tracking,
+  updateOrder,
+  passbook,
+  getUser
 } = require("../Orders/newOrder.controller"); // Adjust path to your controller
 const router = express.Router();
 
@@ -26,4 +29,7 @@ router.get("/ship/:id", ShipeNowOrder);
 router.get("/pincode/:pincode", getPinCodeDetails);
 router.post("/cancelOrdersAtNotShipped",cancelOrdersAtNotShipped)
 router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
+router.post("/tracking",tracking)
+router.get("/passbook",passbook)
+router.get("/getUser",getUser)
 module.exports = router;

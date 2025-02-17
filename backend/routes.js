@@ -37,8 +37,14 @@ const WareHouse = require("./routes/warehouse.router");
 const bulkOrderUploadRoutes = require("./routes/bulkOrderUpload.router");
 const PrintLabelRoute = require("./label/printLabel.controller");
 const PrintInvoice = require("./label/printInvoice.controller");
+const PrintManifest=require("./label/printManifest.controller")
 const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
+
+//rate
+const RateCalculate=require("./routes/Ratecalculate.router")
+router.use("/ratecalculate",isAuthorized,RateCalculate)
+
 router.use("/allCourier", AllCourierRoutes);
 const newOrderRoute = require("./routes/newOrder.router");
 
@@ -85,6 +91,7 @@ router.use("/warehouse", WareHouse);
 router.use("/bulkOrderUpload", bulkOrderUploadRoutes);
 router.use("/printlabel", PrintLabelRoute);
 router.use("/printinvoice", PrintInvoice);
+router.use("/manifest",PrintManifest)
 
 
 router.use("/B2Ccouries", couriersB2CRoutes);
