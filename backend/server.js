@@ -124,7 +124,7 @@ app.use("/v1/Shiprocket",ShipRocketController);
 // app.use("/v1/EcomExpress",EcomExpressController);
 app.use("/v1/shreeMaruti",ShreeMarutiController);
 // app.use("/v1/woocommerce",WoocommerceController);
-app.use("/v1/delhivery",delhiveryRouter)
+// app.use("/v1/delhivery",delhiveryRouter)
 
 app.use(cors());
 const otpRouter = require('./auth/auth.otp');  // Import the OTP route

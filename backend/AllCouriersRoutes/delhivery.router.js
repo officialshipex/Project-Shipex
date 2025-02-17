@@ -9,7 +9,7 @@ const {
 const{saveDelhivery,isEnabeled,getCourierList,enable,disable,addService, getToken}=require("../AllCouriers/Delhivery/Authorize/saveCourierContoller");
 
 const router = express.Router();
-router.get('/getToken', getToken )
+router.post('/getToken', getToken )
 router.get('/saveNew',saveDelhivery);
 router.get('/isEnabeled',isEnabeled);
 router.get('/enable',enable);
