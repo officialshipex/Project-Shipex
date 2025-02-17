@@ -27,6 +27,7 @@ const getAuthToken = async (req,res) => {
         const response = await axios.post(url, payload, {
             headers: { 'Content-Type': 'application/json' }
         });
+        // console.log("hjh",response.data)
         if (response.data.status) {
             const newCourier = new AllCourier(courierData);
             await newCourier.save();
@@ -137,9 +138,6 @@ const isEnabeled = async (req, res) => {
       const payload ={
         email: process.env.XpreesbeesEmail,
         password:process.env.XpressbeesPassword
-  
-
-
         
       };
       const url = `${BASE_URL}/api/users/login`;

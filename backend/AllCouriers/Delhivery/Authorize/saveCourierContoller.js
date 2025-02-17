@@ -4,30 +4,48 @@ require('dotenv').config();
 const axios = require('axios');
 const Courier = require("../../../models/courierSecond");
 const Services = require("../../../models/courierServiceSecond.model");
+const AllCourier=require("../../../models/AllCourierSchema");
 const { getUniqueId } = require("../../getUniqueId");
 
 const API_TOKEN = process.env.DEL_API_TOKEN;
 const BASE_URL=process.env.DELHIVERY_URL;
 
 const getToken = async (req, res) => {
-    const payload = {
-        apiKey: req.body.credentials.apiKey
+    const { apiKey } = req.body.credentials;  // Destructure apiKey from the request body
+    const { courierName, courierProvider, CODDays, status } = req.body;  // Destructure courier data from the request body
+
+    // Validate if the API token matches the provided apiKey
+    if (API_TOKEN !== apiKey) {
+        // If the token does not match, return an unauthorized response
+        return res.status(401).json({ message: 'Unauthorized access. Invalid API key.' });
+    }
+
+    const courierData = {
+        courierName,
+        courierProvider,
+        CODDays,
+        status,
     };
 
     try {
-        const response = await axios.post(`${BASE_URL}/v1/users/login`, payload, {
-            headers: { 'Content-Type': 'application/json' }
-        });
+        // Create a new courier entry in the database
+        const newCourier = new AllCourier(courierData);
+        await newCourier.save();
 
-        if (response.data.status) {
-            res.status(200).json({ message: 'Login successful', token: response.data.data.token });
-        } else {
-            throw new Error(`Login failed: ${response.data.status}`);
-        }
+        // Return a success response with the newly created courier data
+        return res.status(201).json({
+            message: 'Courier successfully added.',
+            courier: newCourier,
+        });
     } catch (error) {
-        throw new Error(`Error in authentication: ${error.message}`);
+        // Handle errors gracefully and return a detailed error message
+        return res.status(500).json({
+            message: 'Failed to add courier.',
+            error: error.message,
+        });
     }
 };
+
 
 const saveDelhivery = async (req, res) => {
     try {
@@ -78,8 +96,13 @@ const isEnabeled = async (req, res) => {
 const getCourierList = async (req, res) => {
 
     try {
-       
-            const currCourier = await Courier.findOne({ provider: 'Delhivery' }).populate('services');
+       const response = await axios.get(`https://www.delhivery.com/api/v1/users/login`, {
+                   headers: {
+                       Authorization: `Token ${API_TOKEN}`
+                   }
+               });
+               console.log("dfsdfdsf",response)
+            const currCourier = await Courier.findOne({ provider: 'Delhivery' })
             const servicesData = currCourier.services;
 
             const allServices = servicesData.map(element => ({

@@ -15,23 +15,19 @@ const BASE_URL=process.env.XpreesbeesUrl;
 const getCourierList = async (req, res) => {
     try {
         const token = await getToken();
-
+   console.log("dashsjdas",token)
         const response = await axios.get(`${BASE_URL}/api/courier`, {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`
             }
         });
-
+  console.log("adsdasd",response)
         if (response.data.status) {
             const servicesData = response.data.data;
-            // const currCourier = await Courier.findOne({ provider: 'Xpressbees' }).populate('services');
-            // const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
-
             const allServices = servicesData.map(element => ({
                 service: element.name,
                 provider_courier_id:element.id,
-                // isAdded: prevServices.has(element.name)
             }));
 
             return res.status(201).json(allServices);
