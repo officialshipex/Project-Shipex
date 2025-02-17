@@ -275,23 +275,35 @@ const updatedStatusOrders = async (req, res) => {
 
 const getpickupAddress = async (req, res) => {
   try {
-    const pickup = await pickAddress.find({ userId: req.user._id });
-    res.json(pickup);
+    const pickupAddresses = await pickAddress.find({ userId: req.user._id });
+
+    if (!pickupAddresses.length) {
+      return res.status(404).json({ message: "No pickup addresses found" });
+    }
+
+    res.status(200).json({ success: true, data: pickupAddresses });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching pickup addresses:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
+
 const getreceiverAddress = async (req, res) => {
   try {
-    const receiver = await receiveAddress.find({ userId: req.user._id });
-    res.json(receiver);
+    const receiverAddresses = await receiveAddress.find({ userId: req.user._id });
+
+    if (!receiverAddresses.length) {
+      return res.status(404).json({ success: false, message: "No receiver addresses found" });
+    }
+
+    res.status(200).json({ success: true, data: receiverAddresses });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching receiver addresses:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 const ShipeNowOrder = async (req, res) => {
   // console.log("hii");
 
@@ -440,8 +452,10 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
+  console.log(allOrders)
   try {
     const users=await user.findOne({_id:allOrders.userId})
+    console.log(users)
     const currentWallet = await Wallet.findById({_id:users.Wallet});
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
