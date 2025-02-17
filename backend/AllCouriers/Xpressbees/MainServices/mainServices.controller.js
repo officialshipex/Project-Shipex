@@ -6,16 +6,20 @@ const axios = require("axios");
 const Order = require("../../../models/newOrder.model");
 const { getToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const Wallet = require("../../../models/wallet");
+const user = require("../../../models/User.model");
 const BASE_URL = process.env.XpreesbeesUrl;
 
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
-  const { selectedServiceDetails, id,provider } = req.body;
+  const { selectedServiceDetails, id, provider, finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
- 
+  const users = await user.findById({ _id: currentOrder.userId });
 
-  // console.log(currentOrder)
-  const currentWallet = await Wallet.findById(req.body.walletId);
+  // console.log("dasdasdasd",users)
+
+  // console.log("asasaSAs",currentOrder)
+  const currentWallet = await Wallet.findById({ _id: users.Wallet });
+  // console.log("dasdasd2323", currentWallet);
   const order_items = new Array(currentOrder.productDetails.length);
 
   currentOrder.productDetails.map((item, index) => {
@@ -26,9 +30,10 @@ const createShipment = async (req, res) => {
       sku: item.sku,
     };
   });
-// console.log("sadasdasd",currentOrder.receiverAddress.phoneNumber)
+  // console.log("sadasdasd",currentOrder.receiverAddress.phoneNumber)
 
-  let payment_type = currentOrder.paymentDetails.method === "COD" ? "cod" : "prepaid";
+  let payment_type =
+    currentOrder.paymentDetails.method === "COD" ? "cod" : "prepaid";
   const shipmentData = {
     order_number: `${currentOrder.orderId}`,
     payment_type,
@@ -42,67 +47,71 @@ const createShipment = async (req, res) => {
       phone: currentOrder.receiverAddress.phoneNumber,
     },
     pickup: {
-        warehouse_name:`${currentOrder.pickupAddress.address}`,
-        name: `${currentOrder.pickupAddress.contactName}`,
-        address: `${currentOrder.pickupAddress.address}`,
-        city: currentOrder.pickupAddress.city,
-        state: currentOrder.pickupAddress.state,
-        pincode: `${currentOrder.pickupAddress.pinCode}`,
-        phone: currentOrder.pickupAddress.phoneNumber,
+      warehouse_name: `${currentOrder.pickupAddress.address}`,
+      name: `${currentOrder.pickupAddress.contactName}`,
+      address: `${currentOrder.pickupAddress.address}`,
+      city: currentOrder.pickupAddress.city,
+      state: currentOrder.pickupAddress.state,
+      pincode: `${currentOrder.pickupAddress.pinCode}`,
+      phone: currentOrder.pickupAddress.phoneNumber,
     },
     order_items,
-    collectable_amount: currentOrder.paymentDetails.method === "prepaid" ? 0 :currentOrder.paymentDetails.amount,
+    collectable_amount:
+      currentOrder.paymentDetails.method === "prepaid"
+        ? 0
+        : currentOrder.paymentDetails.amount,
     courier_id: selectedServiceDetails,
   };
 
-//   console.log("hjjhjjhj",shipmentData);
+  // console.log("hjjhjjhj", shipmentData);
 
   try {
     const token = await getToken();
-// console.log("sadasd",shipmentData)
+    // console.log("sadasd",shipmentData)
     const response = await axios.post(url, shipmentData, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-    
-    // console.log("XpressBees Create Shipment", response.data);
+
+    console.log("XpressBees Create Shipment", response.data);
 
     if (response.data.status) {
       const result = response.data.data;
       currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
-      currentOrder.label=result.label
-      currentOrder.provider=provider
+      currentOrder.label = result.label;
+      currentOrder.provider = provider;
       currentOrder.shipment_id = `${result.awb_number}`;
+      currentOrder.totalFreightCharges = finalCharges;
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.freightCharges =
-      //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       // currentOrder.tracking = [];
       // currentOrder.tracking.push({
       //   stage: "Order Booked",
       // });
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
-      // console.log("sahkdjhsakdsa",currentOrder)
-      // let balanceToBeDeducted =
-      //   req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      // let currentBalance = currentWallet.balance - balanceToBeDeducted;
-      // await currentWallet.updateOne({
-      //   $inc: { balance: -balanceToBeDeducted },
-      //   $push: {
-      //     transactions: {
-      //       txnType: "Shipping",
-      //       action: "debit",
-      //       amount: currentBalance,
-      //       balanceAfterTransaction:
-      //         currentWallet.balance - balanceToBeDeducted,
-      //       awb_number: `${result.awb_number}`,
-      //     },
-        // },
-      // });
+      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      console.log("sjakjska",balanceToBeDeducted)
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId || null, // Include if available
+            category: "debit",
+            amount: balanceToBeDeducted, // Fixing incorrect reference
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.awb_number || "", // Ensuring it follows the schema
+            description: `Shipping charges for Order #${currentOrder.orderId} with ${provider}`,
+          },
+        },
+      });
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
@@ -135,12 +144,10 @@ const reverseBooking = async (req, res) => {
     if (response.data.status) {
       return res.status(201).json(response.data.data);
     } else {
-      return res
-        .status(400)
-        .json({
-          error: "Error creating reverse booking",
-          details: response.data,
-        });
+      return res.status(400).json({
+        error: "Error creating reverse booking",
+        details: response.data,
+      });
     }
   } catch (error) {
     console.error("Error in creating reverse booking:", error.message);
@@ -232,7 +239,6 @@ const pickup = async (awbNumbers) => {
 };
 
 const cancelShipmentXpressBees = async (awb) => {
- 
   if (!awb) {
     return res.status(400).json({ error: "AWB number is required" });
   }
@@ -240,7 +246,7 @@ const cancelShipmentXpressBees = async (awb) => {
   const url = `${BASE_URL}/api/shipments2/cancel`;
   try {
     const token = await getToken();
-    const payload = {awb} ;
+    const payload = { awb };
     // console.log("sadsdsads",awb)
     // console.log("sadsdsads",token)
     const response = await axios.post(url, payload, {
@@ -250,10 +256,10 @@ const cancelShipmentXpressBees = async (awb) => {
       },
     });
     await Order.updateOne(
-      { awb_number: awb }, 
-      { $set: { status: "Cancelled" } } 
+      { awb_number: awb },
+      { $set: { status: "Cancelled" } }
     );
-    
+
     const { status, data } = response.data;
     if (status) {
       return { data, code: 201 };
@@ -323,23 +329,19 @@ const createNDR = async (req, res) => {
       });
     }
 
-    return res
-      .status(200)
-      .json({
-        message: "All actions performed successfully",
-        data: response.data,
-      });
+    return res.status(200).json({
+      message: "All actions performed successfully",
+      data: response.data,
+    });
   } catch (error) {
     console.error(
       "Error in performing NDR actions:",
       error.response?.data || error.message
     );
-    return res
-      .status(500)
-      .json({
-        error: "Internal Server Error",
-        message: error.response?.data?.message || error.message,
-      });
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: error.response?.data?.message || error.message,
+    });
   }
 };
 

@@ -5,6 +5,7 @@ const receiveAddress = require("../models/deliveryAddress.model");
 const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
+const Wallet=require("../models/wallet")
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -238,7 +239,7 @@ const getOrdersById = async (req, res) => {
 const updatedStatusOrders = async (req, res) => {
   try {
     // console.log(req.body.id);
-    
+
     // Ensure order ID is provided
     if (!req.body) {
       return res.status(400).json({ error: "Order ID is required" });
@@ -248,13 +249,12 @@ const updatedStatusOrders = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.body.id)) {
       return res.status(400).json({ error: "Invalid order ID format" });
     }
-    
+
     const order = await Order.findByIdAndUpdate(
       req.body.id,
       { $set: { status: "new" } },
       { new: true }
     );
-    
 
     // If order not found
     if (!order) {
@@ -272,7 +272,6 @@ const updatedStatusOrders = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 const getpickupAddress = async (req, res) => {
   try {
@@ -305,7 +304,9 @@ const ShipeNowOrder = async (req, res) => {
     //  console.log("dsfdsfdsfs",order.userId);
 
     const plan = await Plan.findOne({ userId: order.userId });
-    // console.log(plan.planName)
+    const users=await user.findOne({_id:order.userId })
+    const userWallet=await Wallet.findOne({_id:users.Wallet})
+    // console.log("ahsaisa",userWallet)
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -334,6 +335,7 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
+        // log(result)
 
         if (result.success) {
           return {
@@ -385,10 +387,6 @@ const ShipeNowOrder = async (req, res) => {
       services: filteredServices,
       updatedRates,
     });
-    // console.log(availableServices);
-
-    // Respond with order and available courier services
-    // res.json(order);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
@@ -423,7 +421,7 @@ const getPinCodeDetails = async (req, res) => {
 const cancelOrdersAtNotShipped = async (req, res) => {
   const orderData = req.body;
   try {
-    const currentOrder = await Order.findById({ _id: orderId._id });
+    const currentOrder = await Order.findById({ _id: orderData._id });
 
     if (currentOrder && currentOrder.status !== "Cancelled") {
       currentOrder.status = "Cancelled";
@@ -442,14 +440,13 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
-  const walletId = req.body.walletId;
   try {
-    // const currentWallet = await Wallet.findById(walletId);
+    const users=await user.findOne({_id:allOrders.userId})
+    const currentWallet = await Wallet.findById({_id:users.Wallet});
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
-      console.log("dsadsads",result)
       if (result.error) {
         return {
           error: "Failed to cancel shipment with Xpressbees",
@@ -516,21 +513,22 @@ const cancelOrdersAtBooked = async (req, res) => {
     // currentOrder.tracking.push({
     //   stage: "Cancelled",
     // });
-    // let balanceTobeAdded = currentOrder.freightCharges;
-    // let currentBalance = currentWallet.balance + balanceTobeAdded;
-
-    // await currentWallet.updateOne({
-    //   $inc: { balance: balanceTobeAdded },
-    //   $push: {
-    //     transactions: {
-    //       txnType: "Shipping",
-    //       action: "credit",
-    //       amount: currentBalance,
-    //       balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
-    //       awb_number: `${currentOrder.awb_number}`,
-    //     },
-    //   },
-    // });
+    let balanceTobeAdded = allOrders.totalFreightCharges === "N/A" ? 0 : parseInt(allOrders.totalFreightCharges);
+    await currentWallet.updateOne({
+      $inc: { balance: balanceTobeAdded },
+      $push: {
+        transactions: {
+          channelOrderId: currentOrder.orderId|| null, // Include if available
+          category: "credit",
+          amount: balanceTobeAdded, // Fixing incorrect reference
+          balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
+          date: new Date().toISOString().slice(0, 16).replace("T", " "), // Format date & time
+          awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
+          description: `Order #${currentOrder.orderId} Shipment cancelled by ${allOrders.receiverAddress.contactName}`,
+        }
+        
+      },
+    });
     // currentOrder.freightCharges = 0;
     // await currentOrder.save();
     // await currentWallet.save();
@@ -556,7 +554,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       // results: cancellationResults,
       // successCount,
       // failureCount,
-      success:true
+      success: true,
     });
   } catch (error) {
     console.error("Error cancelling orders:", error);
@@ -565,7 +563,124 @@ const cancelOrdersAtBooked = async (req, res) => {
       .send({ error: "An error occurred while cancelling orders." });
   }
 };
+const tracking = async (req, res) => {
+  
+  try {
+    const allOrders = await Promise.all(
+      req.body.map((order) => Order.findById(order._id))
+    );
 
+    
+    const updateOrderStatus = async (order, status,data) => {   
+      if(data=="booked"){
+        order.status = status;
+      }
+      if (data == "cancelled") {
+        order.status = status;
+      }
+      if (data == "in transit") {
+        order.status = status;
+      }
+      if (data == "delivered") {
+        order.status = status;
+      }
+      await order.save();
+    };
+
+    const trackingPromises = allOrders.map(async (order) => {
+      try {
+        const { provider } = order;
+        const { awb_number } = order;
+        let result;
+
+        if (provider === "NimbusPost") {
+          result = await trackShipmentNimbuspost(awb_number);
+        } else if (provider === "Shiprocket") {
+          result = await getTrackingByAWB(awb_number);
+        } else if (provider === "Xpressbees") {
+          result = await trackShipment(awb_number);
+          // console.log("sadasdas43",result)
+          console.log("Tracking result", result);
+        } else if (provider === "Delhivery") {
+          result = await trackShipmentDelhivery(awb_number);
+        } else if (provider === "ShreeMaruti") {
+          result = await trackOrderShreeMaruti(awb_number);
+        }
+
+        if (result && result.success) {
+          const status = result.data.toLowerCase().replace(/_/g, " ");
+
+          const statusMap = {
+            "booked": () => updateOrderStatus(order, "Ready To Ship","booked"),
+            "cancelled": () => updateOrderStatus(order, "Cancelled","cancelled"),
+            "in transit": () => updateOrderStatus(order, "In-transit","in transit"),
+            
+             "delivered":()=>updateOrderStatus(order,"Delivered","delivered")
+            
+          };
+
+          if (statusMap[status]) {
+            await statusMap[status]();
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Error processing order ID: ${order._id}, AWB: ${order.awb_number}`,
+          error
+        );
+      }
+    });
+
+    await Promise.all(trackingPromises);
+
+    res.status(200).json({ message: "Tracking updated successfully" });
+  } catch (error) {
+    console.error("Error in tracking:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
+
+const passbook=async(req,res)=>{
+  try {
+    const  userId  = req.user._id;
+  const users=await user.findOne({_id:userId})
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const wallet = await Wallet.findOne({ _id:users.Wallet });
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    return res.status(200).json({
+      message: "Passbook fetched successfully",
+      transactions: wallet.transactions,
+    });
+  } catch (error) {
+    console.error("Error fetching passbook:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
+
+const getUser=async(req,res)=>{
+  try {
+    const  userId  = req.user._id;
+  
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+    const users=await user.findOne({_id:userId})
+    if (!users) {
+      return res.status(400).json({ message: "User Not found" });
+    }
+    return res.status(200).json(users);
+  } catch (error) {
+   return res.status(400).json({message:"User not found"})
+  }
+}
 module.exports = {
   newOrder,
   getOrders,
@@ -577,5 +692,9 @@ module.exports = {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
-  updateOrder
+  tracking,
+  updateOrder,
+  passbook,
+   getUser
+
 };

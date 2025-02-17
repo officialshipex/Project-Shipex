@@ -642,6 +642,7 @@ verfication.post("/kyc", async (req, res) => {
 
     const kycExists = await Kyc.findOne({ user: userId });
     console.log(kycExists)
+    // console.log(kycExists)
 
     if (kycExists) {
       
