@@ -75,7 +75,7 @@ const createShipment = async (req, res) => {
       },
     });
 
-    console.log("XpressBees Create Shipment", response.data);
+    // console.log("XpressBees Create Shipment", response.data);
 
     if (response.data.status) {
       const result = response.data.data;
@@ -96,7 +96,7 @@ const createShipment = async (req, res) => {
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
       let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-      console.log("sjakjska",balanceToBeDeducted)
+      // console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {

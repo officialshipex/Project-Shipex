@@ -7,7 +7,7 @@ const CourierServiceSchema = new mongoose.Schema({
   },
   courier:{
     type: String,
-    required: true,
+    // required: true,
   },
   courierType: {
     type: String,
