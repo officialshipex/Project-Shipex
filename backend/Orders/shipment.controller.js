@@ -63,6 +63,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         service.courier,
         payload
       );
+      // console.log("sddddddddddddd",result)
       return result;
       // console.log("4621516dsfds",result)
     }
@@ -108,13 +109,16 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     //   return result;
     // }
 
-    // if (service.courierProviderName === "Delhivery") {
-    //   const result = await checkPincodeServiceabilityDelhivery(
-    //     pincode,
-    //     currentOrder.order_type
-    //   );
-    //   return result;
-    // }
+    if (service.provider === "Delhivery") {
+      
+      const result = await checkPincodeServiceabilityDelhivery(
+        
+        pincode,
+        currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid"
+      );
+      // console.log("saaaaaaaaaaaaa",result)
+      return result;
+    }
 
     // if (service.courierProviderName === "ShreeMaruti") {
     //   const payload = {

@@ -5,10 +5,10 @@ const axios = require('axios');
 const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
-const Order = require("../../../models/orderSchema.model");
+const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
-
+const user=require("../../../models/User.model")
 
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
@@ -18,50 +18,90 @@ const getCurrentDateTime = () => {
   const pickup_time = now.toTimeString().split(" ")[0];
   return { pickup_date, pickup_time };
 };
+const createClientWarehouse = async (payload) => {
+   const warehouseDetails = {
+     name: payload.contactName,
+     email:payload.email,
+     phone: payload.phoneNumber,
+     address: payload.address,
+     pin: payload.pinCode,
+     city: payload.city,
+     state: payload.state,
+     return_address: payload.address,
+      return_pin: payload.pinCode,
+      return_city: payload.city,
+      return_state: payload.state,
+      return_country: "India",
+     country:"India"
+   }
+   if (!warehouseDetails) {
+     return res.status(400).json({ error: "Warehouse details are required" });
+   }
 
+   try {
+     const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
+       headers: {
+         'Content-Type': 'application/json',
+        
+         Authorization: `Token ${API_TOKEN}`
+       },
+     });
+
+     return response.data;
+   } catch (error) {
+    let alreadyExists;
+    if(error.response.data.data.name===payload.contactName){
+      console.log("warehouse allready exists")
+      alreadyExists= error.response.data.data
+    }
+    return alreadyExists
+     console.error('Error:', error.response ? error.response.data : error.message);
+    //  throw error;
+   }
+ };
+ 
 
 const createOrder = async (req, res) => {
 
-
-  const { selectedServiceDetails, id, wh } = req.body.payload;
+// console.log("sdsds",req.body)
+const {id, provider, finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
-  const currentWallet = await Wallet.findById(req.body.walletId);
-
-
-
+  const users = await user.findById({ _id: currentOrder.userId });
+  const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
-
-
+ 
+const createClientWarehouses=await createClientWarehouse(currentOrder.receiverAddress)
+// console.log("dsasdsa",createClientWarehouses)
   const payment_type =
-    currentOrder.order_type === "Cash on Delivery" ? "COD" : "Pre-paid";
+    currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
 
   const payloadData = {
     pickup_location: {
-      name: wh.warehouseName || "Default Warehouse",
+      name: currentOrder.pickupAddress || "Default Warehouse",
     },
     shipments: [{
       Waybill: waybills[0],
       country: "India",
-      city: currentOrder.shipping_details.city,
-      return_phone: wh.contactNo,
-      pin: currentOrder.shipping_details.pinCode,
-      state: currentOrder.shipping_details.state,
-      order: currentOrder.order_id,
-      add: `${currentOrder.shipping_details.address} ${currentOrder.shipping_details.address2}`,
+      city: currentOrder.receiverAddress.city,
+      // return_phone: wh.contactNo,
+      pin: currentOrder.receiverAddress.pinCode,
+      state: currentOrder.receiverAddress.state,
+      order: currentOrder.orderId,
+      add: currentOrder.receiverAddress|| "Default Warehouse",
       payment_mode: payment_type,
-      quantity: currentOrder.Product_details.length.toString(),
-      return_add: `${wh.addressLine1}`,
-      phone: currentOrder.shipping_details.phone,
-      total_amount: currentOrder.sub_total,
-      name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
-      return_country: "India",
-      return_city: wh.city,
-      return_state: wh.state,
-      return_pin: wh.pinCode,
-      shipment_height: currentOrder.shipping_cost.dimensions.height,
-      shipment_width: currentOrder.shipping_cost.dimensions.width,
-      shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
-      cod_amount: payment_type === "COD" ? `${currentOrder.sub_total}` : "0",
+      quantity: currentOrder.productDetails[0].quantity.toString(),
+      // return_add: `${wh.addressLine1}`,
+      phone: currentOrder.receiverAddress.phoneNumber,
+      total_amount: currentOrder.paymentDetails.amount,
+      name: currentOrder.receiverAddress || "Default Warehouse",
+      // return_country: "India",
+      // return_city: wh.city,
+      // return_state: wh.state,
+      // return_pin: wh.pinCode,
+      // shipment_height: currentOrder.shipping_cost.dimensions.height,
+      // shipment_width: currentOrder.shipping_cost.dimensions.width,
+      // shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
+      cod_amount: payment_type === "COD" ? `${currentOrder.paymentDetails.amount}` : "0",
     }],
   };
 
@@ -77,7 +117,7 @@ const createOrder = async (req, res) => {
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
-
+// console.log("dsssssssss2333333333",response)
 
     if (response.data.success) {
       const result = response.data.packages[0];
@@ -86,7 +126,7 @@ const createOrder = async (req, res) => {
       currentOrder.awb_number = result.waybill;
       currentOrder.shipment_id = `${result.refnum}`;
       currentOrder.service_details = selectedServiceDetails._id;
-      currentOrder.warehouse = wh._id;
+      // currentOrder.warehouse = wh._id;
       currentOrder.tracking = [];
       currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       currentOrder.tracking.push({
@@ -115,7 +155,7 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ error: 'Error creating shipment', details: response.data });
     }
   } catch (error) {
-    console.log(error);
+    // console.log(error);
     return res.status(500).json({
       success: false,
       message: "Failed to create order.",
@@ -132,9 +172,10 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
     return res.status(400).json({ error: "Pincode is required" });
   }
 
-
+ 
   try {
-    const response = await axios.get(`${url}/c/api/pin-codes/json/?parameters`, {
+    
+    const response = await axios.get(`${url}/c/api/pin-codes/json`, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
       },
@@ -143,8 +184,9 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
       },
     });
 
-
+    
     let result = response.data.delivery_codes;
+   
     let finalResult = false;
 
     if (result.length > 0) {
@@ -282,38 +324,38 @@ const createPickupRequest = async (warehouse_name, awb) => {
 };
 
 
-const createClientWarehouse = async (payload) => {
+// var createClientWarehouse = async (payload) => {
+//  console.log("sdaaaaaaaaa",payload)
+//   const warehouseDetails = {
+//     name: payload.address,
+//     phone: payload.phoneNumber,
+//     address: payload.address,
+//     pin: payload.pinCode,
+//     city: payload.city,
+//     state: payload.state,
+//     // return_address: `${payload.addressLine1} ${payload.addressLine2}`,
+//     // return_pin: payload.pinCode
+//   }
 
-  const warehouseDetails = {
-    name: payload.warehouseName,
-    phone: payload.contactNo,
-    address: `${payload.addressLine1} ${payload.addressLine2}`,
-    pin: payload.pinCode,
-    city: payload.city,
-    state: payload.state,
-    return_address: `${payload.addressLine1} ${payload.addressLine2}`,
-    return_pin: payload.pinCode
-  }
-
-  if (!warehouseDetails) {
-    return res.status(400).json({ error: "Warehouse details are required" });
-  }
+//   if (!warehouseDetails) {
+//     return res.status(400).json({ error: "Warehouse details are required" });
+//   }
 
 
-  try {
-    const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Token ${API_TOKEN}`
-      },
-    });
+//   try {
+//     const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//         Authorization: `Token ${API_TOKEN}`
+//       },
+//     });
 
-    return response.data;
-  } catch (error) {
-    console.error('Error:', error.response ? error.response.data : error.message);
-    throw error;
-  }
-};
+//     return response.data;
+//   } catch (error) {
+//     console.error('Error:', error.response ? error.response.data : error.message);
+//     throw error;
+//   }
+// };
 
 
 const updateClientWarehouse = async (req, res) => {

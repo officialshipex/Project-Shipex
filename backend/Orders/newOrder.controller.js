@@ -325,7 +325,7 @@ const ShipeNowOrder = async (req, res) => {
 
     // Fetch enabled courier services
     const services = await CourierService.find({ status: "Enable" });
-
+  
     const enabledServices = [];
 
     for await (const srvc of services) {
@@ -338,8 +338,6 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
-    // console.log(enabledServices);
-
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -347,17 +345,19 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        // log(result)
 
-        if (result.success) {
-          return {
-            item,
-            Xid: result.Xpressbeesid,
-          };
-        }
+  if (result || result.success) {
+    return {
+        item,
+        // Xid: result.Xpressbeesid,
+    };
+} else {
+    console.error("Result is undefined or does not have a success property");
+    // Handle the case where result is not as expected
+}
       })
     );
-
+    // console.log("dsaaaaaaaaaaaa",availableServices)
     const filteredServices = availableServices.filter(Boolean);
     // console.log("oooooooooiou",availableServices)
 
@@ -377,7 +377,7 @@ const ShipeNowOrder = async (req, res) => {
     // console.log("adsdasd",filteredServices)
     // console.log(payload)
     let rates = await calculateRateForService(payload);
-    // console.log("rates", rates);
+    console.log("rates", rates);
 
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
@@ -388,7 +388,7 @@ const ShipeNowOrder = async (req, res) => {
           ...rate,
           provider: matchedService.item.provider,
           courierType: matchedService.item.courierType,
-          Xid: matchedService.Xid[0],
+          // Xid: matchedService.Xid[0],
         };
       }
       return rate;
