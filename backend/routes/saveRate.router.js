@@ -53,6 +53,9 @@ router.post("/upload", (req, res, next) => {
 
 router.get("/getRateCard",saveRateController.getRateCard)
 
+router.get('/getRateCard/:id', saveRateController.getRateCardById); // Use the ID in the URL
+router.put("/updateRateCard/:id", saveRateController.updateRateCard);
+
 router.post("/saveB2CRate", saveRateController.saveRate);
 
 router.get("/getPlan",isAuthorized,saveRateController.getPlan)
