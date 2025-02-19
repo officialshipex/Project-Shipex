@@ -104,6 +104,48 @@ const getRateCard = async (req, res) => {
   }
 };
 
+
+
+
+
+// Update Rate Card
+const updateRateCard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedRateCard = await RateCard.findByIdAndUpdate(id, req.body, { new: true });
+
+    if (!updatedRateCard) {
+      return res.status(404).json({ message: "Rate Card not found" });
+    }
+
+    res.status(200).json(updatedRateCard);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+
+
+const getRateCardById = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL
+    const rateCard = await RateCard.findById(id); // Fetch the rate card by ID
+
+    if (!rateCard) {
+      return res.status(404).json({ message: "Rate Card not found" }); // Return 404 if not found
+    }
+
+    res.status(200).json({ message: "Rate card retrieved successfully", rateCard }); // Return the found rate card
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Error retrieving rate card" }); // Handle any server errors
+  }
+};
+
+
+
+
+
 const getPlan = async (req, res) => {
   try {
     const allPlan = await Plan.findOne({ userId: req.user._id });
@@ -267,4 +309,4 @@ const uploadRate = async (req, res) => {
   }
 };
 
-module.exports = { saveRate, uploadRate, getRateCard,getPlan };
+module.exports = { saveRate, uploadRate, getRateCard,getPlan, updateRateCard, getRateCardById };
