@@ -11,6 +11,8 @@ const {
   cancelShipmentXpressBees,
   trackShipment,
 } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const {trackShipmentDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller")
+const {cancelOrderDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller")
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -138,7 +140,7 @@ const updateOrder = async (req, res) => {
   //   if (!req.body.paymentDetails || !req.body.paymentDetails.amount) {
   //     return res.status(400).json({ error: "paymentDetails and amount are required" });
   // }
-  console.log(pickupAddress)
+  // console.log(pickupAddress)
   
     const updateFields = {};
 
@@ -209,13 +211,6 @@ const updateOrder = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
-
-
-
-
-
-
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
   console.log("Received ID:", id);
@@ -455,7 +450,7 @@ const cancelOrdersAtBooked = async (req, res) => {
   console.log(allOrders)
   try {
     const users=await user.findOne({_id:allOrders.userId})
-    console.log(users)
+    // console.log(users)
     const currentWallet = await Wallet.findById({_id:users.Wallet});
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
@@ -471,7 +466,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.status = "new";
       }
     } else if (
-      currentOrder.service_details.courierProviderName === "Shiprocket"
+      currentOrder.provider === "Shiprocket"
     ) {
       const result = await cancelOrder(currentOrder.awb_number);
       if (!result.success) {
@@ -481,7 +476,7 @@ const cancelOrdersAtBooked = async (req, res) => {
           orderId: currentOrder._id,
         };
       } else if (
-        currentOrder.service_details.courierProviderName === "Nimuspost"
+        currentOrder.provider === "Nimuspost"
       ) {
         const result = await cancelShipmentXpressBees(currentOrder.awb_number);
         if (result.error) {
@@ -493,7 +488,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         }
       }
     } else if (
-      currentOrder.service_details.courierProviderName === "Delhivery"
+      currentOrder.provider === "Delhivery"
     ) {
       // console.log("I am in it");
       const result = await cancelOrderDelhivery(currentOrder.awb_number);
@@ -503,9 +498,11 @@ const cancelOrdersAtBooked = async (req, res) => {
           details: result,
           orderId: currentOrder._id,
         };
+      }else {
+        currentOrder.status = "new";
       }
     } else if (
-      currentOrder.service_details.courierProviderName === "ShreeMaruti"
+      currentOrder.provider === "ShreeMaruti"
     ) {
       const result = await cancelOrderShreeMaruti(currentOrder.order_id);
       if (result.error) {
@@ -527,7 +524,7 @@ const cancelOrdersAtBooked = async (req, res) => {
     // currentOrder.tracking.push({
     //   stage: "Cancelled",
     // });
-    let balanceTobeAdded = allOrders.totalFreightCharges === "N/A" ? 0 : parseInt(allOrders.totalFreightCharges);
+    let balanceTobeAdded = allOrders.totalFreightCharges =="N/A" ? 0 : parseInt(allOrders.totalFreightCharges);
     await currentWallet.updateOne({
       $inc: { balance: balanceTobeAdded },
       $push: {
@@ -586,10 +583,8 @@ const tracking = async (req, res) => {
 
     
     const updateOrderStatus = async (order, status,data) => {   
+      cosole.log("yuyuuyuyuyuuu",data)
       if(data=="booked"){
-        order.status = status;
-      }
-      if (data == "cancelled") {
         order.status = status;
       }
       if (data == "in transit") {
@@ -617,6 +612,7 @@ const tracking = async (req, res) => {
           console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
+          // console.log("hhhhhhhhhh",result)
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
@@ -628,7 +624,6 @@ const tracking = async (req, res) => {
             "booked": () => updateOrderStatus(order, "Ready To Ship","booked"),
             "cancelled": () => updateOrderStatus(order, "Cancelled","cancelled"),
             "in transit": () => updateOrderStatus(order, "In-transit","in transit"),
-            
              "delivered":()=>updateOrderStatus(order,"Delivered","delivered")
             
           };

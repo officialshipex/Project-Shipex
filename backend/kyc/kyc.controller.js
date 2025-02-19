@@ -446,6 +446,7 @@ verfication.post("/bank-account", async (req, res) => {
     // const userId = "6711f5f10d7b30f7193c55fd";
 
     const { accountNo, ifsc } = req.body;
+    // console.log(req.body)
 
     if (!accountNo || !ifsc ) {
       return res.status(400).json({

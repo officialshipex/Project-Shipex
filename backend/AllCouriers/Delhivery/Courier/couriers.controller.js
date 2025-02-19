@@ -19,47 +19,62 @@ const getCurrentDateTime = () => {
   return { pickup_date, pickup_time };
 };
 const createClientWarehouse = async (payload) => {
-   const warehouseDetails = {
-     name: payload.contactName,
-     email:payload.email,
-     phone: payload.phoneNumber,
-     address: payload.address,
-     pin: payload.pinCode,
-     city: payload.city,
-     state: payload.state,
-     return_address: payload.address,
-      return_pin: payload.pinCode,
-      return_city: payload.city,
-      return_state: payload.state,
-      return_country: "India",
-     country:"India"
-   }
-   if (!warehouseDetails) {
-     return res.status(400).json({ error: "Warehouse details are required" });
-   }
+  if (!payload) {
+    throw new Error("Payload is required to create a warehouse.");
+  }
 
-   try {
-     const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
-       headers: {
-         'Content-Type': 'application/json',
-        
-         Authorization: `Token ${API_TOKEN}`
-       },
-     });
+  const warehouseDetails = {
+    name: payload.contactName,
+    email: payload.email,
+    phone: payload.phoneNumber,
+    address: payload.address,
+    pin: payload.pinCode,
+    city: payload.city,
+    state: payload.state,
+    return_address: payload.address,
+    return_pin: payload.pinCode,
+    return_city: payload.city,
+    return_state: payload.state,
+    return_country: "India",
+    country: "India",
+  };
 
-     return response.data;
-   } catch (error) {
-    let alreadyExists;
-    if(error.response.data.data.name===payload.contactName){
-      console.log("warehouse allready exists")
-      alreadyExists= error.response.data.data
+  try {
+    const response = await axios.post(
+      `${url}/api/backend/clientwarehouse/create/`,
+      warehouseDetails,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${API_TOKEN}`,
+        },
+      }
+    );
+
+    console.log("Warehouse created successfully:", response.data);
+
+    return {
+      success: true,
+      message: "Warehouse created successfully",
+      data: response.data,
+    };
+  } catch (error) {
+    if (error.response && error.response.data?.data?.name === payload.contactName) {
+      // console.warn("Warehouse already exists:", error.response.data.data);
+      
+      // Proceed to the next step instead of stopping execution
+      return {
+        success: true,
+        message: "Warehouse already exists, proceeding to the next step",
+        data: error.response.data.data,
+      };
     }
-    return alreadyExists
-     console.error('Error:', error.response ? error.response.data : error.message);
-    //  throw error;
-   }
- };
- 
+
+    console.error("Error creating warehouse:", error.response ? error.response.data : error.message);
+    throw new Error("Failed to create warehouse. Please try again.");
+  }
+};
+
 
 const createOrder = async (req, res) => {
 
@@ -70,14 +85,14 @@ const {id, provider, finalCharges } = req.body;
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
  
-const createClientWarehouses=await createClientWarehouse(currentOrder.receiverAddress)
+const createClientWarehouses=await createClientWarehouse(currentOrder.pickupAddress)
 // console.log("dsasdsa",createClientWarehouses)
   const payment_type =
     currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
 
   const payloadData = {
     pickup_location: {
-      name: currentOrder.pickupAddress || "Default Warehouse",
+      name: currentOrder.pickupAddress.contactName || "Default Warehouse",
     },
     shipments: [{
       Waybill: waybills[0],
@@ -93,7 +108,7 @@ const createClientWarehouses=await createClientWarehouse(currentOrder.receiverAd
       // return_add: `${wh.addressLine1}`,
       phone: currentOrder.receiverAddress.phoneNumber,
       total_amount: currentOrder.paymentDetails.amount,
-      name: currentOrder.receiverAddress || "Default Warehouse",
+      name: currentOrder.receiverAddress.address || "Default Warehouse",
       // return_country: "India",
       // return_city: wh.city,
       // return_state: wh.state,
@@ -117,34 +132,38 @@ const createClientWarehouses=await createClientWarehouse(currentOrder.receiverAd
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
-// console.log("dsssssssss2333333333",response)
+console.log("dsssssssss2333333333",response.data)
 
     if (response.data.success) {
       const result = response.data.packages[0];
-      currentOrder.status = 'Booked';
+      currentOrder.status = 'Ready To Ship';
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.waybill;
       currentOrder.shipment_id = `${result.refnum}`;
-      currentOrder.service_details = selectedServiceDetails._id;
+      currentOrder.provider = provider;
+      // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.warehouse = wh._id;
-      currentOrder.tracking = [];
-      currentOrder.freightCharges=req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      currentOrder.tracking.push({
-        stage: 'Order Booked'
-      });
+      // currentOrder.tracking = [];
+      currentOrder.freightCharges=finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      // currentOrder.tracking.push({
+      //   stage: 'Order Booked'
+      // });
       let savedOrder = await currentOrder.save();
-
-      let balanceToBeDeducted = req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-      let currentBalance=currentWallet.balance-balanceToBeDeducted;
+      //  console.log("skjjjjjjjjjjjjjj",savedOrder)
+      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      // console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {
           transactions: {
-            txnType: "Shipping",
-            action: "debit",
-            amount: currentBalance,
-            balanceAfterTransaction: currentWallet.balance - balanceToBeDeducted,
-            awb_number: `${result.waybill}`,
+            channelOrderId: currentOrder.orderId || null, // Include if available
+            category: "debit",
+            amount: balanceToBeDeducted, // Fixing incorrect reference
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.awb_number || "", // Ensuring it follows the schema
+            description: `Shipping charges for Order #${currentOrder.orderId} with ${provider}`,
           },
         },
       });
@@ -211,19 +230,25 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 };
 
 const trackShipmentDelhivery = async (waybill) => {
-
+// console.log("dfsdfsdfsdfsdfsdfsdfs",waybill)
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
   }
 
 
   try {
-    const response = await axios.get(`${url}/api/v1/packages/json/waybill=${waybill}&token=${API_TOKEN}`);
-    console.log(response);
-    if (response?.data?.success) {
+    const response = await axios.get(`${url}/api/v1/packages/json/?waybill=${waybill}`,
+      {
+        headers: {
+          authorization: `Token ${API_TOKEN}`,
+        },
+      }
+    );
+    // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
+    if (response?.data?.ShipmentData[0]?.Shipment?.Status?.Status==="Manifested") {
       return ({
         succes: true,
-        data: response.data
+        data: response.data.ShipmentData[0].Shipment.Status.Instructions
       })
     }
     else {
@@ -396,7 +421,6 @@ const cancelOrderDelhivery = async (awb_number) => {
     cancellation: true
   }
 
-
   try {
     const response = await axios.post(`${url}/api/p/edit`, payload, {
       headers: {
@@ -404,7 +428,10 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-
+    await Order.updateOne(
+      { awb_number: awb_number },
+      { $set: { status: "Cancelled" } }
+    );
     if (response?.data?.status) {
       return { data: response.data, code: 201 };
     }
