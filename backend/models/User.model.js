@@ -45,6 +45,10 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    userId:{
+        type:Number,
+        required:true
+    },
     wareHouse: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Warehouse'
@@ -65,7 +69,7 @@ const usersSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     }
-});
+},{timestamps:true});
 
 usersSchema.pre("save", async function (next) {
     if (this.isNew) {
