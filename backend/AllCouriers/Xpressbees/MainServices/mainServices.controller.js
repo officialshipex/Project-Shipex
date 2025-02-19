@@ -57,7 +57,7 @@ const createShipment = async (req, res) => {
     },
     order_items,
     collectable_amount:
-      currentOrder.paymentDetails.method === "prepaid"
+      currentOrder.paymentDetails.method === "Prepaid"
         ? 0
         : currentOrder.paymentDetails.amount,
     courier_id: selectedServiceDetails,
@@ -255,13 +255,19 @@ const cancelShipmentXpressBees = async (awb) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    await Order.updateOne(
-      { awb_number: awb },
-      { $set: { status: "Cancelled" } }
-    );
+    // console.log("dsssssssssss",response)
+    // await Order.updateOne(
+    //   { awb_number: awb },
+    //   { $set: { status: "Cancelled" } }
+    // );
 
     const { status, data } = response.data;
+    console.log("huuuuu")
     if (status) {
+      await Order.updateOne(
+        { awb_number: awb },
+        { $set: { status: "Cancelled" } }
+      );
       return { data, code: 201 };
     } else {
       return {
