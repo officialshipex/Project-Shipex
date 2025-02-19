@@ -46,6 +46,25 @@ const getUsers = async (req, res) => {
     }
   };
 
+  const getAllUsers = async (req, res) => {
+    try {
+      console.log("hi")
+      const allUsers = await User.find();
+  
+      res.status(200).json({
+        success: true,
+        data: allUsers
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error fetching users",
+        error: error.message
+      });
+    }
+  };
+  
+
 const getUserDetails = async (req, res) => {
     try {
     
@@ -155,4 +174,4 @@ const getRatecards = async (req, res) => {
 };
 
 
-module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan,getRatecards};
+module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan,getRatecards,getAllUsers};
