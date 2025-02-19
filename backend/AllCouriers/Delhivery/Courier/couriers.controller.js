@@ -1,14 +1,14 @@
-if(process.env.NODE_ENV!="production"){
-  require('dotenv').config();
-  }
-const axios = require('axios');
+if (process.env.NODE_ENV != "production") {
+  require("dotenv").config();
+}
+const axios = require("axios");
 const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
-const user=require("../../../models/User.model")
+const user = require("../../../models/User.model");
 
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
@@ -59,9 +59,12 @@ const createClientWarehouse = async (payload) => {
       data: response.data,
     };
   } catch (error) {
-    if (error.response && error.response.data?.data?.name === payload.contactName) {
+    if (
+      error.response &&
+      error.response.data?.data?.name === payload.contactName
+    ) {
       // console.warn("Warehouse already exists:", error.response.data.data);
-      
+
       // Proceed to the next step instead of stopping execution
       return {
         success: true,
@@ -70,23 +73,26 @@ const createClientWarehouse = async (payload) => {
       };
     }
 
-    console.error("Error creating warehouse:", error.response ? error.response.data : error.message);
+    console.error(
+      "Error creating warehouse:",
+      error.response ? error.response.data : error.message
+    );
     throw new Error("Failed to create warehouse. Please try again.");
   }
 };
 
-
 const createOrder = async (req, res) => {
-
-// console.log("sdsds",req.body)
-const {id, provider, finalCharges } = req.body;
+  // console.log("sdsds",req.body)
+  const { id, provider, finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
- 
-const createClientWarehouses=await createClientWarehouse(currentOrder.pickupAddress)
-// console.log("dsasdsa",createClientWarehouses)
+
+  const createClientWarehouses = await createClientWarehouse(
+    currentOrder.pickupAddress
+  );
+  // console.log("dsasdsa",createClientWarehouses)
   const payment_type =
     currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
 
@@ -94,36 +100,40 @@ const createClientWarehouses=await createClientWarehouse(currentOrder.pickupAddr
     pickup_location: {
       name: currentOrder.pickupAddress.contactName || "Default Warehouse",
     },
-    shipments: [{
-      Waybill: waybills[0],
-      country: "India",
-      city: currentOrder.receiverAddress.city,
-      // return_phone: wh.contactNo,
-      pin: currentOrder.receiverAddress.pinCode,
-      state: currentOrder.receiverAddress.state,
-      order: currentOrder.orderId,
-      add: currentOrder.receiverAddress|| "Default Warehouse",
-      payment_mode: payment_type,
-      quantity: currentOrder.productDetails[0].quantity.toString(),
-      // return_add: `${wh.addressLine1}`,
-      phone: currentOrder.receiverAddress.phoneNumber,
-      total_amount: currentOrder.paymentDetails.amount,
-      name: currentOrder.receiverAddress.address || "Default Warehouse",
-      // return_country: "India",
-      // return_city: wh.city,
-      // return_state: wh.state,
-      // return_pin: wh.pinCode,
-      // shipment_height: currentOrder.shipping_cost.dimensions.height,
-      // shipment_width: currentOrder.shipping_cost.dimensions.width,
-      // shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
-      cod_amount: payment_type === "COD" ? `${currentOrder.paymentDetails.amount}` : "0",
-    }],
+    shipments: [
+      {
+        Waybill: waybills[0],
+        country: "India",
+        city: currentOrder.receiverAddress.city,
+        // return_phone: wh.contactNo,
+        pin: currentOrder.receiverAddress.pinCode,
+        state: currentOrder.receiverAddress.state,
+        order: currentOrder.orderId,
+        add: currentOrder.receiverAddress || "Default Warehouse",
+        payment_mode: payment_type,
+        quantity: currentOrder.productDetails[0].quantity.toString(),
+        // return_add: `${wh.addressLine1}`,
+        phone: currentOrder.receiverAddress.phoneNumber,
+        total_amount: currentOrder.paymentDetails.amount,
+        name: currentOrder.receiverAddress.address || "Default Warehouse",
+        // return_country: "India",
+        // return_city: wh.city,
+        // return_state: wh.state,
+        // return_pin: wh.pinCode,
+        // shipment_height: currentOrder.shipping_cost.dimensions.height,
+        // shipment_width: currentOrder.shipping_cost.dimensions.width,
+        // shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
+        cod_amount:
+          payment_type === "COD"
+            ? `${currentOrder.paymentDetails.amount}`
+            : "0",
+      },
+    ],
   };
 
-
-
-  const payload = `format=json&data=${encodeURIComponent(JSON.stringify(payloadData))}`;
-
+  const payload = `format=json&data=${encodeURIComponent(
+    JSON.stringify(payloadData)
+  )}`;
 
   try {
     const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
@@ -132,11 +142,11 @@ const createClientWarehouses=await createClientWarehouse(currentOrder.pickupAddr
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
-console.log("dsssssssss2333333333",response.data)
+    console.log("dsssssssss2333333333", response.data);
 
     if (response.data.success) {
       const result = response.data.packages[0];
-      currentOrder.status = 'Ready To Ship';
+      currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.waybill;
       currentOrder.shipment_id = `${result.refnum}`;
@@ -144,13 +154,15 @@ console.log("dsssssssss2333333333",response.data)
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.warehouse = wh._id;
       // currentOrder.tracking = [];
-      currentOrder.freightCharges=finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      currentOrder.freightCharges =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // currentOrder.tracking.push({
       //   stage: 'Order Booked'
       // });
       let savedOrder = await currentOrder.save();
       //  console.log("skjjjjjjjjjjjjjj",savedOrder)
-      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
@@ -167,11 +179,12 @@ console.log("dsssssssss2333333333",response.data)
           },
         },
       });
-      
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
-      return res.status(400).json({ error: 'Error creating shipment', details: response.data });
+      return res
+        .status(400)
+        .json({ error: "Error creating shipment", details: response.data });
     }
   } catch (error) {
     // console.log(error);
@@ -183,17 +196,15 @@ console.log("dsssssssss2333333333",response.data)
   }
 };
 
-
-
 const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
-
   if (!pincode) {
     return res.status(400).json({ error: "Pincode is required" });
   }
 
- 
+  // console.log("11111111111",pincode)
   try {
-    
+  // console.log("11111111111", pincode);
+
     const response = await axios.get(`${url}/c/api/pin-codes/json`, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
@@ -203,9 +214,10 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
       },
     });
 
-    
+    console.log("0000000000000000", response);
+
     let result = response.data.delivery_codes;
-   
+
     let finalResult = false;
 
     if (result.length > 0) {
@@ -213,16 +225,14 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 
       let { pre_paid, cash, pickup, remarks } = data;
 
-
-      finalResult = (order_type === 'Cash on Delivery')
-        ? (cash === 'Y' && pickup === 'Y' && remarks === "")
-        : (pre_paid === 'Y' && pickup === 'Y' && remarks === "");
-
-
+      finalResult =
+        order_type === "Cash on Delivery"
+          ? cash === "Y" && pickup === "Y" && remarks === ""
+          : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
+    // console.log("uuyyuyuyuuyuyu",finalResult)
     return finalResult;
   } catch (error) {
-
     console.error("Error fetching pincode serviceability:", error.message);
 
     return false;
@@ -230,14 +240,14 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 };
 
 const trackShipmentDelhivery = async (waybill) => {
-// console.log("dfsdfsdfsdfsdfsdfsdfs",waybill)
+  // console.log("dfsdfsdfsdfsdfsdfsdfs",waybill)
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
   }
 
-
   try {
-    const response = await axios.get(`${url}/api/v1/packages/json/?waybill=${waybill}`,
+    const response = await axios.get(
+      `${url}/api/v1/packages/json/?waybill=${waybill}`,
       {
         headers: {
           authorization: `Token ${API_TOKEN}`,
@@ -245,25 +255,25 @@ const trackShipmentDelhivery = async (waybill) => {
       }
     );
     // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
-    if (response?.data?.ShipmentData[0]?.Shipment?.Status?.Status==="Manifested") {
-      return ({
+    if (
+      response?.data?.ShipmentData[0]?.Shipment?.Status?.Status === "Manifested"
+    ) {
+      return {
         succes: true,
-        data: response.data.ShipmentData[0].Shipment.Status.Instructions
-      })
-    }
-    else {
-      return ({
+        data: response.data.ShipmentData[0].Shipment.Status.Instructions,
+      };
+    } else {
+      return {
         success: false,
-        data: "Error in tracking"
-      });
+        data: "Error in tracking",
+      };
     }
-
   } catch (error) {
     console.error("Error tracking shipment:", error.message);
-    return ({
+    return {
       success: false,
-      data: "Error in tracking"
-    });
+      data: "Error in tracking",
+    };
   }
 };
 
@@ -274,19 +284,20 @@ const generateShippingLabel = async (req, res) => {
     return res.status(400).json({ error: "Waybill number is required" });
   }
 
-
   try {
     const response = await axios.get(`${url}/api/p/packing_slip`, {
       params: {
         wbns: waybill,
         pdf: true,
       },
-      responseType: 'arraybuffer',
+      responseType: "arraybuffer",
     });
 
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="shipping-label-${waybill}.pdf"`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="shipping-label-${waybill}.pdf"`
+    );
 
     return res.status(200).send(response.data);
   } catch (error) {
@@ -300,7 +311,6 @@ const generateShippingLabel = async (req, res) => {
 };
 
 const createPickupRequest = async (warehouse_name, awb) => {
-
   const result = getCurrentDateTime();
 
   const pickupDetails = {
@@ -311,43 +321,44 @@ const createPickupRequest = async (warehouse_name, awb) => {
     waybill: `${awb}`,
   };
 
-  if (!pickupDetails.pickup_time || !pickupDetails.pickup_date || !pickupDetails.pickup_location || !pickupDetails.waybill) {
-    return ({ error: "All pickup details are required" });
+  if (
+    !pickupDetails.pickup_time ||
+    !pickupDetails.pickup_date ||
+    !pickupDetails.pickup_location ||
+    !pickupDetails.waybill
+  ) {
+    return { error: "All pickup details are required" };
   }
-
 
   try {
     const response = await axios.post(`${url}/fm/request/new/`, pickupDetails, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Token ${API_TOKEN}`,
       },
     });
 
     if (response?.data?.success) {
-      return ({
+      return {
         success: true,
         message: "Pickup request created successfully",
         data: response.data,
-        pickupDate: pickup_date
-      });
-    }
-    else {
-      return ({
+        pickupDate: pickup_date,
+      };
+    } else {
+      return {
         success: false,
         message: "Failed to create pickup request",
-      });
+      };
     }
   } catch (error) {
-
-    return ({
+    return {
       success: false,
       message: "Failed to create pickup request",
       error: error.message,
-    });
+    };
   }
 };
-
 
 // var createClientWarehouse = async (payload) => {
 //  console.log("sdaaaaaaaaa",payload)
@@ -366,7 +377,6 @@ const createPickupRequest = async (warehouse_name, awb) => {
 //     return res.status(400).json({ error: "Warehouse details are required" });
 //   }
 
-
 //   try {
 //     const response = await axios.post(`${url}/api/backend/clientwarehouse/create/`, warehouseDetails, {
 //       headers: {
@@ -382,7 +392,6 @@ const createPickupRequest = async (warehouse_name, awb) => {
 //   }
 // };
 
-
 const updateClientWarehouse = async (req, res) => {
   const { warehouseDetails } = req.body;
 
@@ -390,14 +399,17 @@ const updateClientWarehouse = async (req, res) => {
     return res.status(400).json({ error: "Warehouse details are required" });
   }
 
-
   try {
-    const response = await axios.post( `${url}/api/backend/clientwarehouse/edit/`, warehouseDetails, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
-      },
-    });
+    const response = await axios.post(
+      `${url}/api/backend/clientwarehouse/edit/`,
+      warehouseDetails,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer YOUR_ACCESS_TOKEN",
+        },
+      }
+    );
 
     return res.status(200).json({
       success: true,
@@ -418,13 +430,13 @@ const cancelOrderDelhivery = async (awb_number) => {
   console.log("I am in cancel order");
   const payload = {
     waybill: `${awb_number}`,
-    cancellation: true
-  }
+    cancellation: true,
+  };
 
   try {
     const response = await axios.post(`${url}/api/p/edit`, payload, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Token ${API_TOKEN}`,
       },
     });
@@ -434,25 +446,21 @@ const cancelOrderDelhivery = async (awb_number) => {
     );
     if (response?.data?.status) {
       return { data: response.data, code: 201 };
-    }
-    else {
+    } else {
       return {
-        error: 'Error in shipment cancellation',
+        error: "Error in shipment cancellation",
         details: response.data,
         code: 400,
       };
     }
-  }
-  catch (error) {
+  } catch (error) {
     return {
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: error.message,
       code: 500,
     };
   }
-
-}
-
+};
 
 module.exports = {
   createOrder,
@@ -462,5 +470,5 @@ module.exports = {
   createPickupRequest,
   createClientWarehouse,
   updateClientWarehouse,
-  cancelOrderDelhivery
+  cancelOrderDelhivery,
 };

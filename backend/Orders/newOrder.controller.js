@@ -352,7 +352,7 @@ const ShipeNowOrder = async (req, res) => {
 }
       })
     );
-    // console.log("dsaaaaaaaaaaaa",availableServices)
+    console.log("dsaaaaaaaaaaaa",availableServices)
     const filteredServices = availableServices.filter(Boolean);
     // console.log("oooooooooiou",availableServices)
 
