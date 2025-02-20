@@ -23,23 +23,28 @@ const mongoose = require("mongoose");
 // In user controller
 const getUsers = async (req, res) => {
   try {
-    // console.log("hiii")
-    const allUsers = await User.find({}); // Get all users
-    // console.log(allUsers)
-    res.status(201).json({
-      success: true,
-      sellers: allUsers.map((user) => ({
-        id: user._id,
-        name: `${user.fullname}`, // Ensure to format the name as needed
-      })),
-    });
+      const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
+      // console.log(req.user.id);
+
+      // Check if the logged-in user exists in the list of KYC-approved users
+      const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
+      // console.log(isSeller);
+
+      res.status(201).json({
+          success: true,
+          sellers: allUsers.map(user => ({
+              id: user._id,
+              name: `${user.fullname}`, // Ensure to format the name as needed
+          })),
+          isSeller, // Add this field to check if the user is a seller
+      });
   } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch users",
-      error: error.message,
-    });
+      console.error("Error fetching users:", error);
+      res.status(500).json({
+          success: false,
+          message: "Failed to fetch users",
+          error: error.message,
+      });
   }
 };
 
