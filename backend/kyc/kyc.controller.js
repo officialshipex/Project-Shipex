@@ -72,7 +72,7 @@ verfication.post("/gstin", async (req, res) => {
     });
 
     let signature = getSignature();
-    console.log(signature)                                                                              
+    console.log(signature);
 
     let config = {
       method: "post",
@@ -116,10 +116,10 @@ verfication.post("/gstin", async (req, res) => {
       taxPayerType: response.data.taxpayer_type,
       gstInStatus: response.data.gst_in_status,
       dateOfRegistration: response.data.date_of_registration,
-      address:response.data.principal_place_address,
-      city:response.data.principal_place_split_address.location,
-      state:response.data.principal_place_split_address.state,
-      pincode:response.data.principal_place_split_address.pincode
+      address: response.data.principal_place_address,
+      city: response.data.principal_place_split_address.location,
+      state: response.data.principal_place_split_address.state,
+      pincode: response.data.principal_place_split_address.pincode,
     });
 
     await newGstin.save();
@@ -412,7 +412,7 @@ verfication.post("/verify-otp", async (req, res) => {
       gender: response.data.gender,
       address: response.data.address,
       name: response.data.name,
-      state:response.data.split_address.state
+      state: response.data.split_address.state,
     });
 
     await newAadhaar.save();
@@ -446,15 +446,16 @@ verfication.post("/bank-account", async (req, res) => {
     // const userId = "6711f5f10d7b30f7193c55fd";
 
     const { accountNo, ifsc } = req.body;
+    // console.log(req.body)
 
-    if (!accountNo || !ifsc ) {
+    if (!accountNo || !ifsc) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
       });
     }
 
-    const validateField = validateBankDetails(accountNo, ifsc );
+    const validateField = validateBankDetails(accountNo, ifsc);
 
     if (!validateField.valid) {
       return res.status(400).json({
@@ -483,7 +484,6 @@ verfication.post("/bank-account", async (req, res) => {
     const data = JSON.stringify({
       bank_account: accountNo,
       ifsc: ifsc,
-      
     });
 
     let signature = getSignature();
@@ -554,24 +554,31 @@ verfication.post("/kyc", async (req, res) => {
   try {
     const userId = req.user._id;
 
-    
-
     // const { companyName } = req.body.companyDetails;
-    const companyCategory=req.body.payload.selectedType
-    const aadhaarNumber=req.body.payload.documentDetails.aadharNo
-    const gstNumber=req.body.payload.gstNumber
-    const panNumber=req.body.payload.documentDetails.pan
-    const isVerified=req.body.payload.isVerified
-    const panHolderName=req.body.payload.documentDetails.panName
+    const companyCategory = req.body.payload.selectedType;
+    const aadhaarNumber = req.body.payload.documentDetails.aadharNo;
+    const gstNumber = req.body.payload.gstNumber;
+    const panNumber = req.body.payload.documentDetails.pan;
+    const isVerified = req.body.payload.isVerified;
+    const panHolderName = req.body.payload.documentDetails.panName;
     // const contactNumber=req.body.payload.bankDetails.mobileNo
-    const ifscCode=req.body.payload.bankDetails.ifsc
+    const ifscCode = req.body.payload.bankDetails.ifsc;
     // const accountHolderName=req.body.payload.bankDetails.beneficiaryName
-    const accountNumber=req.body.payload.bankDetails.accountNumber
+    const accountNumber = req.body.payload.bankDetails.accountNumber;
     // const {gstNumber,panNumber,aadhaarNumber,isVerified,panHolderName}=req.body.payload
     // const {contactNumber}=req.body.primaryAddress
     // const {ifscCode,accountHolderName,accountNumber}=req.body.accountDetails
 
-   console.log(companyCategory,aadhaarNumber,gstNumber,panNumber,isVerified,panHolderName,ifscCode,accountNumber)
+    console.log(
+      companyCategory,
+      aadhaarNumber,
+      gstNumber,
+      panNumber,
+      isVerified,
+      panHolderName,
+      ifscCode,
+      accountNumber
+    );
 
     if (
       // !businesstype ||
@@ -584,7 +591,7 @@ verfication.post("/kyc", async (req, res) => {
       !ifscCode ||
       // !accountHolderName ||
       // !contactNumber ||
-      !isVerified||
+      !isVerified ||
       !aadhaarNumber
     ) {
       return res.status(400).json({
@@ -622,7 +629,7 @@ verfication.post("/kyc", async (req, res) => {
     if (
       !validateBankDetails(
         accountNumber,
-        ifscCode,
+        ifscCode
         // accountHolderName,
         // contactNumber
       )
@@ -641,10 +648,9 @@ verfication.post("/kyc", async (req, res) => {
     // }
 
     const kycExists = await Kyc.findOne({ user: userId });
-    // console.log(kycExists)
+    // console.log("kkkkkkkkkkkkkk",kycExists)
 
     if (kycExists) {
-      
       const data = await Kyc.findByIdAndUpdate(
         {
           _id: kycExists._id,
@@ -703,11 +709,9 @@ verfication.post("/kyc", async (req, res) => {
       // contactNumber,
       isVerified,
     });
-
-    // console.log("hii")
-
+    console.log(newKyc)
     await newKyc.save();
-
+    console.log("KYC data saved successfully!");
     await User.findByIdAndUpdate(
       {
         _id: userId,
@@ -771,7 +775,6 @@ verfication.get("/kyc", async (req, res) => {
 
 verfication.get("/kyc2", async (req, res) => {
   try {
-
     const userId = req.user._id;
 
     const kyc = await Kyc2Model.findOne({ user: userId });
@@ -780,23 +783,21 @@ verfication.get("/kyc2", async (req, res) => {
     if (!kyc) {
       return res.status(404).json({
         success: false,
-        message: "KYC not found"
+        message: "KYC not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: kyc
+      data: kyc,
     });
-    
   } catch (err) {
     // console.log("err:", err);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
-})
-
+});
 
 module.exports = verfication;

@@ -116,7 +116,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         pincode,
         currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid"
       );
-      // console.log("saaaaaaaaaaaaa",result)
+      console.log("saaaaaaaaaaaaa",result)
       return result;
     }
 

@@ -3,12 +3,12 @@ const router = express.Router();
 
 const authRouter = require("./routes/auth.router");
 const { isAuthorized } = require("./middleware/auth.middleware");
-
+const getKyc=require("./GetKycDetals/getKyc.router")
 const paytmRoutes = require("./routes/paytm.router");
 const verficationRouter = require("./routes/kyc.router");
 const rechargeRouter = require("./recharge/recharge.route");
 
-const orderRouter = require("./routes/orders.router");
+// const orderRouter = require("./routes/orders.router");
 
 const userController = require("./routes/getUsers.router");
 const servicesController = require("./routes/getServices.router");
@@ -96,6 +96,7 @@ router.use("/manifest",PrintManifest)
 
 router.use("/B2Ccouries", couriersB2CRoutes);
 
+router.use("/getKyc",isAuthorized,getKyc)
 // app.use("/v1/courierServices", courierServicesRoutes);
 
 module.exports = router;

@@ -32,7 +32,17 @@ const register = async (req, res) => {
         message: validateFields,
       });
     }
-
+    let userId;
+    let isUnique = false;
+  
+    while (!isUnique) {
+      userId = Math.floor(10000 + Math.random() * 90000); // Generates a random five-digit number
+      const existingUser = await User.findOne({ userId });
+  
+      if (!existingUser) {
+        isUnique = true;
+      }
+    }
     const userEmail = await User.findOne({ email });
     const userPhoneNumber = await User.findOne({ phoneNumber });
     const userCompany = await User.findOne({ company });
@@ -68,6 +78,8 @@ const register = async (req, res) => {
       company,
       monthlyOrders,
       password: hashedPassword,
+      userId
+
     });
 
     await newUser.save();
