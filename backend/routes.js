@@ -40,7 +40,7 @@ const PrintInvoice = require("./label/printInvoice.controller");
 const PrintManifest=require("./label/printManifest.controller")
 const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
-
+const dashboard=require("./dashboard/dashboard,router")
 //rate
 const RateCalculate=require("./routes/Ratecalculate.router")
 router.use("/ratecalculate",isAuthorized,RateCalculate)
@@ -62,6 +62,7 @@ router.use('/courierServices',CourierServiceRoutes)
 
 // router.use('/order', orderRouter);
 router.use("/order", isAuthorized, newOrderRoute);
+router.use("/dashboard",isAuthorized,dashboard)
 // router.use("/order", orderRouter);
 //create product route
 // router.use("/products",productRouter)
