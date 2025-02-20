@@ -364,7 +364,7 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-  //  console.log("0000000000000",result)
+        //  console.log("0000000000000",result)
         if (result || result.success) {
           return {
             item,
@@ -685,6 +685,9 @@ const getUser = async (req, res) => {
     return res.status(400).json({ message: "User not found" });
   }
 };
+
+
+
 module.exports = {
   newOrder,
   getOrders,
@@ -700,4 +703,5 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
+ 
 };
