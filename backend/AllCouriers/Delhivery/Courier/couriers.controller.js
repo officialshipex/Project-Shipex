@@ -154,7 +154,7 @@ const createOrder = async (req, res) => {
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.warehouse = wh._id;
       // currentOrder.tracking = [];
-      currentOrder.freightCharges =
+      currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // currentOrder.tracking.push({
       //   stage: 'Order Booked'
@@ -174,8 +174,8 @@ const createOrder = async (req, res) => {
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
-            awb_number: result.awb_number || "", // Ensuring it follows the schema
-            description: `Shipping charges for Order #${currentOrder.orderId} with ${provider}`,
+            awb_number: result.waybill || "", // Ensuring it follows the schema
+            description: `Freight Chages Applied`,
           },
         },
       });
@@ -201,11 +201,9 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
     return res.status(400).json({ error: "Pincode is required" });
   }
 
-  // console.log("11111111111",pincode)
-  try {
-  // console.log("11111111111", pincode);
 
-    const response = await axios.get(`${url}/c/api/pin-codes/json`, {
+  try {
+    const response = await axios.get(`${url}/c/api/pin-codes/json?`, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
       },
@@ -213,8 +211,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
         filter_codes: pincode,
       },
     });
-
-    console.log("0000000000000000", response);
+    console.log(response)
 
     let result = response.data.delivery_codes;
 
@@ -230,7 +227,6 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
-    // console.log("uuyyuyuyuuyuyu",finalResult)
     return finalResult;
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);

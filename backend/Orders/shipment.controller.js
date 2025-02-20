@@ -63,7 +63,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         service.courier,
         payload
       );
-      console.log("sddddddddddddd",result)
+      // console.log("sddddddddddddd",result)
       return result;
       // console.log("4621516dsfds",result)
     }
