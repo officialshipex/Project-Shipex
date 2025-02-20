@@ -86,7 +86,7 @@ router.use("/SmartShip", SmartShipController);
 router.use("/Delhivery", DelhiveryController);
 
 router.use("/label", LabelRouter);
-router.use("/user", isAuthorized, userRouter);
+router.use("/user", userRouter);
 router.use("/warehouse", WareHouse);
 router.use("/bulkOrderUpload", bulkOrderUploadRoutes);
 router.use("/printlabel", PrintLabelRoute);
