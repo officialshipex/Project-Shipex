@@ -20,16 +20,15 @@ const mongoose = require("mongoose");
 //     }
 // };
 
-// In user controller
+
 const getUsers = async (req, res) => {
-  console.log("hi")
   try {
       const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
       console.log(req.user.id);
 
       // Check if the logged-in user exists in the list of KYC-approved users
       const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
-      // console.log(isSeller);
+      console.log(isSeller);
 
       res.status(201).json({
           success: true,

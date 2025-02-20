@@ -3,7 +3,9 @@ const router = express.Router();
 
 const userController=require("../Users/usersController");
 
-router.get("/getUsers",userController.getUsers);
+const {isAuthorized} = require('../middleware/auth.middleware')
+
+router.get("/getUsers",isAuthorized, userController.getUsers);
 router.put("/assignPlan", userController.assignPlan);
 
 router.post("/getRateCard",userController.getRatecards);

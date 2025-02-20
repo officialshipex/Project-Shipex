@@ -5,12 +5,18 @@ const receiveAddress = require("../models/deliveryAddress.model");
 const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
-const Wallet=require("../models/wallet")
+const Wallet = require("../models/wallet");
 const {
   pickup,
   cancelShipmentXpressBees,
   trackShipment,
 } = require("../AllCouriers/Xpressbees/MainServices/mainServices.controller");
+const {
+  trackShipmentDelhivery,
+} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const {
+  cancelOrderDelhivery,
+} = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -119,14 +125,13 @@ const getOrders = async (req, res) => {
   }
 };
 
-
-
 const updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { pickupAddress, receiverAddress, paymentDetails, packageDetails } = req.body;
+    const { pickupAddress, receiverAddress, paymentDetails, packageDetails } =
+      req.body;
 
-    console.log(req.body)
+    console.log(req.body);
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return res.status(400).json({ message: "Invalid orderId format." });
     }
@@ -135,18 +140,20 @@ const updateOrder = async (req, res) => {
     if (!existingOrder) {
       return res.status(404).json({ message: "Order not found." });
     }
-  //   if (!req.body.paymentDetails || !req.body.paymentDetails.amount) {
-  //     return res.status(400).json({ error: "paymentDetails and amount are required" });
-  // }
-  console.log(pickupAddress)
-  
+    //   if (!req.body.paymentDetails || !req.body.paymentDetails.amount) {
+    //     return res.status(400).json({ error: "paymentDetails and amount are required" });
+    // }
+    // console.log(pickupAddress)
+
     const updateFields = {};
 
     // Update pickupAddress if provided
     if (pickupAddress) {
       updateFields.pickupAddress = {
-        contactName: pickupAddress.contactName || existingOrder.pickupAddress.contactName,
-        phoneNumber: pickupAddress.phoneNumber || existingOrder.pickupAddress.phoneNumber,
+        contactName:
+          pickupAddress.contactName || existingOrder.pickupAddress.contactName,
+        phoneNumber:
+          pickupAddress.phoneNumber || existingOrder.pickupAddress.phoneNumber,
         email: pickupAddress.email || existingOrder.pickupAddress.email,
         address: pickupAddress.address || existingOrder.pickupAddress.address,
         city: pickupAddress.city || existingOrder.pickupAddress.city,
@@ -158,13 +165,19 @@ const updateOrder = async (req, res) => {
     // Update receiverAddress if provided
     if (receiverAddress) {
       updateFields.receiverAddress = {
-        contactName: receiverAddress.contactName || existingOrder.receiverAddress.contactName,
-        phoneNumber: receiverAddress.phoneNumber || existingOrder.receiverAddress.phoneNumber,
+        contactName:
+          receiverAddress.contactName ||
+          existingOrder.receiverAddress.contactName,
+        phoneNumber:
+          receiverAddress.phoneNumber ||
+          existingOrder.receiverAddress.phoneNumber,
         email: receiverAddress.email || existingOrder.receiverAddress.email,
-        address: receiverAddress.address || existingOrder.receiverAddress.address,
+        address:
+          receiverAddress.address || existingOrder.receiverAddress.address,
         city: receiverAddress.city || existingOrder.receiverAddress.city,
         state: receiverAddress.state || existingOrder.receiverAddress.state,
-        pinCode: receiverAddress.pinCode || existingOrder.receiverAddress.pinCode,
+        pinCode:
+          receiverAddress.pinCode || existingOrder.receiverAddress.pinCode,
       };
     }
 
@@ -179,12 +192,21 @@ const updateOrder = async (req, res) => {
     // Ensure packageDetails exist before updating
     if (packageDetails) {
       updateFields.packageDetails = {
-        deadWeight: packageDetails.deadWeight || existingOrder.packageDetails.deadWeight,
-        applicableWeight: packageDetails.applicableWeight || existingOrder.packageDetails.applicableWeight,
+        deadWeight:
+          packageDetails.deadWeight || existingOrder.packageDetails.deadWeight,
+        applicableWeight:
+          packageDetails.applicableWeight ||
+          existingOrder.packageDetails.applicableWeight,
         volumetricWeight: {
-          length: packageDetails.volumetricWeight?.length || existingOrder.packageDetails.volumetricWeight.length,
-          width: packageDetails.volumetricWeight?.width || existingOrder.packageDetails.volumetricWeight.width,
-          height: packageDetails.volumetricWeight?.height || existingOrder.packageDetails.volumetricWeight.height,
+          length:
+            packageDetails.volumetricWeight?.length ||
+            existingOrder.packageDetails.volumetricWeight.length,
+          width:
+            packageDetails.volumetricWeight?.width ||
+            existingOrder.packageDetails.volumetricWeight.width,
+          height:
+            packageDetails.volumetricWeight?.height ||
+            existingOrder.packageDetails.volumetricWeight.height,
         },
       };
     }
@@ -209,13 +231,6 @@ const updateOrder = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
-
-
-
-
-
-
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
   console.log("Received ID:", id);
@@ -288,13 +303,16 @@ const getpickupAddress = async (req, res) => {
   }
 };
 
-
 const getreceiverAddress = async (req, res) => {
   try {
-    const receiverAddresses = await receiveAddress.find({ userId: req.user._id });
+    const receiverAddresses = await receiveAddress.find({
+      userId: req.user._id,
+    });
 
     if (!receiverAddresses.length) {
-      return res.status(404).json({ success: false, message: "No receiver addresses found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No receiver addresses found" });
     }
 
     res.status(200).json({ success: true, data: receiverAddresses });
@@ -316,8 +334,8 @@ const ShipeNowOrder = async (req, res) => {
     //  console.log("dsfdsfdsfs",order.userId);
 
     const plan = await Plan.findOne({ userId: order.userId });
-    const users=await user.findOne({_id:order.userId })
-    const userWallet=await Wallet.findOne({_id:users.Wallet})
+    const users = await user.findOne({ _id: order.userId });
+    const userWallet = await Wallet.findOne({ _id: users.Wallet });
     // console.log("ahsaisa",userWallet)
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -325,7 +343,7 @@ const ShipeNowOrder = async (req, res) => {
 
     // Fetch enabled courier services
     const services = await CourierService.find({ status: "Enable" });
-  
+
     const enabledServices = [];
 
     for await (const srvc of services) {
@@ -338,6 +356,7 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
+
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -345,16 +364,18 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-
-  if (result || result.success) {
-    return {
-        item,
-        // Xid: result.Xpressbeesid,
-    };
-} else {
-    console.error("Result is undefined or does not have a success property");
-    // Handle the case where result is not as expected
-}
+  //  console.log("0000000000000",result)
+        if (result || result.success) {
+          return {
+            item,
+            // Xid: result.Xpressbeesid,
+          };
+        } else {
+          console.error(
+            "Result is undefined or does not have a success property"
+          );
+          // Handle the case where result is not as expected
+        }
       })
     );
     // console.log("dsaaaaaaaaaaaa",availableServices)
@@ -377,7 +398,7 @@ const ShipeNowOrder = async (req, res) => {
     // console.log("adsdasd",filteredServices)
     // console.log(payload)
     let rates = await calculateRateForService(payload);
-    console.log("rates", rates);
+    // console.log("rates", rates);
 
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
@@ -452,11 +473,11 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
-  console.log(allOrders)
+  console.log(allOrders);
   try {
-    const users=await user.findOne({_id:allOrders.userId})
-    console.log(users)
-    const currentWallet = await Wallet.findById({_id:users.Wallet});
+    const users = await user.findOne({ _id: allOrders.userId });
+    // console.log(users)
+    const currentWallet = await Wallet.findById({ _id: users.Wallet });
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
     if (currentOrder.provider === "Xpressbees") {
@@ -470,9 +491,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       } else {
         currentOrder.status = "new";
       }
-    } else if (
-      currentOrder.service_details.courierProviderName === "Shiprocket"
-    ) {
+    } else if (currentOrder.provider === "Shiprocket") {
       const result = await cancelOrder(currentOrder.awb_number);
       if (!result.success) {
         return {
@@ -480,9 +499,7 @@ const cancelOrdersAtBooked = async (req, res) => {
           details: result,
           orderId: currentOrder._id,
         };
-      } else if (
-        currentOrder.service_details.courierProviderName === "Nimuspost"
-      ) {
+      } else if (currentOrder.provider === "Nimuspost") {
         const result = await cancelShipmentXpressBees(currentOrder.awb_number);
         if (result.error) {
           return {
@@ -492,9 +509,7 @@ const cancelOrdersAtBooked = async (req, res) => {
           };
         }
       }
-    } else if (
-      currentOrder.service_details.courierProviderName === "Delhivery"
-    ) {
+    } else if (currentOrder.provider === "Delhivery") {
       // console.log("I am in it");
       const result = await cancelOrderDelhivery(currentOrder.awb_number);
       if (result.error) {
@@ -503,10 +518,10 @@ const cancelOrdersAtBooked = async (req, res) => {
           details: result,
           orderId: currentOrder._id,
         };
+      } else {
+        currentOrder.status = "new";
       }
-    } else if (
-      currentOrder.service_details.courierProviderName === "ShreeMaruti"
-    ) {
+    } else if (currentOrder.provider === "ShreeMaruti") {
       const result = await cancelOrderShreeMaruti(currentOrder.order_id);
       if (result.error) {
         return {
@@ -527,47 +542,25 @@ const cancelOrdersAtBooked = async (req, res) => {
     // currentOrder.tracking.push({
     //   stage: "Cancelled",
     // });
-    let balanceTobeAdded = allOrders.totalFreightCharges === "N/A" ? 0 : parseInt(allOrders.totalFreightCharges);
+    let balanceTobeAdded =
+      allOrders.totalFreightCharges == "N/A"
+        ? 0
+        : parseInt(allOrders.totalFreightCharges);
     await currentWallet.updateOne({
       $inc: { balance: balanceTobeAdded },
       $push: {
         transactions: {
-          channelOrderId: currentOrder.orderId|| null, // Include if available
+          channelOrderId: currentOrder.orderId || null, // Include if available
           category: "credit",
           amount: balanceTobeAdded, // Fixing incorrect reference
           balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
           date: new Date().toISOString().slice(0, 16).replace("T", " "), // Format date & time
           awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
-          description: `Order #${currentOrder.orderId} Shipment cancelled by ${allOrders.receiverAddress.contactName}`,
-        }
-        
+          description: `Freight Chages Received`,
+        },
       },
     });
-    // currentOrder.freightCharges = 0;
-    // await currentOrder.save();
-    // await currentWallet.save();
-
-    // return {
-    //   message: "Order cancelled successfully",
-    //   orderId: currentOrder._id,
-    // };
-    // })
-    // );
-
-    // let successCount = 0;
-    // let failureCount = 0;
-    // cancellationResults.forEach((result) => {
-    //   if (result.error) {
-    //     failureCount++;
-    //   } else {
-    //     successCount++;
-    //   }
-    // });
-
     res.status(201).send({
-      // results: cancellationResults,
-      // successCount,
-      // failureCount,
       success: true,
     });
   } catch (error) {
@@ -578,18 +571,14 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 const tracking = async (req, res) => {
-  
   try {
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
 
-    
-    const updateOrderStatus = async (order, status,data) => {   
-      if(data=="booked"){
-        order.status = status;
-      }
-      if (data == "cancelled") {
+    const updateOrderStatus = async (order, status, data) => {
+      cosole.log("yuyuuyuyuyuuu", data);
+      if (data == "booked") {
         order.status = status;
       }
       if (data == "in transit") {
@@ -614,9 +603,10 @@ const tracking = async (req, res) => {
         } else if (provider === "Xpressbees") {
           result = await trackShipment(awb_number);
           // console.log("sadasdas43",result)
-          console.log("Tracking result", result);
+          // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
+          // console.log("hhhhhhhhhh",result)
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
@@ -625,12 +615,11 @@ const tracking = async (req, res) => {
           const status = result.data.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
-            "booked": () => updateOrderStatus(order, "Ready To Ship","booked"),
-            "cancelled": () => updateOrderStatus(order, "Cancelled","cancelled"),
-            "in transit": () => updateOrderStatus(order, "In-transit","in transit"),
-            
-             "delivered":()=>updateOrderStatus(order,"Delivered","delivered")
-            
+            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            "in transit": () =>
+              updateOrderStatus(order, "In-transit", "in transit"),
+            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
           };
 
           if (statusMap[status]) {
@@ -654,16 +643,15 @@ const tracking = async (req, res) => {
   }
 };
 
-
-const passbook=async(req,res)=>{
+const passbook = async (req, res) => {
   try {
-    const  userId  = req.user._id;
-  const users=await user.findOne({_id:userId})
+    const userId = req.user._id;
+    const users = await user.findOne({ _id: userId });
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const wallet = await Wallet.findOne({ _id:users.Wallet });
+    const wallet = await Wallet.findOne({ _id: users.Wallet });
 
     if (!wallet) {
       return res.status(404).json({ message: "Wallet not found" });
@@ -675,26 +663,28 @@ const passbook=async(req,res)=>{
     });
   } catch (error) {
     console.error("Error fetching passbook:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
-}
+};
 
-const getUser=async(req,res)=>{
+const getUser = async (req, res) => {
   try {
-    const  userId  = req.user._id;
-  
+    const userId = req.user._id;
+
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
-    const users=await user.findOne({_id:userId})
+    const users = await user.findOne({ _id: userId });
     if (!users) {
       return res.status(400).json({ message: "User Not found" });
     }
     return res.status(200).json(users);
   } catch (error) {
-   return res.status(400).json({message:"User not found"})
+    return res.status(400).json({ message: "User not found" });
   }
-}
+};
 module.exports = {
   newOrder,
   getOrders,
@@ -709,6 +699,5 @@ module.exports = {
   tracking,
   updateOrder,
   passbook,
-   getUser
-
+  getUser,
 };
