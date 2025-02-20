@@ -108,7 +108,7 @@ const createShipment = async (req, res) => {
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
             awb_number: result.awb_number || "", // Ensuring it follows the schema
-            description: `Shipping charges for Order #${currentOrder.orderId} with ${provider}`,
+            description: `Freight Charges Applied`,
           },
         },
       });
