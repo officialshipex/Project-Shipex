@@ -136,13 +136,24 @@ const createOrder = async (req, res) => {
   )}`;
 
   try {
-    const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
-      headers: {
-        Authorization: `Token ${API_TOKEN}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
-    console.log("dsssssssss2333333333", response.data);
+    let response
+    if(currentWallet.balance>=finalCharges){
+      response = await axios.post(`${url}/api/cmu/create.json`, payload, {
+        headers: {
+          Authorization: `Token ${API_TOKEN}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+    }else{
+      return res.status(400).json({success:false,message:"Low Balance"})
+    }
+    // const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
+    //   headers: {
+    //     Authorization: `Token ${API_TOKEN}`,
+    //     "Content-Type": "application/x-www-form-urlencoded",
+    //   },
+    // });
+    // console.log("dsssssssss2333333333", response.data);
 
     if (response.data.success) {
       const result = response.data.packages[0];
@@ -151,16 +162,9 @@ const createOrder = async (req, res) => {
       currentOrder.awb_number = result.waybill;
       currentOrder.shipment_id = `${result.refnum}`;
       currentOrder.provider = provider;
-      // currentOrder.service_details = selectedServiceDetails._id;
-      // currentOrder.warehouse = wh._id;
-      // currentOrder.tracking = [];
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-      // currentOrder.tracking.push({
-      //   stage: 'Order Booked'
-      // });
       let savedOrder = await currentOrder.save();
-      //  console.log("skjjjjjjjjjjjjjj",savedOrder)
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)

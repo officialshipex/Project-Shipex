@@ -68,15 +68,17 @@ const createShipment = async (req, res) => {
   try {
     const token = await getToken();
     // console.log("sadasd",shipmentData)
-    const response = await axios.post(url, shipmentData, {
+    let  response;
+if(currentWallet.balance>=finalCharges){
+  response = await axios.post(url, shipmentData, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-
-    // console.log("XpressBees Create Shipment", response.data);
-
+}else{
+  return res.status(401).json({success:false,message:"Low Balance"})
+}
     if (response.data.status) {
       const result = response.data.data;
       currentOrder.status = "Ready To Ship";
