@@ -3,6 +3,7 @@ const BankAccount = require("../models/BankAccount.model");
 const kyc = require("../models/Kyc.model");
 const Pan = require("../models/Pan.model");
 const GST = require("../models/Gstin.model");
+const BillingInfo = require("../models/billingInfo.model");
 
 const kycdata = async (req, res) => {};
 const getAadhaar = async (req, res) => {
@@ -20,6 +21,22 @@ const getAadhaar = async (req, res) => {
       .json({ error: "An error occurred while fetching Aadhaar data" });
   }
 };
+
+const getBillingInfo = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const billingInfo = await BillingInfo.findOne({ user: userId });
+    if (!billingInfo) {
+      return res.status(204).json({ message: "pending" });
+    }
+    console.log(billingInfo);
+    return res.status(200).json(billingInfo);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching Billing Info" });
+  }
+}
 
 const getPan = async (req, res) => {
   try {
@@ -77,4 +94,5 @@ module.exports = {
   getBankAccount,
   getGST,
   getAddress,
+  getBillingInfo
 };
