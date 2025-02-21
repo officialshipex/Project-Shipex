@@ -1,9 +1,7 @@
 const User = require("../models/User.model");
-const Plan =require("../models/Plan.model");
-const RateCard=require("../models/rateCards");
+const Plan = require("../models/Plan.model");
+const RateCard = require("../models/rateCards");
 const mongoose = require("mongoose");
-
-
 
 // const getUsers = async (req, res) => {
 //     try {
@@ -22,15 +20,15 @@ const mongoose = require("mongoose");
 //     }
 // };
 
-
+// In user controller
 const getUsers = async (req, res) => {
   try {
       const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
-      console.log(req.user.id);
+      // console.log(req.user.id);
 
       // Check if the logged-in user exists in the list of KYC-approved users
       const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
-      console.log(isSeller);
+      // console.log(isSeller);
 
       res.status(201).json({
           success: true,
@@ -50,133 +48,165 @@ const getUsers = async (req, res) => {
   }
 };
 
+const getAllUsers = async (req, res) => {
+  try {
+    const allUsers = await User.find().populate("Wallet"); // Populate wallet details
 
-  const getAllUsers = async (req, res) => {
-    try {
-      console.log("hi")
-      const allUsers = await User.find();
-  
-      res.status(200).json({
-        success: true,
-        data: allUsers
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Error fetching users",
-        error: error.message
-      });
-    }
-  };
-  
+    // console.log(allUsers)
+
+    // Modify response to include wallet amount
+    const usersWithWalletAmount = allUsers.map((user) => (
+      {   
+      fullname: user.fullname,
+      // lastName: user.lastName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      company: user.company,
+      monthlyOrders: user.monthlyOrders,
+      isVerified: user.isVerified,
+      provider: user.provider,
+      kycDone: user.kycDone,
+      isAdmin: user.isAdmin,
+      userId: user.userId ?? "N/A",
+      walletAmount: user.Wallet?.balance || 0, // Extract amount or set 0 if not found
+    }));
+// console.log(usersWithWalletAmount);
+
+    res.status(200).json({
+      success: true,
+      data: usersWithWalletAmount,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching users",
+      error: error.message,
+    });
+  }
+};
 
 const getUserDetails = async (req, res) => {
-    try {
-    
-        const existsingUser=await User.findById(req.user._id).populate('wareHouse').populate({path:'orders',populate:{path:'service_details'}}).populate('Wallet').populate('plan');
-        res.status(201).json({
-            success: true,
-            user:existsingUser,
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Server error",
-        });
-    }
-}
-
-const getAllPlans=async(req,res)=>{
-    try{
-       const allPlans=await Plan.find({});
-       res.status(201).json({
-        success: true,
-        data: allPlans,
+  try {
+    const existsingUser = await User.findById(req.user._id)
+      .populate("wareHouse")
+      .populate({ path: "orders", populate: { path: "service_details" } })
+      .populate("Wallet")
+      .populate("plan");
+    res.status(201).json({
+      success: true,
+      user: existsingUser,
     });
-    }
-    catch(error){
-        res.status(500).json({
-            success: false,
-            message: "Failed to fetch plans",
-            error: error.message,
-        });
-    }
-}
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const getAllPlans = async (req, res) => {
+  try {
+    const allPlans = await Plan.find({});
+    res.status(201).json({
+      success: true,
+      data: allPlans,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch plans",
+      error: error.message,
+    });
+  }
+};
 
 const assignPlan = async (req, res) => {
     try {
-      const { userId, userName, planName, rateCards } = req.body; // Get rateCardName from request body
-      
-  
-      if (!rateCards) {
-        return res.status(400).json({ error: 'Rate card name is required' });
-      }
-  
-      // Find the rate card corresponding to the plan
-      const rateCard = await RateCard.find({ plan: planName });  // Find rate card by its plan name
-    //   console.log(rateCard)
-      
-  
-      // Create a new plan object based on the data received
-      const newPlan = new Plan({
-        userId,
-        userName,
-        planName,
-        rateCard: rateCard, // Store the entire rate card object here
-        assignedAt: new Date(), // Automatically add the timestamp
-      });
-  
-      // Save the plan object to the database
-      await newPlan.save();
-  
-      res.status(201).json({ message: 'Plan assigned successfully', plan: newPlan });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Failed to assign plan' });
-    }
-  };
-  
-  
-  
-  
+        const { userId, userName, planName, rateCards } = req.body;
 
-
-const getRatecards = async (req, res) => {
-    try {
-        const { plan: currentPlan } = req.body;
-
-        // Validate input
-        if (!currentPlan) {
-            return res.status(400).json({
-                success: false,
-                message: "Plan is required.",
-            });
+        if (!planName || !rateCards) {
+            return res.status(400).json({ error: "Plan name and rate card are required" });
         }
 
+        console.log(rateCards);
         
-        const rateCard = await RateCard.find({ type: currentPlan });
+        // Check if there is an existing plan for the user
+        let existingPlan = await Plan.findOne({ userId });
 
-        if (!rateCard || rateCard.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No rate cards found for the specified plan.",
-            });
+        console.log(existingPlan);
+
+        if (existingPlan) {
+            // Update existing plan details (both plan name & rate cards)
+            existingPlan.planName = planName;
+            existingPlan.rateCard = rateCards;
+            existingPlan.assignedAt = new Date(); // Update timestamp
+
+            await existingPlan.save();
+
+            return res.status(200).json({ message: "Plan updated successfully", plan: existingPlan });
         }
-        res.status(201).json({
-            success: true,
-            message: "Rate cards retrieved successfully.",
-            data: rateCard,
+
+        // If no existing plan, create a new one
+        const newPlan = new Plan({
+            userId,
+            userName,
+            planName,
+            rateCard: rateCards,
+            assignedAt: new Date(),
         });
-    } catch (error) {
-        console.error("Error fetching rate cards:", error)
-        res.status(500).json({
-            success: false,
-            message: "An error occurred while fetching rate cards. Please try again later.",
-            error: error.message,
-        });
+
+        await newPlan.save();
+
+        res.status(201).json({ message: "Plan assigned successfully", plan: newPlan });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to assign plan" });
     }
 };
+  
 
+const getRatecards = async (req, res) => {
+  try {
+    const { plan: currentPlan } = req.body;
 
-module.exports = { getUsers,getUserDetails,getAllPlans,assignPlan,getRatecards,getAllUsers};
+    // Validate input
+    if (!currentPlan) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan is required.",
+      });
+    }
+
+    const rateCard = await RateCard.find({ type: currentPlan });
+
+    if (!rateCard || rateCard.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No rate cards found for the specified plan.",
+      });
+    }
+    res.status(201).json({
+      success: true,
+      message: "Rate cards retrieved successfully.",
+      data: rateCard,
+    });
+  } catch (error) {
+    console.error("Error fetching rate cards:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        "An error occurred while fetching rate cards. Please try again later.",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  getUsers,
+  getUserDetails,
+  getAllPlans,
+  assignPlan,
+  getRatecards,
+  getAllUsers,
+};
