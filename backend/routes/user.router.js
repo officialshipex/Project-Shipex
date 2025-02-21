@@ -3,11 +3,13 @@ const router = express.Router();
 
 const userController=require("../Users/usersController");
 
-router.get('/getUserDetails',userController.getUserDetails);
-router.get('/getAllUsers',userController.getUsers);
-router.get('/getAllPlans',userController.getAllPlans);
-router.get('/getUsers',userController.getAllUsers);
+const { isAuthorized } = require("../middleware/auth.middleware")
 
-router.get('/AssignPlan/:userId/:planId',userController.assignPlan);
+router.get('/getUserDetails',isAuthorized,userController.getUserDetails);
+router.get('/getAllUsers',isAuthorized,userController.getUsers);
+router.get('/getAllPlans',isAuthorized,userController.getAllPlans);
+router.get('/getUsers',isAuthorized,userController.getAllUsers);
+
+router.get('/AssignPlan/:userId/:planId',isAuthorized,userController.assignPlan);
 
 module.exports=router;

@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
 
 const isAuthorized = async (req, res, next) => {
+  // console.log("hi")
   const { authorization } = req.headers;
   // console.log(authorization)
 
@@ -39,6 +40,7 @@ const isAuthorized = async (req, res, next) => {
   }
 
   const userExists = await User.findOne({ _id: user.id });
+  // console.log(userExists)
 
  
 
@@ -48,7 +50,7 @@ const isAuthorized = async (req, res, next) => {
       message: "You must be logged in",
     });
   }
- 
+//  console.log("hi")
 
   req.user = userExists;
 
