@@ -31,7 +31,7 @@ const KycSchema = new mongoose.Schema({
         type: String,
         enum: ["digital","manual"]
     },
-    aadharNumber: {
+    aadhaarNumber: {
         type: String,
         unique: true,
     },
