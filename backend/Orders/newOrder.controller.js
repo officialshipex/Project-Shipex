@@ -392,13 +392,13 @@ const ShipeNowOrder = async (req, res) => {
       weight: order.packageDetails.applicableWeight,
       cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
       valueInINR: order.paymentDetails.amount,
+      userID:req.user._id,
       filteredServices,
       rateCardType: plan.planName,
+
     };
-    // console.log("adsdasd",filteredServices)
-    // console.log(payload)
     let rates = await calculateRateForService(payload);
-    // console.log("rates", rates);
+    
 
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
@@ -577,7 +577,7 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, data) => {
-      cosole.log("yuyuuyuyuyuuu", data);
+      // cosole.log("yuyuuyuyuyuuu", data);
       if (data == "booked") {
         order.status = status;
       }
