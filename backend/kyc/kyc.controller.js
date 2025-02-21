@@ -616,7 +616,7 @@ verfication.post("/kyc", async (req, res) => {
       ifscCode,
       accountNumber
     );
-    console.log(aadhaarNumber)
+    // console.log(aadhaarNumber)
 
     if (
       // !businesstype ||
@@ -629,8 +629,8 @@ verfication.post("/kyc", async (req, res) => {
       !ifscCode ||
       // !accountHolderName ||
       // !contactNumber ||
-      !isVerified 
-      // !aadhaarNumber
+      !isVerified ||
+      !aadhaarNumber
     ) {
       return res.status(400).json({
         success: false,
@@ -747,8 +747,9 @@ verfication.post("/kyc", async (req, res) => {
       // contactNumber,
       isVerified,
     });
-    console.log(newKyc)
-    await newKyc.save();
+    // console.log(newKyc)
+    console.log("hi")
+    // await newKyc.save();
     console.log("KYC data saved successfully!");
     await User.findByIdAndUpdate(
       {
