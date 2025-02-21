@@ -121,37 +121,50 @@ const getAllPlans = async (req, res) => {
 };
 
 const assignPlan = async (req, res) => {
-  try {
-    const { userId, userName, planName, rateCards } = req.body; // Get rateCardName from request body
+    try {
+        const { userId, userName, planName, rateCards } = req.body;
 
-    if (!rateCards) {
-      return res.status(400).json({ error: "Rate card name is required" });
+        if (!planName || !rateCards) {
+            return res.status(400).json({ error: "Plan name and rate card are required" });
+        }
+
+        console.log(rateCards);
+        
+        // Check if there is an existing plan for the user
+        let existingPlan = await Plan.findOne({ userId });
+
+        console.log(existingPlan);
+
+        if (existingPlan) {
+            // Update existing plan details (both plan name & rate cards)
+            existingPlan.planName = planName;
+            existingPlan.rateCard = rateCards;
+            existingPlan.assignedAt = new Date(); // Update timestamp
+
+            await existingPlan.save();
+
+            return res.status(200).json({ message: "Plan updated successfully", plan: existingPlan });
+        }
+
+        // If no existing plan, create a new one
+        const newPlan = new Plan({
+            userId,
+            userName,
+            planName,
+            rateCard: rateCards,
+            assignedAt: new Date(),
+        });
+
+        await newPlan.save();
+
+        res.status(201).json({ message: "Plan assigned successfully", plan: newPlan });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to assign plan" });
     }
-
-    // Find the rate card corresponding to the plan
-    const rateCard = await RateCard.find({ plan: planName }); // Find rate card by its plan name
-    //   console.log(rateCard)
-
-    // Create a new plan object based on the data received
-    const newPlan = new Plan({
-      userId,
-      userName,
-      planName,
-      rateCard: rateCard, // Store the entire rate card object here
-      assignedAt: new Date(), // Automatically add the timestamp
-    });
-
-    // Save the plan object to the database
-    await newPlan.save();
-
-    res
-      .status(201)
-      .json({ message: "Plan assigned successfully", plan: newPlan });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to assign plan" });
-  }
 };
+  
 
 const getRatecards = async (req, res) => {
   try {
