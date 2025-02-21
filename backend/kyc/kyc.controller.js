@@ -18,6 +18,7 @@ const Gstin = require("../models/Gstin.model");
 const User = require("../models/User.model");
 const Pan = require("../models/Pan.model");
 const Kyc = require("../models/Kyc.model");
+const BilingInfo=require("../models/billingInfo.model")
 
 dotenv.config();
 const verfication = express.Router();
@@ -549,6 +550,42 @@ verfication.post("/bank-account", async (req, res) => {
   }
 });
 
+verfication.post("/billing-info", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { address,city,state,postalCode } = req.body.billingInfo;
+
+  //  console.log(billingInfo)
+  // console.log(address,city,state,postalCode)
+
+    if (!address || !city || !state || !postalCode) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const billing=new BilingInfo({
+      user:userId,
+      address,
+      city,
+      state,
+      postalCode
+    })
+
+    await billing.save()
+
+
+
+  } catch (err) {
+    // console.log("err:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 verfication.post("/kyc", async (req, res) => {
   // console.log(req.body);
   try {
@@ -571,7 +608,7 @@ verfication.post("/kyc", async (req, res) => {
 
     console.log(
       companyCategory,
-      aadhaarNumber,
+      // aadhaarNumber,
       gstNumber,
       panNumber,
       isVerified,
@@ -579,6 +616,7 @@ verfication.post("/kyc", async (req, res) => {
       ifscCode,
       accountNumber
     );
+    console.log(aadhaarNumber)
 
     if (
       // !businesstype ||
@@ -591,8 +629,8 @@ verfication.post("/kyc", async (req, res) => {
       !ifscCode ||
       // !accountHolderName ||
       // !contactNumber ||
-      !isVerified ||
-      !aadhaarNumber
+      !isVerified 
+      // !aadhaarNumber
     ) {
       return res.status(400).json({
         success: false,
@@ -619,12 +657,12 @@ verfication.post("/kyc", async (req, res) => {
       });
     }
 
-    if (!validateAadhaar(aadhaarNumber) && aadhaarNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Aadhaar number",
-      });
-    }
+    // if (!validateAadhaar(aadhaarNumber) && aadhaarNumber) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Invalid Aadhaar number",
+    //   });
+    // }
 
     if (
       !validateBankDetails(
@@ -663,7 +701,7 @@ verfication.post("/kyc", async (req, res) => {
           // kycType,
           panNumber,
           panHolderName,
-          aadhaarNumber,
+          // aadhaarNumber,
           accountNumber,
           ifscCode,
           // accountHolderName,
@@ -702,7 +740,7 @@ verfication.post("/kyc", async (req, res) => {
       // kycType,
       panNumber,
       panHolderName,
-      aadhaarNumber,
+      // aadhaarNumber,
       accountNumber,
       ifscCode,
       // accountHolderName,
