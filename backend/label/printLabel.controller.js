@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/generate-pdf/:id", async (req, res) => {
   try {
     const orderData = await Order.findOne({ _id: req.params.id });
-    console.log(orderData);
+    // console.log(orderData);
     if (!orderData) {
       return res.status(404).send("Order not found");
     }
@@ -96,6 +96,7 @@ router.get("/generate-pdf/:id", async (req, res) => {
       .rect(startX2 - 0, startY2 - 10, borderWidth, borderHeight) // Add padding around the text
       .stroke(); // Draw the border
     doc.moveDown();
+    doc.moveDown();
     // COD and Product Details
     doc
       .fontSize(18)
@@ -123,10 +124,24 @@ router.get("/generate-pdf/:id", async (req, res) => {
       }
     );
 
+    
+
     // Add the barcode to the right side of the section
     const barcodeX1 = 350; // X-coordinate for the barcode
     const barcodeY1 = doc.y - 80; // Y-coordinate for the barcode
+
+    // Save the current cursor position
+    const currentY = doc.y;
+
+    // Display provider name slightly above the barcode without affecting other content
+    doc.font("Helvetica-Bold").text(orderData.provider, barcodeX1 + 45, barcodeY1 - 15);
+
+    // Render barcode image
     doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 150, height: 50 });
+
+    // Restore the previous cursor position
+    doc.y = currentY;
+
     doc.moveDown(4);
     let tableTop = doc.y - 40;
     let columnWidths = [50, 250, 30, 80, 100];
@@ -212,21 +227,21 @@ router.get("/generate-pdf/:id", async (req, res) => {
     doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
     doc
       .font("Helvetica")
-      .text(orderData.receiverAddress.contactName, leftMargin, doc.y);
+      .text(orderData.pickupAddress.contactName, leftMargin, doc.y);
     doc
       .font("Helvetica")
-      .text(`${orderData.receiverAddress.address}`, leftMargin, doc.y);
+      .text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
     doc
       .font("Helvetica")
       .text(
-        `${orderData.receiverAddress.city}, ${orderData.receiverAddress.state}, ${orderData.receiverAddress.pinCode}`,
+        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
         leftMargin,
         doc.y
       );
     doc
       .font("Helvetica")
       .text(
-        `Mobile No: ${orderData.receiverAddress.phoneNumber}`,
+        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
         leftMargin,
         doc.y
       );
