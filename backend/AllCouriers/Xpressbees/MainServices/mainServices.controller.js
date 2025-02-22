@@ -123,10 +123,10 @@ if(currentWallet.balance>=finalCharges){
     }
   } catch (error) {
     // console.log(error);
-    console.error("Error in creating shipment:", error.response);
+    console.error("Error in creating shipment:", error.response.data);
     return res
       .status(500)
-      .json({ error: "Internal Server Error", message: error.message });
+      .json({ error: "Internal Server Error", message: error.response.data.message });
   }
 };
 
