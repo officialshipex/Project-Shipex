@@ -17,7 +17,7 @@ const {
 
 const checkServiceabilityAll = async (service, id, pincode) => {
   try {
-
+console.log("kkkkkkkkkkk",service)
     const currentOrder = await Order.findById(id);
     if (!currentOrder) throw new Error("Order not found");
 
@@ -63,7 +63,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         service.courier,
         payload
       );
-      // console.log("sddddddddddddd",result)
+      console.log("sddddddddddddd",result)
       return result;
       // console.log("4621516dsfds",result)
     }
@@ -116,7 +116,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         pincode,
         currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid"
       );
-      console.log("saaaaaaaaaaaaa",result)
+      // console.log("saaaaaaaaaaaaa",result)
       return result;
     }
 

@@ -19,7 +19,7 @@ const createShipment = async (req, res) => {
 
   // console.log("asasaSAs",currentOrder)
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
-  // console.log("dasdasd2323", currentWallet);
+  console.log("dasdasd2323", currentWallet);
   const order_items = new Array(currentOrder.productDetails.length);
 
   currentOrder.productDetails.map((item, index) => {
@@ -354,7 +354,7 @@ const createNDR = async (req, res) => {
 };
 
 const checkServiceabilityXpressBees = async (service, payload) => {
-  // console.log("I am in xpress serviceability");
+  console.log("I am in xpress serviceability");
 
   const {
     origin,
@@ -369,7 +369,7 @@ const checkServiceabilityXpressBees = async (service, payload) => {
 
   try {
     const token = await getToken();
-    // console.log(token);
+    console.log(token);
 
     const response = await axios.post(
       `${BASE_URL}/api/courier/serviceability`,

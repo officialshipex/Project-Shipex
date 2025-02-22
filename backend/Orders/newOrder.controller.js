@@ -323,7 +323,7 @@ const getreceiverAddress = async (req, res) => {
 };
 
 const ShipeNowOrder = async (req, res) => {
-  // console.log("hii");
+  console.log("hii");
 
   try {
     // Fetch order by ID
@@ -343,20 +343,20 @@ const ShipeNowOrder = async (req, res) => {
 
     // Fetch enabled courier services
     const services = await CourierService.find({ status: "Enable" });
-
+    // console.log("88888888888888888",services);
     const enabledServices = [];
 
     for await (const srvc of services) {
       const provider = await Courier.findOne({
         courierProvider: srvc.provider,
       });
-      // console.log(provider);
+      console.log("88888888888888888",provider);
 
       if (provider?.status === "Enable") {
         enabledServices.push(srvc);
       }
     }
-
+// console.log("88888888888888")
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -368,6 +368,7 @@ const ShipeNowOrder = async (req, res) => {
         if (result || result.success) {
           return {
             item,
+            
             // Xid: result.Xpressbeesid,
           };
         } else {
@@ -378,7 +379,7 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
-    // console.log("dsaaaaaaaaaaaa",availableServices)
+    console.log("dsaaaaaaaaaaaa",availableServices)
     const filteredServices = availableServices.filter(Boolean);
     // console.log("oooooooooiou",availableServices)
 
@@ -398,12 +399,13 @@ const ShipeNowOrder = async (req, res) => {
 
     };
     let rates = await calculateRateForService(payload);
-    
-
+    // console.log("pppppppppppp",rates)
+    // console.log("0000000",filteredServices)
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
       );
+
       if (matchedService) {
         return {
           ...rate,
