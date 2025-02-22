@@ -215,7 +215,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
         filter_codes: pincode,
       },
     });
-    console.log(response)
+    // console.log(response)
 
     let result = response.data.delivery_codes;
 
@@ -269,7 +269,7 @@ const trackShipmentDelhivery = async (waybill) => {
       };
     }
   } catch (error) {
-    console.error("Error tracking shipment:", error.message);
+    // console.error("Error tracking shipment:", error.message);
     return {
       success: false,
       data: "Error in tracking",
