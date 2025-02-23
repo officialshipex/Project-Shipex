@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const orderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   orderId: {
@@ -25,7 +24,7 @@ const orderSchema = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
   },
-  productDetails: [ 
+  productDetails: [
     {
       id: { type: Number, required: true },
       quantity: { type: Number, required: true },
@@ -54,7 +53,7 @@ const orderSchema = new mongoose.Schema({
     },
     default: {},
   },
-  
+
   awb_number: {
     type: String,
   },
@@ -67,14 +66,18 @@ const orderSchema = new mongoose.Schema({
   provider: {
     type: String,
   },
-  totalFreightCharges:{
-    type:Number
+  totalFreightCharges: {
+    type: Number,
   },
   status: { type: String, required: true },
   createdAt: {
     type: Date,
     default: Date.now,
   },
+  shipmentCreatedAt: { type: Date },
+  courierServiceName: {
+    type: String,
+  }
 });
 
 const Shipment = mongoose.model("newOrder", orderSchema);
