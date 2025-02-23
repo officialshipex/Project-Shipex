@@ -11,7 +11,8 @@ const BASE_URL = process.env.XpreesbeesUrl;
 
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
-  const { selectedServiceDetails, id, provider, finalCharges } = req.body;
+  const { courierServiceName, id, provider, finalCharges } = req.body;
+  console.log("service details",courierServiceName)
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
 
@@ -44,7 +45,7 @@ const createShipment = async (req, res) => {
       phone: currentOrder.receiverAddress.phoneNumber,
     },
     pickup: {
-      warehouse_name: `${currentOrder.pickupAddress.address}`,
+      warehouse_name: `${currentOrder.pickupAddress.address.slice(0, 30)}`,
       name: `${currentOrder.pickupAddress.contactName}`,
       address: `${currentOrder.pickupAddress.address}`,
       city: currentOrder.pickupAddress.city,
@@ -57,7 +58,7 @@ const createShipment = async (req, res) => {
       currentOrder.paymentDetails.method === "Prepaid"
         ? 0
         : currentOrder.paymentDetails.amount,
-    courier_id: selectedServiceDetails,
+    courier_id: currentOrder.orderId,
   };
 
 
@@ -81,9 +82,11 @@ if(currentWallet.balance>=finalCharges){
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
       currentOrder.label = result.label;
-      currentOrder.provider = provider;
+      currentOrder.provider = provider; 
       currentOrder.shipment_id = `${result.awb_number}`;
       currentOrder.totalFreightCharges = finalCharges;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.courierServiceName = courierServiceName;
       // currentOrder.service_details = selectedServiceDetails._id;
       // currentOrder.freightCharges =
       // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
