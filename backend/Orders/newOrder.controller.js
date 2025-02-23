@@ -95,8 +95,8 @@ const newOrder = async (req, res) => {
       shipment,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    // console.log("1111111111",error)
+    res.status(400).json({ error: "All fields are required" });
   }
 };
 // new pick up address
@@ -279,7 +279,7 @@ const updatedStatusOrders = async (req, res) => {
     // Respond with updated order
     res.status(200).json({
       success: true,
-      message: "Order status updated successfully",
+      message: "Clone Order sucessfully",
       order,
     });
   } catch (error) {
