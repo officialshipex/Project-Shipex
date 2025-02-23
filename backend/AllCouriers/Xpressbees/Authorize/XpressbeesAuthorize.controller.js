@@ -24,21 +24,24 @@ const getAuthToken = async (req,res) => {
       status:req.body.status
     }
     try {
+      // console.log("hi")
         const response = await axios.post(url, payload, {
             headers: { 'Content-Type': 'application/json' }
         });
-        // console.log("hjh",response.data)
+        console.log("hjh",response.data)
         if (response.data.status) {
             const newCourier = new AllCourier(courierData);
             await newCourier.save();
-            return response.data.data;
+            res.status(201).json({ message: 'Xpressbees Integrated Successfully' });
         }
         else {
             throw new Error(`Login failed: ${response.data.status}`);
         }
     }
     catch (error) {
-        throw new Error(`Error in authentication: ${error.message}`);
+// console.log("error",error.response.data).json({ message: error.response.data.message });
+        res.status(401).json({ message: error.response.data.message });
+        // throw new Error(`Error in authentication: ${error.message}`);
     }
 
 }
