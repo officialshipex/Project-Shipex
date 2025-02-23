@@ -379,7 +379,7 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
-    console.log("dsaaaaaaaaaaaa",availableServices)
+    // console.log("dsaaaaaaaaaaaa",availableServices)
     const filteredServices = availableServices.filter(Boolean);
     // console.log("oooooooooiou",availableServices)
 
@@ -405,7 +405,7 @@ const ShipeNowOrder = async (req, res) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
       );
-
+          // console.log("1111111",matchedService)
       if (matchedService) {
         return {
           ...rate,
@@ -422,6 +422,7 @@ const ShipeNowOrder = async (req, res) => {
       services: filteredServices,
       updatedRates,
     });
+   
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });

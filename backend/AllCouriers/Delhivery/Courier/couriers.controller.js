@@ -116,13 +116,19 @@ const createOrder = async (req, res) => {
         phone: currentOrder.receiverAddress.phoneNumber,
         total_amount: currentOrder.paymentDetails.amount,
         name: currentOrder.receiverAddress.address || "Default Warehouse",
+        weight:currentOrder.packageDetails.applicableWeight*1000,
+        // dimensions:{
+        //   length:currentOrder.packageDetails.volumetricWeight.length,
+        //   breadth:currentOrder.packageDetails.volumetricWeight.width,
+        //   height:currentOrder.packageDetails.volumetricWeight.width,
+        // },
         // return_country: "India",
         // return_city: wh.city,
         // return_state: wh.state,
         // return_pin: wh.pinCode,
-        // shipment_height: currentOrder.shipping_cost.dimensions.height,
-        // shipment_width: currentOrder.shipping_cost.dimensions.width,
-        // shipment_length: currentOrder.shipping_cost.dimensions.heightlength,
+        shipment_height: currentOrder.packageDetails.volumetricWeight.height,
+        shipment_width: currentOrder.packageDetails.volumetricWeight.width,
+        shipment_length: currentOrder.packageDetails.volumetricWeight.length,
         cod_amount:
           payment_type === "COD"
             ? `${currentOrder.paymentDetails.amount}`
@@ -144,6 +150,7 @@ const createOrder = async (req, res) => {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
+   
     }else{
       return res.status(400).json({success:false,message:"Low Balance"})
     }
