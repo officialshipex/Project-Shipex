@@ -83,7 +83,7 @@ const createClientWarehouse = async (payload) => {
 
 const createOrder = async (req, res) => {
   // console.log("sdsds",req.body)
-  const { id, provider, finalCharges } = req.body;
+  const { id, provider, finalCharges,courierServiceName } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
@@ -164,6 +164,7 @@ const createOrder = async (req, res) => {
       currentOrder.provider = provider;
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      currentOrder.courierServiceName = courierServiceName;
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
