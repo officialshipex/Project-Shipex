@@ -15,11 +15,10 @@ const createShipment = async (req, res) => {
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
 
-  // console.log("dasdasdasd",users)
 
-  // console.log("asasaSAs",currentOrder)
+
+ 
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
-  console.log("dasdasd2323", currentWallet);
   const order_items = new Array(currentOrder.productDetails.length);
 
   currentOrder.productDetails.map((item, index) => {
@@ -30,8 +29,6 @@ const createShipment = async (req, res) => {
       sku: item.sku,
     };
   });
-  // console.log("sadasdasd",currentOrder.receiverAddress.phoneNumber)
-
   let payment_type =
     currentOrder.paymentDetails.method === "COD" ? "cod" : "prepaid";
   const shipmentData = {
@@ -63,7 +60,6 @@ const createShipment = async (req, res) => {
     courier_id: selectedServiceDetails,
   };
 
-  // console.log("hjjhjjhj", shipmentData);
 
   try {
     const token = await getToken();
