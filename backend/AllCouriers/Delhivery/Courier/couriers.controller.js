@@ -161,7 +161,7 @@ const createOrder = async (req, res) => {
     //   },
     // });
     // console.log("dsssssssss2333333333", response.data);
-
+// console.log("ddddddddd",response)
     if (response.data.success) {
       const result = response.data.packages[0];
       currentOrder.status = "Ready To Ship";

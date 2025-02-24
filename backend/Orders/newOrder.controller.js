@@ -67,13 +67,13 @@ const newOrder = async (req, res) => {
       userId: req.user._id,
       pickupAddress,
     });
-    await pickup.save();
+    // await pickup.save();
 
     const receiver = new receiveAddress({
       userId: req.user._id,
       receiverAddress,
     });
-    await receiver.save();
+    // await receiver.save();
 
     // Create a new shipment
     const shipment = new Order({
@@ -100,20 +100,82 @@ const newOrder = async (req, res) => {
   }
 };
 // new pick up address
-// const newPickupAddress=async(req,res)=>{
-// try {
-//   const pickup = new pickAddress({
-//     userId: req.user._id,
-//     // pickupAddress,
-//   });
 
-// } catch (error) {
 
-// }
-// }
-// const newReciveAddress=async(req,res)=>{
+const newPickupAddress = async (req, res) => {
+  try {
+    console.log(req.body); // To log the incoming request body
 
-// }
+    // Create a new shipment instance, where pickupAddress is a sub-document
+    const shipment = new pickAddress({
+      userId: req.user._id, // Assuming req.user._id is populated via authentication middleware
+      pickupAddress: {
+        contactName: req.body.contactName,
+        email: req.body.email,
+        phoneNumber: req.body.phoneNumber,
+        address: req.body.address || '', // Default to empty string if not provided
+        pinCode: req.body.pinCode,
+        city: req.body.city,
+        state: req.body.state
+      }
+    });
+
+    // Save the shipment with the pickup address
+    await shipment.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Pickup address saved successfully!',
+      data: shipment
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while saving pickup address'
+    });
+  }
+};
+
+
+
+const newReciveAddress = async (req, res) => {
+  try {
+    // console.log(req.body); // To log the incoming request body
+
+    // Create a new shipment instance, where receiverAddress is a sub-document
+    const shipment = new receiveAddress({
+      userId: req.user._id, // Assuming req.user._id is populated via authentication middleware
+      receiverAddress: {
+        contactName: req.body.contactName,
+        email: req.body.email,
+        phoneNumber: req.body.phoneNumber,
+        address: req.body.address || '', // Default to empty string if not provided
+        pinCode: req.body.pinCode,
+        city: req.body.city,
+        state: req.body.state
+      }
+    });
+
+    console.log(shipment)
+
+    // Save the shipment with the receiver address
+    await shipment.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Receiver address saved successfully!',
+      data: shipment
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while saving receiver address'
+    });
+  }
+};
+
 const getOrders = async (req, res) => {
   try {
     // console.log(req.user._id)
@@ -698,6 +760,8 @@ module.exports = {
   getOrdersById,
   getpickupAddress,
   getreceiverAddress,
+  newPickupAddress,
+  newReciveAddress,
   ShipeNowOrder,
   getPinCodeDetails,
   cancelOrdersAtNotShipped,

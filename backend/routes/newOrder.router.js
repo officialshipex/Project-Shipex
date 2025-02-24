@@ -5,6 +5,8 @@ const {
   updatedStatusOrders,
   getOrdersById,
   getpickupAddress,
+  newPickupAddress,
+  newReciveAddress,
   getreceiverAddress,
   ShipeNowOrder,
   getPinCodeDetails,
@@ -26,6 +28,8 @@ router.post("/clone",updatedStatusOrders)
 router.get("/getOrderById/:id",getOrdersById)
 router.get("/pickupAddress", getpickupAddress);
 router.get("/receiverAddress", getreceiverAddress);
+router.post("/pickupAddress", newPickupAddress);
+router.post("/receiverAddress", newReciveAddress);
 router.get("/ship/:id", ShipeNowOrder);
 router.get("/pincode/:pincode", getPinCodeDetails);
 router.post("/cancelOrdersAtNotShipped",cancelOrdersAtNotShipped)
