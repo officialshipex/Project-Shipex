@@ -26,7 +26,7 @@ const dashboard = async (req, res) => {
      const pendingOrder=pending.length
      //total order
      const Intransit=orders.filter(
-        (order) => order.status === "In Transit"
+        (order) => order.status === "In-transit"
       );
      const intransite=Intransit.length
       const totalorder = orders.length;
