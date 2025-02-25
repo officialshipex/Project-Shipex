@@ -46,7 +46,7 @@ app.get("/generate-pdf/:id", async (req, res) => {
     doc
       .fontSize(11)
       .text(`Seller: ${order.pickupAddress.contactName}`, 30, yPosition);
-    doc.text(`${order.provider}`, 30, doc.y + 10);
+    doc.text(`${order.courierServiceName}`, 30, doc.y + 10);
     doc
       .fontSize(10)
       .text(`Manifest ID: MANIFEST-${order.orderId}`, 400, yPosition, {

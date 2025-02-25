@@ -134,7 +134,7 @@ router.get("/generate-pdf/:id", async (req, res) => {
     const currentY = doc.y;
 
     // Display provider name slightly above the barcode without affecting other content
-    doc.font("Helvetica-Bold").text(orderData.provider, barcodeX1 + 45, barcodeY1 - 15);
+    doc.font("Helvetica-Bold").text(orderData.courierServiceName, barcodeX1 + 45, barcodeY1 - 15);
 
     // Render barcode image
     doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 150, height: 50 });
