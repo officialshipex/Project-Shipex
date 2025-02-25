@@ -33,7 +33,7 @@ const getUsers = async (req, res) => {
       res.status(201).json({
           success: true,
           sellers: allUsers.map(user => ({
-              id: user._id,
+              id: user.userId,
               name: `${user.fullname}`, // Ensure to format the name as needed
           })),
           isSeller, // Add this field to check if the user is a seller
