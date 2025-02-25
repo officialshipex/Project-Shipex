@@ -104,7 +104,7 @@ const newOrder = async (req, res) => {
 
 const newPickupAddress = async (req, res) => {
   try {
-    console.log(req.body); // To log the incoming request body
+    // console.log(req.body); // To log the incoming request body
 
     // Create a new shipment instance, where pickupAddress is a sub-document
     const shipment = new pickAddress({
@@ -157,7 +157,7 @@ const newReciveAddress = async (req, res) => {
       }
     });
 
-    console.log(shipment)
+    // console.log(shipment)
 
     // Save the shipment with the receiver address
     await shipment.save();
