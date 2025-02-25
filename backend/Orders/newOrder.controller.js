@@ -85,6 +85,12 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
+      tracking:[
+        {
+          title:"Created",
+          descriptions : "Order created"
+        }
+      ]
     });
 
     // Save to the database
@@ -385,7 +391,7 @@ const getreceiverAddress = async (req, res) => {
 };
 
 const ShipeNowOrder = async (req, res) => {
-  console.log("hii");
+
 
   try {
     // Fetch order by ID
@@ -412,13 +418,10 @@ const ShipeNowOrder = async (req, res) => {
       const provider = await Courier.findOne({
         courierProvider: srvc.provider,
       });
-      console.log("88888888888888888",provider);
-
       if (provider?.status === "Enable") {
         enabledServices.push(srvc);
       }
     }
-// console.log("88888888888888")
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -426,7 +429,6 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        //  console.log("0000000000000",result)
         if (result || result.success) {
           return {
             item,
@@ -441,11 +443,10 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
-    // console.log("dsaaaaaaaaaaaa",availableServices)
-    const filteredServices = availableServices.filter(Boolean);
-    // console.log("oooooooooiou",availableServices)
 
-    // console.log("filteredServices", filteredServices);
+    const filteredServices = availableServices.filter(Boolean);
+   
+   
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
       deliveryPincode: order.receiverAddress.pinCode,

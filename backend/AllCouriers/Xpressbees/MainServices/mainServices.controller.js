@@ -8,14 +8,13 @@ const { getToken } = require("../Authorize/XpressbeesAuthorize.controller");
 const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
 const BASE_URL = process.env.XpreesbeesUrl;
-
+const plan=require("../../../models/Plan.model")
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
   const { courierServiceName, id, provider, finalCharges } = req.body;
-  console.log("service details",courierServiceName)
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
-
+ const plans=await plan.findById({ userId: currentOrder.userId });
 
 
  
@@ -91,11 +90,13 @@ if(currentWallet.balance>=finalCharges){
       // currentOrder.freightCharges =
       // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       // currentOrder.tracking = [];
-      // currentOrder.tracking.push({
-      //   stage: "Order Booked",
-      // });
+      currentOrder.tracking.push({
+        title:"Shipment",
+        descriptions:`Shipment initiated for Order with Carrier ${provider} (${plans.planName})`
+      });
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
+   
       let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({

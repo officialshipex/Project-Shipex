@@ -9,7 +9,7 @@ const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
-
+const plan=require("../../../models/Plan.model")
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
   const now = new Date();
@@ -51,7 +51,7 @@ const createClientWarehouse = async (payload) => {
       }
     );
 
-    console.log("Warehouse created successfully:", response.data);
+    // console.log("Warehouse created successfully:", response.data);
 
     return {
       success: true,
@@ -63,9 +63,6 @@ const createClientWarehouse = async (payload) => {
       error.response &&
       error.response.data?.data?.name === payload.contactName
     ) {
-      // console.warn("Warehouse already exists:", error.response.data.data);
-
-      // Proceed to the next step instead of stopping execution
       return {
         success: true,
         message: "Warehouse already exists, proceeding to the next step",
@@ -88,7 +85,7 @@ const createOrder = async (req, res) => {
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
-
+  const plans=await plan.findById({ userId: currentOrder.userId });
   const createClientWarehouses = await createClientWarehouse(
     currentOrder.pickupAddress
   );
@@ -172,6 +169,10 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
+      currentOrder.tracking.push({
+        title:"Shipment",
+        descriptions:`Shipment initiated for Order with Carrier ${provider} (${plans.planName})`
+      });
       currentOrder.shipmentCreatedAt = new Date();
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
