@@ -249,7 +249,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 };
 
 const trackShipmentDelhivery = async (waybill) => {
-  // console.log("dfsdfsdfsdfsdfsdfsdfs",waybill)
+
   if (!waybill) {
     return res.status(400).json({ error: "Waybill number is required" });
   }
@@ -264,12 +264,15 @@ const trackShipmentDelhivery = async (waybill) => {
       }
     );
     // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
+    // console.log( response.data.ShipmentData[0].Shipment.Status.Instructions)
+    const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
+
     if (
-      response?.data?.ShipmentData[0]?.Shipment?.Status?.Status === "Manifested"
+      status === "Manifested" || status === "In Transit" || status === "Delivery"
     ) {
       return {
-        succes: true,
-        data: response.data.ShipmentData[0].Shipment.Status.Instructions,
+        success: true,
+        data: response.data.ShipmentData[0].Shipment.Status.Status,
       };
     } else {
       return {
