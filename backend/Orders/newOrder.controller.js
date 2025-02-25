@@ -642,14 +642,14 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, data) => {
-      // cosole.log("yuyuuyuyuyuuu", data);
+      console.log("yuyuuyuyuyuuu", status);
       if (data == "booked") {
         order.status = status;
       }
       if (data == "in transit") {
         order.status = status;
       }
-      if (data == "delivered") {
+      if (data == "Delivered") {
         order.status = status;
       }
       await order.save();
@@ -670,21 +670,23 @@ const tracking = async (req, res) => {
           // console.log("sadasdas43",result)
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
+         
           result = await trackShipmentDelhivery(awb_number);
-          // console.log("hhhhhhhhhh",result)
+          
+         
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
 
         if (result && result.success) {
           const status = result.data.toLowerCase().replace(/_/g, " ");
-
+            
           const statusMap = {
-            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
-            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
               updateOrderStatus(order, "In-transit", "in transit"),
-            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
+            "delivered": () => updateOrderStatus(order, "Delivered", "delivered"),
           };
 
           if (statusMap[status]) {
