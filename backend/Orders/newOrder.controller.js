@@ -85,12 +85,12 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
-      tracking:[
+      tracking: [
         {
-          title:"Created",
-          descriptions : "Order created"
-        }
-      ]
+          title: "Created",
+          descriptions: "Order created",
+        },
+      ],
     });
 
     // Save to the database
@@ -107,7 +107,6 @@ const newOrder = async (req, res) => {
 };
 // new pick up address
 
-
 const newPickupAddress = async (req, res) => {
   try {
     // console.log(req.body); // To log the incoming request body
@@ -119,11 +118,11 @@ const newPickupAddress = async (req, res) => {
         contactName: req.body.contactName,
         email: req.body.email,
         phoneNumber: req.body.phoneNumber,
-        address: req.body.address || '', // Default to empty string if not provided
+        address: req.body.address || "", // Default to empty string if not provided
         pinCode: req.body.pinCode,
         city: req.body.city,
-        state: req.body.state
-      }
+        state: req.body.state,
+      },
     });
 
     // Save the shipment with the pickup address
@@ -131,19 +130,17 @@ const newPickupAddress = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Pickup address saved successfully!',
-      data: shipment
+      message: "Pickup address saved successfully!",
+      data: shipment,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error while saving pickup address'
+      message: "Server error while saving pickup address",
     });
   }
 };
-
-
 
 const newReciveAddress = async (req, res) => {
   try {
@@ -156,11 +153,11 @@ const newReciveAddress = async (req, res) => {
         contactName: req.body.contactName,
         email: req.body.email,
         phoneNumber: req.body.phoneNumber,
-        address: req.body.address || '', // Default to empty string if not provided
+        address: req.body.address || "", // Default to empty string if not provided
         pinCode: req.body.pinCode,
         city: req.body.city,
-        state: req.body.state
-      }
+        state: req.body.state,
+      },
     });
 
     // console.log(shipment)
@@ -170,14 +167,14 @@ const newReciveAddress = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Receiver address saved successfully!',
-      data: shipment
+      message: "Receiver address saved successfully!",
+      data: shipment,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error while saving receiver address'
+      message: "Server error while saving receiver address",
     });
   }
 };
@@ -391,8 +388,6 @@ const getreceiverAddress = async (req, res) => {
 };
 
 const ShipeNowOrder = async (req, res) => {
-
-
   try {
     // Fetch order by ID
     // console.log(req.params.id);
@@ -432,7 +427,7 @@ const ShipeNowOrder = async (req, res) => {
         if (result || result.success) {
           return {
             item,
-            
+
             // Xid: result.Xpressbeesid,
           };
         } else {
@@ -445,8 +440,7 @@ const ShipeNowOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
-   
-   
+
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
       deliveryPincode: order.receiverAddress.pinCode,
@@ -456,10 +450,9 @@ const ShipeNowOrder = async (req, res) => {
       weight: order.packageDetails.applicableWeight,
       cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
       valueInINR: order.paymentDetails.amount,
-      userID:req.user._id,
+      userID: req.user._id,
       filteredServices,
       rateCardType: plan.planName,
-
     };
     let rates = await calculateRateForService(payload);
     // console.log("pppppppppppp",rates)
@@ -468,7 +461,7 @@ const ShipeNowOrder = async (req, res) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
       );
-          // console.log("1111111",matchedService)
+      // console.log("1111111",matchedService)
       if (matchedService) {
         return {
           ...rate,
@@ -485,7 +478,6 @@ const ShipeNowOrder = async (req, res) => {
       services: filteredServices,
       updatedRates,
     });
-   
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
@@ -518,15 +510,13 @@ const getPinCodeDetails = async (req, res) => {
 };
 
 const cancelOrdersAtNotShipped = async (req, res) => {
-  const orderData = req.body;
+  const {orderId}= req.body;
+  // console.log(orderData)
   try {
-    const currentOrder = await Order.findById({ _id: orderData._id });
+    const currentOrder = await Order.findByIdAndDelete({ _id: orderId });
 
-    if (currentOrder && currentOrder.status !== "Cancelled") {
-      currentOrder.status = "Cancelled";
-      return currentOrder.save();
-    }
-    res.status(201).send({ message });
+  
+    res.status(201).json({ message:"Order delete successfully" });
   } catch (error) {
     console.error("Error canceling orders:", {
       // error,
@@ -643,15 +633,37 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, data) => {
-      console.log("yuyuuyuyuyuuu", status);
+      // console.log("yuyuuyuyuyuuu", status);
       if (data == "booked") {
         order.status = status;
       }
       if (data == "in transit") {
         order.status = status;
+        const filterStatus = order.tracking.filter(
+          (item) => item.title === "Shipment pickup"
+        );
+
+        if (filterStatus.length === 0) {
+          // If the title does not exist, push new data
+          order.tracking.push({
+            title: "Shipment pickup",
+            descriptions: "Shipment pickup from your origin",
+          });
+        }
       }
       if (data == "Delivered") {
         order.status = status;
+        const filterStatus = order.tracking.filter(
+          (item) => item.title === "Delivery"
+        );
+
+        if (filterStatus.length === 0) {
+          // If the title does not exist, push new data
+          order.tracking.push({
+            title: "Delivery",
+            descriptions: "Shipment Delivered",
+          });
+        }
       }
       await order.save();
     };
@@ -671,23 +683,20 @@ const tracking = async (req, res) => {
           // console.log("sadasdas43",result)
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
-         
           result = await trackShipmentDelhivery(awb_number);
-          
-         
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
 
         if (result && result.success) {
           const status = result.data.toLowerCase().replace(/_/g, " ");
-            
+
           const statusMap = {
-            "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
-            "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
               updateOrderStatus(order, "In-transit", "in transit"),
-            "delivered": () => updateOrderStatus(order, "Delivered", "delivered"),
+            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
           };
 
           if (statusMap[status]) {
@@ -753,8 +762,28 @@ const getUser = async (req, res) => {
     return res.status(400).json({ message: "User not found" });
   }
 };
+const deleteOrder = async (req, res) => {
+  try {
+    const orderId  = req.user._id;
 
+    // Validate orderId
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Order ID is required." });
+    }
 
+    // Find and delete the order
+    const deletedOrder = await Order.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    res.status(200).json({ success: true, message: "Order deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
 
 module.exports = {
   newOrder,
