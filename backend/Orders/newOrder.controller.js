@@ -332,7 +332,15 @@ const updatedStatusOrders = async (req, res) => {
 
     const order = await Order.findByIdAndUpdate(
       req.body.id,
-      { $set: { status: "new" } },
+      {
+        $set: { status: "new" },
+        $push: {
+          tracking: {
+            title: "Clone",
+            descriptions: "Clone Order by user",
+          },
+        },
+      },
       { new: true }
     );
 
@@ -510,13 +518,12 @@ const getPinCodeDetails = async (req, res) => {
 };
 
 const cancelOrdersAtNotShipped = async (req, res) => {
-  const {orderId}= req.body;
+  const { orderId } = req.body;
   // console.log(orderData)
   try {
     const currentOrder = await Order.findByIdAndDelete({ _id: orderId });
 
-  
-    res.status(201).json({ message:"Order delete successfully" });
+    res.status(201).json({ message: "Order delete successfully" });
   } catch (error) {
     console.error("Error canceling orders:", {
       // error,
@@ -595,9 +602,10 @@ const cancelOrdersAtBooked = async (req, res) => {
 
     // currentOrder.status = "Not-Shipped";
     // currentOrder.cancelledAtStage = "Booked";
-    // currentOrder.tracking.push({
-    //   stage: "Cancelled",
-    // });
+    currentOrder.tracking.push({
+      title: "Cancelled",
+      descriptions: `Cancelled Order by user`,
+    });
     let balanceTobeAdded =
       allOrders.totalFreightCharges == "N/A"
         ? 0
@@ -634,36 +642,14 @@ const tracking = async (req, res) => {
 
     const updateOrderStatus = async (order, status, data) => {
       // console.log("yuyuuyuyuyuuu", status);
-      if (data == "booked") {
+      if (data == "manifested" || data == "booked") {
         order.status = status;
       }
       if (data == "in transit") {
         order.status = status;
-        const filterStatus = order.tracking.filter(
-          (item) => item.title === "Shipment pickup"
-        );
-
-        if (filterStatus.length === 0) {
-          // If the title does not exist, push new data
-          order.tracking.push({
-            title: "Shipment pickup",
-            descriptions: "Shipment pickup from your origin",
-          });
-        }
       }
-      if (data == "Delivered") {
+      if (data == "delivered") {
         order.status = status;
-        const filterStatus = order.tracking.filter(
-          (item) => item.title === "Delivery"
-        );
-
-        if (filterStatus.length === 0) {
-          // If the title does not exist, push new data
-          order.tracking.push({
-            title: "Delivery",
-            descriptions: "Shipment Delivered",
-          });
-        }
       }
       await order.save();
     };
@@ -684,14 +670,35 @@ const tracking = async (req, res) => {
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
+          console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
 
+        if (result && result.data) {
+          const lastTracking = order.tracking[order.tracking.length - 1];
+        
+          if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
+            order.tracking.push({
+              status: result.data.Status,
+              StatusLocation: result.data.StatusLocation,
+              StatusDateTime: result.data.StatusDateTime,
+              Instructions: result.data.Instructions,
+            });
+        
+            console.log("Tracking updated:", order.tracking);
+          } else {
+            console.log("Tracking data already exists.");
+          }
+        }
+        
+
         if (result && result.success) {
-          const status = result.data.toLowerCase().replace(/_/g, " ");
+          const status = result.data.Status.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
+            manifested: () =>
+              updateOrderStatus(order, "Ready To Ship", "manifested"),
             booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
             cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
@@ -764,21 +771,27 @@ const getUser = async (req, res) => {
 };
 const deleteOrder = async (req, res) => {
   try {
-    const orderId  = req.user._id;
+    const orderId = req.user._id;
 
     // Validate orderId
     if (!orderId) {
-      return res.status(400).json({ success: false, message: "Order ID is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Order ID is required." });
     }
 
     // Find and delete the order
     const deletedOrder = await Order.findByIdAndDelete(orderId);
 
     if (!deletedOrder) {
-      return res.status(404).json({ success: false, message: "Order not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found." });
     }
 
-    res.status(200).json({ success: true, message: "Order deleted successfully." });
+    res
+      .status(200)
+      .json({ success: true, message: "Order deleted successfully." });
   } catch (error) {
     console.error("Error deleting order:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
@@ -802,5 +815,4 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
- 
 };

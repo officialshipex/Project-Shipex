@@ -90,10 +90,7 @@ if(currentWallet.balance>=finalCharges){
       // currentOrder.freightCharges =
       // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       // currentOrder.tracking = [];
-      currentOrder.tracking.push({
-        title:"Shipment",
-        descriptions:`Shipment initiated for Order with Carrier ${provider} (${plans.planName})`
-      });
+     
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
    
