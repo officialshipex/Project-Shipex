@@ -14,7 +14,7 @@ const createShipment = async (req, res) => {
   const { courierServiceName, id, provider, finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
- const plans=await plan.findById({ userId: currentOrder.userId });
+ const plans=await plan.findOne({ userId: currentOrder.userId });
 
 
  

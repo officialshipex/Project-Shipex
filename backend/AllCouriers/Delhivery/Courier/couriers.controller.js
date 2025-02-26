@@ -82,10 +82,12 @@ const createOrder = async (req, res) => {
   // console.log("sdsds",req.body)
   const { id, provider, finalCharges,courierServiceName } = req.body;
   const currentOrder = await Order.findById(id);
+  // console.log("hhhhhhhhhhh",currentOrder)
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
-  const plans=await plan.findById({ userId: currentOrder.userId });
+  const plans=await plan.findOne({ userId: currentOrder.userId });
+  // console.log("888888888888",plans)
   const createClientWarehouses = await createClientWarehouse(
     currentOrder.pickupAddress
   );
