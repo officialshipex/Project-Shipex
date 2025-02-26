@@ -85,9 +85,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     tracking: [{
-       title: { type: String } ,
-       descriptions:{type:String},
-       time: { type: Date, default: Date.now }
+      status:{type: String},
+      StatusLocation:{type:String},
+      StatusDateTime:{type:Date},
+      Instructions:{type:String}
       }],
   },
   { timestamps: true }
