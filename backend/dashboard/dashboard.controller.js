@@ -11,25 +11,31 @@ const dashboard = async (req, res) => {
       const deliveredOrders = orders.filter(
         (order) => ["Delivered", "new", "In-transit","Ready To Ship"].includes(order.status)
       );
-
+      const shiping = orders.filter(
+        (order) => ["Delivered", "In-transit","Ready To Ship"].includes(order.status)
+      );
+      const shipingLength = shiping.length;
       const Shipments = orders.filter(
         (order) => [ "new","Ready To Ship"].includes(order.status)
       );
-      const TotalShipments=Shipments.length
+      const TotalShipments=shiping.length
      const Delivereds=deliveredOrders.length
        // Total delivered
        const deliveredOrder = orders.filter(
         (order) => ["Delivered"].includes(order.status)
       );
       const Delivered= deliveredOrder.length;
-
+      const TotalShipment=shiping.reduce((total, order) => {
+        return total + order.totalFreightCharges; // Sum up the amount for each delivered order
+      },0)
+      // console.log("sknsk",TotalShipment)
       // Total Revenue
       const totalRevenue = deliveredOrders.reduce((total, order) => {
         return total + order.paymentDetails.amount; // Sum up the amount for each delivered order
       }, 0);
       //Average Shipping
     //  const averageShipping=totalRevenue/Delivered;
-     const averageShipping = Math.round(totalRevenue / Delivereds); // Rounds to the nearest whole number
+     const averageShipping = Math.round(TotalShipment / shipingLength); // Rounds to the nearest whole number
 
 
      const pending = orders.filter(
