@@ -98,10 +98,13 @@ router.get("/generate-pdf/:id", async (req, res) => {
     doc.moveDown();
     doc.moveDown();
     // COD and Product Details
-    doc
-      .fontSize(18)
-      .font("Helvetica-Bold")
-      .text("COD", { align: "left", indent: 150 });
+    const paymentText = orderData.paymentDetails.method === 'COD' ? 'COD' : 'Prepaid';
+
+doc
+  .fontSize(18)
+  .font("Helvetica-Bold")
+  .text(paymentText, { align: "left", indent: 150 });
+
     doc
       .fontSize(18)
       .font("Helvetica")
