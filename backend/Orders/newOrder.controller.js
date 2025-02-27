@@ -463,8 +463,7 @@ const ShipeNowOrder = async (req, res) => {
       rateCardType: plan.planName,
     };
     let rates = await calculateRateForService(payload);
-    // console.log("pppppppppppp",rates)
-    // console.log("0000000",filteredServices)
+    
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
