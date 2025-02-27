@@ -3,6 +3,7 @@ const dashboard = async (req, res) => {
     try {
       const userid = req.user._id;
       const orders = await Order.find({ userId: userid });
+      // console.log(orders)
       if (!orders || orders.length === 0) {
         return res.status(400).json({ message: "No orders found for this user" });
       }
@@ -10,6 +11,12 @@ const dashboard = async (req, res) => {
       const deliveredOrders = orders.filter(
         (order) => order.status === "Delivered"
       );
+
+      const totalShipping = orders.filter(
+        (order) => order.status === "Delivered" || order.status === "In Transit"|| order.status === "Delivered"
+      )
+
+      console.log(totalShipping)
      
        // Total delivered
       const Delivered = deliveredOrders.length;
