@@ -187,7 +187,7 @@ async function calculateRateForService(payload) {
 
       ans.push(allRates);
     }
-    console.log("0000000", ans);
+    // console.log("0000000", ans);
     return ans;
   } catch (error) {
     console.error("Error in Calculation:", error);
