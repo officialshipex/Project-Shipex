@@ -9,7 +9,7 @@ const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
-
+const plan=require("../../../models/Plan.model")
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
   const now = new Date();
@@ -51,7 +51,7 @@ const createClientWarehouse = async (payload) => {
       }
     );
 
-    console.log("Warehouse created successfully:", response.data);
+    // console.log("Warehouse created successfully:", response.data);
 
     return {
       success: true,
@@ -63,9 +63,6 @@ const createClientWarehouse = async (payload) => {
       error.response &&
       error.response.data?.data?.name === payload.contactName
     ) {
-      // console.warn("Warehouse already exists:", error.response.data.data);
-
-      // Proceed to the next step instead of stopping execution
       return {
         success: true,
         message: "Warehouse already exists, proceeding to the next step",
@@ -82,17 +79,15 @@ const createClientWarehouse = async (payload) => {
 };
 
 const createOrder = async (req, res) => {
-  // console.log("sdsds",req.body)
   const { id, provider, finalCharges,courierServiceName } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
-
+  const plans=await plan.findOne({ userId: currentOrder.userId });
   const createClientWarehouses = await createClientWarehouse(
     currentOrder.pickupAddress
   );
-  // console.log("dsasdsa",createClientWarehouses)
   const payment_type =
     currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
 
@@ -105,27 +100,17 @@ const createOrder = async (req, res) => {
         Waybill: waybills[0],
         country: "India",
         city: currentOrder.receiverAddress.city,
-        // return_phone: wh.contactNo,
         pin: currentOrder.receiverAddress.pinCode,
         state: currentOrder.receiverAddress.state,
         order: currentOrder.orderId,
-        add: currentOrder.receiverAddress || "Default Warehouse",
+        add: currentOrder.receiverAddress.address || "Default Warehouse",
         payment_mode: payment_type,
-        quantity: currentOrder.productDetails[0].quantity.toString(),
-        // return_add: `${wh.addressLine1}`,
+        quantity: currentOrder.productDetails.reduce((sum, product) => sum + product.quantity, 0).toString(), // Total quantity
         phone: currentOrder.receiverAddress.phoneNumber,
+        products_desc: currentOrder.productDetails.map(product => product.name).join(", "), // Join product names
         total_amount: currentOrder.paymentDetails.amount,
-        name: currentOrder.receiverAddress.address || "Default Warehouse",
+        name: currentOrder.receiverAddress.contactName || "Default Warehouse",
         weight:currentOrder.packageDetails.applicableWeight*1000,
-        // dimensions:{
-        //   length:currentOrder.packageDetails.volumetricWeight.length,
-        //   breadth:currentOrder.packageDetails.volumetricWeight.width,
-        //   height:currentOrder.packageDetails.volumetricWeight.width,
-        // },
-        // return_country: "India",
-        // return_city: wh.city,
-        // return_state: wh.state,
-        // return_pin: wh.pinCode,
         shipment_height: currentOrder.packageDetails.volumetricWeight.height,
         shipment_width: currentOrder.packageDetails.volumetricWeight.width,
         shipment_length: currentOrder.packageDetails.volumetricWeight.length,
@@ -150,6 +135,8 @@ const createOrder = async (req, res) => {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
+      console.log("fgddfdf",response);
+      
    
     }else{
       return res.status(400).json({success:false,message:"Low Balance"})
@@ -172,6 +159,7 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
+      
       currentOrder.shipmentCreatedAt = new Date();
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
@@ -263,16 +251,19 @@ const trackShipmentDelhivery = async (waybill) => {
         },
       }
     );
+    // console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.Status)
     // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
-    // console.log( response.data.ShipmentData[0].Shipment.Status.Instructions)
+    // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
+    // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
 
     if (
-      status === "Manifested" || status === "In Transit" || status === "Delivery"
+      status === "Manifested" || status === "In Transit" || status === "Delivered"
     ) {
       return {
         success: true,
-        data: response.data.ShipmentData[0].Shipment.Status.Status,
+        id:response.data.ShipmentData[0].Shipment.ReferenceNo,
+        data: response.data.ShipmentData[0].Shipment.Status,
       };
     } else {
       return {

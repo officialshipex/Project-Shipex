@@ -85,6 +85,12 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
+      tracking: [
+        {
+          title: "Created",
+          descriptions: "Order created",
+        },
+      ],
     });
 
     // Save to the database
@@ -101,7 +107,6 @@ const newOrder = async (req, res) => {
 };
 // new pick up address
 
-
 const newPickupAddress = async (req, res) => {
   try {
     // console.log(req.body); // To log the incoming request body
@@ -113,11 +118,11 @@ const newPickupAddress = async (req, res) => {
         contactName: req.body.contactName,
         email: req.body.email,
         phoneNumber: req.body.phoneNumber,
-        address: req.body.address || '', // Default to empty string if not provided
+        address: req.body.address || "", // Default to empty string if not provided
         pinCode: req.body.pinCode,
         city: req.body.city,
-        state: req.body.state
-      }
+        state: req.body.state,
+      },
     });
 
     // Save the shipment with the pickup address
@@ -125,19 +130,17 @@ const newPickupAddress = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Pickup address saved successfully!',
-      data: shipment
+      message: "Pickup address saved successfully!",
+      data: shipment,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error while saving pickup address'
+      message: "Server error while saving pickup address",
     });
   }
 };
-
-
 
 const newReciveAddress = async (req, res) => {
   try {
@@ -150,11 +153,11 @@ const newReciveAddress = async (req, res) => {
         contactName: req.body.contactName,
         email: req.body.email,
         phoneNumber: req.body.phoneNumber,
-        address: req.body.address || '', // Default to empty string if not provided
+        address: req.body.address || "", // Default to empty string if not provided
         pinCode: req.body.pinCode,
         city: req.body.city,
-        state: req.body.state
-      }
+        state: req.body.state,
+      },
     });
 
     // console.log(shipment)
@@ -164,14 +167,14 @@ const newReciveAddress = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Receiver address saved successfully!',
-      data: shipment
+      message: "Receiver address saved successfully!",
+      data: shipment,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error while saving receiver address'
+      message: "Server error while saving receiver address",
     });
   }
 };
@@ -329,7 +332,15 @@ const updatedStatusOrders = async (req, res) => {
 
     const order = await Order.findByIdAndUpdate(
       req.body.id,
-      { $set: { status: "new" } },
+      {
+        $set: { status: "new" },
+        $push: {
+          tracking: {
+            title: "Clone",
+            descriptions: "Clone Order by user",
+          },
+        },
+      },
       { new: true }
     );
 
@@ -385,8 +396,6 @@ const getreceiverAddress = async (req, res) => {
 };
 
 const ShipeNowOrder = async (req, res) => {
-  console.log("hii");
-
   try {
     // Fetch order by ID
     // console.log(req.params.id);
@@ -412,13 +421,10 @@ const ShipeNowOrder = async (req, res) => {
       const provider = await Courier.findOne({
         courierProvider: srvc.provider,
       });
-      console.log("88888888888888888",provider);
-
       if (provider?.status === "Enable") {
         enabledServices.push(srvc);
       }
     }
-// console.log("88888888888888")
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -426,11 +432,10 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        //  console.log("0000000000000",result)
         if (result || result.success) {
           return {
             item,
-            
+
             // Xid: result.Xpressbeesid,
           };
         } else {
@@ -441,11 +446,9 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
-    // console.log("dsaaaaaaaaaaaa",availableServices)
-    const filteredServices = availableServices.filter(Boolean);
-    // console.log("oooooooooiou",availableServices)
 
-    // console.log("filteredServices", filteredServices);
+    const filteredServices = availableServices.filter(Boolean);
+
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
       deliveryPincode: order.receiverAddress.pinCode,
@@ -455,10 +458,9 @@ const ShipeNowOrder = async (req, res) => {
       weight: order.packageDetails.applicableWeight,
       cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
       valueInINR: order.paymentDetails.amount,
-      userID:req.user._id,
+      userID: req.user._id,
       filteredServices,
       rateCardType: plan.planName,
-
     };
     let rates = await calculateRateForService(payload);
     // console.log("pppppppppppp",rates)
@@ -467,7 +469,7 @@ const ShipeNowOrder = async (req, res) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
       );
-          // console.log("1111111",matchedService)
+      // console.log("1111111",matchedService)
       if (matchedService) {
         return {
           ...rate,
@@ -484,7 +486,6 @@ const ShipeNowOrder = async (req, res) => {
       services: filteredServices,
       updatedRates,
     });
-   
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
@@ -517,15 +518,12 @@ const getPinCodeDetails = async (req, res) => {
 };
 
 const cancelOrdersAtNotShipped = async (req, res) => {
-  const orderData = req.body;
+  const { orderId } = req.body;
+  // console.log(orderData)
   try {
-    const currentOrder = await Order.findById({ _id: orderData._id });
+    const currentOrder = await Order.findByIdAndDelete({ _id: orderId });
 
-    if (currentOrder && currentOrder.status !== "Cancelled") {
-      currentOrder.status = "Cancelled";
-      return currentOrder.save();
-    }
-    res.status(201).send({ message });
+    res.status(201).json({ message: "Order delete successfully" });
   } catch (error) {
     console.error("Error canceling orders:", {
       // error,
@@ -604,9 +602,10 @@ const cancelOrdersAtBooked = async (req, res) => {
 
     // currentOrder.status = "Not-Shipped";
     // currentOrder.cancelledAtStage = "Booked";
-    // currentOrder.tracking.push({
-    //   stage: "Cancelled",
-    // });
+    currentOrder.tracking.push({
+      title: "Cancelled",
+      descriptions: `Cancelled Order by user`,
+    });
     let balanceTobeAdded =
       allOrders.totalFreightCharges == "N/A"
         ? 0
@@ -642,14 +641,14 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, data) => {
-      console.log("yuyuuyuyuyuuu", status);
-      if (data == "booked") {
+      // console.log("yuyuuyuyuyuuu", status);
+      if (data == "manifested" || data == "booked") {
         order.status = status;
       }
       if (data == "in transit") {
         order.status = status;
       }
-      if (data == "Delivered") {
+      if (data == "delivered") {
         order.status = status;
       }
       await order.save();
@@ -670,18 +669,44 @@ const tracking = async (req, res) => {
           // console.log("sadasdas43",result)
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
-         
           result = await trackShipmentDelhivery(awb_number);
-          
-         
+          console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
 
+        if (result && result.data) {
+          // Remove any empty objects from tracking array
+          order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
+        
+          const lastTracking = order.tracking[order.tracking.length - 1];
+        
+          if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
+            order.tracking.push({
+              status: result.data.Status,
+              StatusLocation: result.data.StatusLocation,
+              StatusDateTime: result.data.StatusDateTime,
+              Instructions: result.data.Instructions,
+            });
+        
+            console.log("Tracking updated:", order.tracking);
+          } else {
+            console.log("Tracking data already exists.");
+          }
+        }
+        
+        
+
         if (result && result.success) {
-          const status = result.data.toLowerCase().replace(/_/g, " ");
-            
+          const status = result.data.Status.toLowerCase().replace(/_/g, " ");
+
           const statusMap = {
+            "manifested": () => {
+              if ( order.status !== "Cancelled") {
+                updateOrderStatus(order, "Ready To Ship", "manifested");
+              }
+            },
+             
             "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
             "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
@@ -752,8 +777,34 @@ const getUser = async (req, res) => {
     return res.status(400).json({ message: "User not found" });
   }
 };
+const deleteOrder = async (req, res) => {
+  try {
+    const orderId = req.user._id;
 
+    // Validate orderId
+    if (!orderId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Order ID is required." });
+    }
 
+    // Find and delete the order
+    const deletedOrder = await Order.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found." });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Order deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
 
 module.exports = {
   newOrder,
@@ -772,5 +823,4 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
- 
 };

@@ -9,23 +9,28 @@ const dashboard = async (req, res) => {
       }
   
       const deliveredOrders = orders.filter(
-        (order) => order.status === "Delivered"
+        (order) => ["Delivered", "new", "In-transit","Ready To Ship"].includes(order.status)
       );
 
-      const totalShipping = orders.filter(
-        (order) => order.status === "Delivered" || order.status === "In Transit"|| order.status === "Delivered"
-      )
-
-      console.log(totalShipping)
-     
+      const Shipments = orders.filter(
+        (order) => [ "new","Ready To Ship"].includes(order.status)
+      );
+      const TotalShipments=Shipments.length
+     const Delivereds=deliveredOrders.length
        // Total delivered
-      const Delivered = deliveredOrders.length;
+       const deliveredOrder = orders.filter(
+        (order) => ["Delivered"].includes(order.status)
+      );
+      const Delivered= deliveredOrder.length;
+
       // Total Revenue
       const totalRevenue = deliveredOrders.reduce((total, order) => {
         return total + order.paymentDetails.amount; // Sum up the amount for each delivered order
       }, 0);
       //Average Shipping
-     const averageShipping=totalRevenue/Delivered;
+    //  const averageShipping=totalRevenue/Delivered;
+     const averageShipping = Math.round(totalRevenue / Delivereds); // Rounds to the nearest whole number
+
 
      const pending = orders.filter(
         (order) => order.status === "new"
@@ -33,12 +38,16 @@ const dashboard = async (req, res) => {
      const pendingOrder=pending.length
      //total order
      const Intransit=orders.filter(
-        (order) => order.status === "In Transit"
+        (order) => order.status === "In-transit"
       );
      const intransite=Intransit.length
       const totalorder = orders.length;
   
-
+//pending pickup
+const pendingdata=orders.filter(
+  (order) => order.status === "Ready To Ship"
+);
+const pendingdatapickup=pendingdata.length
 
    
 
@@ -52,6 +61,8 @@ const dashboard = async (req, res) => {
         averageShipping,
         pendingOrder,
         intransite,
+        TotalShipments,
+        pendingdatapickup
     
       });
     } catch (error) {
