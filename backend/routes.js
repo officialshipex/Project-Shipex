@@ -47,7 +47,9 @@ router.use("/ratecalculate",isAuthorized,RateCalculate)
 
 router.use("/allCourier", AllCourierRoutes);
 const newOrderRoute = require("./routes/newOrder.router");
+const bulk=require("./routes/newBulkOrders.routes")
 
+router.use("/bulk",isAuthorized,bulk)
 const Razorpay=require("./recharge/recharge.route")
 
 router.use("/external", authRouter);
