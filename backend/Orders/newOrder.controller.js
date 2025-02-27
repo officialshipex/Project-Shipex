@@ -676,6 +676,9 @@ const tracking = async (req, res) => {
         }
 
         if (result && result.data) {
+          // Remove any empty objects from tracking array
+          order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
+        
           const lastTracking = order.tracking[order.tracking.length - 1];
         
           if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
@@ -692,18 +695,23 @@ const tracking = async (req, res) => {
           }
         }
         
+        
 
         if (result && result.success) {
           const status = result.data.Status.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
-            manifested: () =>
-              updateOrderStatus(order, "Ready To Ship", "manifested"),
-            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
-            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            "manifested": () => {
+              if ( order.status !== "Cancelled") {
+                updateOrderStatus(order, "Ready To Ship", "manifested");
+              }
+            },
+             
+            "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
               updateOrderStatus(order, "In-transit", "in transit"),
-            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
+            "delivered": () => updateOrderStatus(order, "Delivered", "delivered"),
           };
 
           if (statusMap[status]) {
