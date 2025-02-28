@@ -4,7 +4,7 @@ const AutoShip = async (order, wh, userId) => {
     console.log(order);
 
     const rules = await ShippingRules.find({ ruleType: "B2C order", status: true, user: userId });
-    console.log(rules);
+    console.log("888888",rules);
     const sortedRules = rules.sort((a, b) => a.setPriority - b.setPriority);
 
     const services = [];

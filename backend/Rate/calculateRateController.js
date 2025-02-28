@@ -100,7 +100,6 @@ async function calculateRateForService(payload) {
     const result = await getZone(pickupPincode, deliveryPincode);
 
     const currentZone = result.zone;
-    
 
     const ans = [];
     const l = parseFloat(length);
@@ -163,7 +162,6 @@ async function calculateRateForService(payload) {
           console.error("COD charge or percentage is not properly defined.");
         }
       }
-     
 
       const gstAmountForward = (
         (totalForwardCharge + codCharge) *
@@ -195,4 +193,124 @@ async function calculateRateForService(payload) {
   }
 }
 
-module.exports = { calculateRate, calculateRateForService };
+async function calculateRateForServiceBulk(payload) {
+  try {
+    const {
+      pickupPincode,
+      deliveryPincode,
+      length,
+      breadth,
+      height,
+      weight,
+      cod,
+      valueInINR,
+      userID,
+      filteredServices,
+      // rateCardType,
+    } = payload;
+console.log("9999999999",filteredServices)
+    const result = await getZone(pickupPincode, deliveryPincode);
+
+    const currentZone = result.zone;
+
+    const ans = [];
+    const l = parseFloat(length);
+    const b = parseFloat(breadth);
+    const h = parseFloat(height);
+    const deadweight = parseFloat(weight) / 1000;
+    const volumetricWeight = (l * b * h) / 5000;
+    const chargedWeight = weight * 1000;
+
+    // let codCharge = 0;
+    const gstRate = 18;
+
+    // const rateCards = [];
+    const plan = await Plan.findOne({ userId: userID });
+    let RateCards = plan.rateCard;
+
+    // for (rc of RateCards) {
+    //   let currentRate = await RateCard.findOne({
+    //     courierProviderName: fls.item.provider,
+    //     courierServiceName: fls.item.name,
+    //   });
+    //   rateCards.push(currentRate);
+    // }
+    // const finalRate = rateCards.filter(Boolean);
+
+    for (const rc of RateCards) {
+      // const basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
+      // const additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
+     
+  // if(rc.courierServiceName==){
+      const basicChargeForward = parseFloat(
+        rc.weightPriceBasic[0][currentZone]
+      );
+      const additionalChargeForward = parseFloat(
+        rc.weightPriceAdditional[0][currentZone]
+      );
+
+      let totalForwardCharge;
+      const count = Math.ceil(
+        (chargedWeight - rc.weightPriceBasic[0].weight) /
+          rc.weightPriceAdditional[0].weight
+      );
+      if (rc.weightPriceBasic[0].weight >= chargedWeight) {
+        totalForwardCharge = basicChargeForward;
+      } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
+        totalForwardCharge =
+          basicChargeForward + additionalChargeForward * count;
+      }
+      let codCharge = 0;
+      if (cod === "Yes") {
+        const orderValue = Number(valueInINR) || 0;
+        if (
+          typeof rc.codCharge === "number" &&
+          typeof rc.codPercent === "number"
+        ) {
+          const calculatedCodCharge = Math.max(
+            rc.codCharge,
+            orderValue * (rc.codPercent / 100)
+          );
+          codCharge += calculatedCodCharge;
+        } else {
+          console.error("COD charge or percentage is not properly defined.");
+        }
+      }
+    // }
+      const gstAmountForward = (
+        (totalForwardCharge + codCharge) *
+        (gstRate / 100)
+      ).toFixed(2);
+      const totalChargesForward = (
+        totalForwardCharge +
+        codCharge +
+        (totalForwardCharge + codCharge) * (gstRate / 100)
+      ).toFixed(2);
+
+      const allRates = {
+        courierServiceName: rc.courierServiceName,
+        cod: codCharge,
+        forward: {
+          charges: totalForwardCharge,
+          gst: gstAmountForward,
+          finalCharges: totalChargesForward,
+        },
+      };
+     if(allRates.courierServiceName===filteredServices.name){
+      ans.push(allRates);
+     }
+      // ans.push(allRates);
+    }
+    // console.log("0000000", ans);
+    return ans;
+  } catch (error) {
+    console.error("Error in Calculation:", error);
+    throw new Error("Error in Calculation");
+  }
+}
+
+module.exports = {
+  calculateRate,
+  calculateRateForService,
+  calculateRateForServiceBulk,
+};

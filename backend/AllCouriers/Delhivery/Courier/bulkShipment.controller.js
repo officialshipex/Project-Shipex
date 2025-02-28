@@ -5,51 +5,60 @@ const axios = require('axios');
 const { fetchBulkWaybills } = require("../Authorize/saveCourierContoller");
 const url = process.env.DELHIVERY_URL;
 const API_TOKEN = process.env.DEL_API_TOKEN;
-const Order = require("../../../models/orderSchema.model");
+const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
+const {createClientWarehouse}=require("./couriers.controller")
 
 
 const createShipmentFunctionDelhivery = async (selectedServiceDetails, id, wh,walletId,finalCharges) => {
-    const url = `${url}/api/cmu/create.json`;
+    const delUrl = `${url}/api/cmu/create.json`;
+    
 
     try {
         const currentOrder = await Order.findById(id);
+        // console.log("hjhvhjv",currentOrder)
+        const createClientWarehouses = await createClientWarehouse(
+            currentOrder.pickupAddress
+          );
         const currentWallet = await Wallet.findById(walletId);
 
         const waybills = await fetchBulkWaybills(1);
+        // console.log(waybills)
 
         const payment_type =
-            currentOrder.order_type === "Cash on Delivery" ? "COD" : "Pre-paid";
+            currentOrder.paymentDetails.method === "COD" ? "COD" : "Prepaid";
 
+            console.log("warehouse",wh)
         const payloadData = {
             pickup_location: {
-                name: wh.warehouseName || "Default Warehouse",
+                name: wh.contactName || "Default Warehouse",
             },
             shipments: [
                 {
                     Waybill: waybills[0],
                     country: "India",
-                    city: currentOrder.shipping_details.city,
-                    return_phone: wh.contactNo,
-                    pin: currentOrder.shipping_details.pinCode,
-                    state: currentOrder.shipping_details.state,
-                    order: currentOrder.order_id,
-                    add: `${currentOrder.shipping_details.address} ${currentOrder.shipping_details.address2}`,
+                    city: currentOrder.receiverAddress.city,
+                    // return_phone: wh.contactNo,
+                    pin: currentOrder.receiverAddress.pinCode,
+                    state: currentOrder.receiverAddress.state,
+                    order: currentOrder.orderId,
+                    add: currentOrder.receiverAddress.address || "Default Warehouse",
                     payment_mode: payment_type,
-                    quantity: currentOrder.Product_details.length.toString(),
-                    return_add: `${wh.addressLine1}`,
-                    phone: currentOrder.shipping_details.phone,
-                    total_amount: currentOrder.sub_total,
-                    name: `${currentOrder.shipping_details.firstName} ${currentOrder.shipping_details.lastName}`,
-                    return_country: "India",
-                    return_city: wh.city,
-                    return_state: wh.state,
-                    return_pin: wh.pinCode,
-                    shipment_height: currentOrder.shipping_cost.dimensions.height,
-                    shipment_width: currentOrder.shipping_cost.dimensions.width,
-                    shipment_length: currentOrder.shipping_cost.dimensions.length,
-                    cod_amount: payment_type === "COD" ? `${currentOrder.sub_total}` : "0",
+                    quantity: currentOrder.productDetails.reduce((sum, product) => sum + product.quantity, 0).toString(), // Total quantity
+                    // return_add: `${wh.addressLine1}`,
+                    phone: currentOrder.receiverAddress.phoneNumber,
+                    products_desc: currentOrder.productDetails.map(product => product.name).join(", "), // Join product names
+                    total_amount: currentOrder.paymentDetails.amount,
+                    name: currentOrder.receiverAddress.contactName || "Default Warehouse",
+                    // return_country: "India",
+                    // return_city: wh.city,
+                    // return_state: wh.state,
+                    // return_pin: wh.pinCode,
+                    shipment_height: currentOrder.packageDetails.volumetricWeight.height,
+                    shipment_width: currentOrder.packageDetails.volumetricWeight.width,
+                    shipment_length: currentOrder.packageDetails.volumetricWeight.length,
+                    cod_amount: payment_type === "COD" ? `${currentOrder.paymentDetails.amount}` : "0",
                 },
             ],
         };
@@ -57,53 +66,66 @@ const createShipmentFunctionDelhivery = async (selectedServiceDetails, id, wh,wa
         const payload = `format=json&data=${encodeURIComponent(
             JSON.stringify(payloadData)
         )}`;
-
-        const response = await axios.post(url, payload, {
-            headers: {
-                Authorization: `Token ${API_TOKEN}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        });
+        let response
+if(currentWallet.balance>=finalCharges){
+     response = await axios.post(delUrl, payload, {
+        headers: {
+            Authorization: `Token ${API_TOKEN}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    });
+}else{
+    return { status: 400,success:false,message:"Low Balance" };
+  
+}
+        // const response = await axios.post(delUrl, payload, {
+        //     headers: {
+        //         Authorization: `Token ${API_TOKEN}`,
+        //         "Content-Type": "application/x-www-form-urlencoded",
+        //     },
+        // });
 
         if (response.data.success) {
             const result = response.data.packages[0];
-
-            currentOrder.status = "Booked";
+            currentOrder.status = "Ready To Ship";
             currentOrder.cancelledAtStage = null;
             currentOrder.awb_number = result.waybill;
             currentOrder.shipment_id = `${result.refnum}`;
-            currentOrder.service_details = selectedServiceDetails._id;
-            currentOrder.warehouse = wh._id;
-            currentOrder.freightCharges =
-                finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-            currentOrder.tracking = [{ stage: "Order Booked" }];
-            await currentOrder.save();
-
-            const balanceToBeDeducted =
-                finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-            const currentBalance = currentWallet.balance - balanceToBeDeducted;
-
+            currentOrder.provider =selectedServiceDetails.provider;
+            currentOrder.totalFreightCharges =
+            finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+            currentOrder.courierServiceName =selectedServiceDetails.courierServiceName;
+            
+            currentOrder.shipmentCreatedAt = new Date();
+            let savedOrder = await currentOrder.save();
+            let balanceToBeDeducted =
+              finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+            // console.log("sjakjska",balanceToBeDeducted)
             await currentWallet.updateOne({
-                $inc: { balance: -balanceToBeDeducted },
-                $push: {
-                    transactions: {
-                        txnType: "Shipping",
-                        action: "debit",
-                        amount: balanceToBeDeducted,
-                        balanceAfterTransaction: currentBalance,
-                        awb_number: `${result.waybill}`,
-                    },
+              $inc: { balance: -balanceToBeDeducted },
+              $push: {
+                transactions: {
+                  channelOrderId: currentOrder.orderId || null, // Include if available
+                  category: "debit",
+                  amount: balanceToBeDeducted, // Fixing incorrect reference
+                  balanceAfterTransaction:
+                    currentWallet.balance - balanceToBeDeducted,
+                  date: new Date().toISOString().slice(0, 16).replace("T", " "),
+                  awb_number: result.waybill || "", // Ensuring it follows the schema
+                  description: `Freight Chages Applied`,
                 },
+              },
             });
-
-            return { status: 201, message: "Shipment Created Successfully" };
-        } else {
+            return { status: 201, message: "Shipment Created Succesfully", details: response.data };
+           
+          } else {
             return { status: 400, error: 'Error creating shipment', details: response.data };
         }
     } catch (error) {
         console.log(error);
         console.error('Error in creating shipment:', error.message);
-        return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+        return { status: 500,error: 'Internal Server Error', message: error.message  }
+      
     }
 };
 

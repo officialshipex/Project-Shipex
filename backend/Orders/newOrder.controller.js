@@ -298,7 +298,7 @@ const updateOrder = async (req, res) => {
 };
 const getOrdersById = async (req, res) => {
   const { id } = req.params;
-  console.log("Received ID:", id);
+  // console.log("Received ID:", id);
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: "Invalid order ID format" });
