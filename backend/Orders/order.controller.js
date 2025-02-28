@@ -95,50 +95,50 @@ function calculateOrderTotals(orderData) {
   };
 }
 
-const createOrder = async (req, res) => {
-  try {
-    // console.log("I am in createOrder");
-    const data = req.body.formData;
-    const id = req.body.user._id;
-    const shipping_is_billing = req.body.isSame;
+// const createOrder = async (req, res) => {
+//   try {
+//     // console.log("I am in createOrder");
+//     const data = req.body.formData;
+//     const id = req.body.user._id;
+//     const shipping_is_billing = req.body.isSame;
 
-    const currentUser = await User.findById(id);
+//     const currentUser = await User.findById(id);
 
-    let newOrder = new Order({
-      order_id: data.orderInfo.orderID,
-      order_type: data.orderInfo.orderType,
-      orderCategory: "B2C-forward",
-      shipping_details: data.shippingInfo,
-      Biling_details: data.billingInfo,
-      Product_details: data.productDetails,
-      shipping_cost: data.shippingCost,
-      status: "Not-Shipped",
-      sub_total: data.sub_total,
-      shipping_is_billing,
-    });
+//     let newOrder = new Order({
+//       order_id: data.orderInfo.orderID,
+//       order_type: data.orderInfo.orderType,
+//       orderCategory: "B2C-forward",
+//       shipping_details: data.shippingInfo,
+//       Biling_details: data.billingInfo,
+//       Product_details: data.productDetails,
+//       shipping_cost: data.shippingCost,
+//       status: "Not-Shipped",
+//       sub_total: data.sub_total,
+//       shipping_is_billing,
+//     });
 
-    let result = await newOrder.save();
-    currentUser.orders.push(result._id);
-    await currentUser.save();
-    res
-      .status(201)
-      .json({ message: "Order created successfully", order: result });
-  } catch (error) {
-    console.error("Error in createOrder:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to create order", error: error.message });
-  }
-};
+//     let result = await newOrder.save();
+//     currentUser.orders.push(result._id);
+//     await currentUser.save();
+//     res
+//       .status(201)
+//       .json({ message: "Order created successfully", order: result });
+//   } catch (error) {
+//     console.error("Error in createOrder:", error);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to create order", error: error.message });
+//   }
+// };
 
-const getAllOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({}).populate("service_details");
-    return res.status(201).json(orders);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// const getAllOrders = async (req, res) => {
+//   try {
+//     const orders = await Order.find({}).populate("service_details");
+//     return res.status(201).json(orders);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
 
 const getOrderDetails = async (req, res) => {
   try {

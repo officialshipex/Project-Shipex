@@ -17,7 +17,7 @@ const {
 
 const checkServiceabilityAll = async (service, id, pincode) => {
   try {
-console.log("kkkkkkkkkkk",service)
+// console.log("kkkkkkkkkkk",service, id, pincode)
     const currentOrder = await Order.findById(id);
     if (!currentOrder) throw new Error("Order not found");
 
