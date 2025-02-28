@@ -17,7 +17,7 @@ const calculateRate = async (req, res) => {
 
     let ans = [];
     const chargedWeight = req.body.applicableWeight * 1000;
-    let cod = 0;
+
     let gst = 18;
     let provider;
     let mode;
@@ -39,6 +39,7 @@ const calculateRate = async (req, res) => {
       } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
         finalChargef = basicChargef + additionalChargef * count;
       }
+      let cod = 0;
       if (req.body.paymentType === "COD") {
         const orderValue = Number(req.body.declaredValue) || 0;
         if (
@@ -55,9 +56,9 @@ const calculateRate = async (req, res) => {
           console.error("COD charge or percentage is not properly defined.");
         }
       }
-
+      // console.log("22222200",cod)
       let gstAmountf = (finalChargef + cod) * (gst / 100).toFixed(2);
-      let totchargesf = finalChargef + cod + gstAmountf;
+      let totchargesf = Math.round(finalChargef + cod + gstAmountf);
 
       let allRates = {};
       allRates.courierServiceName = rc.courierServiceName;
@@ -99,6 +100,7 @@ async function calculateRateForService(payload) {
     const result = await getZone(pickupPincode, deliveryPincode);
 
     const currentZone = result.zone;
+    
 
     const ans = [];
     const l = parseFloat(length);
@@ -108,7 +110,7 @@ async function calculateRateForService(payload) {
     const volumetricWeight = (l * b * h) / 5000;
     const chargedWeight = weight * 1000;
 
-    let codCharge = 0;
+    // let codCharge = 0;
     const gstRate = 18;
 
     // const rateCards = [];
@@ -134,7 +136,6 @@ async function calculateRateForService(payload) {
         rc.weightPriceAdditional[0][currentZone]
       );
 
-   
       let totalForwardCharge;
       const count = Math.ceil(
         (chargedWeight - rc.weightPriceBasic[0].weight) /
@@ -143,9 +144,10 @@ async function calculateRateForService(payload) {
       if (rc.weightPriceBasic[0].weight >= chargedWeight) {
         totalForwardCharge = basicChargeForward;
       } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
-        totalForwardCharge = basicChargeForward + additionalChargeForward * count;
+        totalForwardCharge =
+          basicChargeForward + additionalChargeForward * count;
       }
-
+      let codCharge = 0;
       if (cod === "Yes") {
         const orderValue = Number(valueInINR) || 0;
         if (
@@ -161,6 +163,7 @@ async function calculateRateForService(payload) {
           console.error("COD charge or percentage is not properly defined.");
         }
       }
+     
 
       const gstAmountForward = (
         (totalForwardCharge + codCharge) *
@@ -184,7 +187,7 @@ async function calculateRateForService(payload) {
 
       ans.push(allRates);
     }
-    // console.log("2222222222222222222",ans)
+    // console.log("0000000", ans);
     return ans;
   } catch (error) {
     console.error("Error in Calculation:", error);
