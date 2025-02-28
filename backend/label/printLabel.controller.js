@@ -50,10 +50,12 @@ router.get("/generate-pdf/:id", async (req, res) => {
       .fontSize(14)
       .font("Helvetica")
       .text(orderData.receiverAddress.contactName, { align: "left" });
-    doc.text(
-      `${orderData.receiverAddress.address},${orderData.receiverAddress.city},${orderData.receiverAddress.state},${orderData.receiverAddress.pinCode}`,
-      { align: "left" }
-    );
+    doc.text(`${orderData.receiverAddress.address}`, {
+      align: "left",
+      width: 300, // Set this to half of your PDF width
+      lineBreak: true, // Ensures text moves to the next line if needed
+    });
+
     doc.text(
       `${orderData.receiverAddress.city},${orderData.receiverAddress.state},${orderData.receiverAddress.pinCode}`,
       { align: "left" }
@@ -98,12 +100,13 @@ router.get("/generate-pdf/:id", async (req, res) => {
     doc.moveDown();
     doc.moveDown();
     // COD and Product Details
-    const paymentText = orderData.paymentDetails.method === 'COD' ? 'COD' : 'Prepaid';
+    const paymentText =
+      orderData.paymentDetails.method === "COD" ? "COD" : "Prepaid";
 
-doc
-  .fontSize(18)
-  .font("Helvetica-Bold")
-  .text(paymentText, { align: "left", indent: 150 });
+    doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .text(paymentText, { align: "left", indent: 150 });
 
     doc
       .fontSize(18)
@@ -127,8 +130,6 @@ doc
       }
     );
 
-    
-
     // Add the barcode to the right side of the section
     const barcodeX1 = 350; // X-coordinate for the barcode
     const barcodeY1 = doc.y - 80; // Y-coordinate for the barcode
@@ -137,7 +138,9 @@ doc
     const currentY = doc.y;
 
     // Display provider name slightly above the barcode without affecting other content
-    doc.font("Helvetica-Bold").text(orderData.courierServiceName, barcodeX1 + 45, barcodeY1 - 15);
+    doc
+      .font("Helvetica-Bold")
+      .text(orderData.courierServiceName, barcodeX1 + 45, barcodeY1 - 15);
 
     // Render barcode image
     doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 150, height: 50 });
