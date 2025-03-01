@@ -795,7 +795,7 @@ const trackOrders = async () => {
 // Run tracking every 1 minute
 // setInterval(trackOrders, 60 * 1000);
 
-setInterval(trackOrders, 60 * 10000);
+setInterval(trackOrders, 60 * 1000);
 const passbook = async (req, res) => {
   try {
     const userId = req.user._id;

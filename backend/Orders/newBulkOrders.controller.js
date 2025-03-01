@@ -257,7 +257,6 @@ const createBulkOrder = async (req, res) => {
             walletId,
             charges
           );
-// console.log("result",result)
           if (result) {
             successCount++;
             remainingOrders.splice(remainingOrders.indexOf(order), 1);
