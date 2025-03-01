@@ -401,7 +401,7 @@ verfication.post("/verify-otp", async (req, res) => {
 
     const response = await axios.request(config);
 
-    // console.log("response:", response);
+    console.log("response:", response.data);
 
     const newAadhaar = new Aadhaar({
       user: userId,
@@ -423,7 +423,7 @@ verfication.post("/verify-otp", async (req, res) => {
       data: newAadhaar,
     });
   } catch (err) {
-    console.log("err:", err);
+    console.log("err:", err.response.data);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
