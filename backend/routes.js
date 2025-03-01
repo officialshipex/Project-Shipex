@@ -91,7 +91,7 @@ router.use("/Delhivery", DelhiveryController);
 router.use("/label", LabelRouter);
 router.use("/user", userRouter);
 router.use("/warehouse", WareHouse);
-router.use("/bulkOrderUpload", bulkOrderUploadRoutes);
+router.use("/bulkOrderUpload",isAuthorized, bulkOrderUploadRoutes);
 router.use("/printlabel", PrintLabelRoute);
 router.use("/printinvoice", PrintInvoice);
 router.use("/manifest",PrintManifest)
