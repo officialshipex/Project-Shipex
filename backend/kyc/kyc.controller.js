@@ -447,7 +447,7 @@ verfication.post("/bank-account", async (req, res) => {
     // const userId = "6711f5f10d7b30f7193c55fd";
 
     const { accountNo, ifsc } = req.body;
-    // console.log(req.body)
+    console.log(req.body)
 
     if (!accountNo || !ifsc) {
       return res.status(400).json({
@@ -456,14 +456,14 @@ verfication.post("/bank-account", async (req, res) => {
       });
     }
 
-    const validateField = validateBankDetails(accountNo, ifsc);
+    // const validateField = validateBankDetails(accountNo, ifsc);
 
-    if (!validateField.valid) {
-      return res.status(400).json({
-        success: false,
-        message: validateField.message,
-      });
-    }
+    // if (!validateField.valid) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: validateField.message,
+    //   });
+    // }
 
     const bankAccountExists = await BankAccount.findOne({
       accountNumber: accountNo,
@@ -486,7 +486,7 @@ verfication.post("/bank-account", async (req, res) => {
       bank_account: accountNo,
       ifsc: ifsc,
     });
-
+console.log(data)
     let signature = getSignature();
 
     let config = {
@@ -505,9 +505,10 @@ verfication.post("/bank-account", async (req, res) => {
     };
 
     const response = await axios.request(config);
-    // console.log(response.data);
+    console.log(response);
 
     if (response.data.account_status === "INVALID") {
+      console.log("response.data.account_status_code:", response.data.account_status_code);
       return res.status(400).json({
         success: false,
         message: response.data.account_status_code,
@@ -534,7 +535,7 @@ verfication.post("/bank-account", async (req, res) => {
       data: newBankAccount,
     });
   } catch (err) {
-    // console.log("err:", err);
+    console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({
