@@ -64,6 +64,12 @@ const bulkOrdersCSV = require("../model/bulkOrderCSV.model.js");
 //     }
 // };
 
+
+
+
+
+
+
 const downloadSampleExcel = async (req, res) => {
   try {
     // Create a new workbook and add a worksheet
@@ -72,42 +78,81 @@ const downloadSampleExcel = async (req, res) => {
 
     // Define headers
     worksheet.columns = [
-      { header: "*Reciver contactName", key: "contactName", width: 30 },
-      { header: "*Reciver email", key: "email", width: 30 },
-      { header: "*Reciver phoneNumber", key: "phoneNumber", width: 30 },
-      { header: "*Reciver address", key: "address", width: 40 },
-      { header: "*Reciver pinCode", key: "pinCode", width: 30 },
-      { header: "*Reciver city", key: "city", width: 25},
-      { header: "*Reciver state", key: "state", width: 25},
-      { header: "*quantity", key: "quantity", width: 20 },
-      { header: "*Productname", key: "name", width: 20 },
-      { header: "*sku", key: "sku", width: 15 },
-      { header: "*unitPrice", key: "unitPrice", width: 20 },
-      { header: "*deadWeight(kg)", key: "deadWeight", width: 20 },
-      { header: "*length(cm)", key: "length", width: 20 },
-      { header: "*width(cm)", key: "width", width: 20 },
-      { header: "*height(cm)", key: "height", width: 20 },
-      { header: "*method(COD/Prepaid)", key: "method", width: 25 },
+      { header: "*Receiver Contact Name", key: "contactName", width: 30 },
+      { header: "*Receiver Email", key: "email", width: 30 },
+      { header: "*Receiver Phone Number", key: "phoneNumber", width: 30 },
+      { header: "*Receiver Address", key: "address", width: 40 },
+      { header: "*Receiver Pin Code", key: "pinCode", width: 15 },
+      { header: "*Receiver City", key: "city", width: 25 },
+      { header: "*Receiver State", key: "state", width: 25 },
+      { header: "*Dead Weight (kg)", key: "deadWeight", width: 20 },
+      { header: "*Length (cm)", key: "length", width: 20 },
+      { header: "*Width (cm)", key: "width", width: 20 },
+      { header: "*Height (cm)", key: "height", width: 20 },
+      
+      // Mandatory Product 1
+      { header: "*Product 1 Name", key: "product1_name", width: 30 },
+      { header: "*Product 1 SKU", key: "product1_sku", width: 30 },
+      { header: "*Product 1 Quantity", key: "product1_quantity", width: 30 },
+      { header: "*Product 1 Unit Price", key: "product1_price", width: 30 },
+
+      // Optional Product 2
+      { header: "Product 2 Name (Optional)", key: "product2_name", width: 30 },
+      { header: "Product 2 SKU (Optional)", key: "product2_sku", width: 30 },
+      { header: "Product 2 Quantity (Optional)", key: "product2_quantity", width: 30 },
+      { header: "Product 2 Unit Price (Optional)", key: "product2_price", width: 30 },
+
+      // Optional Product 3
+      { header: "Product 3 Name (Optional)", key: "product3_name", width: 30 },
+      { header: "Product 3 SKU (Optional)", key: "product3_sku", width: 30 },
+      { header: "Product 3 Quantity (Optional)", key: "product3_quantity", width: 30 },
+      { header: "Product 3 Unit Price (Optional)", key: "product3_price", width: 30 },
+
+      { header: "*Method (COD/Prepaid)", key: "method", width: 20 },
     ];
 
-    // Add a sample row
-    // worksheet.addRow({
-    //     orderId: "12345",
-    //     customerName: "John Doe",
-    //     phoneNumber: "9876543210",
-    //     shippingAddress: "123 Main St",
-    //     city: "New York",
-    //     state: "NY",
-    //     pincode: "10001",
-    //     productName: "Laptop",
-    //     quantity: 1,
-    //     price: 1000
-    // });
-    // Center-align all header cells
+    // Add a sample row with mandatory product 1 and optional products
+    worksheet.addRow({
+      contactName: "John Doe",
+      email: "johndoe@example.com",
+      phoneNumber: "9876543210",
+      address: "123 Main Street, New York",
+      pinCode: "10001",
+      city: "New York",
+      state: "NY",
+
+      deadWeight: 2, // in kg
+      length: 30, // in cm
+      width: 20, // in cm
+      height: 10, // in cm
+
+      // Mandatory Product 1
+      product1_name: "Wireless Headphones",
+      product1_sku: "WH123",
+      product1_quantity: 1,
+      product1_price: 50,
+
+      // Optional Product 2 (provided)
+      product2_name: "Smartwatch",
+      product2_sku: "SW456",
+      product2_quantity: 2,
+      product2_price: 150,
+
+      // Optional Product 3 (empty)
+      product3_name: "",
+      product3_sku: "",
+      product3_quantity: "",
+      product3_price: "",
+
+      method: "Prepaid",
+    });
+
+    // Format the header row
     worksheet.getRow(1).eachCell((cell) => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
-      cell.font = { bold: true }; // Optional: Make headers bold
+      cell.font = { bold: true }; // Make headers bold
     });
+
     // Set response headers for file download
     res.setHeader(
       "Content-Type",
@@ -119,11 +164,16 @@ const downloadSampleExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Error generating Excel file", details: error.message });
+    console.error("Error generating Excel file:", error);
+    res.status(500).json({ error: "Error generating Excel file", details: error.message });
   }
 };
+
+
+
+
+
+
 
 // Helper function to read CSV file and store in database
 function parseCSV(filePath, fileData) {
@@ -228,12 +278,131 @@ function parseExcel(filePath) {
 }
 
 // Controller function to handle file upload and order processing
-const bulkOrder = async (req, res) => {
-  // console.log("req.file--",req.file)
-  const userID=req.user._id
-  // console.log("userID",userID)
+// const bulkOrder = async (req, res) => {
+//   const userID=req.user._id
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: "No file uploaded" });
+//     }
 
+//     // Save file metadata
+//     const fileData = new File({
+//       filename: req.file.filename,
+//       date: new Date(),
+//       status: "Processing",
+//     });
+//     await fileData.save();
+
+//     // Determine the file extension
+//     const fileExtension = path.extname(req.file.originalname).toLowerCase();
+//     let orders = [];
+
+//     // Parse the file based on its extension
+//     if (fileExtension === ".csv") {
+//       orders = await parseCSV(req.file.path, fileData);
+//     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
+//       orders = parseExcel(req.file.path);
+//     } else {
+//       return res.status(400).json({ error: "Unsupported file format" });
+//     }
+  
+//      // **Validation: Check if file contains data**
+//      if (!orders || orders.length === 0) {
+//       return res.status(400).json({ error: "The uploaded file is empty or contains invalid data" });
+//     }
+//     // Map parsed data to Order model format
+//     const defaultPickupAddress = {
+//       contactName: "Default Name",
+//       email: "default@example.com",
+//       phoneNumber: "0000000000",
+//       address: "Default Address",
+//       pinCode: "000000",
+//       city: "Default City",
+//       state: "Default State"
+//     };
+    
+//     const orderDocs = await Promise.all(orders.map(async (row) => {
+      
+//       const deadWeights = parseFloat(row["*deadWeight(kg)"] || 0); // Keep in kg
+
+// const volumetricWeights = (
+//   (parseFloat(row["*length(cm)"] || 0) *
+//   parseFloat(row["*width(cm)"] || 0) *
+//   parseFloat(row["*height(cm)"] || 0)) / 5000 // Keep in kg
+// );
+
+// const applicableWeights = Math.max(deadWeights, volumetricWeights); // Keep in kg
+//       let orderId;
+//       let isUnique = false;
+    
+//       while (!isUnique) {
+//         orderId = Math.floor(100000 + Math.random() * 900000); // Generates a random six-digit number
+//         const existingOrder = await Order.findOne({ orderId });
+//         if (!existingOrder) {
+//           isUnique = true;
+//         }
+//       }
+    
+//       return {
+//         userId: userID,
+//         orderId: orderId,
+//         pickupAddress: defaultPickupAddress, // Setting default pickup details
+//         receiverAddress: {
+//           contactName: row["*Reciver contactName"] || "Unknown",
+//           email: row["*Reciver email"] || "unknown@example.com",
+//           phoneNumber: row["*Reciver phoneNumber"] || "0000000000",
+//           address: row["*Reciver address"] || "No Address",
+//           pinCode: row["*Reciver pinCode"] || "000000",
+//           city: row["*Reciver city"] || "Unknown City",
+//           state: row["*Reciver state"] || "Unknown State"
+//         },
+//         paymentDetails: {
+//           method: row["*method(COD/Prepaid)"] || "Prepaid",
+//           amount: parseFloat(row["*unitPrice"] || 0)
+//         },
+//         productDetails: [{
+//           id: 1,
+//           quantity: parseInt(row["*quantity"] || 1),
+//           name: row["*Productname"] || "Unknown Product",
+//           sku: row["*sku"] || "UNKNOWN_SKU",
+//           unitPrice: parseFloat(row["*unitPrice"] || 0)
+//         }],
+//         packageDetails: {
+//           deadWeight: parseFloat(row["*deadWeight(kg)"] || 0),
+//           applicableWeight: applicableWeights,
+//           volumetricWeight: {
+//             length: parseFloat(row["*length(cm)"] || 0),
+//             width: parseFloat(row["*width(cm)"] || 0),
+//             height: parseFloat(row["*height(cm)"] || 0)
+//           }
+//         },
+//         status: "new"
+//       };
+//     }));
+//     console.log("-------->",orderDocs)
+//     // Insert all orders in bulk
+//     await Order.insertMany(orderDocs);
+   
+//     // Update file metadata
+//     fileData.status = "Completed";
+//     fileData.noOfOrders = orderDocs.length;
+//     fileData.successfullyUploaded = orderDocs.length; // Assuming all are successful initially
+//     await fileData.save();
+
+//     return res.status(200).json({
+//       message: "bulk order upload  successfully",
+//       file: fileData,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(500)
+//       .json({ error: "An error occurred while processing the file" });
+//   }
+// };
+const bulkOrder = async (req, res) => {
   try {
+    const userID=req.user._id
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -248,23 +417,22 @@ const bulkOrder = async (req, res) => {
 
     // Determine the file extension
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
-    // console.log("fileextension:", fileExtension);
     let orders = [];
 
     // Parse the file based on its extension
     if (fileExtension === ".csv") {
       orders = await parseCSV(req.file.path, fileData);
     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
-      orders = parseExcel(req.file.path);
+      orders = await parseExcel(req.file.path);
     } else {
       return res.status(400).json({ error: "Unsupported file format" });
     }
-  
-     // **Validation: Check if file contains data**
-     if (!orders || orders.length === 0) {
+
+    // Validation: Check if file contains data
+    if (!orders || orders.length === 0) {
       return res.status(400).json({ error: "The uploaded file is empty or contains invalid data" });
     }
-    // Map parsed data to Order model format
+
     const defaultPickupAddress = {
       contactName: "Default Name",
       email: "default@example.com",
@@ -272,87 +440,115 @@ const bulkOrder = async (req, res) => {
       address: "Default Address",
       pinCode: "000000",
       city: "Default City",
-      state: "Default State"
+      state: "Default State",
     };
-    
-    const orderDocs = await Promise.all(orders.map(async (row) => {
+
+    const orderDocs = await Promise.all(
+      orders.map(async (row, index) => {
+        const deadWeight = parseFloat(row["*Dead Weight (kg)"] || 0);
+        const volumetricWeight =
+          (parseFloat(row["*Length (cm)"] || 0) *
+            parseFloat(row["*Width (cm)"] || 0) *
+            parseFloat(row["*Height (cm)"] || 0)) /
+          5000;
+        const applicableWeight = Math.max(deadWeight, volumetricWeight);
+
+        let orderId;
+        let isUnique = false;
       
-      const deadWeights = parseFloat(row["*deadWeight(kg)"] || 0); // Keep in kg
-
-const volumetricWeights = (
-  (parseFloat(row["*length(cm)"] || 0) *
-  parseFloat(row["*width(cm)"] || 0) *
-  parseFloat(row["*height(cm)"] || 0)) / 5000 // Keep in kg
-);
-
-const applicableWeights = Math.max(deadWeights, volumetricWeights); // Keep in kg
-      let orderId;
-      let isUnique = false;
-    
-      while (!isUnique) {
-        orderId = Math.floor(100000 + Math.random() * 900000); // Generates a random six-digit number
-        const existingOrder = await Order.findOne({ orderId });
-        if (!existingOrder) {
-          isUnique = true;
+        while (!isUnique) {
+          orderId = Math.floor(100000 + Math.random() * 900000); // Generates a random six-digit number
+          const existingOrder = await Order.findOne({ orderId });
+          if (!existingOrder) {
+            isUnique = true;
+          }
         }
-      }
-    
-      return {
+
+        return {
         userId: userID,
         orderId: orderId,
-        pickupAddress: defaultPickupAddress, // Setting default pickup details
-        receiverAddress: {
-          contactName: row["*Reciver contactName"] || "Unknown",
-          email: row["*Reciver email"] || "unknown@example.com",
-          phoneNumber: row["*Reciver phoneNumber"] || "0000000000",
-          address: row["*Reciver address"] || "No Address",
-          pinCode: row["*Reciver pinCode"] || "000000",
-          city: row["*Reciver city"] || "Unknown City",
-          state: row["*Reciver state"] || "Unknown State"
-        },
-        paymentDetails: {
-          method: row["*method(COD/Prepaid)"] || "Prepaid",
-          amount: parseFloat(row["*unitPrice"] || 0)
-        },
-        productDetails: [{
-          id: 1,
-          quantity: parseInt(row["*quantity"] || 1),
-          name: row["*Productname"] || "Unknown Product",
-          sku: row["*sku"] || "UNKNOWN_SKU",
-          unitPrice: parseFloat(row["*unitPrice"] || 0)
-        }],
-        packageDetails: {
-          deadWeight: parseFloat(row["*deadWeight(kg)"] || 0),
-          applicableWeight: applicableWeights,
-          volumetricWeight: {
-            length: parseFloat(row["*length(cm)"] || 0),
-            width: parseFloat(row["*width(cm)"] || 0),
-            height: parseFloat(row["*height(cm)"] || 0)
-          }
-        },
-        status: "new"
-      };
-    }));
-    console.log("-------->",orderDocs)
+          pickupAddress: defaultPickupAddress,
+          receiverAddress: {
+            contactName: row["*Receiver Contact Name"] || "Unknown",
+            email: row["*Receiver Email"] || "unknown@example.com",
+            phoneNumber: row["*Receiver Phone Number"] || "0000000000",
+            address: row["*Receiver Address"] || "No Address",
+            pinCode: row["*Receiver Pin Code"] || "000000",
+            city: row["*Receiver City"] || "Unknown City",
+            state: row["*Receiver State"] || "Unknown State",
+          },
+          paymentDetails: {
+            method: row["*Method (COD/Prepaid)"] || "Prepaid",
+            amount:
+              parseFloat(row["*Product 1 Unit Price"] || 0) +
+              parseFloat(row["Product 2 Unit Price (Optional)"] || 0) +
+              parseFloat(row["Product 3 Unit Price (Optional)"] || 0),
+          },
+          productDetails: [
+            {
+              id: 1,
+              name: row["*Product 1 Name"] || "Unknown Product",
+              sku: row["*Product 1 SKU"] || "UNKNOWN_SKU",
+              quantity: parseInt(row["*Product 1 Quantity"] || 1),
+              unitPrice: parseFloat(row["*Product 1 Unit Price"] || 0),
+            },
+            ...(row["Product 2 Name (Optional)"]
+              ? [
+                  {
+                    id: 2,
+                    name: row["Product 2 Name (Optional)"],
+                    sku: row["Product 2 SKU (Optional)"] || "UNKNOWN_SKU",
+                    quantity: parseInt(row["Product 2 Quantity (Optional)"] || 1),
+                    unitPrice: parseFloat(row["Product 2 Unit Price (Optional)"] || 0),
+                  },
+                ]
+              : []),
+            ...(row["Product 3 Name (Optional)"]
+              ? [
+                  {
+                    id: 3,
+                    name: row["Product 3 Name (Optional)"],
+                    sku: row["Product 3 SKU (Optional)"] || "UNKNOWN_SKU",
+                    quantity: parseInt(row["Product 3 Quantity (Optional)"] || 1),
+                    unitPrice: parseFloat(row["Product 3 Unit Price (Optional)"] || 0),
+                  },
+                ]
+              : []),
+          ],
+          packageDetails: {
+            deadWeight,
+            applicableWeight,
+            volumetricWeight: {
+              length: parseFloat(row["*Length (cm)"] || 0),
+              width: parseFloat(row["*Width (cm)"] || 0),
+              height: parseFloat(row["*Height (cm)"] || 0),
+            },
+          },
+          status: "new",
+        };
+      })
+    );
+
     // Insert all orders in bulk
     await Order.insertMany(orderDocs);
-   
+
     // Update file metadata
     fileData.status = "Completed";
     fileData.noOfOrders = orderDocs.length;
-    fileData.successfullyUploaded = orderDocs.length; // Assuming all are successful initially
+    fileData.successfullyUploaded = orderDocs.length;
     await fileData.save();
 
     return res.status(200).json({
-      message: "bulk order upload  successfully",
+      message: "Bulk order uploaded successfully",
       file: fileData,
     });
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while processing the file" });
+    res.status(500).json({ error: "An error occurred while processing the file" });
   }
 };
+
+// module.exports = { bulkOrder };
+
 
 module.exports = { bulkOrder, downloadSampleExcel };
