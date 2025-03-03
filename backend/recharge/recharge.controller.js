@@ -251,7 +251,7 @@ const createOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
-    console.log("12345676",order)
+    // console.log("12345676",order)
     res.json({ success: true, order });
   } catch (error) {
     res
@@ -270,7 +270,7 @@ const verifyPayment = async (req, res) => {
     amount
   } = req.body;
 
-  console.log("ooooooooooooooooo",req.body);
+  // console.log("ooooooooooooooooo",req.body);
 
   const generated_signature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
