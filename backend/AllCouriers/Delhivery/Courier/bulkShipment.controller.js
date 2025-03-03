@@ -33,7 +33,7 @@ const createShipmentFunctionDelhivery = async (
     const payment_type =
       currentOrder.paymentDetails.method === "COD" ? "COD" : "Prepaid";
 
-    console.log("warehouse", wh);
+    console.log("warehouse", selectedServiceDetails);
     const payloadData = {
       pickup_location: {
         name: wh.contactName || "Default Warehouse",
@@ -106,7 +106,7 @@ const createShipmentFunctionDelhivery = async (
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName =
-        selectedServiceDetails.courierServiceName;
+        selectedServiceDetails.name;
 
       currentOrder.shipmentCreatedAt = new Date();
       let savedOrder = await currentOrder.save();
