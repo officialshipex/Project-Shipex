@@ -3,7 +3,7 @@ const Plan = require("../models/Plan.model");
 const Warehouse = require("../models/wareHouse.model");
 const Order = require("../models/orderSchema.model");
 const Wallet = require("./wallet");
-
+const CodPlan = require("../COD/codPan.model");
 const usersSchema = new mongoose.Schema({
     fullname: {
         type: String,
@@ -80,6 +80,13 @@ usersSchema.pre("save", async function (next) {
             });
             const savedWallet = await wallet.save();
             this.Wallet = savedWallet._id;
+
+            const codPlan = new CodPlan({
+                user: this._id, // Associate with User
+                planName: "D+7", // Default plan
+            });
+
+            await codPlan.save();
             next();
         }
         catch (error) {

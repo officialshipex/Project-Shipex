@@ -739,7 +739,7 @@ const tracking = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error });
   }
 };
-
+setInterval(tracking, 60 * 600000);
 
 
 const trackOrders = async () => {
@@ -884,4 +884,5 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
+  trackOrders
 };
