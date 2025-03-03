@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/generate-pdf/:id", async (req, res) => {
   try {
     const orderData = await Order.findOne({ _id: req.params.id });
-    // console.log(orderData);
+    console.log(orderData);
     if (!orderData) {
       return res.status(404).send("Order not found");
     }
