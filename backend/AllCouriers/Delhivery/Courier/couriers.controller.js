@@ -199,7 +199,7 @@ const createOrder = async (req, res) => {
 
 const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   if (!pincode) {
-    return res.status(400).json({ error: "Pincode is required" });
+    return "Pincode is required" 
   }
 
 
