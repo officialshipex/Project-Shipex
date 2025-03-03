@@ -42,6 +42,8 @@ const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
 const dashboard=require("./dashboard/dashboard,router")
 //rate
+const Cod=require("./COD/cod.router")
+router.use("/cod",isAuthorized,Cod)
 const RateCalculate=require("./routes/Ratecalculate.router")
 router.use("/ratecalculate",isAuthorized,RateCalculate)
 
