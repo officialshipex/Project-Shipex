@@ -268,7 +268,7 @@ const updateOrder = async (req, res) => {
             existingOrder.packageDetails.volumetricWeight.length,
           width:
             packageDetails.volumetricWeight?.width ||
-            existingOrder.packageDetails.volumetricWeight.width,
+            existingOrder.packageDetails.volumetricWeight.width,                  
           height:
             packageDetails.volumetricWeight?.height ||
             existingOrder.packageDetails.volumetricWeight.height,
