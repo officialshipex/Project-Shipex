@@ -6,7 +6,6 @@ const User = require("../models/User.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const {sendWelcomeEmail}=require("../notification/welcomeNotification")
-
 const FRONTEND_URL =process.env.NODE_ENV!="production"?"http://localhost:5173":process.env.FRONTEND_URL;
 //for User Registration
 const register = async (req, res) => {
@@ -91,6 +90,7 @@ const register = async (req, res) => {
         fullname: newUser.fullname,
       },
     };
+
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
      //welcome email

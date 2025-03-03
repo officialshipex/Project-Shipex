@@ -16,6 +16,7 @@ const {
   updateOrder,
   passbook,
   getUser,
+  trackOrders,
   
 } = require("../Orders/newOrder.controller"); // Adjust path to your controller
 const router = express.Router();
@@ -37,5 +38,5 @@ router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
 router.post("/tracking",tracking)
 router.get("/passbook",passbook)
 router.get("/getUser",getUser)
-
+router.post("/webhookTracking",trackOrders)
 module.exports = router;
