@@ -366,7 +366,7 @@ const checkServiceabilityXpressBees = async (service, payload) => {
 
   try {
     const token = await getToken();
-    console.log(token);
+    // console.log(token);
 
     const response = await axios.post(
       `${BASE_URL}/api/courier/serviceability`,

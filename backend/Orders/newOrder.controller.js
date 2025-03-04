@@ -432,7 +432,8 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        if (result || result.success) {
+        // console.log("resultttttttt",result)
+        if (result && result.success) {
           return {
             item,
 
@@ -448,6 +449,7 @@ const ShipeNowOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
+    // console.log("filteredServices",filteredServices)
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
