@@ -89,28 +89,32 @@ router.get("/generate-pdf/:id", async (req, res) => {
     doc.moveDown(2);
 
     const paymentText =
-      orderData.paymentDetails.method === "COD" ? "COD" : "Prepaid";
+      orderData.paymentDetails.method === "COD" ? "COD" : "PREPAID";
+
+      doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .text("MODE: ", 30, doc.y, { continued: true }) // Keep on same line
+      .font("Helvetica")
+      .text(paymentText);
+    
     doc
       .fontSize(18)
       .font("Helvetica-Bold")
-      .text(paymentText, { align: "left", indent: 150 });
-    doc
-      .fontSize(18)
+      .text("AMOUNT: ", 30, doc.y, { continued: true }) // Keep on same line
       .font("Helvetica")
-      .text(`${orderData.paymentDetails.amount}`, {
-        align: "left",
-        indent: 150,
-      });
+      .text(`${orderData.paymentDetails.amount}`);
+      doc.moveDown();
 
     doc
       .fontSize(12)
       .text(`WEIGHT: ${orderData.packageDetails.applicableWeight}`, {
         align: "left",
-        indent: 135,
+        // indent: 30,
       });
     doc.text(
       `Dimensions (cm): ${orderData.packageDetails.volumetricWeight.length}*${orderData.packageDetails.volumetricWeight.width}*${orderData.packageDetails.volumetricWeight.height}`,
-      { align: "left", indent: 320 }
+      { align: "left" }
     );
 
     const barcodeX1 = 320;
