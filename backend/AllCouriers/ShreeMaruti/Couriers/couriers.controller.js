@@ -86,24 +86,32 @@ const createOrder = async (req, res) => {
   console.log(req.body);
   try {
     const { courierServiceName, id, provider, finalCharges } = req.body;
-    const users = await user.findById({ _id: currentOrder.userId });
+
     const currentOrder = await Order.findById(id);
+    const users = await user.findById({ _id: currentOrder.userId });
+    // console.log("currentOrder",currentOrder)
     const currentWallet = await Wallet.findById({ _id: users.Wallet });
 
-    const order_items = new Array(currentOrder.productDetails.length);
-    currentOrder.productDetails.map((item, index) => {
-      order_items[index] = {
-        name: item.name,
-        quantity: item.quantity,
-        price: item.unitPrice * item.quantity,
-        unitPrice: item.unitPrice,
-        weight: parseInt(
-          currentOrder.packageDetails.applicableWeight /
-            currentOrder.productDetails.length
-        ),
-        sku: item.sku || null,
-      };
-    });
+    const lineItems = Array.from(
+      { length: currentOrder.productDetails.length },
+      (_, index) => {
+        const item = currentOrder.productDetails[index];
+
+        return {
+          name: item.name,
+          quantity: Number(item.quantity) || 0, // Ensure it's a number, default to 0 if invalid
+          price: Number(item.unitPrice) * Number(item.quantity) || 0, // Ensure valid price
+          unitPrice: Number(item.unitPrice) || 0, // Ensure valid unit price
+          weight:
+            currentOrder.packageDetails?.applicableWeight &&
+            currentOrder.productDetails.length > 0
+              ? Number(currentOrder.packageDetails.applicableWeight) /
+                currentOrder.productDetails.length
+              : 0, // Fallback to 0 if weight is invalid
+          sku: item.sku || null,
+        };
+      }
+    );
 
     let payment_type =
       currentOrder.paymentDetails.method === "COD" ? "COD" : "ONLINE";
@@ -111,12 +119,12 @@ const createOrder = async (req, res) => {
       currentOrder.paymentDetails.method === "COD" ? "PENDING" : "PAID";
 
     const payload = {
-      orderId: currentOrder.orderId,
+      orderId: `${currentOrder.orderId}`,
       orderSubtype: "FORWARD",
       currency: "INR",
-      amount: currentOrder.paymentDetails.amount,
+      amount: parseInt(currentOrder.paymentDetails.amount),
       weight: parseInt(currentOrder.packageDetails.applicableWeight),
-      lineItems: order_items,
+      lineItems: lineItems,
       paymentType: payment_type,
       paymentStatus: payment_status,
       length: parseInt(currentOrder.packageDetails.volumetricWeight.length),
@@ -163,9 +171,9 @@ const createOrder = async (req, res) => {
         zip: `${currentOrder.receiverAddress.pinCode}`,
       },
     };
-
+    let response;
     if (currentWallet.balance >= finalCharges) {
-      const response = await axios.post(API_URL, payload, {
+      response = await axios.post(API_URL, payload, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -175,26 +183,28 @@ const createOrder = async (req, res) => {
       return res.status(401).json({ success: false, message: "Low Balance" });
     }
 
-    if (response.data.status == 200) {
+    if (response.status == 200) {
       const result = response.data.data;
+      console.log(result)
       currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
-      currentOrder.awb_number = result.awb_number;
+      currentOrder.awb_number = result.awbNumber;
       currentOrder.shipment_id = `${result.shipperOrderId}`;
-      currentOrder.provider=provider;
-      currentOrder.totalFreightCharges=finalCharges;
-      currentOrder.shipmentCreatedAt=new Date();
-      currentOrder.courierServiceName=courierServiceName;
-    //   currentOrder.service_details = selectedServiceDetails._id;
-    //   currentOrder.freightCharges =
-    //     req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
-    //   currentOrder.tracking = [];
-    //   currentOrder.tracking.push({
-    //     stage: "Order Booked",
-    //   });
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges = finalCharges;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.courierServiceName = courierServiceName;
+      //   currentOrder.service_details = selectedServiceDetails._id;
+      //   currentOrder.freightCharges =
+      //     req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      //   currentOrder.tracking = [];
+      //   currentOrder.tracking.push({
+      //     stage: "Order Booked",
+      //   });
       await currentOrder.save();
-      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-    //   let currentBalance = currentWallet.balance - balanceToBeDeducted;
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      //   let currentBalance = currentWallet.balance - balanceToBeDeducted;
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {
@@ -247,9 +257,13 @@ const cancelOrderShreeMaruti = async (order_Id) => {
       }
     );
 
-    console.log("Response:", response.data);
+    console.log("Response:", response);
 
     if (response.status === 200) {
+        await Order.updateOne(
+            { orderId: order_Id },
+            { $set: { status: "Cancelled" } }
+          );
       // Correct status check
       return {
         success: true,
@@ -296,12 +310,10 @@ const downloadLabelInvoice = async (req, res) => {
       "Error downloading label/invoice:",
       error.response?.data || error.message
     );
-    res
-      .status(500)
-      .json({
-        error: "Download failed",
-        details: error.response?.data || error.message,
-      });
+    res.status(500).json({
+      error: "Download failed",
+      details: error.response?.data || error.message,
+    });
   }
 };
 
@@ -323,12 +335,10 @@ const createManifest = async (req, res) => {
       "Error creating manifest:",
       error.response?.data || error.message
     );
-    res
-      .status(500)
-      .json({
-        error: "Manifest creation failed",
-        details: error.response?.data || error.message,
-      });
+    res.status(500).json({
+      error: "Manifest creation failed",
+      details: error.response?.data || error.message,
+    });
   }
 };
 
