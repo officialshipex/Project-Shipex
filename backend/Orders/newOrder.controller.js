@@ -17,6 +17,7 @@ const {
 const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const {cancelOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller")
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -268,7 +269,7 @@ const updateOrder = async (req, res) => {
             existingOrder.packageDetails.volumetricWeight.length,
           width:
             packageDetails.volumetricWeight?.width ||
-            existingOrder.packageDetails.volumetricWeight.width,                  
+            existingOrder.packageDetails.volumetricWeight.width,
           height:
             packageDetails.volumetricWeight?.height ||
             existingOrder.packageDetails.volumetricWeight.height,
@@ -432,7 +433,7 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        // console.log("resultttttttt",result)
+        console.log("resultttttttt", result);
         if (result && result.success) {
           return {
             item,
@@ -447,9 +448,10 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
+    // console.log("availbale",availableServices)
 
     const filteredServices = availableServices.filter(Boolean);
-    // console.log("filteredServices",filteredServices)
+    // console.log("filteredServices", filteredServices);
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
@@ -465,22 +467,28 @@ const ShipeNowOrder = async (req, res) => {
       rateCardType: plan.planName,
     };
     let rates = await calculateRateForService(payload);
-    
-    const updatedRates = rates.map((rate) => {
-      const matchedService = filteredServices.find(
-        (service) => service.item.name === rate.courierServiceName
-      );
-      // console.log("1111111",matchedService)
-      if (matchedService) {
-        return {
-          ...rate,
-          provider: matchedService.item.provider,
-          courierType: matchedService.item.courierType,
-          // Xid: matchedService.Xid[0],
-        };
-      }
-      return rate;
-    });
+    // console.log("rates", rates);
+
+    const updatedRates = rates
+      .map((rate) => {
+        const matchedService = filteredServices.find(
+          (service) => service.item.name === rate.courierServiceName
+        );
+        // console.log("1111111", matchedService);
+
+        if (matchedService) {
+          return {
+            ...rate,
+            provider: matchedService.item.provider,
+            courierType: matchedService.item.courierType,
+            // Xid: matchedService.Xid[0],
+          };
+        }
+
+        return null; // Return null for unmatched rates
+      })
+      .filter(Boolean); // Remove null values from the final array
+
     res.status(201).json({
       success: true,
       order,
@@ -586,7 +594,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "ShreeMaruti") {
-      const result = await cancelOrderShreeMaruti(currentOrder.order_id);
+      const result = await cancelOrderShreeMaruti(currentOrder.orderId);
       if (result.error) {
         return {
           error: "Failed to cancel shipment with NimbusPost",
@@ -636,15 +644,14 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 const tracking = async (req, res) => {
-
   try {
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
     // const allOrders = await Order.find({ status: { $ne: "new" } });
 
-// const lenghtdata=allOrders.length
-// console.log("yyyyyyyyyy",lenghtdata)
+    // const lenghtdata=allOrders.length
+    // console.log("yyyyyyyyyy",lenghtdata)
     const updateOrderStatus = async (order, status, data) => {
       // console.log("yuyuuyuyuyuuu", status);
       if (data == "manifested" || data == "booked") {
@@ -664,7 +671,7 @@ const tracking = async (req, res) => {
         const { provider } = order;
         const { awb_number } = order;
         let result;
-  //  console.log("00000000000",order)
+        //  console.log("00000000000",order)
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
         } else if (provider === "Shiprocket") {
@@ -683,9 +690,9 @@ const tracking = async (req, res) => {
         // if (result && result.data) {
         //   // Remove any empty objects from tracking array
         //   order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
-        
+
         //   const lastTracking = order.tracking[order.tracking.length - 1];
-        
+
         //   if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
         //     order.tracking.push({
         //       status: result.data.Status,
@@ -693,32 +700,28 @@ const tracking = async (req, res) => {
         //       StatusDateTime: result.data.StatusDateTime,
         //       Instructions: result.data.Instructions,
         //     });
-        
+
         //     console.log("Tracking updated:", order.tracking);
         //   } else {
         //     console.log("Tracking data already exists.");
         //   }
         // }
-        
-        
 
         if (result && result.success) {
           const status = result.data.Status.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
-
-            "manifested": () => {
-              if ( order.status !== "Cancelled") {
+            manifested: () => {
+              if (order.status !== "Cancelled") {
                 updateOrderStatus(order, "Ready To Ship", "manifested");
               }
             },
-            "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
               updateOrderStatus(order, "In-transit", "in transit"),
-            "delivered": () => updateOrderStatus(order, "Delivered", "delivered"),
+            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
 
-
-            "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
           };
 
           if (statusMap[status]) {
@@ -742,7 +745,6 @@ const tracking = async (req, res) => {
   }
 };
 setInterval(tracking, 60 * 600000);
-
 
 const trackOrders = async () => {
   try {
@@ -770,11 +772,19 @@ const trackOrders = async () => {
           return;
         }
 
-        const { Status, StatusLocation, StatusDateTime, Instructions } = result.data;
-        const newTrackingEntry = { status: Status, StatusLocation, StatusDateTime, Instructions };
+        const { Status, StatusLocation, StatusDateTime, Instructions } =
+          result.data;
+        const newTrackingEntry = {
+          status: Status,
+          StatusLocation,
+          StatusDateTime,
+          Instructions,
+        };
 
         // Remove empty objects from tracking array
-        order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
+        order.tracking = order.tracking.filter(
+          (item) => Object.keys(item).length > 0
+        );
 
         // Check if the latest tracking entry is different before adding
         const lastTracking = order.tracking[order.tracking.length - 1];
@@ -782,9 +792,11 @@ const trackOrders = async () => {
           order.tracking.push(newTrackingEntry);
           await order.save();
         }
-
       } catch (error) {
-        console.error(`Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`, error);
+        console.error(
+          `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+          error
+        );
       }
     });
 
@@ -886,5 +898,5 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
-  trackOrders
+  trackOrders,
 };
