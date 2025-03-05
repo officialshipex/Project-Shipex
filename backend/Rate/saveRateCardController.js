@@ -24,7 +24,19 @@ const saveRate = async (req, res) => {
     console.log(weightPriceBasic);
     console.log(weightPriceAdditional);
 
-    // Check if weightPriceBasic and weightPriceAdditional have all required fields
+    // Fetch users with assigned plans (filtered by planName)
+    const usersWithPlans = await Plan.find({ planName: plan });
+
+    if (!usersWithPlans || usersWithPlans.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No users found with assigned plans",
+      });
+    }
+
+    console.log(usersWithPlans);
+
+    // Function to check required fields
     const checkRequiredFields = (weightData) => {
       return weightData.every(weight => {
         return weight.zoneA !== undefined &&
@@ -35,31 +47,35 @@ const saveRate = async (req, res) => {
       });
     };
 
-    // Check for the required fields in both weightPriceBasic and weightPriceAdditional
     if (!checkRequiredFields(weightPriceBasic) || !checkRequiredFields(weightPriceAdditional)) {
       return res.status(400).json({ message: "Missing required fields for zone rates (e.g. zoneA, zoneB, etc.)." });
     }
 
-    const existingRateCard = await RateCard.findOne({
+    // Check if the rate card already exists
+    let existingRateCard = await RateCard.findOne({
       plan,
       mode,
       courierProviderName,
       courierServiceName,
     });
 
+    let savedRateCard;
+
     if (existingRateCard) {
+      // Update existing rate card
       existingRateCard.weightPriceBasic = weightPriceBasic;
       existingRateCard.weightPriceAdditional = weightPriceAdditional;
       existingRateCard.codPercent = codPercent;
       existingRateCard.codCharge = codCharge;
       existingRateCard.mode = mode;
 
-      const updatedRateCard = await existingRateCard.save();
+      savedRateCard = await existingRateCard.save();
 
       res.status(201).json({
-        message: `${plan} ratecard has been updated successfully for service ${courierServiceName} under provider ${courierProviderName}`,
+        message: `${plan} rate card has been updated successfully for service ${courierServiceName} under provider ${courierProviderName}`,
       });
     } else {
+      // Create new rate card
       const rcard = new RateCard({
         plan,
         mode,
@@ -74,22 +90,34 @@ const saveRate = async (req, res) => {
         defaultRate: true,
       });
 
-      const savedRateCard = await rcard.save();
+      savedRateCard = await rcard.save();
 
+      // Update courier service with new rate card
       await CourierServiceSecond.updateOne(
         { courierProviderServiceName: courierServiceName },
         { $push: { rateCards: savedRateCard } }
       );
 
       res.status(201).json({
-        message: `${plan} ratecard has been added successfully for service ${courierServiceName} under provider ${courierProviderName}`,
+        message: `${plan} rate card has been added successfully for service ${courierServiceName} under provider ${courierProviderName}`,
       });
     }
+
+    // **Update all users' rateCard field who have the same plan**
+    await Plan.updateMany(
+      { planName: plan },
+      { $push: { rateCard: savedRateCard } }
+    );
+
+    console.log(`Updated users with plan "${plan}" to include new rate card`);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error saving or updating Rate Card" });
   }
 };
+
+
 
 const getRateCard = async (req, res) => {
   try {
@@ -105,7 +133,32 @@ const getRateCard = async (req, res) => {
 };
 
 
+const getUsersWithPlans = async (req, res) => {
+  try {
+    // Fetch all plans with user details
+    const usersWithPlans = await Plan.find({});
 
+    if (!usersWithPlans || usersWithPlans.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No users found with assigned plans",
+      });
+    }
+    console.log(usersWithPlans)
+
+    res.status(200).json({
+      success: true,
+      data: usersWithPlans,
+    });
+  } catch (error) {
+    console.error("Error fetching users with plans:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users with assigned plans",
+      error: error.message,
+    });
+  }
+};
 
 
 // Update Rate Card
@@ -309,4 +362,4 @@ const uploadRate = async (req, res) => {
   }
 };
 
-module.exports = { saveRate, uploadRate, getRateCard,getPlan, updateRateCard, getRateCardById };
+module.exports = { saveRate, uploadRate, getRateCard,getPlan, updateRateCard, getRateCardById, getUsersWithPlans };
