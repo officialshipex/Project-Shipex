@@ -17,6 +17,8 @@ const {
 const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+
+
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -24,6 +26,7 @@ const fs = require("fs");
 const { log } = require("console");
 const { message } = require("../addons/utils/shippingRulesValidation");
 const mongoose = require("mongoose");
+const { cancelOrderDTDC, trackOrderDTDC } = require("../AllCouriers/DTDC/Courier/couriers.controller");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -595,6 +598,15 @@ const cancelOrdersAtBooked = async (req, res) => {
           orderId: currentOrder._id,
         };
       }
+    } else if (currentOrder.provider === "DTDC") {
+      const result = await cancelOrderDTDC(currentOrder.order_id);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with NimbusPost",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
     } else {
       return {
         error: "Unsupported courier provider",
@@ -676,6 +688,8 @@ const tracking = async (req, res) => {
          
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
+        }else if (provider === "DTDC") {
+          result = await trackOrderDTDC(awb_number);
         }
 
         if (result && result.success) {

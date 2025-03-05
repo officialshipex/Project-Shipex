@@ -27,6 +27,7 @@ const XpressbeesController = require("./AllCouriersRoutes/xpressbee.router");
 const shreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
 const SmartShipController = require("./AllCouriersRoutes/smartShip.router");
 const DelhiveryController = require("./AllCouriersRoutes/delhivery.router");
+const DtdcController = require('./AllCouriersRoutes/dtdc.router')
 const LabelRouter = require("./label/label.router");
 const couriersB2CRoutes = require("./routes/couriersB2C.router");
 // const courierServicesRoutes=require('./routes/courierServiceB2C.router');
@@ -83,7 +84,7 @@ router.use("/EcomExpress", EcomExpressController);
 router.use("/Xpressbees", XpressbeesController);
 router.use("/ShreeMaruti", shreeMarutiController);
 router.use("/SmartShip", SmartShipController);
-
+router.use('/Dtdc',DtdcController)
 router.use("/Delhivery", DelhiveryController);
 
 router.use("/label", LabelRouter);
