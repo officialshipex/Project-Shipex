@@ -14,6 +14,7 @@ const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
 const ShreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
 const nimbuspostRoutes = require("./AllCouriersRoutes/nimbuspost.router");
 const delhiveryRouter = require("./AllCouriersRoutes/delhivery.router");
+const compression = require('compression');
 
 const otpRouter = require("./auth/auth.otp");
 const emailOtpRouter = require("./notification/emailOtpVerification");
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 app.use(cors()); // ✅ Only call once
+app.use(compression());
 
 // 🛠 Setup Session
 const store = MongoStore.create({
