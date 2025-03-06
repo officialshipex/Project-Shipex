@@ -7,7 +7,7 @@ require("dotenv").config();
 // DTDC API Configuration from environment variables
 const DTDC_API_URL = process.env.DTDC_API_URL;
 const API_KEY = process.env.DTDC_API_KEY;
-const X_ACCESS_TOKEN = process.env.X_ACCESS_TOKEN;
+const X_ACCESS_TOKEN = process.env.DTDC_X_ACCESS_TOKEN;
 
 // Create a new shipment
 const createOrder = async (req, res) => {
