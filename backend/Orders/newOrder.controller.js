@@ -6,6 +6,7 @@ const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
+const {codToBeRemitted}=require("../COD/cod.controller")
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -268,7 +269,7 @@ const updateOrder = async (req, res) => {
             existingOrder.packageDetails.volumetricWeight.length,
           width:
             packageDetails.volumetricWeight?.width ||
-            existingOrder.packageDetails.volumetricWeight.width,                  
+            existingOrder.packageDetails.volumetricWeight.width,
           height:
             packageDetails.volumetricWeight?.height ||
             existingOrder.packageDetails.volumetricWeight.height,
@@ -432,11 +433,14 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-        if (result || result.success) {
+
+
+        // console.log("iiiii",result)
+        if (result && result.success) {
           return {
             item,
 
-            // Xid: result.Xpressbeesid,
+           
           };
         } else {
           console.error(
@@ -463,7 +467,7 @@ const ShipeNowOrder = async (req, res) => {
       rateCardType: plan.planName,
     };
     let rates = await calculateRateForService(payload);
-    
+
     const updatedRates = rates.map((rate) => {
       const matchedService = filteredServices.find(
         (service) => service.item.name === rate.courierServiceName
@@ -634,15 +638,14 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 const tracking = async (req, res) => {
-
   try {
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
     // const allOrders = await Order.find({ status: { $ne: "new" } });
 
-// const lenghtdata=allOrders.length
-// console.log("yyyyyyyyyy",lenghtdata)
+    // const lenghtdata=allOrders.length
+    // console.log("yyyyyyyyyy",lenghtdata)
     const updateOrderStatus = async (order, status, data) => {
       // console.log("yuyuuyuyuyuuu", status);
       if (data == "manifested" || data == "booked") {
@@ -662,7 +665,7 @@ const tracking = async (req, res) => {
         const { provider } = order;
         const { awb_number } = order;
         let result;
-  //  console.log("00000000000",order)
+        //  console.log("00000000000",order)
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
         } else if (provider === "Shiprocket") {
@@ -681,9 +684,9 @@ const tracking = async (req, res) => {
         // if (result && result.data) {
         //   // Remove any empty objects from tracking array
         //   order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
-        
+
         //   const lastTracking = order.tracking[order.tracking.length - 1];
-        
+
         //   if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
         //     order.tracking.push({
         //       status: result.data.Status,
@@ -691,32 +694,28 @@ const tracking = async (req, res) => {
         //       StatusDateTime: result.data.StatusDateTime,
         //       Instructions: result.data.Instructions,
         //     });
-        
+
         //     console.log("Tracking updated:", order.tracking);
         //   } else {
         //     console.log("Tracking data already exists.");
         //   }
         // }
-        
-        
 
         if (result && result.success) {
           const status = result.data.Status.toLowerCase().replace(/_/g, " ");
 
           const statusMap = {
-
-            "manifested": () => {
-              if ( order.status !== "Cancelled") {
+            manifested: () => {
+              if (order.status !== "Cancelled") {
                 updateOrderStatus(order, "Ready To Ship", "manifested");
               }
             },
-            "cancelled": () => updateOrderStatus(order, "Cancelled", "cancelled"),
+            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
             "in transit": () =>
               updateOrderStatus(order, "In-transit", "in transit"),
-            "delivered": () => updateOrderStatus(order, "Delivered", "delivered"),
+            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
 
-
-            "booked": () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
           };
 
           if (statusMap[status]) {
@@ -739,18 +738,17 @@ const tracking = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error });
   }
 };
-setInterval(tracking, 60 * 600000);
-
+// setInterval(tracking, 60 * 600000);
 
 const trackOrders = async () => {
   try {
     const allOrders = await Order.find({ status: { $ne: "new" } }); // Fetch all orders except those with "new" status
-
+// console.log("order")
     const trackingPromises = allOrders.map(async (order) => {
       try {
         const { provider, awb_number } = order;
         let result;
-
+        // console.log("order")
         // Fetch tracking information from the respective provider
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
@@ -759,7 +757,9 @@ const trackOrders = async () => {
         } else if (provider === "Xpressbees") {
           result = await trackShipment(awb_number);
         } else if (provider === "Delhivery") {
+
           result = await trackShipmentDelhivery(awb_number);
+          console.log(result)
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
@@ -768,21 +768,42 @@ const trackOrders = async () => {
           return;
         }
 
-        const { Status, StatusLocation, StatusDateTime, Instructions } = result.data;
-        const newTrackingEntry = { status: Status, StatusLocation, StatusDateTime, Instructions };
+        const { Status, StatusLocation, StatusDateTime, Instructions } =
+          result.data;
+        const newTrackingEntry = {
+          status: Status,
+          StatusLocation,
+          StatusDateTime,
+          Instructions,
+        };
 
         // Remove empty objects from tracking array
-        order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
-
+        order.tracking = order.tracking.filter(
+          (item) => Object.keys(item).length > 0
+        );
+        
         // Check if the latest tracking entry is different before adding
         const lastTracking = order.tracking[order.tracking.length - 1];
         if (!lastTracking || lastTracking.Instructions !== Instructions) {
           order.tracking.push(newTrackingEntry);
           await order.save();
+          // if (Status=== "Delivered" && order.paymentDetails.method==="COD") {
+          //   codToBeRemitted(order)
+          // }
         }
-
+        // if (lastTracking.status=== "Delivered" && order.paymentDetails.method==="COD") {
+        //   codToBeRemitted(order)
+        // }
+        // console.log("00000000",lastTracking) 
+        // if (lastTracking.status=== "Delivered") {
+        //   codToBeRemitted(order)
+        // }
+       
       } catch (error) {
-        console.error(`Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`, error);
+        console.error(
+          `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+          error
+        );
       }
     });
 
@@ -795,7 +816,7 @@ const trackOrders = async () => {
 // Run tracking every 1 minute
 // setInterval(trackOrders, 60 * 1000);
 
-setInterval(trackOrders, 60 * 1000);
+// setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -884,5 +905,5 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
-  trackOrders
+  trackOrders,
 };

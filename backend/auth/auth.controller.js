@@ -83,6 +83,7 @@ const register = async (req, res) => {
 
     await newUser.save();
     await sendWelcomeEmail(email,fullname)
+    
     const payload = {
       user: {
         id: newUser._id,

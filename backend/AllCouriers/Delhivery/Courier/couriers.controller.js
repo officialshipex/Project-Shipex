@@ -228,7 +228,10 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
-    return finalResult;
+    return {
+      success: finalResult,
+
+    };
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
 
@@ -243,6 +246,7 @@ const trackShipmentDelhivery = async (waybill) => {
   }
 
   try {
+    // console.log(API_TOKEN)
     const response = await axios.get(
       `${url}/api/v1/packages/json/?waybill=${waybill}`,
       {
@@ -251,12 +255,13 @@ const trackShipmentDelhivery = async (waybill) => {
         },
       }
     );
+    // console.log(response)
     // console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.Status)
     // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
-
+// console.log(status)
     if (
       status === "Manifested" || status === "In Transit" || status === "Delivered"
     ) {
@@ -272,7 +277,7 @@ const trackShipmentDelhivery = async (waybill) => {
       };
     }
   } catch (error) {
-    // console.error("Error tracking shipment:", error.message);
+    // console.error("Error tracking shipment:", error);
     return {
       success: false,
       data: "Error in tracking",
