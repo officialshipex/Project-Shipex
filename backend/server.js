@@ -21,8 +21,11 @@ const emailOtpRouter = require("./notification/emailOtpVerification");
 const app = express();
 
 // 🛠 Apply Middlewares
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
 app.use(helmet());
 app.use(cors()); // ✅ Only call once
 

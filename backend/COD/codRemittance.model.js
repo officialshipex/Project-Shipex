@@ -1,0 +1,40 @@
+const mongoose = require("mongoose");
+
+const codRemittanceSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  CODToBeRemitted: { type: Number },
+  LastCODRemitted: { type: Number },
+  TotalCODRemitted: { type: Number },
+  TotalDeductionfromCOD: { type: Number },
+  RemittanceInitiated: { type: Number },
+  delhiveryData:{type:String},
+  sameDayDelhiveryOrders: [
+    {
+      date: { type: Date, required: true },
+      codcal:{type:Number},
+      orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
+    },
+  ],
+  remittanceData: [
+    {
+      date: { type: Date },
+      remittanceId: { type: String},
+      utr: { type: String },
+      codAvailable: { type: Number },
+      amountCreditedToWallet: { type: Number, },
+      earlyCodCharges: { type: Number, default: 0 },
+      adjustedAmount: { type: Number },
+      remittanceMethod: {
+        type: String,
+      }, // Payment method
+      status: {
+        type: String,
+        enum: ["Pending", "Paid"],
+        default: "Pending",
+      },
+    },
+  ],
+});
+const CODRemittance = mongoose.model("CODRemittance", codRemittanceSchema);
+
+module.exports = CODRemittance;

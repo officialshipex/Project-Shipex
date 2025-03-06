@@ -4,7 +4,7 @@ const OTPs = {}; // Store OTPs temporarily
 const emailOtpRouter = express.Router();
 emailOtpRouter.post("/send-email-otp", async (req, res) => {
     const { email } = req.body;
-  
+  console.log("kkkk",email)
     if (!email) {
       return res.status(400).json({ success: false, message: "Email is required" });
     }
@@ -12,10 +12,10 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000);
     OTPs[email] = otp; // Store OTP temporarily
-  
+  console.log("9999",otp)
     // Email Content
     const mailOptions = {
-      from: '"Shipex Team" <noreply@shipexindia.com>',
+      from: '"Shipex Team" <support@shipexindia.com>',
       to: email,
       subject: "Your OTP Code",
       html: `<table cellspacing="0" cellpadding="0" style="background-color: #F4F6F7; border: 1px solid #eee; width: 100%;">
@@ -64,13 +64,16 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
     };
   
     try {
-      await transporter.sendMail(mailOptions);
+    const mails=  await transporter.sendMail(mailOptions);
+      console.log("hhhhhh",mails)
       res.json({ success: true, message: "OTP sent successfully" });
     } catch (error) {
       console.error("Error sending email:", error);
       res.status(500).json({ success: false, message: "Failed to send OTP" });
     }
   });
+
+
   emailOtpRouter.post("/verify-email-otp", (req, res) => {
     const { email, otp } = req.body;
   

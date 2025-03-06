@@ -8,7 +8,7 @@ const codPlanSchema = new mongoose.Schema({
   },
   planName: {
     type: String,
-    enum: ["D+1", "D+2", "D+3", "D+7"], // Allowed values
+    enum: ["D+1", "D+2", "D+3","D+4", "D+7"], // Allowed values
     default: "D+7", // Default plan
     required: true,
   },
@@ -24,10 +24,11 @@ codPlanSchema.pre("save", function (next) {
     "D+1": 1.5,
     "D+2": 0.99,
     "D+3": 0.70,
-    "D+7": 0.50,
+    "D+4": 0.50,
+    "D+7":0
   };
 
-  this.planCharges = planChargesMap[this.planName] || 0.50; // Default to D+7 charge if missing
+  this.planCharges = planChargesMap[this.planName] || 0; // Default to D+7 charge if missing
   next();
 });
 
