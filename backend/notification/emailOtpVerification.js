@@ -15,7 +15,7 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
   
     // Email Content
     const mailOptions = {
-      from: '"Shipex Team" <noreply@shipexindia.com>',
+      from: '"Shipex Team" <support@shipexindia.com>',
       to: email,
       subject: "Your OTP Code",
       html: `<table cellspacing="0" cellpadding="0" style="background-color: #F4F6F7; border: 1px solid #eee; width: 100%;">
