@@ -228,10 +228,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
-    return {
-      success: finalResult,
-
-    };
+    return {success:finalResult};
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
 

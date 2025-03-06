@@ -120,22 +120,23 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    // if (service.courierProviderName === "ShreeMaruti") {
-    //   const payload = {
-    //     fromPincode: parseInt(pincode),
-    //     toPincode: parseInt(currentOrder.shipping_details.pinCode),
-    //     isCodOrder:
-    //       currentOrder.order_type === "Cash on Delivery" ? true : false,
-    //     deliveryMode: "SURFACE",
-    //   };
-    //   const result = await checkServiceabilityShreeMaruti(payload);
-    //   return result;
-    // }
+    if (service.provider === "ShreeMaruti") {
+      const payload = {
+        fromPincode: parseInt(pincode),
+        toPincode: parseInt(currentOrder.receiverAddress.pinCode),
+        isCodOrder:
+          currentOrder.paymentDetails?.method === "COD" ? true : false,
+        deliveryMode: "SURFACE",
+      };
+      const result = await checkServiceabilityShreeMaruti(payload);
+      console.log("resultttt",result)
+      return result;
+    }
 
     // return false;
   } catch (error) {
     console.error("Error in checking serviceability:", error.message);
-    throw error;
+    // throw error;
   }
 };
 

@@ -3,9 +3,10 @@ if(process.env.NODE_ENV!="production"){
   }
 const axios = require('axios');
 const Courier=require("../../../models/courierSecond");
+const AllCourier=require("../../../models/AllCourierSchema");
 
 
-const BASE_URL =process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_URL:process.env.SHREEMA_PRODUCTION_URL; 
+const BASE_URL =process.env.SHREEMA_PRODUCTION_URL; 
 
 const saveShreeMaruti = async (req, res) => {
     console.log("I am in shreeMaruti");
@@ -99,10 +100,10 @@ const isEnabeled = async (req, res) => {
 
 
   const getToken = async () => {
-    const email = process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_GMAIL:process.env.SHREEMA_PRODUCTION_GMAIL;
-    const password = process.env?.NODE_ENV!="production"?process.env.SHREEMA_STAGING_PASS:process.env.SHREEMA_PRODUCTION_PASS;
-    console.log(email);
-    console.log(password);
+    const email = process.env.SHREEMA_PRODUCTION_GMAIL;
+    const password = process.env.SHREEMA_PRODUCTION_PASS;
+    // console.log(email);
+    // console.log(password);
     const vendorType = "SELLER";
 
     if (!email || !password) {
@@ -125,13 +126,54 @@ const isEnabeled = async (req, res) => {
         if (response.status === 200 && response.data.data.accessToken) {
             return response.data.data.accessToken;
         } else {
-            throw new Error(`Login failed: ${response.status}`);
+          console.log(`Login failed: ${response.status}`)
+            // throw new Error(`Login failed: ${response.status}`);
         }
     } catch (error) {
         console.error("Response error:", error.response?.data || error.message);
-        throw new Error(`Error in authentication: ${error.message}`);
+        // throw new Error(`Error in authentication: ${error.message}`);
     }
 };
 
+const getAuthToken = async (req,res) => {
+  // console.log("hiii")
 
-module.exports ={saveShreeMaruti,getToken,isEnabeled,disable,enable};
+  const url = `${BASE_URL}/auth/login`;
+  
+  const payload = {
+       email:req.body.credentials.username,
+       password:req.body.credentials.password,
+       vendorType:"SELLER"
+  };
+  console.log(url,payload)
+  const courierData= {
+    courierName: req.body.courierName,
+    courierProvider: req.body.courierProvider,
+    CODDays: req.body.CODDays,
+    status:req.body.status
+  }
+  try {
+    // console.log("hi")
+      const response = await axios.post(url, payload, {
+          headers: { 'Content-Type': 'application/json' }
+      });
+      // console.log("hjh",response.data)
+      if (response.status) {
+          const newCourier = new AllCourier(courierData);
+          await newCourier.save();
+          res.status(201).json({ message: 'ShreeMaruti Integrated Successfully' });
+      }
+      else {
+          throw new Error(`Login failed: ${response.data.status}`);
+      }
+  }
+  catch (error) {
+// console.log("error",error.response.data).json({ message: error.response.data.message });
+      res.status(401).json({ message: error.response.data.message });
+      // throw new Error(`Error in authentication: ${error.message}`);
+  }
+
+}
+
+
+module.exports ={saveShreeMaruti,getToken,isEnabeled,disable,enable,getAuthToken};
