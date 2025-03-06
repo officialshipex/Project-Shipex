@@ -18,6 +18,7 @@ const {
 const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
+const {cancelOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller")
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -450,8 +451,10 @@ const ShipeNowOrder = async (req, res) => {
         }
       })
     );
+    // console.log("availbale",availableServices)
 
     const filteredServices = availableServices.filter(Boolean);
+    // console.log("filteredServices", filteredServices);
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
@@ -467,22 +470,28 @@ const ShipeNowOrder = async (req, res) => {
       rateCardType: plan.planName,
     };
     let rates = await calculateRateForService(payload);
+    // console.log("rates", rates);
 
-    const updatedRates = rates.map((rate) => {
-      const matchedService = filteredServices.find(
-        (service) => service.item.name === rate.courierServiceName
-      );
-      // console.log("1111111",matchedService)
-      if (matchedService) {
-        return {
-          ...rate,
-          provider: matchedService.item.provider,
-          courierType: matchedService.item.courierType,
-          // Xid: matchedService.Xid[0],
-        };
-      }
-      return rate;
-    });
+    const updatedRates = rates
+      .map((rate) => {
+        const matchedService = filteredServices.find(
+          (service) => service.item.name === rate.courierServiceName
+        );
+        // console.log("1111111", matchedService);
+
+        if (matchedService) {
+          return {
+            ...rate,
+            provider: matchedService.item.provider,
+            courierType: matchedService.item.courierType,
+            // Xid: matchedService.Xid[0],
+          };
+        }
+
+        return null; // Return null for unmatched rates
+      })
+      .filter(Boolean); // Remove null values from the final array
+
     res.status(201).json({
       success: true,
       order,
@@ -588,7 +597,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "ShreeMaruti") {
-      const result = await cancelOrderShreeMaruti(currentOrder.order_id);
+      const result = await cancelOrderShreeMaruti(currentOrder.orderId);
       if (result.error) {
         return {
           error: "Failed to cancel shipment with NimbusPost",
@@ -738,7 +747,7 @@ const tracking = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error });
   }
 };
-// setInterval(tracking, 60 * 600000);
+setInterval(tracking, 60 * 600000);
 
 const trackOrders = async () => {
   try {
@@ -781,7 +790,6 @@ const trackOrders = async () => {
         order.tracking = order.tracking.filter(
           (item) => Object.keys(item).length > 0
         );
-        
         // Check if the latest tracking entry is different before adding
         const lastTracking = order.tracking[order.tracking.length - 1];
         if (!lastTracking || lastTracking.Instructions !== Instructions) {
@@ -791,14 +799,6 @@ const trackOrders = async () => {
           //   codToBeRemitted(order)
           // }
         }
-        // if (lastTracking.status=== "Delivered" && order.paymentDetails.method==="COD") {
-        //   codToBeRemitted(order)
-        // }
-        // console.log("00000000",lastTracking) 
-        // if (lastTracking.status=== "Delivered") {
-        //   codToBeRemitted(order)
-        // }
-       
       } catch (error) {
         console.error(
           `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,

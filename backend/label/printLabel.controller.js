@@ -1,6 +1,5 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
-const LabelSetting = require("./label.model");
 const bwipjs = require("bwip-js");
 const Order = require("../models/newOrder.model");
 
@@ -15,21 +14,21 @@ router.get("/generate-pdf/:id", async (req, res) => {
     }
 
     const barcodeBuffer1 = await bwipjs.toBuffer({
-      bcid: "code128", // Barcode type
-      text: String(orderData.orderId), // Text to encode
-      scale: 3, // Scale factor
-      height: 10, // Bar height, in millimeters
-      includetext: true, // Show human-readable text
-      textxalign: "center", // Center-align the text
+      bcid: "code128",
+      text: String(orderData.orderId),
+      scale: 3,
+      height: 10,
+      includetext: true,
+      textyoffset: 5,
+      textxalign: "center",
     });
 
     const barcodeBuffer2 = await bwipjs.toBuffer({
-      bcid: "code128", // Barcode type
-      text: String(orderData.awb_number), // Text to encode
-      scale: 3, // Scale factor
-      height: 10, // Bar height, in millimeters
-      includetext: true, // Show human-readable text
-      textxalign: "center", // Center-align the text
+      bcid: "code128",
+      text: String(orderData.awb_number),
+      scale: 6,
+      height: 40,
+      includetext: false, // Hide barcode text from bwip-js
     });
 
     const options1 = { year: "numeric", month: "short", day: "numeric" };
@@ -37,14 +36,21 @@ router.get("/generate-pdf/:id", async (req, res) => {
       "en-US",
       options1
     );
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+
+    const doc = new PDFDocument({ size: "A4", margin: 30 });
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="shipping_label.pdf"`
     );
 
-    // Header Section
+    // **Draw full-page border**
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    doc.rect(20, 20, pageWidth - 40, pageHeight - 40).stroke();
+
+    // **Header Section**
     doc.fontSize(16).font("Helvetica-Bold").text(`To:`, { align: "left" });
     doc
       .fontSize(14)
@@ -52,29 +58,20 @@ router.get("/generate-pdf/:id", async (req, res) => {
       .text(orderData.receiverAddress.contactName, { align: "left" });
     doc.text(`${orderData.receiverAddress.address}`, {
       align: "left",
-      width: 300, // Set this to half of your PDF width
-      lineBreak: true, // Ensures text moves to the next line if needed
+      width: 300,
     });
-
     doc.text(
-      `${orderData.receiverAddress.city},${orderData.receiverAddress.state},${orderData.receiverAddress.pinCode}`,
+      `${orderData.receiverAddress.city}, ${orderData.receiverAddress.state}, ${orderData.receiverAddress.pinCode}`,
       { align: "left" }
     );
-    // if (!settings.customerSetting.hidePhoneNumber) {
     doc.text(`MOBILE NO: ${orderData.receiverAddress.phoneNumber}`, {
       align: "left",
     });
-    // }
+
+    doc.moveDown();
+    doc.rect(20, doc.y - 10, 555, 1).stroke();
     doc.moveDown();
 
-    const startX = 50;
-    const startY = doc.y;
-    const borderWidth = 500;
-    const borderHeight = 1;
-    doc
-      .rect(startX - 0, startY - 10, borderWidth, borderHeight) // Add padding around the text
-      .stroke(); // Draw the border
-    doc.moveDown();
     doc
       .fontSize(14)
       .font("Helvetica-Bold")
@@ -83,188 +80,185 @@ router.get("/generate-pdf/:id", async (req, res) => {
     doc.font("Helvetica-Bold").text(`Invoice No: `, { continued: true });
     doc.font("Helvetica").text(orderData.orderId);
 
-    const barcodeX = 380; // X-coordinate for the barcode
-    const barcodeY = doc.y - 40; // Y-coordinate for the barcode
-
+    const barcodeX = 380;
+    const barcodeY = doc.y - 40;
     doc.image(barcodeBuffer1, barcodeX, barcodeY, { width: 120, height: 50 });
 
-    doc.moveDown();
-    doc.moveDown();
+    doc.moveDown(2);
+    doc.rect(20, doc.y - 10, 555, 1).stroke();
+    doc.moveDown(2);
 
-    const startX2 = 50;
-    const startY2 = doc.y || 0;
-
-    doc
-      .rect(startX2 - 0, startY2 - 10, borderWidth, borderHeight) // Add padding around the text
-      .stroke(); // Draw the border
-    doc.moveDown();
-    doc.moveDown();
-    // COD and Product Details
     const paymentText =
-      orderData.paymentDetails.method === "COD" ? "COD" : "Prepaid";
+      orderData.paymentDetails.method === "COD" ? "COD" : "PREPAID";
 
+      doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .text("MODE: ", 30, doc.y, { continued: true }) // Keep on same line
+      .font("Helvetica")
+      .text(paymentText);
+    
     doc
       .fontSize(18)
       .font("Helvetica-Bold")
-      .text(paymentText, { align: "left", indent: 150 });
+      .text("AMOUNT: ", 30, doc.y, { continued: true }) // Keep on same line
+      .font("Helvetica")
+      .text(`${orderData.paymentDetails.amount}`);
+      doc.moveDown();
 
     doc
-      .fontSize(18)
-      .font("Helvetica")
-      .text(`${orderData.paymentDetails.amount}`, {
-        align: "left",
-        indent: 155,
-      });
-    doc
       .fontSize(12)
-      .font("Helvetica")
       .text(`WEIGHT: ${orderData.packageDetails.applicableWeight}`, {
         align: "left",
-        indent: 120,
+        // indent: 30,
       });
     doc.text(
       `Dimensions (cm): ${orderData.packageDetails.volumetricWeight.length}*${orderData.packageDetails.volumetricWeight.width}*${orderData.packageDetails.volumetricWeight.height}`,
-      {
-        align: "left",
-        indent: 290,
-      }
+      { align: "left" }
     );
 
-    // Add the barcode to the right side of the section
-    const barcodeX1 = 350; // X-coordinate for the barcode
-    const barcodeY1 = doc.y - 80; // Y-coordinate for the barcode
-
-    // Save the current cursor position
+    const barcodeX1 = 320;
+    const barcodeY1 = doc.y - 80;
     const currentY = doc.y;
 
-    // Display provider name slightly above the barcode without affecting other content
+    // Get text width for centering
+    const courierServiceText = orderData.courierServiceName || "N/A";
+    const textWidth = doc.widthOfString(courierServiceText);
+    const textX = barcodeX1 + (200 - textWidth) / 2; // Center it above barcode
+
+    doc.font("Helvetica-Bold").text(courierServiceText, textX, barcodeY1 - 20);
+    doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 200, height: 50 });
+
+    // Add bold text below barcode
+    // Draw centered bold text
+    const textWidth1 = doc.widthOfString(orderData.awb_number);
+    const textX1 = barcodeX1 + (200 - textWidth1) / 2; // Center it above barcode
     doc
       .font("Helvetica-Bold")
-      .text(orderData.courierServiceName, barcodeX1 + 45, barcodeY1 - 15);
+      .fontSize(12)
+      .text(orderData.awb_number, textX1, barcodeY1 + 55);
 
-    // Render barcode image
-    doc.image(barcodeBuffer2, barcodeX1, barcodeY1, { width: 150, height: 50 });
-
-    // Restore the previous cursor position
     doc.y = currentY;
 
-    doc.moveDown(4);
-    let tableTop = doc.y - 40;
-    let columnWidths = [50, 250, 30, 80, 100];
+    doc.moveDown(2);
 
-    const drawTableRow = (y, row) => {
-      let x = 50;
-      row.forEach((text, i) => {
-        doc.text(text, x, y, { width: columnWidths[i], align: "center" });
-        x += columnWidths[i];
-      });
+    // **Table Header**
+    let tableTop = doc.y;
+    let tableLeft = 20;
+    let tableRight = 575;
+    let rowHeight = 20;
+    let columnWidths = [90, 220, 40, 100, 100]; // Adjusted column widths for proper alignment
+
+    const drawTableBorders = (x, y, width, height) => {
+      doc.rect(x, y, width, height).stroke();
     };
 
+    // **Draw Table Borders (Top and Bottom)**
+    drawTableBorders(
+      tableLeft,
+      tableTop,
+      tableRight - tableLeft,
+      rowHeight + orderData.productDetails.length * rowHeight + 10
+    );
+
+    // **Draw Table Header**
     doc.font("Helvetica-Bold").fontSize(12);
-    drawTableRow(tableTop, [
-      "SKU",
-      "Item Name",
-      "Qty.",
-      "Unit Price",
-      "Total Amount",
-    ]);
+    drawTableBorders(tableLeft, tableTop, tableRight - tableLeft, rowHeight); // Header border
+    doc.text("SKU", tableLeft + 5, tableTop + 5);
+    doc.text("Item Name", tableLeft + 95, tableTop + 5);
+    doc.text("Qty.", tableLeft + 315, tableTop + 5);
+    doc.text("Unit Price", tableLeft + 355, tableTop + 5);
+    doc.text("Total Amount", tableLeft + 455, tableTop + 5);
 
-    // Draw top border
-    doc
-      .moveTo(50, tableTop - 5)
-      .lineTo(550, tableTop - 5)
-      .stroke();
+    // **Draw Vertical Column Borders**
+    let xPos = tableLeft;
+    columnWidths.forEach((width) => {
+      doc
+        .moveTo(xPos, tableTop)
+        .lineTo(
+          xPos,
+          tableTop +
+            rowHeight +
+            orderData.productDetails.length * rowHeight +
+            10
+        )
+        .stroke();
+      xPos += width;
+    });
 
-    // Move down for first data row
-    tableTop += 20;
+    // **Table Rows**
+    tableTop += rowHeight;
     doc.font("Helvetica").fontSize(12);
 
-    let tableData = orderData.productDetails.map((product, index) => {
-      const totalPrice = product.quantity * product.unitPrice;
+    orderData.productDetails.forEach((product, i) => {
+      let yPosition = tableTop + i * rowHeight;
 
-      return [
-        product.sku,
-        product.name, // Product Name
-        product.quantity.toString(), // Quantity
-        product.unitPrice, // Unit Price
-        // product.sgst || "0.00", // SGST
-        // product.cgst || "0.00", // CGST
-        totalPrice, // Total
-      ];
+      doc.text(product.sku, tableLeft + 5, yPosition + 5);
+      doc.text(product.name, tableLeft + 95, yPosition + 5, {
+        width: 240,
+        ellipsis: true,
+      });
+      doc.text(product.quantity.toString(), tableLeft + 315, yPosition + 5);
+      doc.text(product.unitPrice.toString(), tableLeft + 355, yPosition + 5);
+      doc.text(
+        (product.quantity * product.unitPrice).toString(),
+        tableLeft + 455,
+        yPosition + 5
+      );
+
+      // Draw row border
+      // drawTableBorders(tableLeft, yPosition, tableRight - tableLeft, rowHeight);
     });
 
-    tableData.forEach((row, i) => {
-      drawTableRow(tableTop + i * 20, row);
-    });
-
-    // Draw bottom border
+    // **Draw Right Border**
     doc
-      .moveTo(50, tableTop + tableData.length * 20 - 5)
-      .lineTo(550, tableTop + tableData.length * 20 - 5)
+      .moveTo(tableRight, tableTop - rowHeight)
+      .lineTo(
+        tableRight,
+        tableTop + orderData.productDetails.length * rowHeight
+      )
       .stroke();
 
     doc.moveDown(1);
-
-    const leftMargin = 50; // Define a consistent left margin
+    const leftMargin = 30;
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Pickup Address:`, leftMargin, doc.y);
     doc
       .font("Helvetica")
       .text(`${orderData.pickupAddress.contactName}`, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(
-        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
-        leftMargin,
-        doc.y
-      );
-    doc
-      .font("Helvetica")
-      .text(
-        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
-        leftMargin,
-        doc.y
-      );
+    doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
+    doc.text(
+      `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
+      leftMargin,
+      doc.y
+    );
+    doc.text(
+      `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
+      leftMargin,
+      doc.y
+    );
 
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
     doc
       .font("Helvetica")
       .text(orderData.pickupAddress.contactName, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(
-        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
-        leftMargin,
-        doc.y
-      );
-    doc
-      .font("Helvetica")
-      .text(
-        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
-        leftMargin,
-        doc.y
-      );
+    doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
+    doc.text(
+      `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
+      leftMargin,
+      doc.y
+    );
+    doc.text(
+      `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
+      leftMargin,
+      doc.y
+    );
 
-    // Ensure a gap after receiverAddress section
     doc.moveDown(2);
-
-    // Draw a horizontal line for separation
-    const lineStartX = 50;
-    const lineWidth = 500;
-    doc
-      .moveTo(lineStartX, doc.y)
-      .lineTo(lineStartX + lineWidth, doc.y)
-      .stroke();
-
-    // Move down for legal text
+    doc.moveTo(20, doc.y).lineTo(575, doc.y).stroke();
     doc.moveDown(1);
+
     doc
       .font("Helvetica")
       .fontSize(10)
@@ -272,7 +266,6 @@ router.get("/generate-pdf/:id", async (req, res) => {
         "This is a computer-generated document, hence does not require a signature.",
         { align: "left", width: 500 }
       );
-
     doc
       .text(
         "Note: All disputes are subject to Delhi jurisdiction. Goods once sold will only be taken back or exchanged as per",
