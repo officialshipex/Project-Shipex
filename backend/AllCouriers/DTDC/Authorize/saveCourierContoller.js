@@ -7,15 +7,17 @@ const Services = require("../../../models/courierServiceSecond.model");
 const AllCourier=require("../../../models/AllCourierSchema");
 
 const API_TOKEN = process.env.DTDC_API_KEY
+const USERNAME = process.env.DTDC_USERNAME
+const PASSWORD = process.env.DTDC_PASSWORD
+const TOKEN = process.env.DTDC_X_ACCESS_TOKEN
 
 const getToken = async (req, res) => {
-    const { apiKey } = req.body.credentials;  // Destructure apiKey from the request body
-    const { courierName, courierProvider, CODDays, status } = req.body;  // Destructure courier data from the request body
+    const { apiKey, username, password, token } = req.body.credentials; // Destructure credentials
+    const { courierName, courierProvider, CODDays, status } = req.body; // Destructure courier data
 
-    // Validate if the API token matches the provided apiKey
-    if (API_TOKEN !== apiKey) {
-        // If the token does not match, return an unauthorized response
-        return res.status(401).json({ message: 'Unauthorized access. Invalid API key.' });
+    // Validate if the provided credentials match the expected ones
+    if (API_TOKEN !== apiKey || USERNAME !== username || PASSWORD !== password || TOKEN !== token) {
+        return res.status(401).json({ message: 'Unauthorized access. Invalid credentials.' });
     }
 
     const courierData = {
@@ -30,19 +32,18 @@ const getToken = async (req, res) => {
         const newCourier = new AllCourier(courierData);
         await newCourier.save();
 
-        // Return a success response with the newly created courier data
         return res.status(201).json({
             message: 'Courier successfully added.',
             courier: newCourier,
         });
     } catch (error) {
-        // Handle errors gracefully and return a detailed error message
         return res.status(500).json({
             message: 'Failed to add courier.',
             error: error.message,
         });
     }
 };
+
 
 
 const saveDtdc = async (req, res) => {
