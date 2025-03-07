@@ -17,7 +17,7 @@ const {
 const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const {cancelOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller")
+const {cancelOrderShreeMaruti,trackOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller")
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -426,6 +426,7 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
+    console.log("enableservices",enabledServices)
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -645,6 +646,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 const tracking = async (req, res) => {
   try {
+    console.log(req.body)
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
@@ -685,6 +687,7 @@ const tracking = async (req, res) => {
           // console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
+          console.log("tracking",result)
         }
 
         // if (result && result.data) {
