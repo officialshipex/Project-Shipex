@@ -239,7 +239,11 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 const trackShipmentDelhivery = async (waybill) => {
 
   if (!waybill) {
-    return res.status(400).json({ error: "Waybill number is required" });
+    // return res.status(400).json({ error: "Waybill number is required" });
+    return {
+      success:false,
+      data:"Waybill number is required"
+    }
   }
 
   try {
