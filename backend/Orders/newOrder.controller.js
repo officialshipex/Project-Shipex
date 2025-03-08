@@ -694,7 +694,7 @@ const tracking = async (req, res) => {
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
-          // console.log("Tracking result", result);
+          console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }else if (provider === "DTDC") {
@@ -720,9 +720,10 @@ const tracking = async (req, res) => {
         //     console.log("Tracking data already exists.");
         //   }
         // }
-
+// console.log("resulttt",result)
         if (result && result.success) {
           const status = result.data.Status.toLowerCase().replace(/_/g, " ");
+          console.log("result",result);
 
           const statusMap = {
             manifested: () => {
@@ -786,8 +787,17 @@ const trackOrders = async () => {
           return;
         }
 
-        const { Status, StatusLocation, StatusDateTime, Instructions } =
+        const { Status,StatusCode, StatusLocation, StatusDateTime, Instructions } =
           result.data;
+          // console.log("result data",result.data)
+          // List of NSL codes that qualify for "RE-ATTEMPT"
+        const eligibleNSLCodes = ["EOD-74", "EOD-15", "EOD-104", "EOD-43", "EOD-86", "EOD-11", "EOD-69", "EOD-6"];
+
+        // Check if the StatusCode is in the eligible list
+        if (StatusCode && eligibleNSLCodes.includes(StatusCode)) {
+          order.ndrStatus = "RTO-intransit"; // Update ndrStatus
+        }
+
         const newTrackingEntry = {
           status: Status,
           StatusLocation,
