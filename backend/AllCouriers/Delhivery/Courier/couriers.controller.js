@@ -260,6 +260,9 @@ const trackShipmentDelhivery = async (waybill) => {
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
+    const status1 = response?.data?.ShipmentData[0]?.Shipment?.Status?.StatusCode;
+
+    // console.log("statusss",status1)
 
     if (
       status === "Manifested" || status === "In Transit" || status === "Delivered"
@@ -268,6 +271,7 @@ const trackShipmentDelhivery = async (waybill) => {
         success: true,
         id:response.data.ShipmentData[0].Shipment.ReferenceNo,
         data: response.data.ShipmentData[0].Shipment.Status,
+    
       };
     } else {
       return {

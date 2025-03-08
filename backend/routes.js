@@ -42,6 +42,9 @@ const PrintManifest=require("./label/printManifest.controller")
 const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
 const dashboard=require("./dashboard/dashboard,router")
+
+const ndrRoutes=require("./routes/ndr.router")
+router.use("/ndr",ndrRoutes)
 //rate
 const Cod=require("./COD/cod.router")
 router.use("/cod",isAuthorized,Cod)
