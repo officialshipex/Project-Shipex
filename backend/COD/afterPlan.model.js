@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
-const adminCodRemittance = new mongoose.Schema(
-  {
+const afterPlanSchema=new mongoose.Schema({
+ 
     date: { type: Date },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,10 +16,10 @@ const adminCodRemittance = new mongoose.Schema(
     totalCod: {
       type: Number,
     },
+    
+    adjustedAmount: { type: Number },
 
-     amountCreditedToWallet: { type: Number, },
-      earlyCodCharges: { type: Number, default: 0 },
-      adjustedAmount: { type: Number },
+    earlyCodCharges: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["Pending", "Paid"],
@@ -30,9 +30,8 @@ const adminCodRemittance = new mongoose.Schema(
       codcal: { type: Number },
       orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
     },
-  },
-  { timestamps: true }
-);
+  
+})
+const afterPlan = mongoose.model("afterPlan", afterPlanSchema);
+module.exports = afterPlan;
 
-const CODRemittance = mongoose.model("adminCodRemittance", adminCodRemittance);
-module.exports = CODRemittance;
