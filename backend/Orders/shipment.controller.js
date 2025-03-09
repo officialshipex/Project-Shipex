@@ -14,7 +14,7 @@ const {
 const {
   checkServiceabilityShreeMaruti,
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
-
+const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
 const checkServiceabilityAll = async (service, id, pincode) => {
   try {
 // console.log("kkkkkkkkkkk",service, id, pincode)
@@ -131,6 +131,17 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       const result = await checkServiceabilityShreeMaruti(payload);
       console.log("resultttt",result)
       return result;
+    }
+
+    if(service.provider==="EcomExpress"){
+      const payload={
+        originPincode:pincode,
+        destinationPincode:currentOrder.receiverAddress.pinCode
+      }
+      
+      const result=await checkServiceabilityEcomExpress(payload)
+      console.log(result)
+      return result
     }
 
     // return false;

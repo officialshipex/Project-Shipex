@@ -1,325 +1,442 @@
-const axios = require('axios');
-const FormData = require('form-data');
+const axios = require("axios");
+const FormData = require("form-data");
+const user = require("../../../models/User.model");
+const Order = require("../../../models/newOrder.model");
+const Wallet = require("../../../models/wallet");
+const { fetchBulkWaybills } = require("../Authorize/saveCourierController");
+const checkServiceabilityEcomExpress = async (payload) => {
+  const { originPincode, destinationPincode } = payload;
 
-const checkServiceability = async (req, res) => {
-    const { originPincode, destinationPincode } = req.body;
-
-    if (!originPincode || !destinationPincode) {
-        return res.status(400).json({ error: 'Origin and destination pincodes are required.' });
+  if (!originPincode || !destinationPincode) {
+    return res
+      .status(400)
+      .json({ error: "Origin and destination pincodes are required." });
+  }
+  const BASE_URL = process.env.ECOMEXPRESS_SERVICE_URL;
+  const url = `${BASE_URL}/services/expp/expppincode/`;
+  //   console.log(url)
+  const formData = new FormData();
+  formData.append("username", process.env.ECOMEXPRESS_GMAIL);
+  formData.append("password", process.env.ECOMEXPRESS_PASS);
+  formData.append("origin_pincode", originPincode);
+  formData.append("destination_pincode", destinationPincode);
+  // console.log("form data",formData)
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    console.log("service", response.data);
+    if (response?.data?.active) {
+      return {
+        success: true,
+      };
+    } else {
+      return false;
     }
-
-    const url = 'https://clbeta.ecomexpress.in/services/expp/expppincode/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('origin_pincode', originPincode);
-    formData.append('destination_pincode', destinationPincode);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+    // res.status(200).json({ data: response.data });
+  } catch (error) {
+    // if (error.response) {
+    //   res
+    //     .status(error.response.status || 500)
+    //     .json({ error: error.response.data });
+    // } else {
+    //   res.status(500).json({ error: error.message });
+    // }
+    console.log(error.response.data);
+    return false;
+  }
 };
-
 
 const fetchAWB = async (req, res) => {
-    const { count, type } = req.body;
+  const { count, type } = req.body;
 
-    if (!count || !type) {
-        return res.status(400).json({ error: 'count, and type are required.' });
+  if (!count || !type) {
+    return res.status(400).json({ error: "count, and type are required." });
+  }
+
+  const url =
+    "https://clbeta.ecomexpress.in/services/shipment/products/v2/fetch_awb";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("count", count);
+  formData.append("type", type);
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/services/shipment/products/v2/fetch_awb';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('count', count);
-    formData.append('type', type);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
 
-
 const createManifest = async (req, res) => {
-    const { jsonInput } = req.body;
+  try {
+    const { id, provider, finalCharges, courierServiceName } = req.body;
 
-    if (!jsonInput) {
-        return res.status(400).json({ error: 'json_input is required.' });
+    // Fetch order details
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
-    const url = 'https://clbeta.ecomexpress.in/services/expp/manifest/v2/expplus';
+    // Fetch user and wallet details
+    const userRecord = await user.findById(currentOrder.userId);
+    if (!userRecord) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const currentWallet = await Wallet.findById(userRecord.Wallet);
+
+    // Generate AWB number (assuming you have a function to fetch it)
+    const awbResponse = await fetchBulkWaybills(1);
+    console.log(awbResponse)
+    if (!awbResponse || awbResponse.success !== "yes") {
+      return res
+        .status(400)
+        .json({ success: false, message: "AWB number not generated" });
+    }
+
+    const awbNumber = awbResponse.awb[0]; // Extract first AWB number
+const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
+    // Ecom Express API URL
+    const url = `${BASE_URL}/services/expp/manifest/v2/expplus/`;
+
+    // Prepare JSON payload
+    const jsonData = [
+      {
+        AWB_NUMBER: awbNumber,
+        ORDER_NUMBER: currentOrder.orderId,
+        PRODUCT: currentOrder.paymentDetails?.method,
+        CONSIGNEE: currentOrder.receiverAddress.contactName,
+        CONSIGNEE_ADDRESS1: currentOrder.receiverAddress.address,
+        //   CONSIGNEE_ADDRESS2: "Test Consignee Address 2",
+        //   CONSIGNEE_ADDRESS3: "Test Consignee Address 3",
+        DESTINATION_CITY: currentOrder.receiverAddress.city,
+        STATE: currentOrder.receiverAddress.state,
+        PINCODE: currentOrder.receiverAddress.pinCode,
+        MOBILE: currentOrder.receiverAddress.phoneNumber,
+        //   TELEPHONE: "1111111111",
+        ITEM_DESCRIPTION: currentOrder.productDetails[0].name,
+        PIECES: 1,
+        COLLECTABLE_VALUE: 0,
+        DECLARED_VALUE: finalCharges,
+        ACTUAL_WEIGHT: currentOrder.packageDetails?.applicableWeight,
+        VOLUMETRIC_WEIGHT: currentOrder.packageDetails?.volumetricWeight,
+        LENGTH: currentOrder.packageDetails?.dimensions?.length,
+        BREADTH: currentOrder.packageDetails?.dimensions?.width,
+        HEIGHT: currentOrder.packageDetails?.dimensions?.height,
+        PICKUP_NAME: currentOrder.pickupAddress.contactName,
+        PICKUP_ADDRESS_LINE1: currentOrder.pickupAddress.address,
+        // PICKUP_ADDRESS_LINE2: "Test Pickup Address2",
+        PICKUP_PINCODE: currentOrder.pickupAddress.pinCode,
+        // PICKUP_PHONE: "2222222222",
+        PICKUP_MOBILE: currentOrder.pickupAddress.phoneNumber,
+        RETURN_NAME: currentOrder.pickupAddress.contactName,
+        RETURN_ADDRESS_LINE1: currentOrder.pickupAddress.address,
+        // RETURN_ADDRESS_LINE2: "Test Return Address2",
+        RETURN_PINCODE: currentOrder.pickupAddress.pinCode,
+        // RETURN_PHONE: "2222222222",
+        RETURN_MOBILE: currentOrder.pickupAddress.phoneNumber,
+        // DG_SHIPMENT: "false",
+        //   ADDITIONAL_INFORMATION: {
+        //     GST_TAX_CGSTN: "",
+        //     GST_TAX_IGSTN: "",
+        //     GST_TAX_SGSTN: "",
+        //     SELLER_GSTIN: "GISTN988787",
+        //     INVOICE_DATE: "12-08-2022",
+        //     INVOICE_NUMBER: "INVOICE_001",
+        //     GST_TAX_RATE_SGSTN: "",
+        //     GST_TAX_RATE_IGSTN: "",
+        //     GST_TAX_RATE_CGSTN: "",
+        //     GST_HSN: "123456",
+        //     GST_TAX_BASE: "",
+        //     GST_ERN: "123456789876",
+        //     ESUGAM_NUMBER: "",
+        //     ITEM_CATEGORY: "Clothes",
+        //     GST_TAX_NAME: "",
+        //     ESSENTIALPRODUCT: "Y",
+        //     PICKUP_TYPE: "WH",
+        //     OTP_REQUIRED_FOR_DELIVERY: "Y",
+        //     RETURN_TYPE: "WH",
+        //     GST_TAX_TOTAL: "",
+        //     SELLER_TIN: "",
+        //     CONSIGNEE_ADDRESS_TYPE: "HOME",
+        //     CONSIGNEE_LONG: "1.4434",
+        //     CONSIGNEE_LAT: "2.987",
+        //     what3words: "tall.basically.flattered",
+        //   },
+      },
+    ];
+
+    // Create FormData
     const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('json_input', JSON.stringify(jsonInput));
+    formData.append("username", process.env.ECOMEXPRESS_GMAIL);
+    formData.append("password", process.env.ECOMEXPRESS_PASS);
+    formData.append("json_input", JSON.stringify(jsonData));
 
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+    // Send request
+    const response = await axios.post(url, formData, {
+      headers: { ...formData.getHeaders() },
+    });
+
+    console.log("Response Data:", response.data);
+    return res.status(200).json({ success: true, data: response.data });
+  } catch (error) {
+    console.error(
+      "Error:",
+      error.response ? error.response.data : error.message
+    );
+    return res.status(500).json({
+      success: false,
+      error: error.response ? error.response.data : error.message,
+    });
+  }
 };
 
 const getPincodes = async (req, res) => {
+  const url = "https://clbeta.ecomexpress.in/apiv2/pincodes/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
 
-    const url = 'https://clbeta.ecomexpress.in/apiv2/pincodes/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
+  }
 };
 
 const getPincodeDetails = async (req, res) => {
-    const { pincode } = req.body;
+  const { pincode } = req.body;
 
-    if (!pincode) {
-        return res.status(400).json({ error: 'pincode are required.' });
+  if (!pincode) {
+    return res.status(400).json({ error: "pincode are required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/apiv3/pincode/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("pincode", pincode);
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/apiv3/pincode/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('pincode', pincode);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
-
 
 // FORWARD JOURNEY
 const createManifestAWBforward = async (req, res) => {
-    const { jsonInput } = req.body;
+  const { jsonInput } = req.body;
 
-    if (!jsonInput) {
-        return res.status(400).json({ error: 'json_input are required.' });
+  if (!jsonInput) {
+    return res.status(400).json({ error: "json_input are required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/apiv2/manifest_awb/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("json_input", JSON.stringify(jsonInput));
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/apiv2/manifest_awb/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('json_input', JSON.stringify(jsonInput));
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
 
 const cancelShipmentforward = async (req, res) => {
-    const { awbs } = req.body;
+  const { awbs } = req.body;
 
-    if (!awbs) {
-        return res.status(400).json({ error: 'AWB numbers are required.' });
+  if (!awbs) {
+    return res.status(400).json({ error: "AWB numbers are required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/apiv2/cancel_awb/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("awbs", awbs);
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/apiv2/cancel_awb/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('awbs', awbs);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
 
 const shipmentTrackingforward = async (req, res) => {
-    const { awb } = req.body;
+  const { awb } = req.body;
 
-    if (!awb) {
-        return res.status(400).json({ error: 'AWB number is required.' });
+  if (!awb) {
+    return res.status(400).json({ error: "AWB number is required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/track_me/api/mawbd/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("awb", awb);
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/track_me/api/mawbd/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('awb', awb);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
-
 
 // REVERSE JOURNEY
 const manifestAwbRev = async (req, res) => {
-    const { json_input } = req.body;
+  const { json_input } = req.body;
 
-    if (!json_input) {
-        return res.status(400).json({ error: 'json_input is required.' });
+  if (!json_input) {
+    return res.status(400).json({ error: "json_input is required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/apiv2/manifest_awb_rev_v2/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("json_input", JSON.stringify(json_input));
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/apiv2/manifest_awb_rev_v2/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('json_input', JSON.stringify(json_input));
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
-
-
 
 const cancelShipmentRev = async (req, res) => {
-    const { awbs } = req.body;
+  const { awbs } = req.body;
 
-    if (!awbs) {
-        return res.status(400).json({ error: 'AWB number(s) are required.' });
+  if (!awbs) {
+    return res.status(400).json({ error: "AWB number(s) are required." });
+  }
+
+  const url = "https://clbeta.ecomexpress.in/apiv2/cancel_awb/";
+  const formData = new FormData();
+  formData.append("username", process.env.ECOM_GMAIL);
+  formData.append("password", process.env.ECOM_PASS);
+  formData.append("awbs", awbs);
+
+  try {
+    const response = await axios.post(url, formData, {
+      headers: formData.getHeaders(),
+    });
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = 'https://clbeta.ecomexpress.in/apiv2/cancel_awb/';
-    const formData = new FormData();
-    formData.append('username', process.env.ECOM_GMAIL);
-    formData.append('password', process.env.ECOM_PASS);
-    formData.append('awbs', awbs);
-
-    try {
-        const response = await axios.post(url, formData, {
-            headers: formData.getHeaders(),
-        });
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
-
-
 
 const shipmentTrackingRev = async (req, res) => {
-    const { awb } = req.query;
+  const { awb } = req.query;
 
-    if (!awb) {
-        return res.status(400).json({ error: 'AWB number is required.' });
+  if (!awb) {
+    return res.status(400).json({ error: "AWB number is required." });
+  }
+
+  const url = `https://clbeta.ecomexpress.in/track_me/api/mawbd/?username=${process.env.ECOM_GMAIL}&password=${process.env.ECOM_PASS}&awb=${awb}`;
+
+  try {
+    const response = await axios.get(url);
+    res.status(200).json({ data: response.data });
+  } catch (error) {
+    if (error.response) {
+      res
+        .status(error.response.status || 500)
+        .json({ error: error.response.data });
+    } else {
+      res.status(500).json({ error: error.message });
     }
-
-    const url = `https://clbeta.ecomexpress.in/track_me/api/mawbd/?username=${process.env.ECOM_GMAIL}&password=${process.env.ECOM_PASS}&awb=${awb}`;
-
-    try {
-        const response = await axios.get(url);
-        res.status(200).json({ data: response.data });
-    } catch (error) {
-        if (error.response) {
-            res.status(error.response.status || 500).json({ error: error.response.data });
-        } else {
-            res.status(500).json({ error: error.message });
-        }
-    }
+  }
 };
-
-
-
-
-
-
-
 
 module.exports = {
-    checkServiceability,
-    fetchAWB,
-    createManifest,
-    getPincodes,
-    getPincodeDetails,
-    createManifestAWBforward,
-    cancelShipmentforward,
-    shipmentTrackingforward,
-    manifestAwbRev,
-    cancelShipmentRev,
-    shipmentTrackingRev
+  checkServiceabilityEcomExpress,
+  fetchAWB,
+  createManifest,
+  getPincodes,
+  getPincodeDetails,
+  createManifestAWBforward,
+  cancelShipmentforward,
+  shipmentTrackingforward,
+  manifestAwbRev,
+  cancelShipmentRev,
+  shipmentTrackingRev,
 };
-
-
-
-
-

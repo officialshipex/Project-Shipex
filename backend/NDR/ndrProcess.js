@@ -1,14 +1,12 @@
-const { getOrderDetails, callShiprocketNdrApi, callNimbustNdrApi,callEcomExpressNdrApi } = require('../services/ndrService');
-
+const { getOrderDetails, callShiprocketNdrApi, callNimbustNdrApi,callEcomExpressNdrApi,handleDelhiveryNdrAction } = require('../services/ndrService');
+const Order=require("../models/newOrder.model")
 
 const ndrProcessController = async (req, res) => {
-    const { orderId } = req.body;
 
-    if (!orderId) {
-        return res.status(400).json({ error: 'Order ID is required' });
-    }
-
-    const orderDetails = getOrderDetails(orderId);
+const {awb_number,action}=req.body
+    const orderDetails=await Order.findOne({awb_number:awb_number})
+console.log(orderDetails)
+    // const orderDetails = getOrderDetails(orderId);
 
     if (!orderDetails) {
         return res.status(404).json({ error: 'Order not found' });
@@ -23,11 +21,14 @@ const ndrProcessController = async (req, res) => {
         } else if(orderDetails.platform==='ecomexpress'){
             response = await callEcomExpressNdrApi(orderDetails)
         }
+        else if(orderDetails.provider==='Delhivery'){
+            response=await handleDelhiveryNdrAction(awb_number,action)
+        }
         else {
             return res.status(400).json({ error: 'Unsupported platform' });
         }
-
-        res.json({ success: true, data: response });
+console.log("resererer",response)
+        res.json({ success: response.success, data: response });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

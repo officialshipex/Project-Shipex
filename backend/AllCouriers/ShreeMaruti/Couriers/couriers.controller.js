@@ -220,6 +220,7 @@ const createOrder = async (req, res) => {
           },
         },
       });
+      
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
@@ -240,7 +241,7 @@ const createOrder = async (req, res) => {
 const cancelOrderShreeMaruti = async (order_Id) => {
   const payload = {
     orderId: `${order_Id}`,
-    cancelReason: "Cancel Test",
+    cancelReason: "Cancel by customer",
   };
 
   try {
@@ -319,16 +320,29 @@ const downloadLabelInvoice = async (req, res) => {
 
 // Create Manifest
 const createManifest = async (req, res) => {
-  console.log(req.body);
+  console.log("Request Body:", req.body);
+  
+
+  // Extract the AWB numbers from the request body keys
+  const awbNumbers = Object.keys(req.body); // Converts { '56050528810081': '' } to ['56050528810081']
+
+  // Construct the payload with the required structure
+  const payload = {
+    awbNumber: awbNumbers, // Ensure awbNumber is an array
+    // cAwbNumber: [] // If needed, otherwise remove this field
+  };
 
   try {
+    const token = await getToken(); // Ensure token is fetched correctly
     const response = await axios.post(
       `${BASE_URL}/fulfillment/public/seller/order/create-manifest`,
-      req.body,
+      payload,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+    console.log(response.data)
+    
     res.status(200).json(response.data);
   } catch (error) {
     console.error(
@@ -342,14 +356,16 @@ const createManifest = async (req, res) => {
   }
 };
 
+
 // Track Order
 const trackOrderShreeMaruti = async (awbNumber) => {
   if (!awbNumber) {
-    return res
-      .status(400)
-      .json({ error: "Either awbNumber or cAwbNumber is required" });
+    return {
+      success:false,
+      data:"Waybill number is required"
+    }
   }
-
+const token=await getToken()
   try {
     const response = await axios.get(
       `${BASE_URL}/fulfillment/public/seller/order/order-tracking`,
@@ -361,11 +377,13 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         params: { awbNumber },
       }
     );
+    // console.log(response.data)
 
     if (response.data.status == 200) {
+      // console.log("data")
       return {
         success: true,
-        data: response.data.data.orderStatus,
+        data: response.data.orderStatus,
       };
     } else {
       return {
