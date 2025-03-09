@@ -337,7 +337,7 @@ const remittanceScheduleData = async () => {
 
         let newRemittance = null;
 
-        if (dayDifference === 7) {
+        if (dayDifference ===codplans ) {
           const DigitNumber = Math.floor(10000 + Math.random() * 90000); // Generate 8-digit random number
 
           if (isTodayMWF) {
@@ -394,7 +394,7 @@ const remittanceScheduleData = async () => {
   }
 };
 
-cron.schedule("*/1 * * * *", () => {
+cron.schedule("* 4 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   remittanceScheduleData();
 });
@@ -402,7 +402,7 @@ cron.schedule("*/1 * * * *", () => {
 const fetchExtraData = async () => {
   try {
     const today = new Date();
-    const isTodayMWF = [1, 3, 0].includes(today.getDay()); // Check if today is Monday, Wednesday, or Sunday
+    const isTodayMWF = [1, 3, 5].includes(today.getDay()); // Check if today is Monday, Wednesday, or Sunday
 // console.log(isTodayMWF)
     const afterCodPlans = await afterPlan.find();
  
