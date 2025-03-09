@@ -9,5 +9,6 @@ router.post("/getAuthToken",authorizeController.getAuthToken);
 router.get("/getCourierList", shreeMarutiController.getCourierList);
 router.post("/addService", shreeMarutiController.addService);
 router.post("/createShipment", shreeMarutiController.createOrder);
+router.post("/generatePickup",shreeMarutiController.createManifest);
 
 module.exports = router;

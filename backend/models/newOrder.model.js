@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const orderSchema = new mongoose.Schema(
   {
     userId: {
@@ -59,6 +58,7 @@ const orderSchema = new mongoose.Schema(
       },
       default: {},
     },
+    ndrHistory: { type: Array, default: [] },
 
     awb_number: {
       type: String,
@@ -76,6 +76,7 @@ const orderSchema = new mongoose.Schema(
       type: Number,
     },
     status: { type: String, required: true },
+    ndrStatus: { type: String },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -84,12 +85,14 @@ const orderSchema = new mongoose.Schema(
     courierServiceName: {
       type: String,
     },
-    tracking: [{
-      status:{type: String},
-      StatusLocation:{type:String},
-      StatusDateTime:{type:Date},
-      Instructions:{type:String}
-      }],
+    tracking: [
+      {
+        status: { type: String },
+        StatusLocation: { type: String },
+        StatusDateTime: { type: Date },
+        Instructions: { type: String },
+      },
+    ],
   },
   { timestamps: true }
 );
