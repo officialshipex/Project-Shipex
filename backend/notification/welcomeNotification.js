@@ -2,7 +2,7 @@ const transporter = require("./configEmailpass");
 
 const sendWelcomeEmail = async (email, fullname) => {
   const mailOptions = {
-    from: '"Shipex Team" <noreply@shipexindia.com>',
+    from: '"Shipex Team" <support@shipexindia.com>',
     to: email,
     subject: "Welcome to Shipex - Complete KYC & Unlock Exciting Offers!",
     html: `
