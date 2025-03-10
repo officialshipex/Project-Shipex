@@ -330,7 +330,6 @@ const remittanceScheduleData = async () => {
           }
         }
         
-  
    
         // Update wallet balance
         await Wallet.updateOne({ _id: username.Wallet }, { $set: { balance: afterWallet } });
