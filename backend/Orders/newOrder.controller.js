@@ -6,7 +6,7 @@ const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
-const {codToBeRemitted}=require("../COD/cod.controller")
+const { codToBeRemitted } = require("../COD/cod.controller");
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -18,7 +18,10 @@ const {
 const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
-const {cancelOrderShreeMaruti,trackOrderShreeMaruti}=require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller")
+const {
+  cancelOrderShreeMaruti,
+  trackOrderShreeMaruti,
+} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -26,7 +29,10 @@ const fs = require("fs");
 const { log } = require("console");
 const { message } = require("../addons/utils/shippingRulesValidation");
 const mongoose = require("mongoose");
-const { cancelOrderDTDC, trackOrderDTDC } = require("../AllCouriers/DTDC/Courier/couriers.controller");
+const {
+  cancelOrderDTDC,
+  trackOrderDTDC,
+} = require("../AllCouriers/DTDC/Courier/couriers.controller");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -428,7 +434,7 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
-    console.log("enableservices",enabledServices)
+    console.log("enableservices", enabledServices);
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -437,13 +443,10 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-
         // console.log("iiiii",result)
         if (result && result.success) {
           return {
             item,
-
-           
           };
         } else {
           console.error(
@@ -590,22 +593,26 @@ const cancelOrdersAtBooked = async (req, res) => {
       // console.log("I am in it");
       const result = await cancelOrderDelhivery(currentOrder.awb_number);
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with NimbusPost",
+        return res.status(400).json({
+          error: "Failed to cancel shipment with Delhivery",
           details: result,
           orderId: currentOrder._id,
-        };
+        });
       } else {
         currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "ShreeMaruti") {
       const result = await cancelOrderShreeMaruti(currentOrder.orderId);
+      // console.log("shreemaruti",result)
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with NimbusPost",
+        // console.log("shree",result)
+        return res.status(400).json({
+          error: "Failed to cancel shipment with ShreeMaruti",
           details: result,
           orderId: currentOrder._id,
-        };
+        });
+      } else {
+        currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "DTDC") {
       const result = await cancelOrderDTDC(currentOrder.order_id);
@@ -647,6 +654,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         },
       },
     });
+    // console.log("hii")
     res.status(201).send({
       success: true,
     });
@@ -659,7 +667,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 const tracking = async (req, res) => {
   try {
-    console.log(req.body)
+    console.log(req.body);
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
@@ -700,7 +708,7 @@ const tracking = async (req, res) => {
           console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
-        }else if (provider === "DTDC") {
+        } else if (provider === "DTDC") {
           result = await trackOrderDTDC(awb_number);
         }
 
@@ -723,10 +731,10 @@ const tracking = async (req, res) => {
         //     console.log("Tracking data already exists.");
         //   }
         // }
-// console.log("resulttt",result)
+        // console.log("resulttt",result)
         if (result && result.success) {
-          const status = result.data.Status.toLowerCase().replace(/_/g, " ");
-          console.log("result",result);
+          const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
+          console.log("result", result);
 
           const statusMap = {
             manifested: () => {
@@ -767,7 +775,7 @@ setInterval(tracking, 60 * 600000);
 const trackOrders = async () => {
   try {
     const allOrders = await Order.find({ status: { $ne: "new" } }); // Fetch all orders except those with "new" status
-// console.log("order")
+    // console.log("order")
     const trackingPromises = allOrders.map(async (order) => {
       try {
         const { provider, awb_number } = order;
@@ -781,9 +789,8 @@ const trackOrders = async () => {
         } else if (provider === "Xpressbees") {
           result = await trackShipment(awb_number);
         } else if (provider === "Delhivery") {
-
           result = await trackShipmentDelhivery(awb_number);
-          console.log(result)
+          console.log(result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
@@ -792,11 +799,25 @@ const trackOrders = async () => {
           return;
         }
 
-        const { Status,StatusCode, StatusLocation, StatusDateTime, Instructions } =
-          result.data;
-          // console.log("result data",result.data)
-          // List of NSL codes that qualify for "RE-ATTEMPT"
-        const eligibleNSLCodes = ["EOD-74", "EOD-15", "EOD-104", "EOD-43", "EOD-86", "EOD-11", "EOD-69", "EOD-6"];
+        const {
+          Status,
+          StatusCode,
+          StatusLocation,
+          StatusDateTime,
+          Instructions,
+        } = result.data;
+        // console.log("result data",result.data)
+        // List of NSL codes that qualify for "RE-ATTEMPT"
+        const eligibleNSLCodes = [
+          "EOD-74",
+          "EOD-15",
+          "EOD-104",
+          "EOD-43",
+          "EOD-86",
+          "EOD-11",
+          "EOD-69",
+          "EOD-6",
+        ];
 
         // Check if the StatusCode is in the eligible list
         if (StatusCode && eligibleNSLCodes.includes(StatusCode)) {
@@ -911,8 +932,6 @@ const deleteOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
-
-
 
 module.exports = {
   newOrder,
