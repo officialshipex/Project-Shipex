@@ -395,6 +395,7 @@ const checkServiceabilityXpressBees = async (service, payload) => {
       const Xpressbeesid = filteredData.map((value) => value.id);
 
       if (filteredData.length > 0) {
+        // console.log("hii")
         return {
           success: true,
           Xpressbeesid: Xpressbeesid,
