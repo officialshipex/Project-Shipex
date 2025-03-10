@@ -69,7 +69,11 @@ otpRouter.post("/send-otp", async (req, res) => {
 otpRouter.post("/verify-otp", (req, res) => {
   const { phoneNumber, otp } = req.body;
 
+if(!phoneNumber || !otp){
+    return res.status(400).json({success:false,message:"phoneNumber or otp is missing"})
+}
   if (otpStore[phoneNumber] === otp) {
+    console.log(otpStore[phoneNumber]);
     delete otpStore[phoneNumber]; // Remove OTP after verification
     return res.status(200).json({ success: true, message: "OTP verified" });
   }
