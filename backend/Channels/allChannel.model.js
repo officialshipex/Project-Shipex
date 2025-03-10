@@ -1,25 +1,33 @@
 const mongoose = require("mongoose");
 
 const AllChannel = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  channel:{
+    type:String
+  },
   storeName: {
     type: String,
-    required: true,
+    // required: true,
   },
   storeURL: {
     type: String,
-    required: true,
+    // required: true,
   },
   storeClientId: {
     type: String,
-    required: true,
+    // required: true,
   },
   storeClientSecret: {
     type: String,
-    required: true,
+    // required: true,
   },
-  storeAccessToken:{
-    type:String,
-    required:true
+  storeAccessToken: {
+    type: String,
+    // required:true
   },
   orderSyncFrequency: {
     type: String,

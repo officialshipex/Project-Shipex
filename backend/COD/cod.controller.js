@@ -299,7 +299,14 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        const afterRecharge=remitted.rechargeAmount
+        // const Recharge=remitted.rechargeAmount
+        // const rechargeAmount=Recharge
+        // let afterRecharge=
+        // if(afterRecharge<=value.codcal){
+        //   afterRecharge=value.codcal-rechargeAmount
+        // }else{
+           
+        // }
         
         if (!username.Wallet) {
           console.log(`User ${remittance.userId} has no associated Wallet`);
