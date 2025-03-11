@@ -102,18 +102,26 @@ const createManifest = async (req, res) => {
 
     // Generate AWB number (assuming you have a function to fetch it)
     const awbResponse = await fetchBulkWaybills(1);
-    console.log(awbResponse)
-    if (!awbResponse || awbResponse.success !== "yes") {
+    // console.log(awbResponse)
+    if (!awbResponse || awbResponse.awbNumber.success !== "yes") {
       return res
         .status(400)
         .json({ success: false, message: "AWB number not generated" });
     }
 
-    const awbNumber = awbResponse.awb[0]; // Extract first AWB number
-const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
+    const awbNumber = awbResponse.awbNumber.awb[0]; // Extract first AWB number
+    // console.log(awbNumber);
+    const BASE_URL = process.env.ECOMEXPRESS_SERVICE_URL;
     // Ecom Express API URL
     const url = `${BASE_URL}/services/expp/manifest/v2/expplus/`;
 
+    const applicableWeight =
+      Number(currentOrder.packageDetails?.applicableWeight) || 0;
+    const volumetricWeight =
+      (currentOrder.packageDetails?.volumetricWeight?.length *
+        currentOrder.packageDetails?.volumetricWeight?.width *
+        currentOrder.packageDetails?.volumetricWeight?.height) /
+      5000;
     // Prepare JSON payload
     const jsonData = [
       {
@@ -131,10 +139,10 @@ const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
         //   TELEPHONE: "1111111111",
         ITEM_DESCRIPTION: currentOrder.productDetails[0].name,
         PIECES: 1,
-        COLLECTABLE_VALUE: 0,
+        COLLECTABLE_VALUE: currentOrder.paymentDetails.amount,
         DECLARED_VALUE: finalCharges,
-        ACTUAL_WEIGHT: currentOrder.packageDetails?.applicableWeight,
-        VOLUMETRIC_WEIGHT: currentOrder.packageDetails?.volumetricWeight,
+        ACTUAL_WEIGHT: applicableWeight*1000,
+        VOLUMETRIC_WEIGHT: volumetricWeight*1000,
         LENGTH: currentOrder.packageDetails?.dimensions?.length,
         BREADTH: currentOrder.packageDetails?.dimensions?.width,
         HEIGHT: currentOrder.packageDetails?.dimensions?.height,

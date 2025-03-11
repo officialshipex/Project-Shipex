@@ -47,7 +47,7 @@ const fetchBulkWaybills = async (count) => {
   formData.append("username", process.env.ECOMEXPRESS_GMAIL); // Replace with actual username
   formData.append("password", process.env.ECOMEXPRESS_PASS); // Replace with actual password
   formData.append("count", "1"); // Number of AWB numbers to fetch
-  formData.append("type", "AIR"); // Type of shipment
+  formData.append("type", "EXPP"); // Type of shipment
   try {
     const response = await axios.post(url, formData, {
       headers: formData.getHeaders(),
