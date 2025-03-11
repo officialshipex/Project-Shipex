@@ -734,7 +734,7 @@ const tracking = async (req, res) => {
         // console.log("resulttt",result)
         if (result && result.success) {
           const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
-          console.log("result", result);
+          // console.log("result", result);
 
           const statusMap = {
             manifested: () => {
@@ -770,7 +770,7 @@ const tracking = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error });
   }
 };
-setInterval(tracking, 60 * 600000);
+// setInterval(tracking, 60 * 600000);
 
 const trackOrders = async () => {
   try {
@@ -859,7 +859,7 @@ const trackOrders = async () => {
 };
 
 // Run tracking every 1 minute
-// setInterval(trackOrders, 60 * 1000);
+setInterval(trackOrders, 60 * 1000);
 
 // setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
