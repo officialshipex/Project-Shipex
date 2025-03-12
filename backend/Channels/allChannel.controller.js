@@ -258,10 +258,13 @@ const storeAllChannelDetails = async (req, res) => {
 };
 
 // ✅ Fetch Orders from Shopify
+// const axios = require('axios');
+// const AllChannel = require('../models/AllChannel'); // Adjust the path accordingly
+// const Order = require('../models/Order'); // Adjust the path accordingly
+
 const getOrders = async (storeURL) => {
   try {
     const user = await AllChannel.findOne({ storeURL });
-    // console.log(user)
 
     if (!user) {
       console.log(`No user found for store: ${storeURL}`);
@@ -269,7 +272,7 @@ const getOrders = async (storeURL) => {
     }
 
     const response = await axios.get(
-      `https://${storeURL}/admin/api/2024-01/shop.json`,
+      `https://${storeURL}/admin/api/2024-01/orders.json?status=any`,
       {
         headers: {
           "X-Shopify-Access-Token": user.storeAccessToken,
@@ -278,69 +281,133 @@ const getOrders = async (storeURL) => {
       }
     );
 
-    // const orders = response.data.orders;
-    // console.log(orders)
-    console.log('Store Name:', response.data.shop.name);
+    const orders = response.data.orders;
 
-
-    // for (const order of orders) {
-    //   // console.log(`Storing order ${order.id} for user ${user._id}`);
-    //   const newOrder = new Order({
-    //     userId: user.userId,
-    //     orderId: order.id || 123456,
-    //     packageDetails:{
-    //       deadWeight:1,
-    //       applicableWeight:1,
-    //       volumetricWeight:{
-    //         length:10,
-    //         width:10,
-    //         height:10
-    //       }
-    //     },
-        // pickupAddress: {
-        //   contactName: order.shipping_address.name ||"abc",
-        //   email: order.email || "abc",
-        //   phoneNumber: order.shipping_address.phone || "abc",
-        //   address: order.shipping_address.address1 || "abc",
-        //   pinCode: order.shipping_address.zip || "abc",
-        //   city: order.shipping_address.city || "abc",
-        //   state: order.shipping_address.province || "abc",
-        // },
-        receiverAddress: {
-      //     contactName: order.shipping_address.name ||"abc",
-      //     email: order.email || "abc",
-      //     phoneNumber: order.shipping_address.phone || "abc",
-      //     address: order.shipping_address.address1 || "abc",
-      //     pinCode: order.shipping_address.zip || "abc",
-      //     city: order.shipping_address.city || "abc",
-      //     state: order.shipping_address.province || "abc",
-      //   },
-      //   productDetails: order.line_items.map((item) => ({
-      //     id: item.id || 1,
-      //     quantity: item.quantity || 1,
-      //     name: item.name || "abc",
-      //     sku: item.skum|| "abc",
-      //     unitPrice: item.price || "abc",
-      //   })),
-      //   paymentDetails: {
-      //     method: order.financial_status === "paid" ? "Prepaid" : "COD" || "na",
-      //     amount: order.financial_status === "paid" ? 0 : order.total_price || 1,
-      //     // status: order.financial_status,
-      //   },
-      //   status:"new"
-      // });
-
-      // await newOrder.save();
+    if (!orders || orders.length === 0) {
+      console.log("No orders found.");
+      return;
     }
 
-    console.log("📦 Orders processed successfully!");
+    // for (const order of orders) {
+    //   console.log("\n==============================");
+    //   console.log(`📦 Order ID: ${order.id}`);
+    //   console.log(`🛒 Order Number: ${order.name}`);
+    //   console.log(`📅 Created At: ${order.created_at}`);
+    //   console.log(`💰 Total Price: ${order.total_price} ${order.currency}`);
+    //   console.log(`🛍 Financial Status: ${order.financial_status}`);
+    //   console.log(`🚚 Fulfillment Status: ${order.fulfillment_status}`);
+    //   console.log("==============================");
+
+    //   // Shipping Address
+    //   if (order.shipping_address) {
+    //     console.log("\n📍 Shipping Address:");
+    //     console.log(`👤 Name: ${order.shipping_address.name}`);
+    //     console.log(`📧 Email: ${order.email}`);
+    //     console.log(`📞 Phone: ${order.shipping_address.phone || "N/A"}`);
+    //     console.log(`🏠 Address 1: ${order.shipping_address.address1}`);
+    //     console.log(`🏠 Address 2: ${order.shipping_address.address2 || "N/A"}`);
+    //     console.log(`🏙 City: ${order.shipping_address.city}`);
+    //     console.log(`🏛 State: ${order.shipping_address.province}`);
+    //     console.log(`📮 Zip Code: ${order.shipping_address.zip}`);
+    //     console.log(`🌎 Country: ${order.shipping_address.country}`);
+    //   } else {
+    //     console.log("🚫 No shipping address available.");
+    //   }
+
+    //   // Billing Address
+    //   if (order.billing_address) {
+    //     console.log("\n💳 Billing Address:");
+    //     console.log(`👤 Name: ${order.billing_address.name}`);
+    //     console.log(`📞 Phone: ${order.billing_address.phone || "N/A"}`);
+    //     console.log(`🏠 Address 1: ${order.billing_address.address1}`);
+    //     console.log(`🏠 Address 2: ${order.billing_address.address2 || "N/A"}`);
+    //     console.log(`🏙 City: ${order.billing_address.city}`);
+    //     console.log(`🏛 State: ${order.billing_address.province}`);
+    //     console.log(`📮 Zip Code: ${order.billing_address.zip}`);
+    //     console.log(`🌎 Country: ${order.billing_address.country}`);
+    //   } else {
+    //     console.log("🚫 No billing address available.");
+    //   }
+
+    //   // Product Details
+    //   console.log("\n🛍 Product Details:");
+    //   if (order.line_items.length > 0) {
+    //     order.line_items.forEach((item, index) => {
+    //       console.log(`  🔹 Item ${index + 1}:`);
+    //       console.log(`     🏷 Name: ${item.name}`);
+    //       console.log(`     📦 SKU: ${item.sku || "N/A"}`);
+    //       console.log(`     🔢 Quantity: ${item.quantity}`);
+    //       console.log(`     💰 Unit Price: ${item.price} ${order.currency}`);
+    //     });
+    //   } else {
+    //     console.log("🚫 No products found in this order.");
+    //   }
+
+    //   console.log("\n==============================\n");
+
+    //   // Saving to MongoDB
+    //   const newOrder = new Order({
+    //     userId: user.userId,
+    //     orderId: order.id,
+    //     packageDetails: {
+    //       deadWeight: 1,
+    //       applicableWeight: 1,
+    //       volumetricWeight: {
+    //         length: 10,
+    //         width: 10,
+    //         height: 10,
+    //       },
+    //     },
+    //     pickupAddress: order.shipping_address
+    //       ? {
+    //           contactName: order.shipping_address.name,
+    //           email: order.email || "N/A",
+    //           phoneNumber: order.shipping_address.phone || "N/A",
+    //           address: order.shipping_address.address1,
+    //           pinCode: order.shipping_address.zip,
+    //           city: order.shipping_address.city,
+    //           state: order.shipping_address.province,
+    //         }
+    //       : {},
+    //     receiverAddress: order.billing_address
+    //       ? {
+    //           contactName: order.billing_address.name,
+    //           email: order.email || "N/A",
+    //           phoneNumber: order.billing_address.phone || "N/A",
+    //           address: order.billing_address.address1,
+    //           pinCode: order.billing_address.zip,
+    //           city: order.billing_address.city,
+    //           state: order.billing_address.province,
+    //         }
+    //       : {},
+    //     productDetails: order.line_items.map((item) => ({
+    //       id: item.id,
+    //       quantity: item.quantity,
+    //       name: item.name,
+    //       sku: item.sku || "N/A",
+    //       unitPrice: item.price,
+    //     })),
+    //     paymentDetails: {
+    //       method: order.financial_status === "paid" ? "Prepaid" : "COD",
+    //       amount: order.financial_status === "paid" ? 0 : order.total_price,
+    //     },
+    //     status: "new",
+    //   });
+
+    //   await newOrder.save();
+    // }
+
+    console.log("✅ Orders processed successfully!");
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
   }
 };
 
+// module.exports = getOrders;
 
-getOrders(SHOPIFY_STORE);
+
+
+// getOrders(SHOPIFY_STORE);
 
 
 const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
