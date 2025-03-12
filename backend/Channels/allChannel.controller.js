@@ -164,7 +164,8 @@ const getOrders = async () => {
 
 const getAllChannel = async (req, res) => {
   try {
-    const allChannels = await AllChannel.find();
+    const userId = req.user._id;
+    const allChannels = await AllChannel.find({userId:userId});
     res.status(200).json({ success: true, data: allChannels });
   } catch (error) {
     console.error("Error fetching channels:", error);
