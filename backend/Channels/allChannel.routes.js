@@ -6,7 +6,8 @@ app.use(express.json());
 const{storeAllChannelDetails,webhookhandler,getOrders,getAllChannel,getOneChannel,updateChannel,deleteChannel}=require("./allChannel.controller")
 
 router.post("/storeAllChannelDetails",storeAllChannelDetails)
-router.post("/webhook-handler",express.raw({ type: "application/json" }),webhookhandler)
+// ✅ Apply `express.raw()` Middleware Only for Webhook
+router.post("/webhook-handler", express.raw({ type: "application/json" }), webhookhandler);
 router.get("/getAllChannel",getAllChannel)
 router.get("/getOneChannel/:id",getOneChannel)
 router.put("/updateChannel/:id",updateChannel)

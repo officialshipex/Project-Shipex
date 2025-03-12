@@ -219,7 +219,7 @@ const createOrder = async (req, res) => {
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
-            awb_number: result.awb_number || "", // Ensuring it follows the schema
+            awb_number: result.awbNumber || "", // Ensuring it follows the schema
             description: `Freight Charges Applied`,
           },
         },
@@ -383,7 +383,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         params: { awbNumber },
       }
     );
-    console.log("ressssssss",response.data)
+    // console.log("ressssssss",response.data)
 
     if (response.data.status == 200) {
       // console.log("data")
