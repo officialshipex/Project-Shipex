@@ -259,6 +259,10 @@ cron.schedule("0 3 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   codToBeRemitted();
 });
+// cron.schedule("*/1 * * * *", () => {
+//   console.log("Running scheduled task at 4 AM: Fetching orders...");
+//   codToBeRemitted();
+// });
 
 const remittanceScheduleData = async () => {
   try {
@@ -277,7 +281,11 @@ const remittanceScheduleData = async () => {
         continue;
       }
 
-      if (!remitted || !Array.isArray(remitted.sameDayDelhiveryOrders) || remitted.sameDayDelhiveryOrders.length === 0) {
+      if (
+        !remitted ||
+        !Array.isArray(remitted.sameDayDelhiveryOrders) ||
+        remitted.sameDayDelhiveryOrders.length === 0
+      ) {
         console.log(`No remitted orders for user: ${remittance.userId}`);
         continue;
       }
@@ -291,7 +299,9 @@ const remittanceScheduleData = async () => {
         }
 
         const deliveryDate = new Date(value.date);
-        const dayDifference = Math.floor((today - deliveryDate) / (1000 * 60 * 60 * 24));
+        const dayDifference = Math.floor(
+          (today - deliveryDate) / (1000 * 60 * 60 * 24)
+        );
 
         const username = await User.findOne({ _id: remittance.userId });
         if (!username) {
@@ -299,53 +309,78 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        // const Recharge=remitted.rechargeAmount
-        // const rechargeAmount=Recharge
-        // let afterRecharge=
-        // if(afterRecharge<=value.codcal){
-        //   afterRecharge=value.codcal-rechargeAmount
-        // }else{
-           
-        // }
-        
-        if (!username.Wallet) {
-          console.log(`User ${remittance.userId} has no associated Wallet`);
-          continue;
-        }
+        if (dayDifference === 1) {
+          console.log("kkkkkkkkkkk", value);
+          //if user recharge from cod amount
+          let Recharge = remitted.rechargeAmount;
+          let rechargeAmount = Recharge;
+          console.log("Initial Recharge Amount:", rechargeAmount);
 
-        const wallet = await Wallet.findOne({ _id: username.Wallet });
-        if (!wallet) {
-          console.log(`Wallet not found for user: ${remittance.userId}`);
-          continue;
-        }
-
-        // Adjust wallet balance using extraCodcal
-        let afterWallet = wallet.balance;
-        let extraCodcal = value.codcal || 0; // Ensure codcal is not undefined
-        let creditedAmount = 0; // Amount used to adjust wallet
-        let remainingExtraCodcal = extraCodcal; // Remaining extra amount
-
-        if (wallet.balance < 0) {
-          if (extraCodcal >= Math.abs(wallet.balance)) {
-            creditedAmount = Math.abs(wallet.balance); // Use only the required amount
-            remainingExtraCodcal = extraCodcal - creditedAmount; // Leftover extra amount
-            afterWallet = 0; // Wallet is now zero
+          let afterRecharge = 0;
+          let extraAmount = 0;
+          // console.log("fhfhhf", value.codcal);
+          if (rechargeAmount <= value.codcal) {
+            // Deduct recharge amount from codcal
+            afterRecharge = value.codcal - rechargeAmount;
+            extraAmount = rechargeAmount;
+            rechargeAmount = 0;
           } else {
-            creditedAmount = extraCodcal; // Use whatever is available
-            remainingExtraCodcal = 0; // No extra left after adjustment
-            afterWallet += extraCodcal; // Reduce wallet's negative balance
+            // If rechargeAmount is greater, adjust rechargeAmount
+            rechargeAmount = rechargeAmount - value.codcal;
+            afterRecharge = 0;
+            extraAmount = value.codcal;
           }
-        }
-        
-   
-        // Update wallet balance
-        await Wallet.updateOne({ _id: username.Wallet }, { $set: { balance: afterWallet } });
 
-        // Calculate charges and remaining COD amount
-        const chargesPercentage = (remainingExtraCodcal * codplans.planCharges) / 100;
-        const totalValue = remainingExtraCodcal - chargesPercentage;
+          await codRemittance.updateOne(
+            { _id: remitted._id },
+            {
+              $inc: {
+                CODToBeRemitted: -afterRecharge,
+                RemittanceInitiated: value.codcal,
+              },
+              $set: { rechargeAmount: rechargeAmount },
+            }
+          );
+          if (!username.Wallet) {
+            console.log(`User ${remittance.userId} has no associated Wallet`);
+            continue;
+          }
 
-        if (dayDifference === Codplans) {
+          const wallet = await Wallet.findOne({ _id: username.Wallet });
+          if (!wallet) {
+            console.log(`Wallet not found for user: ${remittance.userId}`);
+            continue;
+          }
+
+          // Adjust wallet balance using extraCodcal
+          let afterWallet = wallet.balance;
+          let extraCodcal = afterRecharge || 0; // Ensure codcal is not undefined
+          let creditedAmount = 0; // Amount used to adjust wallet
+          let remainingExtraCodcal = extraCodcal; // Remaining extra amount
+
+          if (wallet.balance < 0) {
+            if (extraCodcal >= Math.abs(wallet.balance)) {
+              creditedAmount = Math.abs(wallet.balance); // Use only the required amount
+              remainingExtraCodcal = extraCodcal - creditedAmount; // Leftover extra amount
+              afterWallet = 0; // Wallet is now zero
+            } else {
+              creditedAmount = extraCodcal; // Use whatever is available
+              remainingExtraCodcal = 0; // No extra left after adjustment
+              afterWallet += extraCodcal; // Reduce wallet's negative balance
+            }
+          }
+
+          // Update wallet balance
+          await Wallet.updateOne(
+            { _id: username.Wallet },
+            { $set: { balance: afterWallet } }
+          );
+
+          // Calculate charges and remaining COD amount
+          const chargesPercentage =
+            (remainingExtraCodcal * codplans.planCharges) / 100;
+          const totalValue = remainingExtraCodcal - chargesPercentage;
+
           const remitanceId = Math.floor(10000 + Math.random() * 90000);
           let newRemittance;
 
@@ -355,7 +390,7 @@ const remittanceScheduleData = async () => {
             userName: username.fullname,
             remitanceId,
             totalCod: totalValue,
-            amountCreditedToWallet: creditedAmount,
+            amountCreditedToWallet: extraAmount,
             adjustedAmount: creditedAmount,
             earlyCodCharges: chargesPercentage,
             status: totalValue === 0 ? "Paid" : "Pending",
@@ -371,11 +406,14 @@ const remittanceScheduleData = async () => {
           } else {
             newRemittance = new afterPlan(remittanceDetails);
           }
-
           await newRemittance.save();
-          console.log(`Remittance created for user: ${remittance.userId}, ID: ${remitanceId}`);
+          console.log(
+            `Remittance created for user: ${remittance.userId}, ID: ${remitanceId}`
+          );
         } else {
-          console.log(`No remittance created for user: ${remittance.userId} (dayDifference: ${dayDifference})`);
+          console.log(
+            `No remittance created for user: ${remittance.userId} (dayDifference: ${dayDifference})`
+          );
         }
       }
     }
@@ -383,16 +421,16 @@ const remittanceScheduleData = async () => {
     console.log("Remittance schedule processing completed.");
   } catch (error) {
     console.error("Error fetching remittance schedule data:", error);
-    throw new Error("Failed to retrieve remittance schedule data. Please try again later.");
+    throw new Error(
+      "Failed to retrieve remittance schedule data. Please try again later."
+    );
   }
 };
 
-
-
-// cron.schedule("* 4 * * *", () => {
-//   console.log("Running scheduled task at 4 AM: Fetching orders...");
-//   remittanceScheduleData();
-// });
+cron.schedule("* 4 * * *", () => {
+  console.log("Running scheduled task at 4 AM: Fetching orders...");
+  remittanceScheduleData();
+});
 
 // cron.schedule("*/1 * * * *", () => {
 //   console.log("Running scheduled task at 4 AM: Fetching orders...");
