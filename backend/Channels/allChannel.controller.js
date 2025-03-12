@@ -105,7 +105,8 @@ const webhookhandler = async (req, res) => {
   try {
     // console.log("hii");
     // Shopify webhook verification (optional but recommended)
-    // const hmac = req.headers["x-shopify-hmac-sha256"];
+    const hmac = req.headers["x-shopify-shop-domain"];
+  
     // const body = JSON.stringify(req.body);
     // const hash = crypto
     //   .createHmac("sha256", process.env.SHOPIFY_SECRET)
@@ -116,8 +117,8 @@ const webhookhandler = async (req, res) => {
     //   return res.status(401).json({ error: "Unauthorized request" });
     // }
 
-    const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log(req.body);
+    // const shopifyOrder = req.body; // Incoming order data from Shopify
+    console.log("sssssssss",hmac);
 
     // Extract necessary details and map them to your schema
     const newOrder = new Order({
@@ -268,7 +269,7 @@ const getOrders = async (storeURL) => {
     }
 
     const response = await axios.get(
-      `https://${storeURL}/admin/api/2024-01/orders.json?status=any`,
+      `https://${storeURL}/admin/api/2024-01/shop.json`,
       {
         headers: {
           "X-Shopify-Access-Token": user.storeAccessToken,
@@ -277,55 +278,57 @@ const getOrders = async (storeURL) => {
       }
     );
 
-    const orders = response.data.orders;
-    console.log(response)
+    // const orders = response.data.orders;
+    // console.log(orders)
+    console.log('Store Name:', response.data.shop.name);
 
-    for (const order of orders) {
-      // console.log(`Storing order ${order.id} for user ${user._id}`);
-      const newOrder = new Order({
-        userId: user.userId,
-        orderId: order.id || 123456,
-        packageDetails:{
-          deadWeight:1,
-          applicableWeight:1,
-          volumetricWeight:{
-            length:10,
-            width:10,
-            height:10
-          }
-        },
-        pickupAddress: {
-          contactName: order.shipping_address.name ||"abc",
-          email: order.email || "abc",
-          phoneNumber: order.shipping_address.phone || "abc",
-          address: order.shipping_address.address1 || "abc",
-          pinCode: order.shipping_address.zip || "abc",
-          city: order.shipping_address.city || "abc",
-          state: order.shipping_address.province || "abc",
-        },
+
+    // for (const order of orders) {
+    //   // console.log(`Storing order ${order.id} for user ${user._id}`);
+    //   const newOrder = new Order({
+    //     userId: user.userId,
+    //     orderId: order.id || 123456,
+    //     packageDetails:{
+    //       deadWeight:1,
+    //       applicableWeight:1,
+    //       volumetricWeight:{
+    //         length:10,
+    //         width:10,
+    //         height:10
+    //       }
+    //     },
+        // pickupAddress: {
+        //   contactName: order.shipping_address.name ||"abc",
+        //   email: order.email || "abc",
+        //   phoneNumber: order.shipping_address.phone || "abc",
+        //   address: order.shipping_address.address1 || "abc",
+        //   pinCode: order.shipping_address.zip || "abc",
+        //   city: order.shipping_address.city || "abc",
+        //   state: order.shipping_address.province || "abc",
+        // },
         receiverAddress: {
-          contactName: order.shipping_address.name ||"abc",
-          email: order.email || "abc",
-          phoneNumber: order.shipping_address.phone || "abc",
-          address: order.shipping_address.address1 || "abc",
-          pinCode: order.shipping_address.zip || "abc",
-          city: order.shipping_address.city || "abc",
-          state: order.shipping_address.province || "abc",
-        },
-        productDetails: order.line_items.map((item) => ({
-          id: item.id || 1,
-          quantity: item.quantity || 1,
-          name: item.name || "abc",
-          sku: item.skum|| "abc",
-          unitPrice: item.price || "abc",
-        })),
-        paymentDetails: {
-          method: order.financial_status === "paid" ? "Prepaid" : "COD" || "na",
-          amount: order.financial_status === "paid" ? 0 : order.total_price || 1,
-          // status: order.financial_status,
-        },
-        status:"new"
-      });
+      //     contactName: order.shipping_address.name ||"abc",
+      //     email: order.email || "abc",
+      //     phoneNumber: order.shipping_address.phone || "abc",
+      //     address: order.shipping_address.address1 || "abc",
+      //     pinCode: order.shipping_address.zip || "abc",
+      //     city: order.shipping_address.city || "abc",
+      //     state: order.shipping_address.province || "abc",
+      //   },
+      //   productDetails: order.line_items.map((item) => ({
+      //     id: item.id || 1,
+      //     quantity: item.quantity || 1,
+      //     name: item.name || "abc",
+      //     sku: item.skum|| "abc",
+      //     unitPrice: item.price || "abc",
+      //   })),
+      //   paymentDetails: {
+      //     method: order.financial_status === "paid" ? "Prepaid" : "COD" || "na",
+      //     amount: order.financial_status === "paid" ? 0 : order.total_price || 1,
+      //     // status: order.financial_status,
+      //   },
+      //   status:"new"
+      // });
 
       // await newOrder.save();
     }
@@ -337,7 +340,7 @@ const getOrders = async (storeURL) => {
 };
 
 
-// getOrders(SHOPIFY_STORE);
+getOrders(SHOPIFY_STORE);
 
 
 const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
