@@ -14,7 +14,7 @@ const ShipRocketController = require("./AllCouriersRoutes/shiprocket.router");
 const ShreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
 const nimbuspostRoutes = require("./AllCouriersRoutes/nimbuspost.router");
 const delhiveryRouter = require("./AllCouriersRoutes/delhivery.router");
-const compression = require('compression');
+const compression = require("compression");
 
 const otpRouter = require("./auth/auth.otp");
 const emailOtpRouter = require("./notification/emailOtpVerification");
@@ -33,32 +33,37 @@ app.use(compression());
 
 // 🛠 Setup Session
 const store = MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    crypto: {
-        secret: process.env.MONGO_SECRET,
-    },
-    touchAfter: 24 * 3600,
+  mongoUrl: process.env.MONGODB_URI,
+  crypto: {
+    secret: process.env.MONGO_SECRET,
+  },
+  touchAfter: 24 * 3600,
 });
 store.on("error", (err) => {
-    console.log("ERROR IN MONGO STORE", err);
+  console.log("ERROR IN MONGO STORE", err);
 });
 
 const sessionOptions = {
-    store,
-    secret: process.env.MONGO_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
+  store,
+  secret: process.env.MONGO_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
 };
 app.use(session(sessionOptions));
 app.use(passport.initialize());
 
 // ✅ Correct API Route Order
 app.use("/v1", router); // 👈 Register main routes first
+// ✅ Use `express.raw()` Only for Webhook
+app.use(
+  "/v1/channel/webhook-handler",
+  express.raw({ type: "application/json" })
+);
 app.use("/v1/Shiprocket", ShipRocketController);
 app.use("/v1/shreeMaruti", ShreeMarutiController);
 app.use("/v1/delhivery", delhiveryRouter);
@@ -70,7 +75,7 @@ app.use("/v1/auth", emailOtpRouter);
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 module.exports = app;

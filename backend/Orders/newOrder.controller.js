@@ -7,6 +7,7 @@ const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
 const { codToBeRemitted } = require("../COD/cod.controller");
+const {cancelShipmentforward,shipmentTrackingforward}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -553,7 +554,7 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
-  // console.log(allOrders);
+  console.log(allOrders);
   try {
     const users = await user.findOne({ _id: allOrders.userId });
     // console.log(users)
@@ -615,7 +616,16 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "DTDC") {
-      const result = await cancelOrderDTDC(currentOrder.order_id);
+      const result = await cancelOrderDTDC(currentOrder.orderId);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with NimbusPost",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
+    } else if (currentOrder.provider === "EcomExpress") {
+      const result = await cancelShipmentforward(currentOrder.awb_number);
       if (result.error) {
         return {
           error: "Failed to cancel shipment with NimbusPost",
@@ -667,7 +677,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 const tracking = async (req, res) => {
   try {
-    console.log(req.body);
+    // console.log(req.body);
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
@@ -705,11 +715,14 @@ const tracking = async (req, res) => {
           // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
-          console.log("Tracking result", result);
+          // console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         } else if (provider === "DTDC") {
           result = await trackOrderDTDC(awb_number);
+        }
+        else if (provider === "EcomExpress") {
+          result = await shipmentTrackingforward(awb_number);
         }
 
         // if (result && result.data) {
@@ -790,7 +803,7 @@ const trackOrders = async () => {
           result = await trackShipment(awb_number);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
-          console.log(result);
+          // console.log(result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
