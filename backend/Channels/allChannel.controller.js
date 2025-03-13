@@ -73,27 +73,40 @@ const webhookhandler = async (req, res) => {
     // console.log("hii");
     // Shopify webhook verification (optional but recommended)
     const storeURL = req.headers["x-shopify-shop-domain"];
-console.log("storeerer",storeURL)
+    const user = await AllChannel.findOne({ storeURL: storeURL });
+
+    const location = await axios.get(
+      `https://${storeURL}/admin/api/2024-01/locations.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": user.storeAccessToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const locations = location.data.locations[0];
+
+    console.log("loooo",locations)
     
 
     const shopifyOrder = req.body; // Incoming order data from Shopify
     console.log("sssssssss",shopifyOrder);
 
-    const user = await AllChannel.findOne({ storeURL: storeURL });
-    console.log("userer",user)
+    
 
     // Extract necessary details and map them to your schema
     const newOrder = new Order({
       userId: user.userId,
       orderId: shopifyOrder.id,
       pickupAddress: {
-        contactName: "Shipex Warehouse",
-        email: "support@shipexindia.com",
-        phoneNumber: "1234567890",
-        address: "Warehouse Address",
-        pinCode: "110001",
-        city: "Delhi",
-        state: "Delhi",
+        contactName: locations.name,
+        email: locations.email || "abc@gmail.com",
+        phoneNumber: locations.phone || "0000000000",
+        address: `${locations.address1},${locations.address2}`,
+        pinCode: locations.zip,
+        city: locations.city,
+        state: locations.localized_province_name,
       },
       receiverAddress: {
         contactName: shopifyOrder.shipping_address.name,
@@ -250,7 +263,7 @@ const getOrders = async (storeURL) => {
         },
       }
     );
-    const locations = response1.data.locations;
+    const locations = response1.data.locations[0];
     console.log("locations", locations);
 
     // const orders = response.data.orders;
