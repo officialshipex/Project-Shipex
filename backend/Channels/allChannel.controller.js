@@ -66,63 +66,24 @@ const createWebhook = async (storeURL, storeAccessToken) => {
   }
 };
 
-// ✅ Webhook Handler (Fixes HMAC Verification)
-// const webhookhandler = async (req, res) => {
-//   try {
-//     console.log("🔔 Webhook Received! Headers:", req.headers);
 
-//     // Shopify sends a raw body, use `req.body` directly
-//     if (!req.headers["x-shopify-hmac-sha256"]) {
-//       return res.status(400).send("Missing HMAC header");
-//     }
-
-//     const hmacHeader = req.headers["x-shopify-hmac-sha256"];
-//     const rawBody = req.body; // Already raw due to `express.raw()`
-
-//     const generatedHmac = crypto
-//       .createHmac("sha256", SHOPIFY_SECRET)
-//       .update(rawBody)
-//       .digest("base64");
-
-//     console.log("✅ Received HMAC:", hmacHeader);
-//     console.log("✅ Generated HMAC:", generatedHmac);
-
-//     if (hmacHeader !== generatedHmac) {
-//       console.error("❌ Webhook HMAC validation failed!");
-//       return res.status(401).send("Unauthorized Webhook");
-//     }
-
-//     console.log("✅ Webhook Validated! Data:", rawBody.toString());
-
-//     res.status(200).send("Webhook processed successfully");
-//   } catch (error) {
-//     console.error("❌ Error processing webhook:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// };
 
 const webhookhandler = async (req, res) => {
   try {
     // console.log("hii");
     // Shopify webhook verification (optional but recommended)
-    const hmac = req.headers["x-shopify-shop-domain"];
-  
-    // const body = JSON.stringify(req.body);
-    // const hash = crypto
-    //   .createHmac("sha256", process.env.SHOPIFY_SECRET)
-    //   .update(body)
-    //   .digest("base64");
+    const storeURL = req.headers["x-shopify-shop-domain"];
 
-    // if (hmac !== hash) {
-    //   return res.status(401).json({ error: "Unauthorized request" });
-    // }
+    
 
-    // const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log("sssssssss",hmac);
+    const shopifyOrder = req.body; // Incoming order data from Shopify
+    // console.log("sssssssss",hmac);
+
+    const user = await AllChannel.findOne({ storeURL: storeURL });
 
     // Extract necessary details and map them to your schema
     const newOrder = new Order({
-      userId: shopifyOrder.customer?.id || "Unknown",
+      userId: user.userId,
       orderId: shopifyOrder.id,
       pickupAddress: {
         contactName: "Shipex Warehouse",
@@ -152,11 +113,11 @@ const webhookhandler = async (req, res) => {
       packageDetails: {
         deadWeight: 0.5, // Default, can be updated later
         applicableWeight: 0.5,
-        volumetricWeight:{
-          length:10,
-          width:10,
-          height:10
-        }
+        volumetricWeight: {
+          length: 10,
+          width: 10,
+          height: 10,
+        },
       },
       paymentDetails: {
         method: shopifyOrder.financial_status === "paid" ? "Prepaid" : "COD",
@@ -164,18 +125,16 @@ const webhookhandler = async (req, res) => {
           shopifyOrder.financial_status === "paid"
             ? 0
             : shopifyOrder.total_price,
-        status: "new",
       },
+      status: "new",
     });
 
     await newOrder.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Order synced successfully",
-        orderId: newOrder.orderId,
-      });
+    res.status(200).json({
+      message: "Order synced successfully",
+      orderId: newOrder.orderId,
+    });
   } catch (error) {
     console.error("Error syncing Shopify order:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -269,7 +228,7 @@ const getOrders = async (storeURL) => {
     }
 
     const response = await axios.get(
-      `https://${storeURL}/admin/api/2024-01/shop.json`,
+      `https://${storeURL}/admin/api/2024-01/orders.json`,
       {
         headers: {
           "X-Shopify-Access-Token": user.storeAccessToken,
@@ -278,60 +237,21 @@ const getOrders = async (storeURL) => {
       }
     );
 
+    const response1 = await axios.get(
+      `https://${storeURL}/admin/api/2024-01/locations.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": user.storeAccessToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const locations = response1.data.locations;
+    console.log("locations", locations);
+
     // const orders = response.data.orders;
     // console.log(orders)
-    console.log('Store Name:', response.data.shop.name);
-
-
-    // for (const order of orders) {
-    //   // console.log(`Storing order ${order.id} for user ${user._id}`);
-    //   const newOrder = new Order({
-    //     userId: user.userId,
-    //     orderId: order.id || 123456,
-    //     packageDetails:{
-    //       deadWeight:1,
-    //       applicableWeight:1,
-    //       volumetricWeight:{
-    //         length:10,
-    //         width:10,
-    //         height:10
-    //       }
-    //     },
-        // pickupAddress: {
-        //   contactName: order.shipping_address.name ||"abc",
-        //   email: order.email || "abc",
-        //   phoneNumber: order.shipping_address.phone || "abc",
-        //   address: order.shipping_address.address1 || "abc",
-        //   pinCode: order.shipping_address.zip || "abc",
-        //   city: order.shipping_address.city || "abc",
-        //   state: order.shipping_address.province || "abc",
-        // },
-        receiverAddress: {
-      //     contactName: order.shipping_address.name ||"abc",
-      //     email: order.email || "abc",
-      //     phoneNumber: order.shipping_address.phone || "abc",
-      //     address: order.shipping_address.address1 || "abc",
-      //     pinCode: order.shipping_address.zip || "abc",
-      //     city: order.shipping_address.city || "abc",
-      //     state: order.shipping_address.province || "abc",
-      //   },
-      //   productDetails: order.line_items.map((item) => ({
-      //     id: item.id || 1,
-      //     quantity: item.quantity || 1,
-      //     name: item.name || "abc",
-      //     sku: item.skum|| "abc",
-      //     unitPrice: item.price || "abc",
-      //   })),
-      //   paymentDetails: {
-      //     method: order.financial_status === "paid" ? "Prepaid" : "COD" || "na",
-      //     amount: order.financial_status === "paid" ? 0 : order.total_price || 1,
-      //     // status: order.financial_status,
-      //   },
-      //   status:"new"
-      // });
-
-      // await newOrder.save();
-    }
+    console.log("Store Name:", response.data.orders[0].shipping_address);
 
     console.log("📦 Orders processed successfully!");
   } catch (error) {
@@ -339,9 +259,7 @@ const getOrders = async (storeURL) => {
   }
 };
 
-
-getOrders(SHOPIFY_STORE);
-
+// getOrders(SHOPIFY_STORE);
 
 const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
   const shopifyStore = "your-store-name";
@@ -373,7 +291,6 @@ const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
 
 // Example Usage
 // fulfillOrder("1234567890", "TRK123456", "Ecom Express");
-
 
 const getAllChannel = async (req, res) => {
   try {
