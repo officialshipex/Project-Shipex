@@ -109,7 +109,7 @@ const webhookhandler = async (req, res) => {
         state: locations.localized_province_name,
       },
       receiverAddress: {
-        contactName: shopifyOrder.shipping_address.name,
+        contactName: shopifyOrder.shipping_address.name || "abc",
         email: shopifyOrder.email,
         phoneNumber: shopifyOrder.shipping_address.phone,
         address: shopifyOrder.shipping_address.address1,
