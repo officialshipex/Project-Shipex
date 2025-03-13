@@ -101,7 +101,7 @@ const webhookhandler = async (req, res) => {
       orderId: shopifyOrder.id,
       pickupAddress: {
         contactName: shopifyOrder.billing_address?.name,
-        email: shopifyOrder.customer?.email,
+        email: shopifyOrder.email,
         phoneNumber: shopifyOrder.billing_address?.phone,
         address: `${shopifyOrder.billing_address?.address1},${shopifyOrder.billing_address?.address2}`,
         pinCode: shopifyOrder.billing_address?.zip,
@@ -110,7 +110,7 @@ const webhookhandler = async (req, res) => {
       },
       receiverAddress: {
         contactName: shopifyOrder.shipping_address?.name || "N/A",
-        email: shopifyOrder?.email || "abc@gmail.com",
+        email: shopifyOrder?.email,
         phoneNumber: shopifyOrder.shipping_address?.phone || "0000000000",
         address: shopifyOrder.shipping_address?.address1 || "abc,abc,abc",
         pinCode: shopifyOrder.shipping_address?.zip || "000000",
