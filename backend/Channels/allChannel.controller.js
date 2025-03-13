@@ -73,13 +73,14 @@ const webhookhandler = async (req, res) => {
     // console.log("hii");
     // Shopify webhook verification (optional but recommended)
     const storeURL = req.headers["x-shopify-shop-domain"];
-
+console.log("storeerer",storeURL)
     
 
     const shopifyOrder = req.body; // Incoming order data from Shopify
-    // console.log("sssssssss",hmac);
+    console.log("sssssssss",shopifyOrder);
 
     const user = await AllChannel.findOne({ storeURL: storeURL });
+    console.log("userer",user)
 
     // Extract necessary details and map them to your schema
     const newOrder = new Order({
