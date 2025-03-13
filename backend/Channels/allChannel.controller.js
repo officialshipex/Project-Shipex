@@ -66,63 +66,24 @@ const createWebhook = async (storeURL, storeAccessToken) => {
   }
 };
 
-// ✅ Webhook Handler (Fixes HMAC Verification)
-// const webhookhandler = async (req, res) => {
-//   try {
-//     console.log("🔔 Webhook Received! Headers:", req.headers);
 
-//     // Shopify sends a raw body, use `req.body` directly
-//     if (!req.headers["x-shopify-hmac-sha256"]) {
-//       return res.status(400).send("Missing HMAC header");
-//     }
-
-//     const hmacHeader = req.headers["x-shopify-hmac-sha256"];
-//     const rawBody = req.body; // Already raw due to `express.raw()`
-
-//     const generatedHmac = crypto
-//       .createHmac("sha256", SHOPIFY_SECRET)
-//       .update(rawBody)
-//       .digest("base64");
-
-//     console.log("✅ Received HMAC:", hmacHeader);
-//     console.log("✅ Generated HMAC:", generatedHmac);
-
-//     if (hmacHeader !== generatedHmac) {
-//       console.error("❌ Webhook HMAC validation failed!");
-//       return res.status(401).send("Unauthorized Webhook");
-//     }
-
-//     console.log("✅ Webhook Validated! Data:", rawBody.toString());
-
-//     res.status(200).send("Webhook processed successfully");
-//   } catch (error) {
-//     console.error("❌ Error processing webhook:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// };
 
 const webhookhandler = async (req, res) => {
   try {
     // console.log("hii");
     // Shopify webhook verification (optional but recommended)
-    const hmac = req.headers["x-shopify-shop-domain"];
-  
-    // const body = JSON.stringify(req.body);
-    // const hash = crypto
-    //   .createHmac("sha256", process.env.SHOPIFY_SECRET)
-    //   .update(body)
-    //   .digest("base64");
+    const storeURL = req.headers["x-shopify-shop-domain"];
 
-    // if (hmac !== hash) {
-    //   return res.status(401).json({ error: "Unauthorized request" });
-    // }
+    
 
-    // const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log("sssssssss",hmac);
+    const shopifyOrder = req.body; // Incoming order data from Shopify
+    // console.log("sssssssss",hmac);
+
+    const user = await AllChannel.findOne({ storeURL: storeURL });
 
     // Extract necessary details and map them to your schema
     const newOrder = new Order({
-      userId: shopifyOrder.customer?.id || "Unknown",
+      userId: user.userId,
       orderId: shopifyOrder.id,
       pickupAddress: {
         contactName: "Shipex Warehouse",
@@ -152,11 +113,11 @@ const webhookhandler = async (req, res) => {
       packageDetails: {
         deadWeight: 0.5, // Default, can be updated later
         applicableWeight: 0.5,
-        volumetricWeight:{
-          length:10,
-          width:10,
-          height:10
-        }
+        volumetricWeight: {
+          length: 10,
+          width: 10,
+          height: 10,
+        },
       },
       paymentDetails: {
         method: shopifyOrder.financial_status === "paid" ? "Prepaid" : "COD",
@@ -164,18 +125,16 @@ const webhookhandler = async (req, res) => {
           shopifyOrder.financial_status === "paid"
             ? 0
             : shopifyOrder.total_price,
-        status: "new",
       },
+      status: "new",
     });
 
     await newOrder.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Order synced successfully",
-        orderId: newOrder.orderId,
-      });
+    res.status(200).json({
+      message: "Order synced successfully",
+      orderId: newOrder.orderId,
+    });
   } catch (error) {
     console.error("Error syncing Shopify order:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -272,7 +231,7 @@ const getOrders = async (storeURL) => {
     }
 
     const response = await axios.get(
-      `https://${storeURL}/admin/api/2024-01/orders.json?status=any`,
+      `https://${storeURL}/admin/api/2024-01/orders.json`,
       {
         headers: {
           "X-Shopify-Access-Token": user.storeAccessToken,
@@ -281,134 +240,30 @@ const getOrders = async (storeURL) => {
       }
     );
 
-    const orders = response.data.orders;
+    const response1 = await axios.get(
+      `https://${storeURL}/admin/api/2024-01/locations.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": user.storeAccessToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const locations = response1.data.locations;
+    console.log("locations", locations);
 
-    if (!orders || orders.length === 0) {
-      console.log("No orders found.");
-      return;
-    }
+    // const orders = response.data.orders;
+    // console.log(orders)
+    console.log("Store Name:", response.data.orders[0].shipping_address);
 
-    // for (const order of orders) {
-    //   console.log("\n==============================");
-    //   console.log(`📦 Order ID: ${order.id}`);
-    //   console.log(`🛒 Order Number: ${order.name}`);
-    //   console.log(`📅 Created At: ${order.created_at}`);
-    //   console.log(`💰 Total Price: ${order.total_price} ${order.currency}`);
-    //   console.log(`🛍 Financial Status: ${order.financial_status}`);
-    //   console.log(`🚚 Fulfillment Status: ${order.fulfillment_status}`);
-    //   console.log("==============================");
-
-    //   // Shipping Address
-    //   if (order.shipping_address) {
-    //     console.log("\n📍 Shipping Address:");
-    //     console.log(`👤 Name: ${order.shipping_address.name}`);
-    //     console.log(`📧 Email: ${order.email}`);
-    //     console.log(`📞 Phone: ${order.shipping_address.phone || "N/A"}`);
-    //     console.log(`🏠 Address 1: ${order.shipping_address.address1}`);
-    //     console.log(`🏠 Address 2: ${order.shipping_address.address2 || "N/A"}`);
-    //     console.log(`🏙 City: ${order.shipping_address.city}`);
-    //     console.log(`🏛 State: ${order.shipping_address.province}`);
-    //     console.log(`📮 Zip Code: ${order.shipping_address.zip}`);
-    //     console.log(`🌎 Country: ${order.shipping_address.country}`);
-    //   } else {
-    //     console.log("🚫 No shipping address available.");
-    //   }
-
-    //   // Billing Address
-    //   if (order.billing_address) {
-    //     console.log("\n💳 Billing Address:");
-    //     console.log(`👤 Name: ${order.billing_address.name}`);
-    //     console.log(`📞 Phone: ${order.billing_address.phone || "N/A"}`);
-    //     console.log(`🏠 Address 1: ${order.billing_address.address1}`);
-    //     console.log(`🏠 Address 2: ${order.billing_address.address2 || "N/A"}`);
-    //     console.log(`🏙 City: ${order.billing_address.city}`);
-    //     console.log(`🏛 State: ${order.billing_address.province}`);
-    //     console.log(`📮 Zip Code: ${order.billing_address.zip}`);
-    //     console.log(`🌎 Country: ${order.billing_address.country}`);
-    //   } else {
-    //     console.log("🚫 No billing address available.");
-    //   }
-
-    //   // Product Details
-    //   console.log("\n🛍 Product Details:");
-    //   if (order.line_items.length > 0) {
-    //     order.line_items.forEach((item, index) => {
-    //       console.log(`  🔹 Item ${index + 1}:`);
-    //       console.log(`     🏷 Name: ${item.name}`);
-    //       console.log(`     📦 SKU: ${item.sku || "N/A"}`);
-    //       console.log(`     🔢 Quantity: ${item.quantity}`);
-    //       console.log(`     💰 Unit Price: ${item.price} ${order.currency}`);
-    //     });
-    //   } else {
-    //     console.log("🚫 No products found in this order.");
-    //   }
-
-    //   console.log("\n==============================\n");
-
-    //   // Saving to MongoDB
-    //   const newOrder = new Order({
-    //     userId: user.userId,
-    //     orderId: order.id,
-    //     packageDetails: {
-    //       deadWeight: 1,
-    //       applicableWeight: 1,
-    //       volumetricWeight: {
-    //         length: 10,
-    //         width: 10,
-    //         height: 10,
-    //       },
-    //     },
-    //     pickupAddress: order.shipping_address
-    //       ? {
-    //           contactName: order.shipping_address.name,
-    //           email: order.email || "N/A",
-    //           phoneNumber: order.shipping_address.phone || "N/A",
-    //           address: order.shipping_address.address1,
-    //           pinCode: order.shipping_address.zip,
-    //           city: order.shipping_address.city,
-    //           state: order.shipping_address.province,
-    //         }
-    //       : {},
-    //     receiverAddress: order.billing_address
-    //       ? {
-    //           contactName: order.billing_address.name,
-    //           email: order.email || "N/A",
-    //           phoneNumber: order.billing_address.phone || "N/A",
-    //           address: order.billing_address.address1,
-    //           pinCode: order.billing_address.zip,
-    //           city: order.billing_address.city,
-    //           state: order.billing_address.province,
-    //         }
-    //       : {},
-    //     productDetails: order.line_items.map((item) => ({
-    //       id: item.id,
-    //       quantity: item.quantity,
-    //       name: item.name,
-    //       sku: item.sku || "N/A",
-    //       unitPrice: item.price,
-    //     })),
-    //     paymentDetails: {
-    //       method: order.financial_status === "paid" ? "Prepaid" : "COD",
-    //       amount: order.financial_status === "paid" ? 0 : order.total_price,
-    //     },
-    //     status: "new",
-    //   });
-
-    //   await newOrder.save();
-    // }
-
+    
     console.log("✅ Orders processed successfully!");
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
   }
 };
 
-// module.exports = getOrders;
-
-
-
 // getOrders(SHOPIFY_STORE);
-
 
 const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
   const shopifyStore = "your-store-name";
@@ -440,7 +295,6 @@ const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
 
 // Example Usage
 // fulfillOrder("1234567890", "TRK123456", "Ecom Express");
-
 
 const getAllChannel = async (req, res) => {
   try {
