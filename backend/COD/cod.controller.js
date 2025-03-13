@@ -3,18 +3,18 @@ const CodPlan = require("./codPan.model");
 const codRemittance = require("./codRemittance.model");
 const Order = require("../models/newOrder.model");
 const adminCodRemittance = require("./adminCodRemittance.model");
-const User = require("../models/User.model");
+const users = require("../models/User.model");
 const Wallet = require("../models/wallet");
 const afterPlan = require("./afterPlan.model");
 const fs = require("fs");
 const csvParser = require("csv-parser");
-
+ const User=require("../models/User.model.js")
 const ExcelJS = require("exceljs");
 const path = require("path");
 const xlsx = require("xlsx");
 const File = require("../model/bulkOrderFiles.model.js");
 const { date } = require("joi");
-
+const CourierCodRemittance=require("./CourierCodRemittance.js")
 const codPlanUpdate = async (req, res) => {
   try {
     const userID = req.user?._id; // Ensure req.user exists
@@ -78,96 +78,6 @@ const codPlanUpdate = async (req, res) => {
   }
 };
 
-// const codToBeRemitted = async () => {
-//     try {
-//       const allOrders = await Order.find({});
-
-//       // Filter orders where the last tracking status is "Delivered" and payment method is "COD"
-//       const deliveredCODOrders = allOrders.filter((order) => {
-//         const lastTracking = order.tracking?.[order.tracking.length - 1]; // Get last tracking entry
-//         return lastTracking?.status === "Delivered" && order.paymentDetails.method === "COD";
-//       });
-
-//       for (const order of deliveredCODOrders) {
-//         const existingRemittance = await codRemittance.findOne({ userId: order.userId });
-
-//         console.log("Processing order:", order._id);
-
-//         // Extract delivery date from tracking info
-//         const latestTracking = order.tracking?.[order.tracking.length - 1];
-//         const deliveryDate = latestTracking?.StatusDateTime;
-
-//         if (!deliveryDate) {
-//           console.log(`Skipping order ${order._id} - No delivery date found`);
-//           continue; // Skip processing this order
-//         }
-
-//         const formattedDeliveryDate = new Date(deliveryDate).toDateString();
-
-//         if (existingRemittance) {
-//           // Ensure the sameDayDelhiveryOrders array exists
-//           existingRemittance.sameDayDelhiveryOrders = existingRemittance.sameDayDelhiveryOrders || [];
-
-//           // Check if the order is already added
-//           const existingEntry = existingRemittance.sameDayDelhiveryOrders.find(
-//             (entry) =>
-//               new Date(entry.date).toDateString() === formattedDeliveryDate &&
-//               entry.orders.includes(order._id)
-//           );
-
-//           if (!existingEntry) {
-//             // Order is new, so update CODToBeRemitted and add to orders
-//             existingRemittance.CODToBeRemitted =
-//               (existingRemittance.CODToBeRemitted || 0) + order.paymentDetails.amount;
-
-//             // Check if there's already an entry for the same delivery date
-//             const dateEntry = existingRemittance.sameDayDelhiveryOrders.find(
-//               (entry) => new Date(entry.date).toDateString() === formattedDeliveryDate
-//             );
-
-//             if (dateEntry) {
-//               // Add order ID to existing entry
-//               dateEntry.orders.push(order._id);
-//             } else {
-//               // Create a new entry for this delivery date
-//               existingRemittance.sameDayDelhiveryOrders.push({
-//                 date: new Date(deliveryDate),
-//                 codca: (codcal|| 0) + order.paymentDetails.amount,
-//                 orders: [order._id],
-//               });
-//             }
-
-//             await existingRemittance.save();
-//           }
-//         } else {
-//           // Create new remittance entry if not found
-//           const newRemittance = new codRemittance({
-//             userId: order.userId,
-//             CODToBeRemitted: order.paymentDetails.amount,
-//             delhiveryData: deliveryDate,
-//             sameDayDelhiveryOrders: [
-//               {
-//                 date: new Date(deliveryDate),
-//                 codca:order.paymentDetails.amount,
-//                 orders: [order._id],
-//               },
-//             ],
-//           });
-
-//           await newRemittance.save();
-//         }
-//       }
-
-//       return { success: true, message: "COD updated successfully" };
-//     } catch (error) {
-//       console.error("Error updating COD:", error);
-//       return {
-//         success: false,
-//         message: "An error occurred while updating the COD Plan",
-//         error: error.message,
-//       };
-//     }
-//   };
 
 const codToBeRemitted = async () => {
   try {
@@ -476,10 +386,10 @@ const fetchExtraData = async () => {
   }
 };
 
-// cron.schedule("*/1 * * * *", () => {
-//   console.log("Running scheduled task at 4 AM: Fetching orders...");
-//   fetchExtraData();
-// });
+cron.schedule("30 4 * * *", () => {
+  console.log("Running scheduled task at 4 AM: Fetching orders...");
+  fetchExtraData();
+});
 
 const codRemittanceData = async (req, res) => {
   try {
@@ -878,6 +788,98 @@ const remittanceTransactionData = async (req, res) => {
   }
 };
 
+
+
+const courierCodRemittance = async (req, res) => {
+  try {
+    const user = req.user._id;
+      let existingCourierCodRemittance
+    // Fetch all delivered COD orders
+    const allDelhiveryOrders = await Order.find({ status: "Delivered" });
+    const codFilterData = allDelhiveryOrders.filter(
+      (item) => item.paymentDetails.method === "COD"
+    );
+
+    for (const e of codFilterData) {
+      // Fetch the user's full name
+      const userNames = await users.findOne({ _id: e.userId });
+
+      if (!userNames) {
+        console.log(`User not found for order ${e.orderId}`);
+        continue; // Skip this order if the user is not found
+      }
+
+      // console.log("User Name:", userNames.fullname);
+
+       existingCourierCodRemittance = await CourierCodRemittance.findOne({ userId: user });
+
+      if (existingCourierCodRemittance) {
+        // Check if the order already exists
+        const orderExists = existingCourierCodRemittance.CourierCodRemittanceData.some(
+          (order) => String(order.orderID).trim() === String(e.orderId).trim()
+        );
+
+        if (!orderExists) {
+          // Update remittance only if order is new
+          existingCourierCodRemittance.TotalRemittance += e.paymentDetails.amount;
+          existingCourierCodRemittance.TotalRemittanceDue += e.paymentDetails.amount;
+
+          // Push new order data
+          existingCourierCodRemittance.CourierCodRemittanceData.push({
+            orderID: e.orderId,
+            userName: userNames.fullname,
+            AwbNumber: e.awb_number || "N/A",
+            CODAmount: e.paymentDetails.amount,
+            status: "Pending",
+          });
+
+          await existingCourierCodRemittance.save();
+        }
+      } else {
+        // If no remittance exists, create a new one
+        const newRemittance = new CourierCodRemittance({
+          userId: user,
+          TotalRemittance: e.paymentDetails.amount,
+          TransferredRemittance: 0,
+          TotalRemittanceDue: e.paymentDetails.amount,
+          CourierCodRemittanceData: [
+            {
+              orderID: e.orderId,
+              userName: userNames.fullname, // Now `userNames` is always defined
+              AwbNumber: e.awb_number || "N/A",
+              CODAmount: e.paymentDetails.amount,
+              status: "Pending",
+            },
+          ],
+        });
+
+        await newRemittance.save();
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Courier COD remittance processed successfully.",
+      data:existingCourierCodRemittance
+    });
+  } catch (error) {
+    console.error("Error processing COD remittance:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 module.exports = {
   codPlanUpdate,
   codToBeRemitted,
@@ -889,4 +891,6 @@ module.exports = {
   uploadCodRemittance,
   CheckCodplan,
   remittanceTransactionData,
+  courierCodRemittance
+  
 };
