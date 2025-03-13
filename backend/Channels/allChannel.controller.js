@@ -100,16 +100,16 @@ const webhookhandler = async (req, res) => {
       userId: user.userId,
       orderId: shopifyOrder.id,
       pickupAddress: {
-        contactName: locations.name,
-        email: locations.email || "abc@gmail.com",
-        phoneNumber: locations.phone || "0000000000",
-        address: `${locations.address1},${locations.address2}`,
-        pinCode: locations.zip,
-        city: locations.city,
-        state: locations.localized_province_name,
+        contactName: shopifyOrder.billing_address?.name,
+        email: shopifyOrder.customer?.email,
+        phoneNumber: shopifyOrder.billing_address?.phone,
+        address: `${shopifyOrder.billing_address?.address1},${shopifyOrder.billing_address?.address2}`,
+        pinCode: shopifyOrder.billing_address?.zip,
+        city: shopifyOrder.billing_address?.city,
+        state: locations?.localized_province_name,
       },
       receiverAddress: {
-        contactName: shopifyOrder.shipping_address?.name || "abc",
+        contactName: shopifyOrder.shipping_address?.name || "N/A",
         email: shopifyOrder?.email || "abc@gmail.com",
         phoneNumber: shopifyOrder.shipping_address?.phone || "0000000000",
         address: shopifyOrder.shipping_address?.address1 || "abc,abc,abc",
@@ -268,7 +268,7 @@ const getOrders = async (storeURL) => {
 
     // const orders = response.data.orders;
     // console.log(orders)
-    console.log("Store Name:", response.data.orders[0].shipping_address);
+    console.log("Store Name:", response.data.orders[0].fulfillments);
 
     
     console.log("✅ Orders processed successfully!");
