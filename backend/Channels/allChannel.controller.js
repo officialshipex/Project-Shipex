@@ -66,15 +66,42 @@ const createWebhook = async (storeURL, storeAccessToken) => {
   }
 };
 
+const getProductDetails = async (productId, storeURL, accessToken) => {
+  try {
+    const response = await axios.get(
+      `https://${storeURL}/admin/api/2024-01/products/${productId}.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Product Response:", response.data);
+
+    const product = response.data.product;
+
+    // Extract weight from the first variant (assuming single variant per product)
+    const weight = product.variants?.[0]?.weight || 1; // Default 0 if not found
+
+    return { length: 10, width: 10, height: 10, weight };
+  } catch (error) {
+    console.error("Error fetching product details:", error);
+    return { length: 10, width: 10, height: 10, weight: 0 }; // Default values
+  }
+};
+
+
+// getProductDetails("6125184188649","q22z1q-jn.myshopify.com","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")
 
 
 const webhookhandler = async (req, res) => {
   try {
-    // console.log("hii");
-    // Shopify webhook verification (optional but recommended)
     const storeURL = req.headers["x-shopify-shop-domain"];
     const user = await AllChannel.findOne({ storeURL: storeURL });
 
+    // Fetch store location details
     const location = await axios.get(
       `https://${storeURL}/admin/api/2024-01/locations.json`,
       {
@@ -84,18 +111,40 @@ const webhookhandler = async (req, res) => {
         },
       }
     );
-
     const locations = location.data.locations[0];
 
-    console.log("loooo",locations)
-    
-
     const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log("sssssssss",shopifyOrder);
+    console.log("reererer",req.body)
 
-    
+    // Extract product details (without weight & dimensions)
+    const productDetails = shopifyOrder.line_items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      name: item.name,
+      sku: item.sku,
+      unitPrice: item.price,
+    }));
 
-    // Extract necessary details and map them to your schema
+    // Fetch package weight & dimensions separately
+    let totalWeight = 0;
+    let totalLength = 10,
+      totalWidth = 10,
+      totalHeight = 10;
+
+    for (const item of shopifyOrder.line_items) {
+      const productInfo = await getProductDetails(
+        item.product_id,
+        storeURL,
+        user.storeAccessToken
+      );
+
+      totalWeight += productInfo.weight;
+      totalLength = Math.max(totalLength, productInfo.length);
+      totalWidth = Math.max(totalWidth, productInfo.width);
+      totalHeight = Math.max(totalHeight, productInfo.height);
+    }
+
+    // Create a new order in your database
     const newOrder = new Order({
       userId: user.userId,
       orderId: shopifyOrder.id,
@@ -117,20 +166,14 @@ const webhookhandler = async (req, res) => {
         city: shopifyOrder.shipping_address?.city || "abc",
         state: shopifyOrder.shipping_address?.province || "abc",
       },
-      productDetails: shopifyOrder.line_items.map((item) => ({
-        id: item.id,
-        quantity: item.quantity,
-        name: item.name,
-        sku: item.sku,
-        unitPrice: item.price,
-      })),
+      productDetails, // Now only contains product-related info, no weight or dimensions
       packageDetails: {
-        deadWeight: 0.5, // Default, can be updated later
-        applicableWeight: 0.5,
+        deadWeight: totalWeight, // Total weight of all products
+        applicableWeight: totalWeight, // Can be adjusted later if needed
         volumetricWeight: {
-          length: 10,
-          width: 10,
-          height: 10,
+          length: totalLength,
+          width: totalWidth,
+          height: totalHeight,
         },
       },
       paymentDetails: {
@@ -154,6 +197,7 @@ const webhookhandler = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 
 // ✅ Store Channel Details and Register Webhook
 const storeAllChannelDetails = async (req, res) => {
@@ -270,7 +314,6 @@ const getOrders = async (storeURL) => {
     // console.log(orders)
     console.log("Store Name:", response.data.orders[0].fulfillments);
 
-    
     console.log("✅ Orders processed successfully!");
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
@@ -279,17 +322,28 @@ const getOrders = async (storeURL) => {
 
 // getOrders(SHOPIFY_STORE);
 
-const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
-  const shopifyStore = "your-store-name";
-  const accessToken = "your-access-token";
+const fulfillOrder = async (req, res) => {
+  let { orderId, provider, waybill } = req.body;
+
+  const userId = req.user._id;
+  const channel = await AllChannel.findOne({ userId: userId });
+  console.log("chandna", channel);
+  if (!channel) {
+    return res
+      .status(404)
+      .json({ message: "Shopify channel not found for this user" });
+  }
+
+  const shopifyStore = channel.storeURL;
+  const accessToken = channel.storeAccessToken;
 
   try {
     const response = await axios.post(
-      `https://${shopifyStore}.myshopify.com/admin/api/2023-04/orders/${orderId}/fulfillments.json`,
+      `https://${shopifyStore}/admin/api/2023-04/orders/${orderId}/fulfillments.json`,
       {
         fulfillment: {
-          tracking_number: trackingNumber,
-          tracking_company: trackingCompany,
+          tracking_number: waybill,
+          tracking_company: provider,
           notify_customer: true, // Notify customer via email
         },
       },
@@ -301,9 +355,9 @@ const fulfillOrder = async (orderId, trackingNumber, trackingCompany) => {
       }
     );
 
-    console.log("Order Fulfilled:", response.data);
+    console.log("Order Fulfilled:", response);
   } catch (error) {
-    console.error("Error fulfilling order:", error.response.data);
+    console.error("Error fulfilling order:", error);
   }
 };
 
@@ -398,4 +452,5 @@ module.exports = {
   getOneChannel,
   updateChannel,
   deleteChannel,
+  fulfillOrder,
 };
