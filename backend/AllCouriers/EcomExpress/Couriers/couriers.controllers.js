@@ -257,11 +257,21 @@ const createManifest = async (req, res) => {
         },
       });
 
-      return res.status(201).json({ message: "Shipment Created Succesfully" });
+      return res.status(201).json({
+        message: "Shipment Created Succesfully",
+        data: {
+          orderId: currentOrder.orderId,
+          provider: provider,
+          waybill: result.awb,
+        },
+      });
     } else {
       return res
         .status(400)
-        .json({ error: "Error creating shipment", details: response.data });
+        .json({
+          error: "Error creating shipment",
+          message: response.data.shipments[0].reason,
+        });
     }
   } catch (error) {
     console.error(
@@ -344,8 +354,10 @@ const createManifestAWBforward = async (req, res) => {
     const response = await axios.post(url, formData, {
       headers: formData.getHeaders(),
     });
+    console.log("reeee", response);
     res.status(200).json({ data: response.data });
   } catch (error) {
+    console.log("errr", error);
     if (error.response) {
       res
         .status(error.response.status || 500)
