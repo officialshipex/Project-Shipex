@@ -13,7 +13,7 @@ const orderSchema = new mongoose.Schema(
     },
     pickupAddress: {
       contactName: { type: String, required: true },
-      email: { type: String, required: true },
+      email: { type: String},
       phoneNumber: { type: String, required: true },
       address: { type: String, required: true },
       pinCode: { type: String, required: true },
@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema(
     },
     receiverAddress: {
       contactName: { type: String, required: true },
-      email: { type: String, required: true },
+      email: { type: String},
       phoneNumber: { type: String, required: true },
       address: { type: String, required: true },
       pinCode: { type: String, required: true },
