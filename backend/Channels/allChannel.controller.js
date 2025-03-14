@@ -85,7 +85,7 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
     // Extract weight from the first variant (assuming single variant per product)
     const weight = product.variants?.[0]?.weight || 1; // Default 0 if not found
 
-    console.log("variants",product.variants)
+    console.log("variants", product.variants);
 
     return { length: 10, width: 10, height: 10, weight };
   } catch (error) {
@@ -94,9 +94,7 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
   }
 };
 
-
 // getProductDetails("6125184188649","q22z1q-jn.myshopify.com","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")
-
 
 const webhookhandler = async (req, res) => {
   try {
@@ -116,7 +114,7 @@ const webhookhandler = async (req, res) => {
     const locations = location.data.locations[0];
 
     const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log("reererer",req.body)
+    console.log("reererer", req.body);
 
     // Extract product details (without weight & dimensions)
     const productDetails = shopifyOrder.line_items.map((item) => ({
@@ -200,7 +198,6 @@ const webhookhandler = async (req, res) => {
   }
 };
 
-
 // ✅ Store Channel Details and Register Webhook
 const storeAllChannelDetails = async (req, res) => {
   try {
@@ -240,8 +237,17 @@ const storeAllChannelDetails = async (req, res) => {
     }
 
     // ✅ Register Webhook
+
     const webHook = await createWebhook(storeURL, storeAccessToken);
-    console.log("wekdfn", webHook);
+    // console.log("✅ Webhook created successfully:", webHook);
+    if (webHook.error === "socket hang up") {
+      return res
+        .status(400)
+        .json({
+          message: "URL or Token or Secret key or Client ID are not matching",
+        });
+    }
+    // console.log("wekdfn", webHook);
     const newChannel = new AllChannel({
       userId,
       channel,
