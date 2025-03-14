@@ -85,6 +85,8 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
     // Extract weight from the first variant (assuming single variant per product)
     const weight = product.variants?.[0]?.weight || 1; // Default 0 if not found
 
+    console.log("variants",product.variants)
+
     return { length: 10, width: 10, height: 10, weight };
   } catch (error) {
     console.error("Error fetching product details:", error);
