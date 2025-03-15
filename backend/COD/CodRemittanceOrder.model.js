@@ -1,0 +1,50 @@
+const mongoose = require("mongoose");
+
+const CodRemittanceOrderSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  totalCodRemittance: {
+    type: Number,
+  },
+  totalCodRemittancePaid: {
+    type: Number,
+  },
+  totalCodRemittanceDue: {
+    type: Number,
+  },
+  codRemittanceOrderData: [
+    {
+      Date: {
+        type: Date,
+      },
+      orderID: {
+        type: String,
+      },
+      userName: {
+        type: String,
+      },
+      PhoneNumber: {
+        type: String,
+      },
+      Email: {
+        type: String,
+      },
+      AWB_Number: {
+        type: String,
+      },
+      CODAmount: {
+        type: String,
+      },
+      status: {
+        type: String,
+        enum: ["Pending", "Paid"],
+        default: "Pending",
+      },
+    },
+  ],
+});
+
+const CodRemittanceOrder = mongoose.model(
+  "CodRemittanceOrder",
+  CodRemittanceOrderSchema
+);
+module.exports = CodRemittanceOrder;
