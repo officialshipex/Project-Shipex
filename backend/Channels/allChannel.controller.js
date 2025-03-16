@@ -6,6 +6,7 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const Order = require("../models/newOrder.model");
+const createWooCommerceWebhook = require("./WooCommerce/woocommerce.controller");
 
 // Shopify Credentials (Use Environment Variables Instead)
 const SHOPIFY_SECRET = "92700d39fe6b414bef9bcde36ec3051f";
@@ -223,8 +224,8 @@ const storeAllChannelDetails = async (req, res) => {
       !storeName ||
       !storeURL ||
       !storeClientId ||
-      !storeClientSecret ||
-      !storeAccessToken
+      !storeClientSecret
+      // !storeAccessToken
     ) {
       return res
         .status(400)
@@ -237,15 +238,18 @@ const storeAllChannelDetails = async (req, res) => {
     }
 
     // ✅ Register Webhook
-
-    const webHook = await createWebhook(storeURL, storeAccessToken);
-    // console.log("✅ Webhook created successfully:", webHook);
-    if (webHook.error === "socket hang up") {
-      return res
-        .status(400)
-        .json({
+    let webHook;
+    if (channel === "Shopify") {
+      webHook = await createWebhook(storeURL, storeAccessToken);
+      // console.log("✅ Webhook created successfully:", webHook);
+      if (webHook.error === "socket hang up") {
+        return res.status(400).json({
           message: "URL or Token or Secret key or Client ID are not matching",
         });
+      }
+    }
+    if(channel==="WooCommerce"){
+      webHook=await createWooCommerceWebhook(storeURL,storeClientId,storeClientSecret)
     }
     // console.log("wekdfn", webHook);
     const newChannel = new AllChannel({
@@ -264,7 +268,7 @@ const storeAllChannelDetails = async (req, res) => {
       multiSeller,
       syncInventory,
       syncFromDate: syncDate || null,
-      webhookId: webHook.webhook.id,
+      webhookId: webHook?.webhook?.id || "",
     });
 
     await newChannel.save();
