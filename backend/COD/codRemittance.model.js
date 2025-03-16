@@ -6,7 +6,7 @@ const codRemittanceSchema = new mongoose.Schema({
   LastCODRemitted: { type: Number },
   TotalCODRemitted: { type: Number },
   TotalDeductionfromCOD: { type: Number },
-  RemittanceInitiated: { type: Number },
+  RemittanceInitiated: { type: Number,defult:0 },
   rechargeAmount:{type:Number},
   sameDayDelhiveryOrders: [
     {
