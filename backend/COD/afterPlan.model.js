@@ -18,7 +18,7 @@ const afterPlanSchema=new mongoose.Schema({
     },
     
     adjustedAmount: { type: Number },
-
+    amountCreditedToWallet:{type:Number},
     earlyCodCharges: { type: Number, default: 0 },
     status: {
       type: String,
