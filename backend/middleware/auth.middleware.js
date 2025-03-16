@@ -16,7 +16,7 @@ const isAuthorized = async (req, res, next) => {
 
   const [Bearer, token] = authorization.split(" ");
 
-// console.log(Bearer,token)
+// console.log("bearerer",Bearer,token)
 
   if (Bearer !== "Bearer" || !token) {
   
@@ -40,7 +40,7 @@ const isAuthorized = async (req, res, next) => {
   }
 
   const userExists = await User.findOne({ _id: user.id });
-  // console.log(userExists)
+  // console.log("usererer",userExists)
 
  
 
