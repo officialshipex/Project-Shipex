@@ -413,34 +413,56 @@ const cancelShipmentforward = async (awbs) => {
   }
 };
 
+// const axios = require("axios");
+const { parseStringPromise } = require("xml2js");
+
 const shipmentTrackingforward = async (awb) => {
   if (!awb) {
-    return res.status(400).json({ error: "AWB number is required." });
+    return { error: "AWB number is required.", status: 400 };
   }
+
   const BASE_URL = process.env.ECOMEXPRESS_TRACK;
-  const url = `${BASE_URL}/track_me/api/mawbd/`;
-  const formData = new FormData();
-  formData.append("username", process.env.ECOMEXPRESS_GMAIL);
-  formData.append("password", process.env.ECOMEXPRESS_PASS);
-  formData.append("awb", awb);
+  const username = process.env.ECOMEXPRESS_GMAIL;
+  const password = process.env.ECOMEXPRESS_PASS;
+
+  // Construct URL with query parameters
+  const url = `${BASE_URL}/track_me/api/mawbd/?username=${username}&password=${password}&awb=${awb}`;
 
   try {
-    const response = await axios.post(url, formData, {
-      headers: formData.getHeaders(),
+    const response = await axios.get(url, {
+      headers: { "x-webhook-version": "2.0" },
     });
-    console.log("resssponses", response);
-    res.status(200).json({ data: response.data });
+
+    // Convert XML response to JSON
+    const jsonResponse = await parseStringPromise(response.data, {
+      explicitArray: false,
+      mergeAttrs: true,
+    });
+
+    // Extract the field array
+    const fields = jsonResponse["ecomexpress-objects"].object.field;
+    
+    // Convert field array into an object with key-value pairs
+    const structuredData = {};
+    fields.forEach((item) => {
+      structuredData[item.name] = item._ || null;
+    });
+
+    // console.log("Final Parsed Response:", structuredData.tracking_status);
+    return { success:true,data: structuredData, status: 200 };
   } catch (error) {
-    console.log("errororor", error.response.data);
+    console.error("Tracking API Error:", error.response?.data || error.message);
+
     if (error.response) {
-      res
-        .status(error.response.status || 500)
-        .json({ error: error.response.data });
+      return {success:false, error: error.response.data, status: error.response.status || 500 };
     } else {
-      res.status(500).json({ error: error.message });
+      return {success:false, error: error.message, status: 500 };
     }
   }
 };
+
+
+
 
 // REVERSE JOURNEY
 const manifestAwbRev = async (req, res) => {

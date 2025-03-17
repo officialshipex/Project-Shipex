@@ -335,43 +335,113 @@ const getOrders = async (storeURL) => {
 // getOrders(SHOPIFY_STORE);
 
 const fulfillOrder = async (req, res) => {
-  let { orderId, provider, waybill } = req.body;
-
-  const userId = req.user._id;
-  const channel = await AllChannel.findOne({ userId: userId });
-  console.log("chandna", channel);
-  if (!channel) {
-    return res
-      .status(404)
-      .json({ message: "Shopify channel not found for this user" });
-  }
-
-  const shopifyStore = channel.storeURL;
-  const accessToken = channel.storeAccessToken;
-
   try {
-    const response = await axios.post(
-      `https://${shopifyStore}/admin/api/2023-04/orders/${orderId}/fulfillments.json`,
-      {
-        fulfillment: {
-          tracking_number: waybill,
-          tracking_company: provider,
-          notify_customer: true, // Notify customer via email
-        },
-      },
-      {
-        headers: {
-          "X-Shopify-Access-Token": accessToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const { orderId, provider, waybill } = req.body;
+    console.log("Received fulfillment request:", { orderId, provider, waybill });
 
-    console.log("Order Fulfilled:", response);
+    if (!orderId || !provider || !waybill) {
+      return res.status(400).json({ message: "Missing required fields: orderId, provider, waybill" });
+    }
+
+    const userId = req.user._id;
+    const channel = await AllChannel.findOne({ userId });
+
+    if (!channel) {
+      return res.status(404).json({ message: "Shopify channel not found for this user" });
+    }
+
+    const shopifyStore = channel.storeURL;
+    const accessToken = channel.storeAccessToken;
+
+    // Fetch order details
+    let orderDetails;
+    try {
+      const orderResponse = await axios.get(`https://${shopifyStore}/admin/api/2024-04/orders/${orderId}.json`, {
+        headers: { "X-Shopify-Access-Token": accessToken },
+      });
+      orderDetails = orderResponse.data.order;
+    } catch (error) {
+      console.error("Error fetching order details:", error.response?.data || error);
+      return res.status(404).json({ message: "Order not found on Shopify" });
+    }
+
+    console.log("Order details:", orderDetails);
+
+    // Check if the order is already fulfilled
+    if (orderDetails.fulfillment_status === "fulfilled") {
+      return res.status(400).json({ message: "Order is already fulfilled" });
+    }
+
+    // Check if the order is a COD order
+    const isCOD = orderDetails.payment_gateway_names.includes("cash_on_delivery");
+
+    // If the order is not COD and payment is still pending, do not fulfill
+    if (!isCOD && orderDetails.financial_status === "pending") {
+      return res.status(400).json({ message: "Order cannot be fulfilled as payment is still pending." });
+    }
+
+    // Fetch store locations
+    let locationId;
+    try {
+      const shopData = await axios.get(`https://${shopifyStore}/admin/api/2024-04/locations.json`, {
+        headers: { "X-Shopify-Access-Token": accessToken },
+      });
+      locationId = shopData.data.locations?.[0]?.id;
+    } catch (error) {
+      console.error("Error fetching locations:", error.response?.data || error);
+      return res.status(500).json({ message: "Error fetching locations from Shopify" });
+    }
+
+    if (!locationId) {
+      return res.status(400).json({ message: "No location ID found for the store" });
+    }
+
+    // Fulfill the order
+    try {
+      const fulfillmentResponse = await axios.post(
+        `https://${shopifyStore}/admin/api/2024-04/orders/${orderId}/fulfillments.json`,
+        {
+          fulfillment: {
+            notify_customer: true, // Notify customer via email
+            location_id: locationId,
+            tracking_info: {
+              number: waybill,
+              company: provider,
+              url: `https://track.courier.com/${waybill}`, // Adjust based on courier tracking link
+            },
+          },
+        },
+        {
+          headers: {
+            "X-Shopify-Access-Token": accessToken,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("Order Fulfilled:", fulfillmentResponse.data);
+
+      return res.status(200).json({ 
+        message: "Order fulfilled successfully",
+        trackingInfo: {
+          trackingNumber: waybill,
+          courier: provider,
+          trackingURL: `https://track.courier.com/${waybill}`, // Adjust for your provider
+        },
+      });
+
+    } catch (error) {
+      console.error("Error fulfilling order:", error.response?.data || error);
+      return res.status(500).json({ message: "Error fulfilling order on Shopify", error: error.response?.data });
+    }
   } catch (error) {
-    console.error("Error fulfilling order:", error);
+    console.error("Unexpected error in fulfillOrder:", error);
+    return res.status(500).json({ message: "Internal server error", error });
   }
 };
+
+
+
 
 // Example Usage
 // fulfillOrder("1234567890", "TRK123456", "Ecom Express");
