@@ -171,7 +171,7 @@ cron.schedule("0 3 * * *", () => {
   codToBeRemitted();
 });
 // cron.schedule("*/1 * * * *", () => {
-//   console.log("Running scheduled task at 4 AM: Fetching orders...");
+//   console.log("Running scheduled task at 6 AM: Fetching orders...");
 //   codToBeRemitted();
 // });
 
@@ -220,8 +220,8 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        if (dayDifference === 1) {
-          console.log("kkkkkkkkkkk", value);
+        if (dayDifference === 11) {
+          // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
           let rechargeAmount = Recharge;
@@ -337,7 +337,10 @@ const remittanceScheduleData = async () => {
     );
   }
 };
-
+// cron.schedule("*/1 * * * *", () => {
+//   console.log("Running scheduled task at 5 AM: Fetching orders...");
+//   remittanceScheduleData();
+// });
 cron.schedule("* 4 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   remittanceScheduleData();
@@ -386,7 +389,10 @@ const fetchExtraData = async () => {
     console.error("Error fetching extra data:", error.message);
   }
 };
-
+// cron.schedule("*/1 * * * *", () => {
+//     console.log("Running scheduled task at 4 AM: Fetching orders...");
+//     remittanceScheduleData();
+//   });
 cron.schedule("30 4 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   fetchExtraData();
@@ -674,7 +680,21 @@ const uploadCodRemittance = async (req, res) => {
         });
       }
 
-      const userRemittance = await codRemittance.findOne({ userId: userID });
+      let userRemittance = await codRemittance.findOne({ userId: userID });
+
+      // FIX: Handle missing userRemittance by creating a new record
+      if (!userRemittance) {
+        console.log(`No COD Remittance found for user ${userID}, creating a new one.`);
+
+        userRemittance = new codRemittance({
+          userId: userID,
+          TotalCODRemitted: 0,
+          TotalDeductionfromCOD: 0,
+          remittanceData: [],
+        });
+
+        await userRemittance.save(); // Save the new document
+      }
 
       for (const item of remittance.orderDetails.orders) {
         const order = await Order.findOne({ _id: item });
@@ -771,137 +791,12 @@ const uploadCodRemittance = async (req, res) => {
       file: fileData,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error in uploadCodRemittance:", error);
     res.status(500).json({ error: "An error occurred while processing the file" });
   }
 };
 
-// const uploadCodRemittance = async (req, res) => {
-//   try {
-//     const userID = req.user._id;
 
-//     if (!req.file) {
-//       return res.status(400).json({ error: "No file uploaded" });
-//     }
-
-//     // Save file metadata
-//     const fileData = new File({
-//       filename: req.file.filename,
-//       date: new Date(),
-//       status: "Processing",
-//     });
-//     await fileData.save();
-
-//     // Determine the file extension
-//     const fileExtension = path.extname(req.file.originalname).toLowerCase();
-//     let codRemittances = [];
-
-//     // Parse the file based on its extension
-//     if (fileExtension === ".csv") {
-//       codRemittances = await parseCSV(req.file.path, fileData);
-//     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
-//       codRemittances = await parseExcel(req.file.path);
-//     } else {
-//       return res.status(400).json({ error: "Unsupported file format" });
-//     }
-
-//     // Validation: Check if file contains data
-//     if (!codRemittances || codRemittances.length === 0) {
-//       return res.status(400).json({
-//         error: "The uploaded file is empty or contains invalid data",
-//       });
-//     }
-
-//     // Process each remittance entry
-//     for (const row of codRemittances) {
-//       const remittance = await adminCodRemittance.findOne({
-//         remittanceId: row["*RemittanceID"], // Ensure correct field name
-//       });
-
-//       if (!remittance) {
-//         return res.status(400).json({
-//           error: `Remittance ID ${row["*RemittanceID"]} not found.`,
-//         });
-//       }
-
-//       let userRemittance = await codRemittance.findOne({ userId: userID });
-
-//       if (!userRemittance) {
-//         // If userRemittance does not exist, create a new one
-//         userRemittance = new codRemittance({
-//           userId: userID,
-//           remittanceData: [],
-//         });
-//       }
-
-//       // Process each order inside the remittance
-//       for (const item of remittance.orderDetails.orders) {
-//         const order = await Order.findOne({ _id: item });
-
-//         if (!order) {
-//           console.log(`Order with ID ${item} not found.`);
-//           continue;
-//         }
-
-//         let existingCodRemittance = await CodRemittanceOrders.findOne({ userId: userID });
-
-//         if (!existingCodRemittance) {
-//           console.log(`No COD Remittance found for user ${userID}`);
-//           continue;
-//         }
-
-//         // Find the order in the existing COD Remittance data
-//         const orderIndex = existingCodRemittance.codRemittanceOrderData.findIndex(
-//           (data) => data.orderID.toString() === order.orderId.toString()
-//         );
-
-//         if (orderIndex !== -1) {
-//           // Update status only if it is currently "Pending"
-//           if (existingCodRemittance.codRemittanceOrderData[orderIndex].status === "Pending") {
-//             existingCodRemittance.codRemittanceOrderData[orderIndex].status = "Paid";
-//             existingCodRemittance.totalCodRemittanceDue-=order.paymentDetails.amount
-//             existingCodRemittance.totalCodRemittancePaid+=order.paymentDetails.amount
-//             // Save the updated document
-//             await existingCodRemittance.save();
-//           }
-//         }
-//       }
-
-//       // Add new remittance data to the userRemittance document
-//       userRemittance.remittanceData.push({
-//         date: remittance.date,
-//         remittanceId: remittance.remittanceId,
-//         utr: row["*UTR"] || "N/A", // Use default if UTR is missing
-//         codAvailable: remittance.totalCod || 0,
-//         amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
-//         earlyCodCharges: remittance.earlyCodCharges || 0,
-//         adjustedAmount: remittance.adjustedAmount || 0,
-//         remittanceMethod: "Bank Transaction",
-//         status: "Paid",
-//         orderDetails: {
-//           date: remittance.orderDetails.date,
-//           codcal: remittance.orderDetails.codcal,
-//           orders: [...remittance.orderDetails.orders],
-//         },
-//       });
-
-//       // Save the updated userRemittance document
-//       await userRemittance.save();
-
-//       // Update remittance status
-//       remittance.status = "Paid";
-//       await remittance.save();
-//     }
-
-//     return res.status(200).json({
-//       message: "COD Remittance uploaded successfully",
-//       file: fileData,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "An error occurred while processing the file" });
-//   }
-// };
 
 const CheckCodplan = async (req, res) => {
   try {
