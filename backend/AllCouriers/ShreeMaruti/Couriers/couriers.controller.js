@@ -83,7 +83,7 @@ const createOrder = async (req, res) => {
   const API_URL = `${BASE_URL}/fulfillment/public/seller/order/ecomm/push-order`;
   const token = await getToken();
 
-  console.log(req.body);
+  // console.log("bodyyyyy", req.body);
   try {
     const { courierServiceName, id, provider, finalCharges } = req.body;
 
@@ -102,12 +102,12 @@ const createOrder = async (req, res) => {
           quantity: Number(item.quantity) || 0, // Ensure it's a number, default to 0 if invalid
           price: Number(item.unitPrice) * Number(item.quantity) || 0, // Ensure valid price
           unitPrice: Number(item.unitPrice) || 0, // Ensure valid unit price
-          weight:
-            currentOrder.packageDetails?.applicableWeight &&
-            currentOrder.productDetails.length > 0
-              ? Number(currentOrder.packageDetails.applicableWeight) /
-                currentOrder.productDetails.length
-              : 0, // Fallback to 0 if weight is invalid
+          weight: currentOrder.packageDetails?.applicableWeight
+            ? Math.max(
+                Number(currentOrder.packageDetails.applicableWeight) * 1000,
+                1
+              )
+            : 1,
           sku: item.sku || null,
         };
       }
@@ -123,13 +123,16 @@ const createOrder = async (req, res) => {
       orderSubtype: "FORWARD",
       currency: "INR",
       amount: parseInt(currentOrder.paymentDetails.amount),
-      weight: parseInt(currentOrder.packageDetails.applicableWeight),
+      weight: Number(currentOrder.packageDetails.applicableWeight)*1000 || 1,
       lineItems: lineItems,
       paymentType: payment_type,
       paymentStatus: payment_status,
-      length: parseInt(currentOrder.packageDetails.volumetricWeight.length),
-      height: parseInt(currentOrder.packageDetails.volumetricWeight.height),
-      width: parseInt(currentOrder.packageDetails.volumetricWeight.width),
+      length:
+        Number(currentOrder.packageDetails?.volumetricWeight?.length) || 1,
+      height:
+        Number(currentOrder.packageDetails?.volumetricWeight?.height) || 1,
+      width: Number(currentOrder.packageDetails?.volumetricWeight?.width) || 1,
+
       billingAddress: {
         name: `${currentOrder.pickupAddress.contactName}`,
         phone: currentOrder.pickupAddress.phoneNumber.toString(),
@@ -179,13 +182,14 @@ const createOrder = async (req, res) => {
           Authorization: `Bearer ${token}`,
         },
       });
+      console.log("ressssssssssponse", response.data);
     } else {
       return res.status(401).json({ success: false, message: "Low Balance" });
     }
 
     if (response.status == 200) {
       const result = response.data.data;
-      console.log(result)
+      console.log(result);
       currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awbNumber;
@@ -215,12 +219,11 @@ const createOrder = async (req, res) => {
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
-            awb_number: result.awb_number || "", // Ensuring it follows the schema
+            awb_number: result.awbNumber || "", // Ensuring it follows the schema
             description: `Freight Charges Applied`,
           },
         },
       });
-      
 
       return res.status(201).json({ message: "Shipment Created Succesfully" });
     } else {
@@ -229,8 +232,8 @@ const createOrder = async (req, res) => {
         .json({ error: "Error creating shipment", details: response.data });
     }
   } catch (error) {
-    console.log(error.response);
-    console.error("Error in creating shipment:", error.message);
+    console.log("errrororororo", error.response.data);
+    // console.error("Error in creating shipment:", error.message);
     return res
       .status(500)
       .json({ error: "Internal Server Error", message: error.message });
@@ -261,10 +264,10 @@ const cancelOrderShreeMaruti = async (order_Id) => {
     console.log("Response:", response);
 
     if (response.status === 200) {
-        await Order.updateOne(
-            { orderId: order_Id },
-            { $set: { status: "Cancelled" } }
-          );
+      await Order.updateOne(
+        { orderId: order_Id },
+        { $set: { status: "Cancelled" } }
+      );
       // Correct status check
       return {
         success: true,
@@ -320,8 +323,7 @@ const downloadLabelInvoice = async (req, res) => {
 
 // Create Manifest
 const createManifest = async (req, res) => {
-  console.log("Request Body:", req.body);
-  
+  // console.log("Request Body:", req.body);
 
   // Extract the AWB numbers from the request body keys
   const awbNumbers = Object.keys(req.body); // Converts { '56050528810081': '' } to ['56050528810081']
@@ -333,16 +335,19 @@ const createManifest = async (req, res) => {
   };
 
   try {
-    const token = await getToken(); // Ensure token is fetched correctly
+    const token = await getToken(); 
+    // console.log(token,"hhhhhhhhhh",awbNumbers)// Ensure token is fetched correctly
     const response = await axios.post(
       `${BASE_URL}/fulfillment/public/seller/order/create-manifest`,
       payload,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+       },
       }
     );
-    console.log(response.data)
-    
+    console.log("jkkkkkkkkkkkkk",response.data);
+
     res.status(200).json(response.data);
   } catch (error) {
     console.error(
@@ -359,13 +364,14 @@ const createManifest = async (req, res) => {
 
 // Track Order
 const trackOrderShreeMaruti = async (awbNumber) => {
+  // console.log("awbNumber",awbNumber)
   if (!awbNumber) {
     return {
-      success:false,
-      data:"Waybill number is required"
-    }
+      success: false,
+      data: "Waybill number is required",
+    };
   }
-const token=await getToken()
+  const token = await getToken();
   try {
     const response = await axios.get(
       `${BASE_URL}/fulfillment/public/seller/order/order-tracking`,
@@ -377,7 +383,7 @@ const token=await getToken()
         params: { awbNumber },
       }
     );
-    // console.log(response.data)
+    // console.log("ressssssss",response.data)
 
     if (response.data.status == 200) {
       // console.log("data")
