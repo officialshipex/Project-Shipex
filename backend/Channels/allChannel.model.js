@@ -60,6 +60,9 @@ const AllChannel = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  webhookId:{
+    type:Number
+  }
 });
 
 module.exports = mongoose.model("allChannel", AllChannel);

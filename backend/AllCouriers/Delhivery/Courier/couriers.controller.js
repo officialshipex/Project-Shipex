@@ -9,7 +9,7 @@ const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
-const plan=require("../../../models/Plan.model")
+const plan = require("../../../models/Plan.model");
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
   const now = new Date();
@@ -79,12 +79,12 @@ const createClientWarehouse = async (payload) => {
 };
 
 const createOrder = async (req, res) => {
-  const { id, provider, finalCharges,courierServiceName } = req.body;
+  const { id, provider, finalCharges, courierServiceName } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const waybills = await fetchBulkWaybills(1);
-  const plans=await plan.findOne({ userId: currentOrder.userId });
+  const plans = await plan.findOne({ userId: currentOrder.userId });
   const createClientWarehouses = await createClientWarehouse(
     currentOrder.pickupAddress
   );
@@ -105,12 +105,16 @@ const createOrder = async (req, res) => {
         order: currentOrder.orderId,
         add: currentOrder.receiverAddress.address || "Default Warehouse",
         payment_mode: payment_type,
-        quantity: currentOrder.productDetails.reduce((sum, product) => sum + product.quantity, 0).toString(), // Total quantity
+        quantity: currentOrder.productDetails
+          .reduce((sum, product) => sum + product.quantity, 0)
+          .toString(), // Total quantity
         phone: currentOrder.receiverAddress.phoneNumber,
-        products_desc: currentOrder.productDetails.map(product => product.name).join(", "), // Join product names
+        products_desc: currentOrder.productDetails
+          .map((product) => product.name)
+          .join(", "), // Join product names
         total_amount: currentOrder.paymentDetails.amount,
         name: currentOrder.receiverAddress.contactName || "Default Warehouse",
-        weight:currentOrder.packageDetails.applicableWeight*1000,
+        weight: currentOrder.packageDetails.applicableWeight * 1000,
         shipment_height: currentOrder.packageDetails.volumetricWeight.height,
         shipment_width: currentOrder.packageDetails.volumetricWeight.width,
         shipment_length: currentOrder.packageDetails.volumetricWeight.length,
@@ -127,19 +131,17 @@ const createOrder = async (req, res) => {
   )}`;
 
   try {
-    let response
-    if(currentWallet.balance>=finalCharges){
+    let response;
+    if (currentWallet.balance >= finalCharges) {
       response = await axios.post(`${url}/api/cmu/create.json`, payload, {
         headers: {
           Authorization: `Token ${API_TOKEN}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
-      console.log("fgddfdf",response);
-      
-   
-    }else{
-      return res.status(400).json({success:false,message:"Low Balance"})
+      console.log("fgddfdf", response);
+    } else {
+      return res.status(400).json({ success: false, message: "Low Balance" });
     }
     // const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
     //   headers: {
@@ -148,7 +150,7 @@ const createOrder = async (req, res) => {
     //   },
     // });
     // console.log("dsssssssss2333333333", response.data);
-// console.log("ddddddddd",response)
+    // console.log("ddddddddd",response)
     if (response.data.success) {
       const result = response.data.packages[0];
       currentOrder.status = "Ready To Ship";
@@ -159,7 +161,7 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
-      
+
       currentOrder.shipmentCreatedAt = new Date();
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
@@ -181,7 +183,14 @@ const createOrder = async (req, res) => {
         },
       });
 
-      return res.status(201).json({ message: "Shipment Created Succesfully" });
+      return res.status(201).json({
+        message: "Shipment Created Successfully",
+        data: {
+          orderId: currentOrder.orderId,
+          provider: provider,
+          waybill: result.waybill,
+        },
+      });
     } else {
       return res
         .status(400)
@@ -199,9 +208,8 @@ const createOrder = async (req, res) => {
 
 const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   if (!pincode) {
-    return "Pincode is required" 
+    return "Pincode is required";
   }
-
 
   try {
     const response = await axios.get(`${url}/c/api/pin-codes/json?`, {
@@ -228,7 +236,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
-    return {success:finalResult};
+    return { success: finalResult };
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
 
@@ -237,13 +245,12 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
 };
 
 const trackShipmentDelhivery = async (waybill) => {
-
   if (!waybill) {
     // return res.status(400).json({ error: "Waybill number is required" });
     return {
-      success:false,
-      data:"Waybill number is required"
-    }
+      success: false,
+      data: "Waybill number is required",
+    };
   }
 
   try {
@@ -262,15 +269,16 @@ const trackShipmentDelhivery = async (waybill) => {
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
-// console.log(status)
+    // console.log(status)
     if (
-      status === "Manifested" || status === "In Transit" || status === "Delivered"
+      status === "Manifested" ||
+      status === "In Transit" ||
+      status === "Delivered"
     ) {
       return {
         success: true,
-        id:response.data.ShipmentData[0].Shipment.ReferenceNo,
+        id: response.data.ShipmentData[0].Shipment.ReferenceNo,
         data: response.data.ShipmentData[0].Shipment.Status,
-    
       };
     } else {
       return {

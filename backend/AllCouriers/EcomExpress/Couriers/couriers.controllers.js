@@ -102,24 +102,36 @@ const createManifest = async (req, res) => {
 
     // Generate AWB number (assuming you have a function to fetch it)
     const awbResponse = await fetchBulkWaybills(1);
-    console.log(awbResponse)
-    if (!awbResponse || awbResponse.success !== "yes") {
+    // console.log(awbResponse)
+    if (!awbResponse || awbResponse.awbNumber.success !== "yes") {
       return res
         .status(400)
         .json({ success: false, message: "AWB number not generated" });
     }
 
-    const awbNumber = awbResponse.awb[0]; // Extract first AWB number
-const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
+    const awbNumber = awbResponse.awbNumber.awb[0]; // Extract first AWB number
+    // console.log(awbNumber);
+    const BASE_URL = process.env.ECOMEXPRESS_SERVICE_URL;
     // Ecom Express API URL
     const url = `${BASE_URL}/services/expp/manifest/v2/expplus/`;
 
+    const applicableWeight = Number(
+      currentOrder.packageDetails?.applicableWeight
+    );
+    const volumetricWeight =
+      (currentOrder.packageDetails?.volumetricWeight?.length *
+        currentOrder.packageDetails?.volumetricWeight?.width *
+        currentOrder.packageDetails?.volumetricWeight?.height) /
+      5000;
+    console.log(applicableWeight, volumetricWeight);
     // Prepare JSON payload
     const jsonData = [
       {
         AWB_NUMBER: awbNumber,
         ORDER_NUMBER: currentOrder.orderId,
-        PRODUCT: currentOrder.paymentDetails?.method,
+        PRODUCT:
+          currentOrder.paymentDetails?.method === "Prepaid" ? "PPD" : "COD",
+
         CONSIGNEE: currentOrder.receiverAddress.contactName,
         CONSIGNEE_ADDRESS1: currentOrder.receiverAddress.address,
         //   CONSIGNEE_ADDRESS2: "Test Consignee Address 2",
@@ -129,15 +141,23 @@ const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
         PINCODE: currentOrder.receiverAddress.pinCode,
         MOBILE: currentOrder.receiverAddress.phoneNumber,
         //   TELEPHONE: "1111111111",
-        ITEM_DESCRIPTION: currentOrder.productDetails[0].name,
-        PIECES: 1,
-        COLLECTABLE_VALUE: 0,
+        ITEM_DESCRIPTION:
+          currentOrder.productDetails?.map((item) => item.name).join(", ") ||
+          "No items",
+
+        PIECES: currentOrder.productDetails?.length || 0,
+
+        COLLECTABLE_VALUE:
+          currentOrder.paymentDetails?.method === "Prepaid"
+            ? 0
+            : currentOrder.paymentDetails?.amount || 0,
+
         DECLARED_VALUE: finalCharges,
-        ACTUAL_WEIGHT: currentOrder.packageDetails?.applicableWeight,
-        VOLUMETRIC_WEIGHT: currentOrder.packageDetails?.volumetricWeight,
-        LENGTH: currentOrder.packageDetails?.dimensions?.length,
-        BREADTH: currentOrder.packageDetails?.dimensions?.width,
-        HEIGHT: currentOrder.packageDetails?.dimensions?.height,
+        ACTUAL_WEIGHT: applicableWeight,
+        VOLUMETRIC_WEIGHT: volumetricWeight,
+        LENGTH: currentOrder.packageDetails?.volumetricWeight?.length,
+        BREADTH: currentOrder.packageDetails?.volumetricWeight?.width,
+        HEIGHT: currentOrder.packageDetails?.volumetricWeight?.height,
         PICKUP_NAME: currentOrder.pickupAddress.contactName,
         PICKUP_ADDRESS_LINE1: currentOrder.pickupAddress.address,
         // PICKUP_ADDRESS_LINE2: "Test Pickup Address2",
@@ -188,12 +208,71 @@ const BASE_URL=process.env.process.env.ECOMEXPRESS_SERVICE_URL;
     formData.append("json_input", JSON.stringify(jsonData));
 
     // Send request
-    const response = await axios.post(url, formData, {
-      headers: { ...formData.getHeaders() },
-    });
 
-    console.log("Response Data:", response.data);
-    return res.status(200).json({ success: true, data: response.data });
+    let response;
+    if (currentWallet.balance >= finalCharges) {
+      response = await axios.post(url, formData, {
+        headers: { ...formData.getHeaders() },
+      });
+      console.log("Response Data:", response.data);
+    } else {
+      return res.status(401).json({ success: false, message: "Low Balance" });
+    }
+
+    if (response.data?.shipments[0]?.success) {
+      const result = response.data?.shipments[0];
+      // console.log(result);
+      currentOrder.status = "Ready To Ship";
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.awb;
+      currentOrder.shipment_id = `${result.order_number}`;
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges = finalCharges;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.courierServiceName = courierServiceName;
+      //   currentOrder.service_details = selectedServiceDetails._id;
+      //   currentOrder.freightCharges =
+      //     req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
+      //   currentOrder.tracking = [];
+      //   currentOrder.tracking.push({
+      //     stage: "Order Booked",
+      //   });
+      await currentOrder.save();
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      //   let currentBalance = currentWallet.balance - balanceToBeDeducted;
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId || null, // Include if available
+            category: "debit",
+            amount: balanceToBeDeducted, // Fixing incorrect reference
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.awb || "", // Ensuring it follows the schema
+            description: `Freight Charges Applied`,
+          },
+        },
+      });
+
+      return res.status(201).json({
+        message: "Shipment Created Succesfully",
+        data: {
+          orderId: currentOrder.orderId,
+          provider: provider,
+          waybill: result.awb,
+        },
+      });
+    } else {
+      return res
+        .status(400)
+        .json({
+          error: "Error creating shipment",
+          message: response.data.shipments[0].reason,
+        });
+    }
   } catch (error) {
     console.error(
       "Error:",
@@ -275,8 +354,10 @@ const createManifestAWBforward = async (req, res) => {
     const response = await axios.post(url, formData, {
       headers: formData.getHeaders(),
     });
+    console.log("reeee", response);
     res.status(200).json({ data: response.data });
   } catch (error) {
+    console.log("errr", error);
     if (error.response) {
       res
         .status(error.response.status || 500)
@@ -287,54 +368,70 @@ const createManifestAWBforward = async (req, res) => {
   }
 };
 
-const cancelShipmentforward = async (req, res) => {
-  const { awbs } = req.body;
+const cancelShipmentforward = async (awbs) => {
+  console.log("awbbb", awbs);
 
-  if (!awbs) {
-    return res.status(400).json({ error: "AWB numbers are required." });
+  if (!awbs || typeof awbs !== "string" || awbs.trim() === "") {
+    throw new Error("Invalid AWB number."); // Throw an error instead of using res
   }
 
-  const url = "https://clbeta.ecomexpress.in/apiv2/cancel_awb/";
+  const BASE_URL = process.env.ECOMEXPRESS_URL;
+  const url = `${BASE_URL}/apiv2/cancel_awb/`;
+
+  if (!process.env.ECOMEXPRESS_GMAIL || !process.env.ECOMEXPRESS_PASS) {
+    console.log("Missing API credentials"); // Throw error instead of using res
+  }
+
   const formData = new FormData();
-  formData.append("username", process.env.ECOM_GMAIL);
-  formData.append("password", process.env.ECOM_PASS);
+  formData.append("username", process.env.ECOMEXPRESS_GMAIL);
+  formData.append("password", process.env.ECOMEXPRESS_PASS);
   formData.append("awbs", awbs);
 
   try {
     const response = await axios.post(url, formData, {
-      headers: formData.getHeaders(),
+      headers: {
+        ...formData.getHeaders(), // Correct headers
+      },
     });
-    res.status(200).json({ data: response.data });
+
+    console.log("ressss", response.data);
+
+    await Order.updateOne(
+      { awb_number: awbs },
+      { $set: { status: "Cancelled" } }
+    );
+
+    return response.data; // Return API response instead of using res
   } catch (error) {
+    console.error("Error cancelling order:", error.message);
+
     if (error.response) {
-      res
-        .status(error.response.status || 500)
-        .json({ error: error.response.data });
+      throw new Error(JSON.stringify(error.response.data)); // Throw error with API response
     } else {
-      res.status(500).json({ error: error.message });
+      throw new Error(error.message);
     }
   }
 };
 
-const shipmentTrackingforward = async (req, res) => {
-  const { awb } = req.body;
-
+const shipmentTrackingforward = async (awb) => {
   if (!awb) {
     return res.status(400).json({ error: "AWB number is required." });
   }
-
-  const url = "https://clbeta.ecomexpress.in/track_me/api/mawbd/";
+  const BASE_URL = process.env.ECOMEXPRESS_TRACK;
+  const url = `${BASE_URL}/track_me/api/mawbd/`;
   const formData = new FormData();
-  formData.append("username", process.env.ECOM_GMAIL);
-  formData.append("password", process.env.ECOM_PASS);
+  formData.append("username", process.env.ECOMEXPRESS_GMAIL);
+  formData.append("password", process.env.ECOMEXPRESS_PASS);
   formData.append("awb", awb);
 
   try {
     const response = await axios.post(url, formData, {
       headers: formData.getHeaders(),
     });
+    console.log("resssponses", response);
     res.status(200).json({ data: response.data });
   } catch (error) {
+    console.log("errororor", error.response.data);
     if (error.response) {
       res
         .status(error.response.status || 500)
