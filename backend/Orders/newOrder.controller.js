@@ -872,7 +872,7 @@ const trackOrders = async () => {
 };
 
 // Run tracking every 1 minute
-setInterval(trackOrders, 60 * 1000);
+// setInterval(trackOrders, 60 * 1000);
 
 // setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
@@ -946,6 +946,24 @@ const deleteOrder = async (req, res) => {
   }
 };
 
+
+const GetTrackingByAwb = async (req, res) => {
+  try {
+    const { awb } = req.params;
+    const order = await Order.findOne({ awb_number: awb });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    console.log("Order details:", order);
+    res.status(200).json(order);
+  } catch (error) {
+    console.error("Error fetching tracking details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   newOrder,
   getOrders,
@@ -964,4 +982,5 @@ module.exports = {
   passbook,
   getUser,
   trackOrders,
+  GetTrackingByAwb
 };

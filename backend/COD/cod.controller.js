@@ -188,9 +188,17 @@ const remittanceScheduleData = async () => {
       ]);
 
       if (!codplans || !codplans.planName) {
-        console.log(`No plan found for user: ${remittance.userId}`);
-        continue;
+        console.log(`No plan found for user: ${remittance.userId}. Creating a new plan.`);
+      
+        const newPlan = new CodPlan({
+          user: remittance.userId,
+          planName: "D+7", // Default plan
+        });
+      
+        await newPlan.save();
+        continue; // Skip processing for this user in the current iteration
       }
+      
 
       if (
         !remitted ||
@@ -220,7 +228,9 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        if (dayDifference === 11) {
+        // if (dayDifference === 0) {/
+          
+        if (true) {
           // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
