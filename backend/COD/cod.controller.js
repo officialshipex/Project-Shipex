@@ -228,9 +228,9 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        // if (dayDifference === 0) {/
+        if (dayDifference === Codplans) {
           
-        if (true) {
+        // if (true) {
           // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
