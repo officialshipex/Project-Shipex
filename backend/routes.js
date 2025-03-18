@@ -7,6 +7,7 @@ const getKyc=require("./GetKycDetals/getKyc.router")
 const paytmRoutes = require("./routes/paytm.router");
 const verficationRouter = require("./routes/kyc.router");
 const rechargeRouter = require("./recharge/recharge.route");
+const weightDispreancy=require("./WeightDispreancy/weightDispreancy.route")
 
 // const orderRouter = require("./routes/orders.router");
 
@@ -46,6 +47,7 @@ const channel=require("./Channels/allChannel.routes")
 router.use("/channel",channel)
 const ndrRoutes=require("./routes/ndr.router")
 router.use("/ndr",ndrRoutes)
+router.use("/dispreancy",isAuthorized,weightDispreancy);
 //rate
 const Cod=require("./COD/cod.router")
 router.use("/cod",isAuthorized,Cod)

@@ -6,6 +6,7 @@ const Wallet = require("../../../models/wallet");
 const { fetchBulkWaybills } = require("../Authorize/saveCourierController");
 const checkServiceabilityEcomExpress = async (payload) => {
   const { originPincode, destinationPincode } = payload;
+// console.log("origin",originPincode)
 
   if (!originPincode || !destinationPincode) {
     return res
@@ -25,12 +26,13 @@ const checkServiceabilityEcomExpress = async (payload) => {
     const response = await axios.post(url, formData, {
       headers: formData.getHeaders(),
     });
-    console.log("service", response.data);
+    console.log("EcomExpress serviceability", response.data);
     if (response?.data?.active) {
       return {
         success: true,
       };
     } else {
+      // console.log("false")
       return false;
     }
     // res.status(200).json({ data: response.data });
@@ -42,7 +44,7 @@ const checkServiceabilityEcomExpress = async (payload) => {
     // } else {
     //   res.status(500).json({ error: error.message });
     // }
-    console.log(error.response.data);
+    console.log("eeeeeee",error.response.data);
     return false;
   }
 };
