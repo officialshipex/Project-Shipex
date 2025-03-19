@@ -2,6 +2,7 @@ const axios = require('axios');
 const DELHIVERY_API_URL=process.env.DELHIVERY_URL
 const DEL_API_TOKEN=process.env.DEL_API_TOKEN
 const Order=require("../models/newOrder.model")
+const moment = require("moment");
 
 const ordersDatabase = [
     { orderId: 1, platform: 'shiprocket', details: 'Order details for Shiprocket' },
@@ -46,19 +47,32 @@ const callEcomExpressNdrApi = async (orderDetails) => {
 
 
 async function handleDelhiveryNdrAction(awb_number, action) {
-    console.log("AWB Number:", awb_number, "Action:", action);
+    // console.log("AWB Number:", awb_number, "Action:", action);
 
     if (!awb_number || !action) {
         return { success: false, error: "Missing required parameters: waybill or act" };
     }
 
-    const payload = {
-        waybill: awb_number,
-        act: action
-    };
-
+    // Step 1: Get current time and check if action is allowed
+    const currentHour = moment().utcOffset("+05:30").hour(); // Convert to IST
+    if (action === "RE-ATTEMPT" && currentHour < 21) {
+        return { success: false, error: "Re-attempt can only be requested after 9 PM IST." };
+    }
+// console.log("hii")
     try {
-        // Step 1: Call Delhivery NDR Action API
+        // Step 2: Fetch attempt count from the order
+        const order = await Order.findOne({ awb_number });
+        if (!order) {
+            return { success: false, error: "Order not found" };
+        }
+
+        const attemptCount = order.ndrHistory?.length || 0;
+        if (attemptCount >= 2) {
+            return { success: false, error: "Maximum re-attempt limit reached (2 allowed)." };
+        }
+
+        // Step 3: Call Delhivery NDR Action API
+        const payload = { waybill: awb_number, act: action };
         const response = await axios.post(`${DELHIVERY_API_URL}/api/p/update`, payload, {
             headers: {
                 "Content-Type": "application/json",
@@ -67,16 +81,15 @@ async function handleDelhiveryNdrAction(awb_number, action) {
         });
 
         console.log("Response Data:", response.data);
-
         const request_id = response.data?.request_id || null;
         if (!request_id) {
             return { success: false, error: "No request_id returned from API" };
         }
 
-        // Step 2: Wait 5 seconds before fetching status (optional)
+        // Step 4: Wait 5 seconds before fetching status
         await new Promise(resolve => setTimeout(resolve, 5000));
 
-        // Step 3: Fetch NDR status
+        // Step 5: Fetch NDR status
         const ndrStatusResponse = await getNdrStatus(request_id);
         if (!ndrStatusResponse || !ndrStatusResponse.success) {
             return { success: false, error: "Failed to fetch NDR status" };
@@ -84,38 +97,19 @@ async function handleDelhiveryNdrAction(awb_number, action) {
 
         const { status, remark } = ndrStatusResponse.data;
 
-        // Step 4: Find and update Order
-        const order = await Order.findOne({ awb_number });
-        if (!order) {
-            return { success: false, error: "Order not found" };
-        }
-
-        // Ensure ndrHistory exists
+        // Step 6: Ensure ndrHistory exists
         if (!Array.isArray(order.ndrHistory)) {
             order.ndrHistory = [];
         }
 
-        // Determine the correct attempt number
-        let attempt = 1; // Default to 1 if no previous history
-        if (order.ndrHistory.length > 0) {
-            attempt = order.ndrHistory[order.ndrHistory.length - 1].attempt + 1;
-            if (attempt > 3) {
-                attempt = 3; // Cap attempt at 3
-            }
-        }
-
-        // Create NDR history entry
+        // Step 7: Save history entry
         const ndrHistoryEntry = {
-            date: new Date(), // Current timestamp
+            date: new Date(),
             action,
             remark: remark || "No remark provided",
-            attempt
+            attempt: attemptCount + 1
         };
-
-        // Push new entry to the history array
         order.ndrHistory.push(ndrHistoryEntry);
-
-        // Save updated order
         await order.save();
 
         return {
@@ -125,7 +119,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
             updated_order: order
         };
     } catch (error) {
-        console.error("Error:", error.response?.data || error.message);
+        console.error("Error:", error.response);
 
         return {
             success: false,
