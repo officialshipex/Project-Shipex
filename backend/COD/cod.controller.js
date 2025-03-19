@@ -228,10 +228,10 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        // if (dayDifference === Codplans) {
+        if (dayDifference === Codplans) {
           //
-        if (true) {
-          console.log("kkkkkkkkkkk", value);
+        // if (true) {
+          // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
           let rechargeAmount = Recharge;
@@ -347,6 +347,8 @@ const remittanceScheduleData = async () => {
     );
   }
 };
+
+
 // cron.schedule("*/1 * * * *", () => {
 //   console.log("Running scheduled task at 5 AM: Fetching orders...");
 //   remittanceScheduleData();
@@ -644,6 +646,7 @@ function parseExcel(filePath) {
   return data;
 }
 
+
 const uploadCodRemittance = async (req, res) => {
   try {
     const userID = req.user._id;
@@ -796,6 +799,15 @@ const uploadCodRemittance = async (req, res) => {
       await remittance.save();
     }
 
+    // **Delete the uploaded file after processing**
+    fs.unlink(req.file.path, (err) => {
+      if (err) {
+        console.error("Error deleting file:", err);
+      } else {
+        console.log("File deleted successfully:", req.file.path);
+      }
+    });
+
     return res.status(200).json({
       message: "COD Remittance uploaded successfully",
       file: fileData,
@@ -805,6 +817,7 @@ const uploadCodRemittance = async (req, res) => {
     res.status(500).json({ error: "An error occurred while processing the file" });
   }
 };
+
 
 
 
@@ -1017,6 +1030,7 @@ const CodRemittanceOrder = async (req, res) => {
           existingCodRemittance.codRemittanceOrderData.push({
             Date: lastTrackingUpdate,
             orderID: e.orderId,
+            courierProvider:e.courierServiceName,
             userName: userNames.fullname,
             PhoneNumber: userNames.phoneNumber,
             Email: userNames.email,
@@ -1038,6 +1052,7 @@ const CodRemittanceOrder = async (req, res) => {
             {
               Date: lastTrackingUpdate,
               orderID: e.orderId,
+              courierProvider:e.courierServiceName,
               userName: userNames.fullname,
               PhoneNumber: userNames.phoneNumber,
               Email: userNames.email,
