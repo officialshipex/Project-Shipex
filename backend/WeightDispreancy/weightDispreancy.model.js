@@ -38,6 +38,7 @@ const weightDiscrepancySchema = new mongoose.Schema(
         pendingAmount:{type:String,required:true}
      }, // Weight from Uploaded File
      status:{type:String,required:true},
+     clientStatus:{type:String},
 
      adminStatus:{type:String,required:true}
   },
