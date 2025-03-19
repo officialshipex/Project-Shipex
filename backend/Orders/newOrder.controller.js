@@ -889,7 +889,7 @@ const Instructions=normalizedData.Instructions
 };
 
 // Run tracking every 1 minute
-// setInterval(trackOrders, 60 * 1000);
+setInterval(trackOrders, 60 * 1000);
 
 const mapTrackingResponse = (data, provider) => {
   switch (provider) {

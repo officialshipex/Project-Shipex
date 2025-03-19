@@ -68,16 +68,30 @@ const uploadDispreancy = async (req, res) => {
       const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
   
       for (const row of sheetData) {
+        console.log("roorr",row)
         const awbNumber = row["*AWB Number"];
-        const excessWeight = parseFloat(row["*Charge Weight"]); // Excess weight from file
+        const chargeWeight = parseFloat(row["*Charge Weight"]); // Excess weight from file
+        const length=row["*Length"];
+        const breadth=row["*Breadth"];
+        const height=row["*Height"]
+
+        console.log(awbNumber,chargeWeight,length,breadth,height)
   
         // Fetch order data from DB using awbNumber
         const order = await Order.findOne({ awb_number: awbNumber });
-  
+  console.log("ordfe",order)
         if (!order) {
           console.log(`Order not found for AWB: ${awbNumber}`);
           continue; // Skip this iteration
         }
+
+        const excessWeight=chargeWeight-order.packageDetails.applicableWeight;
+        const freightCharges=order.totalFreightCharges;
+
+        const extraWeight = Math.ceil(excessWeight / order.packageDetails.applicableWeight);
+        const excessCharges=freightCharges*extraWeight;
+
+
   
         // Create and save weight discrepancy entry
         const discrepancyEntry = new WeightDiscrepancy({
@@ -87,11 +101,29 @@ const uploadDispreancy = async (req, res) => {
           productDetails: order.productDetails,
           courierServiceName: order.courierServiceName,
           provider: order.provider,
-          enteredWeight: order.packageDetails.applicableWeight, // Weight from Order
-          excessWeight: excessWeight, // Weight from File
+          enteredWeight: {
+            applicableWeight:order.packageDetails.applicableWeight,
+            deadWeight:order.packageDetails.deadWeight
+          }, // Weight from Order
+          chargedWeight:{
+            applicableWeight:chargeWeight,
+            deadWeight:chargeWeight
+          },
+          chargeDimension:{
+            length:length,
+            breadth:breadth,
+            height:height
+          },
+          excessWeightCharges:{
+            excessWeight:excessWeight,
+            excessCharges:excessCharges,
+            pendingAmount:excessCharges
+          },
+          status:"new",
+          adminStatus:"pending"
         });
   
-        await discrepancyEntry.save();
+        // await discrepancyEntry.save();
       }
   
       res.status(200).json({ message: "Weight discrepancies recorded successfully" });
