@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { courierCodRemittance } = require("./cod.controller");
 
 const CodRemittanceOrderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -26,6 +27,9 @@ const CodRemittanceOrderSchema = new mongoose.Schema({
         type: String,
       },
       Email: {
+        type: String,
+      },
+      courierProvider: {
         type: String,
       },
       AWB_Number: {
