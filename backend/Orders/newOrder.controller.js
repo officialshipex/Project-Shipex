@@ -854,6 +854,9 @@ const trackOrders = async () => {
         ) {
           order.ndrStatus = "RTO-intransit"; // Update ndrStatus
         }
+        if(normalizedData.Status==="Delivered"){
+          order.ndrStatus="Delivered"
+        }
 const Instructions=normalizedData.Instructions
         const newTrackingEntry = {
           status: normalizedData.Status,
