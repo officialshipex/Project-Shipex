@@ -5,7 +5,7 @@ const ndrProcessController = async (req, res) => {
 
 const {awb_number,action}=req.body
     const orderDetails=await Order.findOne({awb_number:awb_number})
-console.log(orderDetails)
+// console.log(orderDetails)
     // const orderDetails = getOrderDetails(orderId);
 
     if (!orderDetails) {
@@ -28,7 +28,7 @@ console.log(orderDetails)
             return res.status(400).json({ error: 'Unsupported platform' });
         }
 console.log("resererer",response)
-        res.json({ success: response.success, data: response });
+        res.json({ success: response.success, data: response.error });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

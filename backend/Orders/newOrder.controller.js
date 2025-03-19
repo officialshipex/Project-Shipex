@@ -792,7 +792,7 @@ const tracking = async (req, res) => {
 const trackOrders = async () => {
   try {
     const allOrders = await Order.find({ status: { $ne: "new" } }); // Fetch all orders except those with "new" status
-    // console.log("order")
+    // console.log("order",allOrders)
     const trackingPromises = allOrders.map(async (order) => {
       try {
         const { provider, awb_number } = order;
@@ -818,6 +818,7 @@ const trackOrders = async () => {
         if (!result || !result.success || !result.data) {
           return;
         }
+        // console.log(result.data)
 
         const normalizedData = mapTrackingResponse(result.data, provider);
         if (!normalizedData) {
@@ -844,6 +845,7 @@ const trackOrders = async () => {
           "EOD-69",
           "EOD-6",
         ];
+        // console.log("norer",normalizedData)
 
         // Check if the StatusCode is in the eligible list
         if (
@@ -927,7 +929,7 @@ const mapTrackingResponse = (data, provider) => {
       return {
         // AWBNumber: data.waybill || null,
         Status: data.Status || null,
-        // StatusCode: data.status_code || null,
+        StatusCode: data.StatusCode || null,
         StatusLocation: data.StatusLocation || "Unknown",
         StatusDateTime: data.StatusDateTime || null,
         Instructions: data.Instructions || null,
