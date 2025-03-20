@@ -237,7 +237,8 @@ const AcceptDiscrepancy = async (req, res) => {
         .json({ success: false, message: "Discrepancy not found" });
     }
 
-    const extraCharges = discrepancies.excessWeightCharges.excessCharges || 0;
+    // Convert extraCharges to a number
+    const extraCharges = parseFloat(discrepancies.excessWeightCharges.excessCharges);
     console.log("Extra Charges:", extraCharges);
 
     // Fetch user details
@@ -307,6 +308,7 @@ const AcceptDiscrepancy = async (req, res) => {
   }
 };
 
+
 const AcceptAllDiscrepancies = async (req, res) => {
   try {
     console.log("User ID:", req.user._id);
@@ -353,12 +355,15 @@ const AcceptAllDiscrepancies = async (req, res) => {
         });
       }
 
-      const extraCharges = discrepancy.excessWeightCharges.excessCharges || 0;
+      // Convert extraCharges to a number
+      const extraCharges = parseFloat(discrepancy.excessWeightCharges.excessCharges);
       totalExtraCharges += extraCharges;
 
       // Store discrepancies for later updates
       discrepanciesToUpdate.push({ discrepancy, extraCharges });
     }
+
+    console.log("Total Extra Charges:", totalExtraCharges);
 
     // Validate if the user has sufficient balance
     if (wallet.balance < totalExtraCharges) {
@@ -368,7 +373,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
     }
 
     // Deduct total extra charges from wallet balance
-    wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
+    wallet.balance = parseFloat((wallet.balance - totalExtraCharges).toFixed(2));
 
     // Create and save individual transactions for each discrepancy
     for (const { discrepancy, extraCharges } of discrepanciesToUpdate) {
@@ -408,6 +413,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
   }
 };
 
+
 const autoAcceptDiscrepancies = async () => {
   try {
     console.log("Running auto-accept discrepancy job...");
@@ -435,10 +441,9 @@ const autoAcceptDiscrepancies = async () => {
         continue;
       }
 
-      const extraCharges = discrepancy.excessWeightCharges?.excessCharges || 0;
-      console.log(
-        `Processing discrepancy ${discrepancy.awbNumber}, Extra Charges: ${extraCharges}`
-      );
+      // Convert extraCharges to a number
+      const extraCharges = parseFloat(discrepancy.excessWeightCharges?.excessCharges);
+      console.log(`Processing discrepancy ${discrepancy.awbNumber}, Extra Charges: ${extraCharges}`);
 
       if (wallet.balance < extraCharges) {
         console.log(`Insufficient balance for user ${user._id}, skipping...`);
@@ -450,7 +455,7 @@ const autoAcceptDiscrepancies = async () => {
 
       // Create and save transaction record
       const newTransaction = {
-        channelOrderId: discrepancies.orderId,
+        channelOrderId: discrepancy.orderId,  // Fixed bug (was discrepancies.orderId)
         category: "debit",
         amount: extraCharges,
         balanceAfterTransaction: wallet.balance,
@@ -479,6 +484,7 @@ const autoAcceptDiscrepancies = async () => {
 
 // Schedule job to run every day at midnight
 cron.schedule("0 0 * * *", autoAcceptDiscrepancies);
+
 
 module.exports = {
   downloadExcel,
