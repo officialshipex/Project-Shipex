@@ -65,7 +65,7 @@ const uploadDispreancy = async (req, res) => {
         .json({ success: false, error: "No file uploaded" });
     }
 
-    const userId = req.user._id;
+    // const userId = req.user._id;
     const filePath = req.file.path; // Path of the uploaded file
 
     // Read Excel File
@@ -76,6 +76,9 @@ const uploadDispreancy = async (req, res) => {
     for (const row of sheetData) {
       const awbNumber = row["*AWB Number"];
       const chargeWeight = parseFloat(row["*Charge Weight"]);
+
+      const awbBasedOrder = await Order.findOne({ awb_number: awbNumber });
+      const userId=awbBasedOrder.userId;
 
       // Ensure AWB Number and Charge Weight are mandatory
       if (!awbNumber || isNaN(chargeWeight)) {
