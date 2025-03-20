@@ -16,9 +16,9 @@ const downloadExcel = async (req, res) => {
     worksheet.columns = [
       { header: "*AWB Number", key: "AWB_Number", width: 30 },
       { header: "*Charge Weight", key: "Charge_Weight", width: 40 },
-      { header: "*Length", key: "Length", width: 20 },
-      { header: "*Breadth", key: "Breadth", width: 20 },
-      { header: "*Height", key: "Height", width: 20 },
+      { header: "Length", key: "Length", width: 20 },
+      { header: "Breadth", key: "Breadth", width: 20 },
+      { header: "Height", key: "Height", width: 20 },
 
       // { header: "*CODAmount", key: "CODAmount", width: 40 },
     ];
@@ -73,9 +73,9 @@ const uploadDispreancy = async (req, res) => {
         for (const row of sheetData) {
             const awbNumber = row["*AWB Number"];
             const chargeWeight = parseFloat(row["*Charge Weight"]);
-            const length = row["*Length"];
-            const breadth = row["*Breadth"];
-            const height = row["*Height"];
+            const length = row["Length"];
+            const breadth = row["Breadth"];
+            const height = row["Height"];
 
             // Fetch order data from DB using awbNumber
             const order = await Order.findOne({ awb_number: awbNumber });
