@@ -90,6 +90,7 @@ const uploadDispreancy = async (req, res) => {
 
       // Fetch order data from DB using awbNumber
       const order = await Order.findOne({ awb_number: awbNumber });
+      console.log("roere",order.awb_number)
 
       if (!order) {
         console.log(`Order not found for AWB: ${awbNumber}`);
@@ -132,7 +133,7 @@ const uploadDispreancy = async (req, res) => {
           awbNumber: order.awb_number,
           orderId: order.orderId,
           productDetails: order.productDetails,
-          courierServiceName: order.courierServiceName,
+          courierServiceName: order?.courierServiceName || order?.provider,
           provider: order.provider,
           enteredWeight: {
             applicableWeight: order.packageDetails.applicableWeight,
