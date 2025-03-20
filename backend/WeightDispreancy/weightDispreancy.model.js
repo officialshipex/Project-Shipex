@@ -28,9 +28,9 @@ const weightDiscrepancySchema = new mongoose.Schema(
         deadWeight:{type:String,required:true}
      },
      chargeDimension:{
-        length:{type:String,require:true},
-        breadth:{type:String,required:true},
-        height:{type:String,required:true}
+        length:{type:String},
+        breadth:{type:String},
+        height:{type:String}
      },
     excessWeightCharges: { 
         excessWeight:{type:String,required:true},

@@ -447,8 +447,7 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-
-        console.log("iiiii",result)
+        console.log("iiiii", result);
         if (result && result.success) {
           return {
             item,
@@ -812,7 +811,7 @@ const trackOrders = async () => {
           result = await trackOrderShreeMaruti(awb_number);
         } else if (provider === "EcomExpress") {
           result = await shipmentTrackingforward(awb_number);
-          // console.log("rerere", result); 
+          // console.log("rerere", result);
         }
 
         if (!result || !result.success || !result.data) {
@@ -853,11 +852,26 @@ const trackOrders = async () => {
           eligibleNSLCodes.includes(normalizedData.StatusCode)
         ) {
           order.ndrStatus = "RTO-intransit"; // Update ndrStatus
+          if (!Array.isArray(order.ndrHistory)) {
+            order.ndrHistory = [];
+          }
+
+          order.ndrReason = {
+            date: new Date(), // or provide an appropriate date value
+            reason: normalizedData.Instructions,
+          };
+          // console.log(order.awb_number); 
+          
+          
         }
-        if(normalizedData.Status==="Delivered"){
-          order.ndrStatus="Delivered"
+        if (
+          normalizedData.Status === "Delivered" &&
+          order.ndrStatus === "Action_Requested"
+        ) {
+          order.ndrStatus = "Delivered";
         }
-const Instructions=normalizedData.Instructions
+
+        const Instructions = normalizedData.Instructions;
         const newTrackingEntry = {
           status: normalizedData.Status,
           StatusLocation: normalizedData.StatusLocation,
@@ -901,7 +915,7 @@ const mapTrackingResponse = (data, provider) => {
     case "EcomExpress":
       return {
         // AWBNumber: data.awb_number || null,
-        Status: data.reason_code_description || 'N/A',
+        Status: data.reason_code_description || "N/A",
         // StatusCode: data.status || null,
         StatusLocation: data.current_location_name || "N/A",
         StatusDateTime: data.last_update_datetime || null,
@@ -1035,7 +1049,6 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-
 const GetTrackingByAwb = async (req, res) => {
   try {
     const { awb } = req.params;
@@ -1071,5 +1084,5 @@ module.exports = {
   passbook,
   getUser,
   trackOrders,
-  GetTrackingByAwb
+  GetTrackingByAwb,
 };

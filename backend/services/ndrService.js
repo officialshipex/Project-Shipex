@@ -136,7 +136,7 @@ console.log(ndrStatusResponse.data)
     const { status, remark } = ndrStatusResponse.data;
 
     // Step 6: Ensure ndrHistory exists
-    if (!Array.isArray(order.ndrHistory)) {
+    if (!Array.isArray(order.ndrHistory)) { 
       order.ndrHistory = [];
     }
 
@@ -147,6 +147,7 @@ console.log(ndrStatusResponse.data)
       remark: remark || "No remark provided",
       attempt: attemptCount + 1,
     };
+    order.ndrStatus="Action_Requested";
     order.ndrHistory.push(ndrHistoryEntry);
     await order.save();
 
