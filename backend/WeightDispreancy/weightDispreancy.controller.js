@@ -97,7 +97,8 @@ const uploadDispreancy = async (req, res) => {
         continue; // Skip this iteration
       }
 
-      const excessWeight = chargeWeight - order.packageDetails.applicableWeight;
+      const excessWeight = parseFloat((chargeWeight - order.packageDetails.applicableWeight).toFixed(2));
+
       const freightCharges = order.totalFreightCharges;
       const extraWeight = Math.ceil(
         excessWeight / order.packageDetails.applicableWeight
