@@ -59,6 +59,10 @@ const orderSchema = new mongoose.Schema(
       default: {},
     },
     ndrHistory: { type: Array, default: [] },
+    ndrReason: {
+      date: { type: Date },
+      reason: { type: String },
+    },
 
     awb_number: {
       type: String,
