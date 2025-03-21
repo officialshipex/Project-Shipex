@@ -111,7 +111,7 @@ const codToBeRemitted = async () => {
       const existingRemittance = await codRemittance.findOne({
         userId: order.userId,
       });
-
+// console.log("jkkkjjkjk",existingRemittance)
       if (existingRemittance) {
         let dateEntry = existingRemittance.sameDayDelhiveryOrders?.find(
           (entry) =>
@@ -135,7 +135,7 @@ const codToBeRemitted = async () => {
           existingRemittance.CODToBeRemitted += order.paymentDetails.amount;
           // await existingRemittance.save();
         }
-        await existingRemittance.save();
+        // await existingRemittance.save();
       } else {
         const newRemittance = new codRemittance({
           userId: order.userId,
@@ -150,7 +150,7 @@ const codToBeRemitted = async () => {
           ],
         });
 
-        await newRemittance.save();
+        // await newRemittance.save();
         // console.log("33333333333", newRemittance);
       }
     }
@@ -229,9 +229,9 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        // if (dayDifference === Codplans) {
+        if (dayDifference === Codplans) {
         //
-        if (true) {
+        // if (true) {
           // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
@@ -252,17 +252,22 @@ const remittanceScheduleData = async () => {
             afterRecharge = 0;
             extraAmount = value.codcal;
           }
-
-          await codRemittance.updateOne(
-            { _id: remitted._id },
-            {
-              $inc: {
-                CODToBeRemitted: -afterRecharge,
-                RemittanceInitiated: value.codcal,
-              },
-              $set: { rechargeAmount: rechargeAmount },
-            }
-          );
+        
+          let updateQuery = {
+            $inc: {
+              RemittanceInitiated: value.codcal, // Always update RemittanceInitiated
+            },
+            $set: { rechargeAmount: rechargeAmount },
+          };
+          
+          // Only deduct from CODToBeRemitted if it's greater than 0
+          if (remitted.CODToBeRemitted > 0) {
+            updateQuery.$inc.CODToBeRemitted = -afterRecharge;
+          }
+          
+          await codRemittance.updateOne({ _id: remitted._id }, updateQuery);
+          
+          
           if (!username.Wallet) {
             console.log(`User ${remittance.userId} has no associated Wallet`);
             continue;
