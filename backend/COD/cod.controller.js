@@ -411,7 +411,7 @@ const fetchExtraData = async () => {
 //     remittanceScheduleData();
 //   });
 cron.schedule("30 4 * * *", () => {
-  console.log("Running scheduled task at 4 AM: Fetching orders...");
+  console.log("Running scheduled task at 4.30 AM: Fetching orders...");
   fetchExtraData();
 });
 
