@@ -166,7 +166,7 @@ const codToBeRemitted = async () => {
   }
 };
 
-cron.schedule("0 3 * * *", () => {
+cron.schedule("0 1 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   codToBeRemitted();
 });
@@ -358,7 +358,7 @@ const remittanceScheduleData = async () => {
 //   console.log("Running scheduled task at 5 AM: Fetching orders...");
 //   remittanceScheduleData();
 // });
-cron.schedule("* 4 * * *", () => {
+cron.schedule("20 1 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   remittanceScheduleData();
 });
@@ -410,7 +410,7 @@ const fetchExtraData = async () => {
 //     console.log("Running scheduled task at 4 AM: Fetching orders...");
 //     remittanceScheduleData();
 //   });
-cron.schedule("30 4 * * *", () => {
+cron.schedule("30 1 * * *", () => {
   console.log("Running scheduled task at 4.30 AM: Fetching orders...");
   fetchExtraData();
 });
