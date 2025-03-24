@@ -438,7 +438,7 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
-    console.log("enableservices", enabledServices);
+    // console.log("enableservices", enabledServices);
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
