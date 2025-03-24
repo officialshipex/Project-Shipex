@@ -196,6 +196,7 @@ const remittanceScheduleData = async () => {
           user: remittance.userId,
           planName: "D+7", // Default plan
         });
+        
 
         await newPlan.save();
         continue; // Skip processing for this user in the current iteration
