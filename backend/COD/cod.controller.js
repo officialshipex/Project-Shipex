@@ -166,7 +166,7 @@ const codToBeRemitted = async () => {
   }
 };
 
-cron.schedule("0 1 * * *", () => {
+cron.schedule("1 1 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   codToBeRemitted();
 });
@@ -196,7 +196,7 @@ const remittanceScheduleData = async () => {
           user: remittance.userId,
           planName: "D+7", // Default plan
         });
-        
+
 
         await newPlan.save();
         continue; // Skip processing for this user in the current iteration
