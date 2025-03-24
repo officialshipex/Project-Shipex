@@ -111,7 +111,7 @@ const codToBeRemitted = async () => {
       const existingRemittance = await codRemittance.findOne({
         userId: order.userId,
       });
-
+// console.log("jkkkjjkjk",existingRemittance)
       if (existingRemittance) {
         let dateEntry = existingRemittance.sameDayDelhiveryOrders?.find(
           (entry) =>
@@ -135,7 +135,7 @@ const codToBeRemitted = async () => {
           existingRemittance.CODToBeRemitted += order.paymentDetails.amount;
           // await existingRemittance.save();
         }
-        await existingRemittance.save();
+        // await existingRemittance.save();
       } else {
         const newRemittance = new codRemittance({
           userId: order.userId,
@@ -150,7 +150,7 @@ const codToBeRemitted = async () => {
           ],
         });
 
-        await newRemittance.save();
+        // await newRemittance.save();
         // console.log("33333333333", newRemittance);
       }
     }
@@ -166,7 +166,7 @@ const codToBeRemitted = async () => {
   }
 };
 
-cron.schedule("0 3 * * *", () => {
+cron.schedule("0 1 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   codToBeRemitted();
 });
@@ -229,9 +229,9 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        // if (dayDifference === Codplans) {
+        if (dayDifference === Codplans) {
         //
-        if (true) {
+        // if (true) {
           // console.log("kkkkkkkkkkk", value);
           //if user recharge from cod amount
           let Recharge = remitted.rechargeAmount;
@@ -252,17 +252,22 @@ const remittanceScheduleData = async () => {
             afterRecharge = 0;
             extraAmount = value.codcal;
           }
-
-          await codRemittance.updateOne(
-            { _id: remitted._id },
-            {
-              $inc: {
-                CODToBeRemitted: -afterRecharge,
-                RemittanceInitiated: value.codcal,
-              },
-              $set: { rechargeAmount: rechargeAmount },
-            }
-          );
+        
+          let updateQuery = {
+            $inc: {
+              RemittanceInitiated: value.codcal, // Always update RemittanceInitiated
+            },
+            $set: { rechargeAmount: rechargeAmount },
+          };
+          
+          // Only deduct from CODToBeRemitted if it's greater than 0
+          if (remitted.CODToBeRemitted > 0) {
+            updateQuery.$inc.CODToBeRemitted = -afterRecharge;
+          }
+          
+          await codRemittance.updateOne({ _id: remitted._id }, updateQuery);
+          
+          
           if (!username.Wallet) {
             console.log(`User ${remittance.userId} has no associated Wallet`);
             continue;
@@ -353,7 +358,7 @@ const remittanceScheduleData = async () => {
 //   console.log("Running scheduled task at 5 AM: Fetching orders...");
 //   remittanceScheduleData();
 // });
-cron.schedule("* 4 * * *", () => {
+cron.schedule("20 1 * * *", () => {
   console.log("Running scheduled task at 4 AM: Fetching orders...");
   remittanceScheduleData();
 });
@@ -405,8 +410,8 @@ const fetchExtraData = async () => {
 //     console.log("Running scheduled task at 4 AM: Fetching orders...");
 //     remittanceScheduleData();
 //   });
-cron.schedule("30 4 * * *", () => {
-  console.log("Running scheduled task at 4 AM: Fetching orders...");
+cron.schedule("30 1 * * *", () => {
+  console.log("Running scheduled task at 4.30 AM: Fetching orders...");
   fetchExtraData();
 });
 
@@ -937,7 +942,7 @@ const courierCodRemittance = async (req, res) => {
         console.log(`User not found for order ${e.orderId}`);
         continue; // Skip this order if the user is not found
       }
-//  console.log("klkl",e)
+      //  console.log("klkl",e)
       // console.log("User Name:", userNames.fullname);
 
       existingCourierCodRemittance = await CourierCodRemittance.findOne({
@@ -945,10 +950,10 @@ const courierCodRemittance = async (req, res) => {
       });
 
       const lastTrackingUpdate =
-          e.tracking?.length > 0
-        ? e.tracking[e.tracking.length - 1]?.StatusDateTime
-        : "N/A";
-      
+        e.tracking?.length > 0
+          ? e.tracking[e.tracking.length - 1]?.StatusDateTime
+          : "N/A";
+
       if (existingCourierCodRemittance) {
         // Check if the order already exists
         const orderExists =
@@ -957,7 +962,6 @@ const courierCodRemittance = async (req, res) => {
           );
 
         if (!orderExists) {
-          
           // Update remittance only if order is new
           existingCourierCodRemittance.TotalRemittance +=
             e.paymentDetails.amount;
@@ -966,7 +970,7 @@ const courierCodRemittance = async (req, res) => {
 
           // Push new order data
           existingCourierCodRemittance.CourierCodRemittanceData.push({
-            date:lastTrackingUpdate,
+            date: lastTrackingUpdate,
             orderID: e.orderId,
             userName: userNames.fullname,
             PhoneNumber: userNames.phoneNumber,
@@ -988,12 +992,12 @@ const courierCodRemittance = async (req, res) => {
           TotalRemittanceDue: e.paymentDetails.amount,
           CourierCodRemittanceData: [
             {
-                          date:lastTrackingUpdate,
+              date: lastTrackingUpdate,
               orderID: e.orderId,
               userName: userNames.fullname,
               PhoneNumber: userNames.phoneNumber,
               Email: userNames.email,
-              CODAmount:e.paymentDetails.amount,
+              CODAmount: e.paymentDetails.amount,
               courierProvider: e.courierServiceName, // Now `userNames` is always defined
               AwbNumber: e.awb_number || "N/A",
               CODAmount: e.paymentDetails.amount,
@@ -1175,6 +1179,130 @@ const sellerremittanceTransactionData = async (req, res) => {
   }
 };
 
+const CourierdownloadSampleExcel = async (req, res) => {
+  try {
+    // Create a new workbook and add a worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sample Bulk Order");
+
+    // Define headers
+    worksheet.columns = [
+      { header: "*AWB Number", key: "AWBNumber", width: 30 },
+      { header: "*COD Amount", key: "CODAmount", width: 40 },
+      // { header: "*CODAmount", key: "CODAmount", width: 40 },
+    ];
+
+    // Add a sample row with mandatory product 1 and optional products
+    worksheet.addRow({
+      AWBNumber: "5743267565",
+      CODAmount: "500",
+      // CODAmount: "1000",
+    });
+
+    // Format the header row
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.font = { bold: true }; // Make headers bold
+    });
+
+    // Set response headers for file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=sample.xlsx");
+
+    // Write workbook to response stream
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Error generating Excel file:", error);
+    res
+      .status(500)
+      .json({ error: "Error generating Excel file", details: error.message });
+  }
+};
+const uploadCourierCodRemittance = async (req, res) => {
+  try {
+    const userID = req.user._id;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Save file metadata
+    const fileData = new File({
+      filename: req.file.filename,
+      date: new Date(),
+      status: "Processing",
+    });
+    await fileData.save();
+
+    // Determine file extension
+    const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    let codRemittances = [];
+
+    // Parse file based on extension
+    if (fileExtension === ".csv") {
+      codRemittances = await parseCSV(req.file.path, fileData);
+    } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
+      codRemittances = await parseExcel(req.file.path);
+    } else {
+      return res.status(400).json({ error: "Unsupported file format" });
+    }
+
+    // Validation: Check if file contains data
+    if (!codRemittances || codRemittances.length === 0) {
+      return res.status(400).json({
+        error: "The uploaded file is empty or contains invalid data",
+      });
+    }
+
+    // Process each remittance row
+    for (const row of codRemittances) {
+      let userRemittance = await CourierCodRemittance.findOne({ userId: userID });
+
+      // Ensure userRemittance exists
+      if (!userRemittance) continue;
+
+      // for (const item of userRemittance.CourierCodRemittanceData) {
+      const orderIndex =
+          userRemittance.CourierCodRemittanceData.findIndex(
+            (data) => data.AwbNumber.toString() === row["*AWB Number"].toString()
+          );
+        if (userRemittance && userRemittance.CourierCodRemittanceData[orderIndex].status === "Pending") {
+          userRemittance.CourierCodRemittanceData[orderIndex].status= "Paid";
+
+          // Ensure values are numbers before updating
+          userRemittance.TransferredRemittance =
+            (userRemittance.TransferredRemittance || 0) + (userRemittance.CourierCodRemittanceData[orderIndex].CODAmount || 0);
+          userRemittance.TotalRemittanceDue =
+            (userRemittance.TotalRemittanceDue || 0) - (userRemittance.CourierCodRemittanceData[orderIndex].CODAmount || 0);
+          await userRemittance.save();
+        }
+      }
+
+    // }
+
+    // **Delete the uploaded file after processing**
+    fs.unlink(req.file.path, (err) => {
+      if (err) {
+        console.error("Error deleting file:", err);
+      } else {
+        console.log("File deleted successfully:", req.file.path);
+      }
+    });
+
+    return res.status(200).json({
+      message: "Courier COD uploaded successfully",
+      file: fileData,
+    });
+  } catch (error) {
+    console.error("Error in uploadCodRemittance:", error);
+    res.status(500).json({ error: "An error occurred while processing the file" });
+  }
+};
+
 module.exports = {
   codPlanUpdate,
   codToBeRemitted,
@@ -1189,4 +1317,6 @@ module.exports = {
   courierCodRemittance,
   CodRemittanceOrder,
   sellerremittanceTransactionData,
+  CourierdownloadSampleExcel,
+  uploadCourierCodRemittance,
 };
