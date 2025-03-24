@@ -791,12 +791,12 @@ const tracking = async (req, res) => {
 const trackOrders = async () => {
   try {
     const allOrders = await Order.find({ status: { $ne: "new" } }); // Fetch all orders except those with "new" status
-    // console.log("order",allOrders)
+    // console.log("order")
     const trackingPromises = allOrders.map(async (order) => {
       try {
         const { provider, awb_number } = order;
         let result;
-        // console.log("order")
+        // console.log("order") 
         // Fetch tracking information from the respective provider
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
@@ -855,7 +855,7 @@ const trackOrders = async () => {
           if (!Array.isArray(order.ndrHistory)) {
             order.ndrHistory = [];
           }
-
+// console.log("order",order)
           order.ndrReason = {
             date: new Date(), // or provide an appropriate date value
             reason: normalizedData.Instructions,
