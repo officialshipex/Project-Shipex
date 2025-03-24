@@ -1,7 +1,12 @@
 const User = require("../models/User.model");
 const Plan = require("../models/Plan.model");
-const RateCard = require("../models/rateCards");
 const mongoose = require("mongoose");
+const Account = require("../models/BankAccount.model");
+const Aadhar = require("../models/Aadhaar.model");
+const Pan = require("../models/Pan.model");
+const Gst = require("../models/Gstin.model");
+const CodPlans = require("../COD/codPan.model");
+const { generateKeySync } = require("crypto");
 
 // const getUsers = async (req, res) => {
 //     try {
@@ -53,29 +58,75 @@ const getAllUsers = async (req, res) => {
   try {
     const allUsers = await User.find().populate("Wallet"); // Populate wallet details
 
-    // console.log(allUsers)
+    // Fetch user details
+    const userDetails = await Promise.all(
+      allUsers.map(async (user) => {
+        // Fetch additional details for each user
+        const account = await Account.findOne({ user: user._id });
+        const aadhar = await Aadhar.findOne({ user: user._id });
+        const pan = await Pan.findOne({ user: user._id });
+        const gst = await Gst.findOne({ user: user._id });
+        const codPlan=await CodPlans.findOne({user:user._id})
+        const rateCard=await Plan.findOne({userId:user._id})
 
-    // Modify response to include wallet amount
-    const usersWithWalletAmount = allUsers.map((user) => (
-      {   
-      fullname: user.fullname,
-      // lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      company: user.company,
-      monthlyOrders: user.monthlyOrders,
-      isVerified: user.isVerified,
-      provider: user.provider,
-      kycDone: user.kycDone,
-      isAdmin: user.isAdmin,
-      userId: user.userId ?? "N/A",
-      walletAmount: user.Wallet?.balance || 0, // Extract amount or set 0 if not found
-    }));
-// console.log(usersWithWalletAmount);
+        return {
+          userId: user?.userId || "N/A",
+          fullname: user.fullname,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          company: user.company,
+          accountStatus: user.kycDone,
+          kycStatus: user.kycDone,
+          walletAmount: user.Wallet?.balance || 0, 
+          creditLimit: user?.creditLimit || 0,
+          rateCard: rateCard?.planName || 0,
+          codPlan: codPlan ? codPlan.planName : "N/A", 
+          createdAt:user.createdAt,
+          // Account Details
+          accountDetails: account
+            ? {
+                beneficiaryName: account.nameAtBank,
+                accountNumber: account.accountNumber,
+                ifscCode: account.ifsc,
+                bankName: account.bank,
+                branchName: account.branch,
+              }
+            : null,
+          // Aadhar Details
+          aadharDetails: aadhar
+            ? {
+                aadharNumber: aadhar.aadhaarNumber,
+                nameOnAadhar: aadhar.name,
+                state: aadhar.state,
+                address: aadhar.address,
+              }
+            : null,
+          // PAN Details
+          panDetails: pan
+            ? {
+                panNumber: pan.panNumber,
+                nameOnPan: pan.nameProvided,
+                panType: pan.pan,
+                referenceId: pan.panRefId,
+              }
+            : null,
+          // GST Details
+          gstDetails: gst
+            ? {
+                gstNumber: gst.gstin,
+                companyAddress: gst.address,
+                pincode: gst.pincode,
+                state: gst.state,
+                city: gst.city,
+              }
+            : null,
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
-      data: usersWithWalletAmount,
+      data: userDetails,
     });
   } catch (error) {
     res.status(500).json({
@@ -85,6 +136,7 @@ const getAllUsers = async (req, res) => {
     });
   }
 };
+
 
 const getUserDetails = async (req, res) => {
   try {

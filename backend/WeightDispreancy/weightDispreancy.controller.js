@@ -78,7 +78,7 @@ const uploadDispreancy = async (req, res) => {
       const chargeWeight = parseFloat(row["*Charge Weight"]);
 
       const awbBasedOrder = await Order.findOne({ awb_number: awbNumber });
-      const userId=awbBasedOrder.userId;
+      const userId = awbBasedOrder.userId;
 
       // Ensure AWB Number and Charge Weight are mandatory
       if (!awbNumber || isNaN(chargeWeight)) {
@@ -93,14 +93,16 @@ const uploadDispreancy = async (req, res) => {
 
       // Fetch order data from DB using awbNumber
       const order = await Order.findOne({ awb_number: awbNumber });
-      console.log("roere",order.awb_number)
+      console.log("roere", order.awb_number);
 
       if (!order) {
         console.log(`Order not found for AWB: ${awbNumber}`);
         continue; // Skip this iteration
       }
 
-      const excessWeight = parseFloat((chargeWeight - order.packageDetails.applicableWeight).toFixed(2));
+      const excessWeight = parseFloat(
+        (chargeWeight - order.packageDetails.applicableWeight).toFixed(2)
+      );
 
       const freightCharges = order.totalFreightCharges;
       const extraWeight = Math.ceil(
@@ -238,7 +240,9 @@ const AcceptDiscrepancy = async (req, res) => {
     }
 
     // Convert extraCharges to a number
-    const extraCharges = parseFloat(discrepancies.excessWeightCharges.excessCharges);
+    const extraCharges = parseFloat(
+      discrepancies.excessWeightCharges.excessCharges
+    );
     console.log("Extra Charges:", extraCharges);
 
     // Fetch user details
@@ -308,7 +312,6 @@ const AcceptDiscrepancy = async (req, res) => {
   }
 };
 
-
 const AcceptAllDiscrepancies = async (req, res) => {
   try {
     console.log("User ID:", req.user._id);
@@ -356,7 +359,9 @@ const AcceptAllDiscrepancies = async (req, res) => {
       }
 
       // Convert extraCharges to a number
-      const extraCharges = parseFloat(discrepancy.excessWeightCharges.excessCharges);
+      const extraCharges = parseFloat(
+        discrepancy.excessWeightCharges.excessCharges
+      );
       totalExtraCharges += extraCharges;
 
       // Store discrepancies for later updates
@@ -373,7 +378,9 @@ const AcceptAllDiscrepancies = async (req, res) => {
     }
 
     // Deduct total extra charges from wallet balance
-    wallet.balance = parseFloat((wallet.balance - totalExtraCharges).toFixed(2));
+    wallet.balance = parseFloat(
+      (wallet.balance - totalExtraCharges).toFixed(2)
+    );
 
     // Create and save individual transactions for each discrepancy
     for (const { discrepancy, extraCharges } of discrepanciesToUpdate) {
@@ -413,7 +420,6 @@ const AcceptAllDiscrepancies = async (req, res) => {
   }
 };
 
-
 const autoAcceptDiscrepancies = async () => {
   try {
     console.log("Running auto-accept discrepancy job...");
@@ -442,20 +448,19 @@ const autoAcceptDiscrepancies = async () => {
       }
 
       // Convert extraCharges to a number
-      const extraCharges = parseFloat(discrepancy.excessWeightCharges?.excessCharges);
-      console.log(`Processing discrepancy ${discrepancy.awbNumber}, Extra Charges: ${extraCharges}`);
+      const extraCharges = parseFloat(
+        discrepancy.excessWeightCharges?.excessCharges
+      );
+      console.log(
+        `Processing discrepancy ${discrepancy.awbNumber}, Extra Charges: ${extraCharges}`
+      );
 
-      if (wallet.balance < extraCharges) {
-        console.log(`Insufficient balance for user ${user._id}, skipping...`);
-        continue;
-      }
-
-      // Deduct balance
+      // Deduct balance (allowing it to go negative)
       wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
 
       // Create and save transaction record
       const newTransaction = {
-        channelOrderId: discrepancy.orderId,  // Fixed bug (was discrepancies.orderId)
+        channelOrderId: discrepancy.orderId,
         category: "debit",
         amount: extraCharges,
         balanceAfterTransaction: wallet.balance,
@@ -473,7 +478,9 @@ const autoAcceptDiscrepancies = async () => {
       discrepancy.excessWeightCharges.pendingAmount = 0;
       await discrepancy.save();
 
-      console.log(`Discrepancy ${discrepancy.awbNumber} auto-accepted.`);
+      console.log(
+        `Discrepancy ${discrepancy.awbNumber} auto-accepted. Wallet Balance: ${wallet.balance}`
+      );
     }
 
     console.log("Auto-accept discrepancy job completed.");
@@ -484,7 +491,6 @@ const autoAcceptDiscrepancies = async () => {
 
 // Schedule job to run every day at midnight
 cron.schedule("0 0 * * *", autoAcceptDiscrepancies);
-
 
 module.exports = {
   downloadExcel,
