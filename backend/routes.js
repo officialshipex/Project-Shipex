@@ -111,4 +111,9 @@ router.use("/B2Ccouries", couriersB2CRoutes);
 router.use("/getKyc",isAuthorized,getKyc)
 // app.use("/v1/courierServices", courierServicesRoutes);
 
+
+//ticket
+const ticketRoutes = require('./routes/TicketRoutes')
+router.use('/support', ticketRoutes);
+
 module.exports = router;
