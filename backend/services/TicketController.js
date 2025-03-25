@@ -84,7 +84,6 @@ const getUserTickets = async (req, res) => {
     if (!req.user || !req.user?.userId) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
-
     const userId = req.user.userId; // Extract number
     // console.log("Extracted userId:", userId);
 
