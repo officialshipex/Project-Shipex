@@ -6,6 +6,7 @@ const WeightDiscrepancy = require("./weightDispreancy.model");
 const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
 const cron = require("node-cron");
+const { uploadToS3 } = require("../config/s3");
 const downloadExcel = async (req, res) => {
   // console.log("hii")
   try {
@@ -492,6 +493,124 @@ const autoAcceptDiscrepancies = async () => {
 // Schedule job to run every day at midnight
 cron.schedule("0 0 * * *", autoAcceptDiscrepancies);
 
+// Raise Discrepancies
+const raiseDiscrepancies = async (req, res) => {
+  try {
+    const { awbNumber, text } = req.body;
+    // console.log(awbNumber, text);
+
+    // Validate Input
+    if (!awbNumber || !text) {
+      return res
+        .status(400)
+        .json({ message: "AWB Number and text are required" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "Image file is required" });
+    }
+
+    // Get Image URL from multer-s3
+    const imageUrl = req.file.location;
+    // console.log("Image URL:", imageUrl);
+
+    // Find and update existing discrepancy
+    const updatedPost = await WeightDiscrepancy.findOneAndUpdate(
+      { awbNumber }, // Find by AWB Number
+      {
+        text,
+        imageUrl,
+        status: "Discrepancy Raised",
+        adminStatus: "Discrepancy Raised",
+        clientStatus: "Discrepancy Raised",
+        discrepancyRaisedAt: new Date(),
+      },
+      { new: true, upsert: false } // Return updated document, do not create a new one if not found
+    );
+
+    if (!updatedPost) {
+      return res
+        .status(404)
+        .json({ message: "No existing discrepancy found for this AWB Number" });
+    }
+
+    res.status(200).json({
+      message: "Discrepancy updated successfully",
+      post: updatedPost,
+    });
+  } catch (error) {
+    console.error("Error updating discrepancy:", error);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+const adminAcceptDiscrepancy = async (req, res) => {
+  try {
+    const {awbNumber}  = req.body;
+    console.log(req.body)
+    console.log("Accepting discrepancy for AWB:", awbNumber);
+    const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+    if (!discrepancy) {
+      return res.status(404).json({ message: "Discrepancy not found" });
+    } 
+
+    discrepancy.excessWeightCharges.pendingAmount = 0;
+
+    discrepancy.status = "Accepted";
+    discrepancy.adminStatus = "Discrepancy Accepted";
+    discrepancy.clientStatus = "Discrepancy Accepted";
+    discrepancy.discrepancyAcceptedAt = new Date();
+    await discrepancy.save();
+    res.status(200).json({ message: "Discrepancy accepted successfully" });
+  } catch (error) {
+    console.error("Error accepting discrepancy:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+const declineDiscrepancy = async (req, res) => {
+  try {
+      const { awbNumber, text } = req.body;
+
+      console.log(`Processing discrepancy decline for AWB: ${awbNumber}`);
+
+      // Validate input
+      if (!awbNumber || !text) {
+        // console.log("hii")
+          return res.status(400).json({ message: "AWB Number and reason are required" });
+      }
+
+      // Find the discrepancy
+      const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+      if (!discrepancy) {
+          return res.status(404).json({ message: "Discrepancy not found" });
+      }
+
+      // Update discrepancy status
+      Object.assign(discrepancy, {
+          status: "new",
+          adminStatus: "Discrepancy Declined",
+          clientStatus: "Discrepancy Declined",
+          discrepancyDeclinedReason: text,
+          discrepancyDeclinedAt: new Date(),
+      });
+
+      await discrepancy.save();
+
+      return res.status(200).json({ message: "Discrepancy declined successfully" });
+
+  } catch (error) {
+      console.error("Error declining discrepancy:", error);
+      return res.status(500).json({
+          message: "An error occurred while declining the discrepancy",
+          error: error.message
+      });
+  }
+};
+
+
 module.exports = {
   downloadExcel,
   uploadDispreancy,
@@ -499,4 +618,7 @@ module.exports = {
   AllDiscrepancyBasedId,
   AcceptDiscrepancy,
   AcceptAllDiscrepancies,
+  raiseDiscrepancies,
+  adminAcceptDiscrepancy,
+  declineDiscrepancy
 };
