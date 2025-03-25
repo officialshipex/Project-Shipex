@@ -61,12 +61,9 @@ const downloadExcel = async (req, res) => {
 const uploadDispreancy = async (req, res) => {
   try {
     if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, error: "No file uploaded" });
+      return res.status(400).json({ success: false, error: "No file uploaded" });
     }
 
-    // const userId = req.user._id;
     const filePath = req.file.path; // Path of the uploaded file
 
     // Read Excel File
@@ -78,37 +75,35 @@ const uploadDispreancy = async (req, res) => {
       const awbNumber = row["*AWB Number"];
       const chargeWeight = parseFloat(row["*Charge Weight"]);
 
-      const awbBasedOrder = await Order.findOne({ awb_number: awbNumber });
-      const userId = awbBasedOrder.userId;
-
       // Ensure AWB Number and Charge Weight are mandatory
       if (!awbNumber || isNaN(chargeWeight)) {
         console.log(`Skipping row due to missing mandatory fields:`, row);
         continue; // Skip this row
       }
 
-      // Handle LBH values (if missing, set to null or 0)
+      // Fetch order data from DB using awbNumber
+      const order = await Order.findOne({ awb_number: awbNumber });
+
+      if (!order) {
+        console.log(`Skipping order - AWB not found: ${awbNumber}`);
+        continue; // Skip this AWB completely
+      }
+
+      // Extract userId from the order
+      const userId = order.userId;
+
+      // Handle LBH values (if missing, set to null)
       const length = row["Length"] ? parseFloat(row["Length"]) : null;
       const breadth = row["Breadth"] ? parseFloat(row["Breadth"]) : null;
       const height = row["Height"] ? parseFloat(row["Height"]) : null;
 
-      // Fetch order data from DB using awbNumber
-      const order = await Order.findOne({ awb_number: awbNumber });
-      console.log("roere", order.awb_number);
-
-      if (!order) {
-        console.log(`Order not found for AWB: ${awbNumber}`);
-        continue; // Skip this iteration
-      }
-
+      // Calculate excess weight and charges
       const excessWeight = parseFloat(
         (chargeWeight - order.packageDetails.applicableWeight).toFixed(2)
       );
 
       const freightCharges = order.totalFreightCharges;
-      const extraWeight = Math.ceil(
-        excessWeight / order.packageDetails.applicableWeight
-      );
+      const extraWeight = Math.ceil(excessWeight / order.packageDetails.applicableWeight);
       const excessCharges = freightCharges * extraWeight;
 
       // Check if an existing discrepancy exists
@@ -120,11 +115,7 @@ const uploadDispreancy = async (req, res) => {
           applicableWeight: chargeWeight,
           deadWeight: chargeWeight,
         };
-        discrepancyEntry.chargeDimension = {
-          length,
-          breadth,
-          height,
-        };
+        discrepancyEntry.chargeDimension = { length, breadth, height };
         discrepancyEntry.excessWeightCharges = {
           excessWeight,
           excessCharges,
@@ -150,11 +141,7 @@ const uploadDispreancy = async (req, res) => {
             applicableWeight: chargeWeight,
             deadWeight: chargeWeight,
           },
-          chargeDimension: {
-            length,
-            breadth,
-            height,
-          },
+          chargeDimension: { length, breadth, height },
           excessWeightCharges: {
             excessWeight,
             excessCharges,
@@ -186,6 +173,7 @@ const uploadDispreancy = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
+
 
 const AllDiscrepancy = async (req, res) => {
   try {
