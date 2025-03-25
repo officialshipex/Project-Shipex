@@ -81,7 +81,7 @@ const getUserTickets = async (req, res) => {
   try {
     console.log("req.user:", req.user);
 
-    if (!req.user || !req.user.userId) {
+    if (!req.user || !req.user?.userId) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
