@@ -13,8 +13,7 @@ const {
 const {
   createShipmentFunctionDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
-
-
+const {createShipmentFunctionEcomExpress} = require("../AllCouriers/EcomExpress/Couriers/bulkShipment.controller");
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
@@ -39,7 +38,6 @@ const updatePickup = async (req, res) => {
   }
 };
 const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
-
   // console.log("create shipement",serviceDetails,order,wh,walletId,charges)
   try {
     let result;
@@ -81,6 +79,15 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
+      case "EcomExpress":
+        result = await createShipmentFunctionEcomExpress(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
       case "ShreeMaruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
@@ -96,8 +103,8 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
         );
         return false;
     }
-
-    return result?.status === 200 || result?.status === 201;
+console.log("resuuuulllltttt",result)
+    return result?.status === 200 || result?.status === 201 || result?.success;
   } catch (error) {
     console.error(`Error creating shipment:`, error);
     return false;
@@ -177,9 +184,8 @@ const createBulkOrder = async (req, res) => {
   let failureCount = 0;
   const userId = req.user._id;
   const user = await User.findOne({ _id: userId });
-  const walletId=user.Wallet
+  const walletId = user.Wallet;
   const wallet = await Wallet.findOne({ _id: user.Wallet });
-
 
   // console.log("999999",wallet)
   // const { walletId, availableServices, userId } = req.body;
@@ -249,7 +255,6 @@ const createBulkOrder = async (req, res) => {
             throw new Error("Invalid charges calculated.");
           }
 
-
           const result = await createShipment(
             item,
             orderDetails,
@@ -257,6 +262,7 @@ const createBulkOrder = async (req, res) => {
             walletId,
             charges
           );
+          console.log("resulttte",result)
           if (result) {
             successCount++;
             remainingOrders.splice(remainingOrders.indexOf(order), 1);

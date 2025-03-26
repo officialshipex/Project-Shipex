@@ -4,50 +4,49 @@ const user = require("../../../models/User.model");
 const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { fetchBulkWaybills } = require("../Authorize/saveCourierController");
-const checkServiceabilityEcomExpress = async (payload) => {
-  const { originPincode, destinationPincode } = payload;
-// console.log("origin",originPincode)
-
+const checkServiceabilityEcomExpress = async (originPincode, destinationPincode) => {
   if (!originPincode || !destinationPincode) {
-    return res
-      .status(400)
-      .json({ error: "Origin and destination pincodes are required." });
+    return { success: false, error: "Both origin and destination pincodes are required." };
   }
-  const BASE_URL = process.env.ECOMEXPRESS_SERVICE_URL;
-  const url = `${BASE_URL}/services/expp/expppincode/`;
-  //   console.log(url)
-  const formData = new FormData();
-  formData.append("username", process.env.ECOMEXPRESS_GMAIL);
-  formData.append("password", process.env.ECOMEXPRESS_PASS);
-  formData.append("origin_pincode", originPincode);
-  formData.append("destination_pincode", destinationPincode);
-  // console.log("form data",formData)
+
+  const BASE_URL = process.env.ECOMEXPRESS_URL;
+  const url = `${BASE_URL}/apiv3/pincode/`;
+
   try {
-    const response = await axios.post(url, formData, {
-      headers: formData.getHeaders(),
-    });
-    console.log("EcomExpress serviceability", response.data);
-    if (response?.data?.active) {
-      return {
-        success: true,
-      };
-    } else {
-      // console.log("false")
-      return false;
+    // Check Origin Pincode
+    const originFormData = new FormData();
+    originFormData.append("username", process.env.ECOMEXPRESS_GMAIL);
+    originFormData.append("password", process.env.ECOMEXPRESS_PASS);
+    originFormData.append("pincode", originPincode);
+
+    const originResponse = await axios.post(url, originFormData, { headers: originFormData.getHeaders() });
+    console.log("Origin Serviceability:", originResponse.data);
+
+    if (!originResponse?.data?.length || !originResponse.data[0].active) {
+      return { success: false, reason: "Origin pincode not serviceable", data: originResponse.data };
     }
-    // res.status(200).json({ data: response.data });
+
+    // Check Destination Pincode
+    const destinationFormData = new FormData();
+    destinationFormData.append("username", process.env.ECOMEXPRESS_GMAIL);
+    destinationFormData.append("password", process.env.ECOMEXPRESS_PASS);
+    destinationFormData.append("pincode", destinationPincode);
+
+    const destinationResponse = await axios.post(url, destinationFormData, { headers: destinationFormData.getHeaders() });
+    console.log("Destination Serviceability:", destinationResponse.data);
+
+    if (!destinationResponse?.data?.length || !destinationResponse.data[0].active) {
+      return { success: false, reason: "Destination pincode not serviceable", data: destinationResponse.data };
+    }
+
+    return { success: true, message: "Both pincodes are serviceable." };
+
   } catch (error) {
-    // if (error.response) {
-    //   res
-    //     .status(error.response.status || 500)
-    //     .json({ error: error.response.data });
-    // } else {
-    //   res.status(500).json({ error: error.message });
-    // }
-    console.log("eeeeeee",error.response.data);
-    return false;
+    console.error("EcomExpress Serviceability Error:", error.response?.data || error.message);
+    return { success: false, error: error.response?.data || error.message };
   }
 };
+
 
 const fetchAWB = async (req, res) => {
   const { count, type } = req.body;
@@ -136,8 +135,6 @@ const createManifest = async (req, res) => {
 
         CONSIGNEE: currentOrder.receiverAddress.contactName,
         CONSIGNEE_ADDRESS1: currentOrder.receiverAddress.address,
-        //   CONSIGNEE_ADDRESS2: "Test Consignee Address 2",
-        //   CONSIGNEE_ADDRESS3: "Test Consignee Address 3",
         DESTINATION_CITY: currentOrder.receiverAddress.city,
         STATE: currentOrder.receiverAddress.state,
         PINCODE: currentOrder.receiverAddress.pinCode,
@@ -172,34 +169,6 @@ const createManifest = async (req, res) => {
         RETURN_PINCODE: currentOrder.pickupAddress.pinCode,
         // RETURN_PHONE: "2222222222",
         RETURN_MOBILE: currentOrder.pickupAddress.phoneNumber,
-        // DG_SHIPMENT: "false",
-        //   ADDITIONAL_INFORMATION: {
-        //     GST_TAX_CGSTN: "",
-        //     GST_TAX_IGSTN: "",
-        //     GST_TAX_SGSTN: "",
-        //     SELLER_GSTIN: "GISTN988787",
-        //     INVOICE_DATE: "12-08-2022",
-        //     INVOICE_NUMBER: "INVOICE_001",
-        //     GST_TAX_RATE_SGSTN: "",
-        //     GST_TAX_RATE_IGSTN: "",
-        //     GST_TAX_RATE_CGSTN: "",
-        //     GST_HSN: "123456",
-        //     GST_TAX_BASE: "",
-        //     GST_ERN: "123456789876",
-        //     ESUGAM_NUMBER: "",
-        //     ITEM_CATEGORY: "Clothes",
-        //     GST_TAX_NAME: "",
-        //     ESSENTIALPRODUCT: "Y",
-        //     PICKUP_TYPE: "WH",
-        //     OTP_REQUIRED_FOR_DELIVERY: "Y",
-        //     RETURN_TYPE: "WH",
-        //     GST_TAX_TOTAL: "",
-        //     SELLER_TIN: "",
-        //     CONSIGNEE_ADDRESS_TYPE: "HOME",
-        //     CONSIGNEE_LONG: "1.4434",
-        //     CONSIGNEE_LAT: "2.987",
-        //     what3words: "tall.basically.flattered",
-        //   },
       },
     ];
 
@@ -268,12 +237,10 @@ const createManifest = async (req, res) => {
         },
       });
     } else {
-      return res
-        .status(400)
-        .json({
-          error: "Error creating shipment",
-          message: response.data.shipments[0].reason,
-        });
+      return res.status(400).json({
+        error: "Error creating shipment",
+        message: response.data.shipments[0].reason,
+      });
     }
   } catch (error) {
     console.error(
@@ -443,7 +410,7 @@ const shipmentTrackingforward = async (awb) => {
 
     // Extract the field array
     const fields = jsonResponse["ecomexpress-objects"].object.field;
-    
+
     // Convert field array into an object with key-value pairs
     const structuredData = {};
     fields.forEach((item) => {
@@ -451,20 +418,21 @@ const shipmentTrackingforward = async (awb) => {
     });
 
     // console.log("Final Parsed Response:", structuredData.tracking_status);
-    return { success:true,data: structuredData, status: 200 };
+    return { success: true, data: structuredData, status: 200 };
   } catch (error) {
     console.error("Tracking API Error:", error.response?.data || error.message);
 
     if (error.response) {
-      return {success:false, error: error.response.data, status: error.response.status || 500 };
+      return {
+        success: false,
+        error: error.response.data,
+        status: error.response.status || 500,
+      };
     } else {
-      return {success:false, error: error.message, status: 500 };
+      return { success: false, error: error.message, status: 500 };
     }
   }
 };
-
-
-
 
 // REVERSE JOURNEY
 const manifestAwbRev = async (req, res) => {
