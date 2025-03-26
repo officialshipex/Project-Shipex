@@ -7,10 +7,11 @@ const {
   getTicketById,
   deleteTicket,
   getUserTickets,
+  updateTicketStatus
 } = require("../services/TicketController");
-const {isAuthorized} = require("../middleware/auth.middleware.js");
+const { isAuthorized } = require("../middleware/auth.middleware.js");
 
-// Create ticket with file upload support
+// Create a ticket with file upload support
 router.post("/", upload.single("file"), createTicket);
 
 // Fetch all tickets (Admin only)
@@ -21,6 +22,9 @@ router.get("/user", isAuthorized, getUserTickets);
 
 // Fetch a ticket by ID
 router.get("/:id", getTicketById);
+
+// Update ticket status
+router.put("/:id/status", updateTicketStatus);
 
 // Delete a ticket by ID
 router.delete("/:id", deleteTicket);

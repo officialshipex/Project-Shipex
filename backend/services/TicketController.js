@@ -1,7 +1,6 @@
 const Ticket = require('../models/TicketSchema');
 const multer = require('multer');
 const path = require('path');
-const XLSX = require('xlsx');
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -22,7 +21,7 @@ const generateTicketNumber = () => {
 
 // Create a new ticket
 const createTicket = async (req, res) => {
-  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, userId, email, isAdmin, company } = req.body;
+  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, userId, email, isAdmin, company, status } = req.body;
 
   if (!category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !userId || !email || !company) {
     return res.status(400).json({ message: "All fields are required" });
@@ -35,7 +34,12 @@ const createTicket = async (req, res) => {
     if (typeof awbNumbers === "string") {
       awbNumbers = awbNumbers.split(",").map(awb => awb.trim()).filter(awb => awb.length > 0);
     }
-    
+
+    // Validate status
+    const validStatuses = ["active", "resolved", "deleted"];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
 
     const newTicket = new Ticket({
       category,
@@ -49,6 +53,7 @@ const createTicket = async (req, res) => {
       email,
       isAdmin,
       company,
+      status: status || "active" // Default to "active" if not provided
     });
 
     await newTicket.save();
@@ -59,15 +64,11 @@ const createTicket = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-  
-  
-  
 
+// Get all tickets
 const getAllTickets = async (req, res) => {
   try {
-
     const tickets = await Ticket.find();
-    // console.log(tickets)
     res.status(200).json(tickets);
   } catch (error) {
     console.error(error);
@@ -75,21 +76,15 @@ const getAllTickets = async (req, res) => {
   }
 };
 
-// const mongoose = require('mongoose');
-
+// Get tickets for a specific user
 const getUserTickets = async (req, res) => {
   try {
-    console.log("req.user:", req.user);
-
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
-    const userId = req.user.userId; // Extract number
-    // console.log("Extracted userId:", userId);
-
-    const tickets = await Ticket.find({ userId }); // Query using number
-    // console.log("Tickets found:", tickets);
+    const userId = req.user.userId;
+    const tickets = await Ticket.find({ userId });
 
     res.status(200).json(tickets);
   } catch (error) {
@@ -98,22 +93,44 @@ const getUserTickets = async (req, res) => {
   }
 };
 
-
-
-
-
-
 // Get a single ticket by ID
 const getTicketById = async (req, res) => {
   try {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
+      return res.status(404).json({ message: "Ticket not found" });
     }
     res.status(200).json(ticket);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update ticket status
+const updateTicketStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["active", "resolved", "deleted"];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    const updatedTicket = await Ticket.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedTicket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    res.status(200).json({ message: "Status updated successfully", ticket: updatedTicket });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -122,12 +139,12 @@ const deleteTicket = async (req, res) => {
   try {
     const ticket = await Ticket.findByIdAndDelete(req.params.id);
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
+      return res.status(404).json({ message: "Ticket not found" });
     }
-    res.status(200).json({ message: 'Ticket deleted successfully' });
+    res.status(200).json({ message: "Ticket deleted successfully" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -137,5 +154,6 @@ module.exports = {
   getAllTickets,
   getTicketById,
   getUserTickets,
+  updateTicketStatus,
   deleteTicket
 };
