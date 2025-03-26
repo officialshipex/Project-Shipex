@@ -65,17 +65,18 @@ async function handleDelhiveryNdrAction(awb_number, action) {
   }
 
   // Step 1: Get current time and check if action is allowed
-  const currentHour = moment().utcOffset("+05:30").hour();
-  if (action === "RE-ATTEMPT" && currentHour < 21) {
-    return {
-      success: false,
-      error: "Re-attempt can only be requested after 9 PM IST.",
-    };
-  }
+  // const currentHour = moment().utcOffset("+05:30").hour();
+  // if (action === "RE-ATTEMPT" && currentHour < 21) {
+  //   return {
+  //     success: false,
+  //     error: "Re-attempt can only be requested after 9 PM IST.",
+  //   };
+  // }
 
   try {
     // Step 2: Fetch order details to check NSL code & attempt count
     const order = await Order.findOne({ awb_number });
+    console.log(order);
     if (!order) {
       return { success: false, error: "Order not found" };
     }
@@ -128,7 +129,10 @@ async function handleDelhiveryNdrAction(awb_number, action) {
         headers: { Authorization: `Token ${DEL_API_TOKEN}` },
       }
     );
-console.log(ndrStatusResponse.data)
+    console.log("ndr status", ndrStatusResponse.data);
+    if(ndrStatusResponse.data.status==="Failure"){
+      return { success: false, error: ndrStatusResponse.data.failed_wbns[0].message };
+    }
     if (!ndrStatusResponse.data) {
       return { success: false, error: "Failed to fetch NDR status" };
     }
@@ -136,7 +140,7 @@ console.log(ndrStatusResponse.data)
     const { status, remark } = ndrStatusResponse.data;
 
     // Step 6: Ensure ndrHistory exists
-    if (!Array.isArray(order.ndrHistory)) { 
+    if (!Array.isArray(order.ndrHistory)) {
       order.ndrHistory = [];
     }
 
@@ -144,10 +148,14 @@ console.log(ndrStatusResponse.data)
     const ndrHistoryEntry = {
       date: new Date(),
       action,
-      remark: remark || "No remark provided",
+      remark:
+        order.tracking.length > 0
+          ? order.tracking[order.tracking.length - 1].Instructions // Get last tracking instruction
+          : remark, // Fallback to existing remark if tracking is empty
       attempt: attemptCount + 1,
     };
-    order.ndrStatus="Action_Requested";
+
+    order.ndrStatus = "Action_Requested";
     order.ndrHistory.push(ndrHistoryEntry);
     await order.save();
 

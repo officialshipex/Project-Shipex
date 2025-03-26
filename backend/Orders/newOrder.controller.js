@@ -725,7 +725,7 @@ const tracking = async (req, res) => {
           result = await trackOrderDTDC(awb_number);
         } else if (provider === "EcomExpress") {
           result = await shipmentTrackingforward(awb_number);
-          // console.log("rerere",result)
+          // console.log("rerere", result);
         }
 
         // if (result && result.data) {
@@ -749,25 +749,31 @@ const tracking = async (req, res) => {
         // }
         // console.log("resulttt",result)
         if (result && result.success) {
-          const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
-          // console.log("result", result);
+          if (provider === "Delhivery") {
+            const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
 
-          const statusMap = {
-            manifested: () => {
-              if (order.status !== "Cancelled") {
-                updateOrderStatus(order, "Ready To Ship", "manifested");
-              }
-            },
-            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
-            "in transit": () =>
-              updateOrderStatus(order, "In-transit", "in transit"),
-            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
+            const statusMap = {
+              manifested: () => {
+                if (order.status !== "Cancelled") {
+                  updateOrderStatus(order, "Ready To Ship", "manifested");
+                }
+              },
+              cancelled: () =>
+                updateOrderStatus(order, "Cancelled", "cancelled"),
+              "in transit": () =>
+                updateOrderStatus(order, "In-transit", "in transit"),
+              delivered: () =>
+                updateOrderStatus(order, "Delivered", "delivered"),
 
-            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
-          };
+              booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            };
 
-          if (statusMap[status]) {
-            await statusMap[status]();
+            if (statusMap[status]) {
+              await statusMap[status]();
+            }
+          }
+          else if(provider==="EcomExpress"){
+            console.log("result",result)
           }
         }
       } catch (error) {
@@ -796,7 +802,7 @@ const trackOrders = async () => {
       try {
         const { provider, awb_number } = order;
         let result;
-        // console.log("order") 
+        // console.log("order")
         // Fetch tracking information from the respective provider
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
@@ -852,22 +858,18 @@ const trackOrders = async () => {
           eligibleNSLCodes.includes(normalizedData.StatusCode)
         ) {
           order.ndrStatus = "RTO-intransit"; // Update ndrStatus
-          if (!Array.isArray(order.ndrHistory)) {
-            order.ndrHistory = [];
-          }
-// console.log("order",order)
+          // if (!Array.isArray(order.ndrHistory)) {
+          //   order.ndrHistory = [];
+          // }
+          // console.log("order",order)
+
           order.ndrReason = {
             date: new Date(), // or provide an appropriate date value
             reason: normalizedData.Instructions,
           };
-          // console.log(order.awb_number); 
-          
-          
+          // console.log(order.awb_number);
         }
-        if (
-          normalizedData.Status === "Delivered" &&
-          order.ndrStatus === "Action_Requested"
-        ) {
+        if (normalizedData.Status === "Delivered") {
           order.ndrStatus = "Delivered";
         }
 
