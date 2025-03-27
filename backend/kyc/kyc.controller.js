@@ -576,6 +576,12 @@ verfication.post("/billing-info", async (req, res) => {
 
     await billing.save()
 
+    return res.status(200).json({
+      success: true,
+      message: "Billing Info saved successfully",
+      data: billing,
+    });
+
 
 
   } catch (err) {
@@ -720,6 +726,7 @@ verfication.post("/kyc", async (req, res) => {
         },
         {
           kycDone: true,
+          isVerified:true
         }
       );
 
@@ -749,8 +756,8 @@ verfication.post("/kyc", async (req, res) => {
       isVerified,
     });
     // console.log(newKyc)
-    console.log("hi")
-    // await newKyc.save();
+    // console.log("hi")
+    await newKyc.save();
     console.log("KYC data saved successfully!");
     await User.findByIdAndUpdate(
       {
@@ -758,6 +765,7 @@ verfication.post("/kyc", async (req, res) => {
       },
       {
         kycDone: true,
+        isVerified:true
       }
     );
 
