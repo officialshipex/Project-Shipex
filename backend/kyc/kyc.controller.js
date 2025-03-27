@@ -18,7 +18,7 @@ const Gstin = require("../models/Gstin.model");
 const User = require("../models/User.model");
 const Pan = require("../models/Pan.model");
 const Kyc = require("../models/Kyc.model");
-const BilingInfo=require("../models/billingInfo.model")
+const BilingInfo = require("../models/billingInfo.model");
 
 dotenv.config();
 const verfication = express.Router();
@@ -447,7 +447,7 @@ verfication.post("/bank-account", async (req, res) => {
     // const userId = "6711f5f10d7b30f7193c55fd";
 
     const { accountNo, ifsc } = req.body;
-    console.log(req.body)
+    console.log(req.body);
 
     if (!accountNo || !ifsc) {
       return res.status(400).json({
@@ -486,7 +486,7 @@ verfication.post("/bank-account", async (req, res) => {
       bank_account: accountNo,
       ifsc: ifsc,
     });
-console.log(data)
+    console.log(data);
     let signature = getSignature();
 
     let config = {
@@ -508,7 +508,10 @@ console.log(data)
     console.log(response);
 
     if (response.data.account_status === "INVALID") {
-      console.log("response.data.account_status_code:", response.data.account_status_code);
+      console.log(
+        "response.data.account_status_code:",
+        response.data.account_status_code
+      );
       return res.status(400).json({
         success: false,
         message: response.data.account_status_code,
@@ -554,10 +557,10 @@ console.log(data)
 verfication.post("/billing-info", async (req, res) => {
   try {
     const userId = req.user._id;
-    const { address,city,state,postalCode } = req.body.billingInfo;
+    const { address, city, state, postalCode } = req.body.billingInfo;
 
-  //  console.log(billingInfo)
-  // console.log(address,city,state,postalCode)
+    //  console.log(billingInfo)
+    // console.log(address,city,state,postalCode)
 
     if (!address || !city || !state || !postalCode) {
       return res.status(400).json({
@@ -566,24 +569,21 @@ verfication.post("/billing-info", async (req, res) => {
       });
     }
 
-    const billing=new BilingInfo({
-      user:userId,
+    const billing = new BilingInfo({
+      user: userId,
       address,
       city,
       state,
-      postalCode
-    })
+      postalCode,
+    });
 
-    await billing.save()
+    await billing.save();
 
     return res.status(200).json({
       success: true,
       message: "Billing Info saved successfully",
       data: billing,
     });
-
-
-
   } catch (err) {
     // console.log("err:", err);
     return res.status(500).json({
@@ -594,198 +594,112 @@ verfication.post("/billing-info", async (req, res) => {
 });
 
 verfication.post("/kyc", async (req, res) => {
-  // console.log(req.body);
   try {
-    const userId = req.user._id;
+    console.log("Received KYC request:", req.body);
 
-    // const { companyName } = req.body.companyDetails;
-    const companyCategory = req.body.payload.selectedType;
-    const aadhaarNumber = req.body.payload.documentDetails.aadharNo;
-    const gstNumber = req.body.payload.gstNumber;
-    const panNumber = req.body.payload.documentDetails.pan;
-    const isVerified = req.body.payload.isVerified;
-    const panHolderName = req.body.payload.documentDetails.panName;
-    // const contactNumber=req.body.payload.bankDetails.mobileNo
-    const ifscCode = req.body.payload.bankDetails.ifsc;
-    // const accountHolderName=req.body.payload.bankDetails.beneficiaryName
-    const accountNumber = req.body.payload.bankDetails.accountNumber;
-    // const {gstNumber,panNumber,aadhaarNumber,isVerified,panHolderName}=req.body.payload
-    // const {contactNumber}=req.body.primaryAddress
-    // const {ifscCode,accountHolderName,accountNumber}=req.body.accountDetails
+    const userId = req.user?._id;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "User not authenticated" });
+    }
 
-    console.log(
-      companyCategory,
-      // aadhaarNumber,
-      gstNumber,
-      panNumber,
-      isVerified,
-      panHolderName,
-      ifscCode,
-      accountNumber
-    );
-    // console.log(aadhaarNumber)
+    const companyCategory = req.body?.payload?.selectedType || null;
+    const aadhaarNumber = req.body?.payload?.documentDetails?.aadharNo || null;
+    const gstNumber = req.body?.payload?.gstNumber || null;
+    const panNumber = req.body?.payload?.documentDetails?.pan || null;
+    const isVerified = req.body?.payload?.isVerified || false;
+    const panHolderName = req.body?.payload?.documentDetails?.panName || null;
+    const ifscCode = req.body?.payload?.bankDetails?.ifsc || null;
+    const accountNumber = req.body?.payload?.bankDetails?.accountNumber || null;
+
+    // ❌ Prevent inserting null Aadhaar numbers
+    if (!aadhaarNumber) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Aadhaar Number is required" });
+    }
 
     if (
-      // !businesstype ||
-      // !companyName ||
-      // !address ||
       !companyCategory ||
       !panNumber ||
       !panHolderName ||
       !accountNumber ||
       !ifscCode ||
-      // !accountHolderName ||
-      // !contactNumber ||
-      !isVerified ||
-      !aadhaarNumber
+      !isVerified
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
-    }
-
-    if (!["individual", "company"].includes(companyCategory)) {
       return res
         .status(400)
-        .json({ success: false, message: "Invalid business type" });
+        .json({ success: false, message: "All fields are required" });
     }
-
-    // if (!["digital", "manual"].includes(kycType)) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: "Invalid kyc type" });
-    // }
 
     if (!validatePAN(panNumber)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid PAN number",
-      });
+      console.log("Invalid PAN:", panNumber);
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid PAN number" });
     }
 
-    // if (!validateAadhaar(aadhaarNumber) && aadhaarNumber) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Invalid Aadhaar number",
-    //   });
-    // }
-
-    if (
-      !validateBankDetails(
-        accountNumber,
-        ifscCode
-        // accountHolderName,
-        // contactNumber
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid bank details",
-      });
+    if (!validateBankDetails(accountNumber, ifscCode)) {
+      console.log("Invalid Bank Details:", accountNumber, ifscCode);
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid bank details" });
     }
-
-    // if (!validateGST(gstNumber) && gstNumber) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Invalid GST number",
-    //   });
-    // }
 
     const kycExists = await Kyc.findOne({ user: userId });
-    // console.log("kkkkkkkkkkkkkk",kycExists)
-
     if (kycExists) {
       const data = await Kyc.findByIdAndUpdate(
-        {
-          _id: kycExists._id,
-        },
+        kycExists._id,
         {
           companyCategory,
-          // companyName,
           gstNumber,
-          // address,
-          // kycType,
           panNumber,
           panHolderName,
-          // aadhaarNumber,
           accountNumber,
           ifscCode,
-          // accountHolderName,
-          // contactNumber,
           isVerified,
         },
-        {
-          new: true,
-        }
+        { new: true, runValidators: true }
       ).lean();
 
-      await User.findByIdAndUpdate(
-        {
-          _id: userId,
-        },
-        {
-          kycDone: true,
-          isVerified:true
-        }
-      );
+      await User.findByIdAndUpdate(userId, { kycDone: true, isVerified: true });
 
-      return res.status(200).json({
-        success: true,
-        message: "KYC Upadated successfully",
-        data: data,
-      });
+      return res
+        .status(200)
+        .json({ success: true, message: "KYC Updated successfully", data });
     }
-
-    // console.log("hi")
 
     const newKyc = new Kyc({
       user: userId,
       companyCategory,
-      // companyName,
       gstNumber,
-      // address,
-      // kycType,
       panNumber,
       panHolderName,
-      // aadhaarNumber,
       accountNumber,
       ifscCode,
-      // accountHolderName,
-      // contactNumber,
       isVerified,
     });
-    // console.log(newKyc)
-    // console.log("hi")
-    await newKyc.save();
-    console.log("KYC data saved successfully!");
-    await User.findByIdAndUpdate(
-      {
-        _id: userId,
-      },
-      {
-        kycDone: true,
-        isVerified:true
-      }
-    );
+    // await newKyc.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "KYC verified successfully",
-      data: newKyc,
-    });
-  } catch (err) {
-    // console.log("err:", err);
-    if (err.isAxiosError && err.response) {
-      return res.status(err.response.status || 500).json({
-        success: false,
-        message: err.response.data.message || "Error in KYC verification",
+    await User.findByIdAndUpdate(userId, { kycDone: true, isVerified: true });
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "KYC verified successfully",
+        data: newKyc,
       });
-    }
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+  } catch (err) {
+    console.error("Error in KYC Submission:", err);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Internal server error",
+        error: err.message,
+      });
   }
 });
 
