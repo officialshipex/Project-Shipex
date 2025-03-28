@@ -17,7 +17,8 @@ const {
   passbook,
   getUser,
   trackOrders,
-  GetTrackingByAwb
+  GetTrackingByAwb,
+  calculateRTOCharges
   
 } = require("../Orders/newOrder.controller"); // Adjust path to your controller
 const router = express.Router();
@@ -41,4 +42,5 @@ router.get("/passbook",passbook)
 router.get("/getUser",getUser)
 router.post("/webhookTracking",trackOrders)
 router.get("/GetTrackingByAwb/:awb",GetTrackingByAwb)
+router.post("/calculateRTOCharges",calculateRTOCharges)
 module.exports = router;
