@@ -7,7 +7,10 @@ const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
 const { codToBeRemitted } = require("../COD/cod.controller");
-const {cancelShipmentforward,shipmentTrackingforward}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
+const {
+  cancelShipmentforward,
+  shipmentTrackingforward,
+} = require("../AllCouriers/EcomExpress/Couriers/couriers.controllers");
 const {
   pickup,
   cancelShipmentXpressBees,
@@ -444,7 +447,7 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-        // console.log("iiiii",result)
+        console.log("iiiii", result);
         if (result && result.success) {
           return {
             item,
@@ -720,9 +723,9 @@ const tracking = async (req, res) => {
           result = await trackOrderShreeMaruti(awb_number);
         } else if (provider === "DTDC") {
           result = await trackOrderDTDC(awb_number);
-        }
-        else if (provider === "EcomExpress") {
+        } else if (provider === "EcomExpress") {
           result = await shipmentTrackingforward(awb_number);
+          // console.log("rerere", result);
         }
 
         // if (result && result.data) {
@@ -746,25 +749,31 @@ const tracking = async (req, res) => {
         // }
         // console.log("resulttt",result)
         if (result && result.success) {
-          const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
-          // console.log("result", result);
+          if (provider === "Delhivery") {
+            const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
 
-          const statusMap = {
-            manifested: () => {
-              if (order.status !== "Cancelled") {
-                updateOrderStatus(order, "Ready To Ship", "manifested");
-              }
-            },
-            cancelled: () => updateOrderStatus(order, "Cancelled", "cancelled"),
-            "in transit": () =>
-              updateOrderStatus(order, "In-transit", "in transit"),
-            delivered: () => updateOrderStatus(order, "Delivered", "delivered"),
+            const statusMap = {
+              manifested: () => {
+                if (order.status !== "Cancelled") {
+                  updateOrderStatus(order, "Ready To Ship", "manifested");
+                }
+              },
+              cancelled: () =>
+                updateOrderStatus(order, "Cancelled", "cancelled"),
+              "in transit": () =>
+                updateOrderStatus(order, "In-transit", "in transit"),
+              delivered: () =>
+                updateOrderStatus(order, "Delivered", "delivered"),
 
-            booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
-          };
+              booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
+            };
 
-          if (statusMap[status]) {
-            await statusMap[status]();
+            if (statusMap[status]) {
+              await statusMap[status]();
+            }
+          }
+          else if(provider==="EcomExpress"){
+            console.log("result",result)
           }
         }
       } catch (error) {
@@ -806,19 +815,29 @@ const trackOrders = async () => {
           // console.log(result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
+        } else if (provider === "EcomExpress") {
+          result = await shipmentTrackingforward(awb_number);
+          // console.log("rerere", result);
         }
 
         if (!result || !result.success || !result.data) {
           return;
         }
+        // console.log(result.data)
 
-        const {
-          Status,
-          StatusCode,
-          StatusLocation,
-          StatusDateTime,
-          Instructions,
-        } = result.data;
+        const normalizedData = mapTrackingResponse(result.data, provider);
+        if (!normalizedData) {
+          console.warn(`Failed to map tracking data for AWB: ${awb_number}`);
+          return;
+        }
+
+        // const {
+        //   Status,
+        //   StatusCode,
+        //   StatusLocation,
+        //   StatusDateTime,
+        //   Instructions,
+        // } = result.data;
         // console.log("result data",result.data)
         // List of NSL codes that qualify for "RE-ATTEMPT"
         const eligibleNSLCodes = [
@@ -831,18 +850,37 @@ const trackOrders = async () => {
           "EOD-69",
           "EOD-6",
         ];
+        // console.log("norer",normalizedData)
 
         // Check if the StatusCode is in the eligible list
-        if (StatusCode && eligibleNSLCodes.includes(StatusCode)) {
+        if (
+          normalizedData.StatusCode &&
+          eligibleNSLCodes.includes(normalizedData.StatusCode)
+        ) {
           order.ndrStatus = "RTO-intransit"; // Update ndrStatus
+          // if (!Array.isArray(order.ndrHistory)) {
+          //   order.ndrHistory = [];
+          // }
+          // console.log("order",order)
+
+          order.ndrReason = {
+            date: new Date(), // or provide an appropriate date value
+            reason: normalizedData.Instructions,
+          };
+          // console.log(order.awb_number);
+        }
+        if (normalizedData.Status === "Delivered") {
+          order.ndrStatus = "Delivered";
         }
 
+        const Instructions = normalizedData.Instructions;
         const newTrackingEntry = {
-          status: Status,
-          StatusLocation,
-          StatusDateTime,
-          Instructions,
+          status: normalizedData.Status,
+          StatusLocation: normalizedData.StatusLocation,
+          StatusDateTime: normalizedData.StatusDateTime,
+          Instructions: normalizedData.Instructions,
         };
+        // console.log("newer",newTrackingEntry)
 
         // Remove empty objects from tracking array
         order.tracking = order.tracking.filter(
@@ -872,7 +910,74 @@ const trackOrders = async () => {
 };
 
 // Run tracking every 1 minute
-// setInterval(trackOrders, 60 * 1000);
+setInterval(trackOrders, 60 * 1000);
+
+const mapTrackingResponse = (data, provider) => {
+  switch (provider) {
+    case "EcomExpress":
+      return {
+        // AWBNumber: data.awb_number || null,
+        Status: data.reason_code_description || "N/A",
+        // StatusCode: data.status || null,
+        StatusLocation: data.current_location_name || "N/A",
+        StatusDateTime: data.last_update_datetime || null,
+        Instructions: data.tracking_status || null,
+      };
+
+    case "Shiprocket":
+      return {
+        // AWBNumber: data.awb || null,
+        Status: data.current_status || null,
+        // StatusCode: data.status_code || null,
+        StatusLocation: data.location || "Unknown",
+        StatusDateTime: data.timestamp || null,
+        Instructions: data.instructions || null,
+      };
+
+    case "NimbusPost":
+      return {
+        AWBNumber: data.waybill || null,
+        Status: data.status || null,
+        StatusCode: data.status_code || null,
+        StatusLocation: data.city || "Unknown",
+        StatusDateTime: data.updated_on || null,
+        Instructions: data.remarks || null,
+      };
+
+    case "Delhivery":
+      return {
+        // AWBNumber: data.waybill || null,
+        Status: data.Status || null,
+        StatusCode: data.StatusCode || null,
+        StatusLocation: data.StatusLocation || "Unknown",
+        StatusDateTime: data.StatusDateTime || null,
+        Instructions: data.Instructions || null,
+      };
+
+    case "Xpressbees":
+      return {
+        AWBNumber: data.awb || null,
+        Status: data.tracking_status || null,
+        StatusCode: data.status_code || null,
+        StatusLocation: data.location || "Unknown",
+        StatusDateTime: data.last_update || null,
+        Instructions: data.remarks || null,
+      };
+
+    case "ShreeMaruti":
+      return {
+        AWBNumber: data.awb_number || null,
+        Status: data.status || null,
+        StatusCode: data.status_code || null,
+        StatusLocation: data.current_location || "Unknown",
+        StatusDateTime: data.updated_at || null,
+        Instructions: data.message || null,
+      };
+
+    default:
+      return null; // If provider is unknown, return null
+  }
+};
 
 // setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
@@ -945,7 +1050,6 @@ const deleteOrder = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
-
 
 const GetTrackingByAwb = async (req, res) => {
   try {
