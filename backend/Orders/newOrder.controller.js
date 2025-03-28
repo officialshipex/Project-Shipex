@@ -956,13 +956,42 @@ const GetTrackingByAwb = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    console.log("Order details:", order);
+    // console.log("Order details:", order);
     res.status(200).json(order);
   } catch (error) {
     console.error("Error fetching tracking details:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+const calculateRTOCharges = async (req, res) => {
+  try {
+ 
+    const users=req.user._id
+    const orders = await Order.find({
+      // userId: users,
+      tracking: { 
+        $elemMatch: { Instructions: "RETURN Accepted" } 
+      }
+    });
+    res.status(200).json({
+      success: true,
+      message: "RTO charges calculated successfully",
+    });
+  } catch (error) {
+    console.error("Error calculating RTO charges:", error);
+    
+    // res.status(500).json({
+    //   success: false,
+    //   message: "An error occurred while calculating RTO charges",
+    //   error: error.message,
+    // });
+  }
+};
+
+
+
+
 
 module.exports = {
   newOrder,
@@ -982,5 +1011,6 @@ module.exports = {
   passbook,
   getUser,
   trackOrders,
-  GetTrackingByAwb
+  GetTrackingByAwb,
+  calculateRTOCharges
 };
