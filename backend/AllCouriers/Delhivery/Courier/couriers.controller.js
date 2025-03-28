@@ -275,7 +275,8 @@ const trackShipmentDelhivery = async (waybill) => {
     if (
       status === "Manifested" ||
       status === "In Transit" ||
-      status === "Delivered"
+      status === "Delivered" ||
+      status === "Pending"
     ) {
       return {
         success: true,

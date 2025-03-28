@@ -133,16 +133,17 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    if(service.provider==="EcomExpress"){
-      const payload={
-        originPincode:pincode,
-        destinationPincode:currentOrder.receiverAddress.pinCode
-      }
-      
-      const result=await checkServiceabilityEcomExpress(payload)
-      console.log(result)
-      return result
+    if (service.provider === "EcomExpress") {
+      const payload = {
+        originPincode: pincode, // Pickup location pincode
+        destinationPincode: currentOrder.receiverAddress.pinCode, // Delivery location pincode
+      };
+    
+      const result = await checkServiceabilityEcomExpress(payload.originPincode, payload.destinationPincode);
+      console.log("Serviceability Result:", result);
+      return result;
     }
+    
 
     // return false;
   } catch (error) {
