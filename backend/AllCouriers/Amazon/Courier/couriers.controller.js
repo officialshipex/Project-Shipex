@@ -1,7 +1,8 @@
-const getAccessToken = require("../Authorize/saveCourierController");
+const {getAmazonAccessToken} = require("../Authorize/saveCourierController");
+const axios = require("axios")
 
 const createOneClickShipment = async (req, res) => {
-  const accessToken = await getAccessToken();
+  const accessToken = await getAmazonAccessToken();
   const amazonBusinessId =
     process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
 
@@ -72,7 +73,8 @@ const createOneClickShipment = async (req, res) => {
 };
 
 const cancelShipment = async (shipmentId) => {
-  const accessToken = await getAccessToken();
+  const accessToken = await getAmazonAccessToken();
+  // console.log("accessToken",accessToken)
   if (!accessToken) {
     console.error("Failed to get access token");
     return;
@@ -105,8 +107,10 @@ const cancelShipment = async (shipmentId) => {
   }
 };
 
+// cancelShipment(121212)
+
 const getShipmentTracking = async (trackingId, carrierId) => {
-  const accessToken = await getAccessToken();
+  const accessToken = await getAmazonAccessToken();
   if (!accessToken) {
     console.error("Failed to get access token");
     return;
@@ -138,25 +142,28 @@ const getShipmentTracking = async (trackingId, carrierId) => {
   }
 };
 
-const checkAmazonServiceability = async () => {
-  const accessToken = await getAccessToken();
+const checkAmazonServiceability = async (provider,payload) => {
+  // console.log("payloadprovider",provider,payload)
+  const accessToken = await getAmazonAccessToken();
   if (!accessToken) return;
 
   const shipFrom = {
-    name: "John Doe",
-    addressLine1: "123 Main Street",
-    city: "Delhi",
-    postalCode: "110001",
+    name: payload.origin.contactName,
+    addressLine1: payload.origin.address,
+    city: payload.origin.city,
+    postalCode: payload.origin.pinCode,
     countryCode: "IN",
   };
 
   const shipTo = {
-    name: "Jane Doe",
-    addressLine1: "456 Secondary Road",
-    city: "Mumbai",
-    postalCode: "400001",
+    name: payload.destination.contactName,
+    addressLine1: payload.destination.address,
+    city: payload.destination.city,
+    postalCode: payload.destination.pinCode,
     countryCode: "IN",
   };
+
+  // console.log("ahiptdkfl",shipTo,shipFrom)
 
   try {
     const requestBody = {
@@ -165,26 +172,23 @@ const checkAmazonServiceability = async () => {
       shipDate: new Date().toISOString(), // Current date-time
       packages: [
         {
-          dimensions: { length: 10, width: 5, height: 5, unit: "cm" },
-          weight: { value: 1.2, unit: "kg" },
+          dimensions: { length: payload.length, width: payload.breadth, height:payload.height, unit: "cm" },
+          weight: { value: payload.weight/1000, unit: "kg" },
         },
       ],
       channelDetails: { channelType: "Amazon" },
-    //   returnTo: shipFrom, // Optional return address (same as sender)
-    //   valueAddedServices: [],
-    //   taxDetails: [],
-    //   clientReferenceDetails: [],
-    //   shipmentType: "Parcel", // Optional
+    
     };
-
+// console.log("amaxon id",process.env.AMAZON_BUSINESS_ID)
     const response = await axios.post(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/rates",
+      // "https://sandbox.sellingpartnerapi-na.amazon.com/shipping/v2/shipments/rates",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       requestBody,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": "AmazonShipping_IN", // Adjust based on region
+          "x-amzn-shipping-business-id": "AmazonShipping_UK", // Adjust based on region
           "Content-Type": "application/json",
         },
       }

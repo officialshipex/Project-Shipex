@@ -4,6 +4,7 @@ if(process.env.NODE_ENV!="production"){
 
     const axios = require('axios');
     const AllCourier=require("../../../models/AllCourierSchema");
+   
 
 const API_TOKEN = process.env.AMAZON_API_TOKEN;
 const getToken = async (req, res) => {
@@ -44,8 +45,11 @@ const getToken = async (req, res) => {
 
 
 
-const getAccessToken = async () => {
+const getAmazonAccessToken = async () => {
   try {
+    // console.log("refresh token",process.env.SPAPI_REFRESH_TOKEN);
+    // console.log("clientId",process.env.SPAPI_CLIENT_ID)
+    // console.log("clientSecret",process.env.SPAPI_CLIENT_SECRET)
     const response = await axios.post("https://api.amazon.com/auth/o2/token", {
       grant_type: "refresh_token",
       refresh_token: process.env.SPAPI_REFRESH_TOKEN,
@@ -53,11 +57,18 @@ const getAccessToken = async () => {
       client_secret: process.env.SPAPI_CLIENT_SECRET,
     });
 
+    // console.log("✅ Amazon SP-API Access Token:", response.data.access_token);
     return response.data.access_token;
   } catch (error) {
-    console.error("Error fetching SP-API token:", error.response.data);
+    console.error("🚨 Error fetching Amazon Access Token:", error.response?.data || error.message);
+    
+    if (error.response?.data?.error === "invalid_grant") {
+      console.error("❌ Your refresh token is invalid or expired. Please regenerate it.");
+    }
+    
+    return null;
   }
 };
 
 
-module.exports={getToken,getAccessToken}
+module.exports={getToken,getAmazonAccessToken}

@@ -8,53 +8,51 @@ const User = require("../models/User.model");
 const cron = require("node-cron");
 const { uploadToS3 } = require("../config/s3");
 const downloadExcel = async (req, res) => {
-  // console.log("hii")
   try {
-    // Create a new workbook and add a worksheet
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Sample Bulk Order");
+    const worksheet = workbook.addWorksheet("Weight Discrepancy");
 
     // Define headers
     worksheet.columns = [
-      { header: "*AWB Number", key: "AWB_Number", width: 30 },
-      { header: "*Charge Weight", key: "Charge_Weight", width: 40 },
-      { header: "Length", key: "Length", width: 20 },
-      { header: "Breadth", key: "Breadth", width: 20 },
-      { header: "Height", key: "Height", width: 20 },
-
-      // { header: "*CODAmount", key: "CODAmount", width: 40 },
+      { header: "*AWB Number", key: "awb_number", width: 30 },
+      { header: "*Charge Weight", key: "charge_weight", width: 20 },
+      { header: "Length", key: "length", width: 15 },
+      { header: "Breadth", key: "breadth", width: 15 },
+      { header: "Height", key: "height", width: 15 },
     ];
 
-    // Add a sample row with mandatory product 1 and optional products
+    // Add a sample row
     worksheet.addRow({
-      AWB_Number: "1212121212",
-      Charge_Weight: "0.5",
-      Length: "10",
-      Breadth: "10",
-      Height: "10",
+      awb_number: "1212121212",
+      charge_weight: "0.5",
+      length: "10",
+      breadth: "10",
+      height: "10",
     });
 
-    // Format the header row
+    // Format header row (bold and centered)
     worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
       cell.alignment = { vertical: "middle", horizontal: "center" };
-      cell.font = { bold: true }; // Make headers bold
     });
 
-    // Set response headers for file download
+    // Generate the Excel file in memory
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set headers for file download
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Weight_Discrepancy_Sample_Format.xlsx"
+    );
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader("Content-Disposition", "attachment; filename=sample.xlsx");
 
-    // Write workbook to response stream
-    await workbook.xlsx.write(res);
-    res.end();
+    res.send(Buffer.from(buffer)); // ✅ Fix for corruption issue
   } catch (error) {
     console.error("Error generating Excel file:", error);
-    res
-      .status(500)
-      .json({ error: "Error generating Excel file", details: error.message });
+    res.status(500).json({ error: "Error generating Excel file" });
   }
 };
 
@@ -72,13 +70,20 @@ const uploadDispreancy = async (req, res) => {
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
     for (const row of sheetData) {
-      const awbNumber = row["*AWB Number"];
+      const awbNumber = row["*AWB Number"]?.toString().trim(); // Ensure AWB Number is a string
       const chargeWeight = parseFloat(row["*Charge Weight"]);
 
       // Ensure AWB Number and Charge Weight are mandatory
       if (!awbNumber || isNaN(chargeWeight)) {
         console.log(`Skipping row due to missing mandatory fields:`, row);
         continue; // Skip this row
+      }
+
+      // **Check if discrepancy already exists**
+      const existingDiscrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+      if (existingDiscrepancy) {
+        console.log(`Skipping AWB ${awbNumber} - Discrepancy already exists.`);
+        continue; // Skip this AWB number
       }
 
       // Fetch order data from DB using awbNumber
@@ -106,53 +111,34 @@ const uploadDispreancy = async (req, res) => {
       const extraWeight = Math.ceil(excessWeight / order.packageDetails.applicableWeight);
       const excessCharges = freightCharges * extraWeight;
 
-      // Check if an existing discrepancy exists
-      let discrepancyEntry = await WeightDiscrepancy.findOne({ awbNumber });
-
-      if (discrepancyEntry) {
-        // **Update existing discrepancy**
-        discrepancyEntry.chargedWeight = {
+      // **Create new discrepancy entry**
+      const discrepancyEntry = new WeightDiscrepancy({
+        userId,
+        awbNumber: order.awb_number,
+        orderId: order.orderId,
+        productDetails: order.productDetails,
+        courierServiceName: order?.courierServiceName || order?.provider,
+        provider: order.provider,
+        enteredWeight: {
+          applicableWeight: order.packageDetails.applicableWeight,
+          deadWeight: order.packageDetails.deadWeight,
+        },
+        chargedWeight: {
           applicableWeight: chargeWeight,
           deadWeight: chargeWeight,
-        };
-        discrepancyEntry.chargeDimension = { length, breadth, height };
-        discrepancyEntry.excessWeightCharges = {
+        },
+        chargeDimension: { length, breadth, height },
+        excessWeightCharges: {
           excessWeight,
           excessCharges,
           pendingAmount: excessCharges,
-        };
-        discrepancyEntry.status = "new";
-        discrepancyEntry.adminStatus = "pending";
-        discrepancyEntry.updatedAt = new Date();
-      } else {
-        // **Create new discrepancy entry**
-        discrepancyEntry = new WeightDiscrepancy({
-          userId,
-          awbNumber: order.awb_number,
-          orderId: order.orderId,
-          productDetails: order.productDetails,
-          courierServiceName: order?.courierServiceName || order?.provider,
-          provider: order.provider,
-          enteredWeight: {
-            applicableWeight: order.packageDetails.applicableWeight,
-            deadWeight: order.packageDetails.deadWeight,
-          },
-          chargedWeight: {
-            applicableWeight: chargeWeight,
-            deadWeight: chargeWeight,
-          },
-          chargeDimension: { length, breadth, height },
-          excessWeightCharges: {
-            excessWeight,
-            excessCharges,
-            pendingAmount: excessCharges,
-          },
-          status: "new",
-          adminStatus: "pending",
-        });
-      }
+        },
+        status: "new",
+        adminStatus: "pending",
+      });
 
       await discrepancyEntry.save();
+      console.log(`Added new discrepancy for AWB: ${awbNumber}`);
     }
 
     // Delete the uploaded file after processing
@@ -173,6 +159,7 @@ const uploadDispreancy = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
+
 
 
 const AllDiscrepancy = async (req, res) => {
