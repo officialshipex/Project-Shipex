@@ -564,6 +564,18 @@ const cancelOrdersAtBooked = async (req, res) => {
     const currentWallet = await Wallet.findById({ _id: users.Wallet });
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
+
+    const isCancelled = await Order.find({
+      awb_number: currentOrder.awb_number,
+      status: "Cancelled",
+    });
+    if (isCancelled) {
+      console.log("Order is allready cancelled");
+      return res.status(400).json({
+        error: "Order is allready cancelled",
+      });
+    }
+
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
       if (result.error) {
@@ -596,6 +608,7 @@ const cancelOrdersAtBooked = async (req, res) => {
     } else if (currentOrder.provider === "Delhivery") {
       // console.log("I am in it");
       const result = await cancelOrderDelhivery(currentOrder.awb_number);
+      
       if (result.error) {
         return res.status(400).json({
           error: "Failed to cancel shipment with Delhivery",
@@ -771,9 +784,8 @@ const tracking = async (req, res) => {
             if (statusMap[status]) {
               await statusMap[status]();
             }
-          }
-          else if(provider==="EcomExpress"){
-            console.log("result",result)
+          } else if (provider === "EcomExpress") {
+            console.log("result", result);
           }
         }
       } catch (error) {
