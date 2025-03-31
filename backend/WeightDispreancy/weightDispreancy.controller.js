@@ -7,6 +7,7 @@ const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
 const cron = require("node-cron");
 const { uploadToS3 } = require("../config/s3");
+const { calculateRateForDispute } = require("../Rate/calculateRateController");
 const downloadExcel = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
@@ -59,7 +60,9 @@ const downloadExcel = async (req, res) => {
 const uploadDispreancy = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No file uploaded" });
     }
 
     const filePath = req.file.path; // Path of the uploaded file
@@ -80,7 +83,9 @@ const uploadDispreancy = async (req, res) => {
       }
 
       // **Check if discrepancy already exists**
-      const existingDiscrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+      const existingDiscrepancy = await WeightDiscrepancy.findOne({
+        awbNumber,
+      });
       if (existingDiscrepancy) {
         console.log(`Skipping AWB ${awbNumber} - Discrepancy already exists.`);
         continue; // Skip this AWB number
@@ -93,7 +98,7 @@ const uploadDispreancy = async (req, res) => {
         console.log(`Skipping order - AWB not found: ${awbNumber}`);
         continue; // Skip this AWB completely
       }
-
+      console.log("ordfdf", order);
       // Extract userId from the order
       const userId = order.userId;
 
@@ -106,10 +111,28 @@ const uploadDispreancy = async (req, res) => {
       const excessWeight = parseFloat(
         (chargeWeight - order.packageDetails.applicableWeight).toFixed(2)
       );
-
-      const freightCharges = order.totalFreightCharges;
-      const extraWeight = Math.ceil(excessWeight / order.packageDetails.applicableWeight);
-      const excessCharges = freightCharges * extraWeight;
+      const payload = {
+        pickupPincode: order.pickupAddress.pinCode,
+        deliveryPincode: order.receiverAddress.pinCode,
+        length: order.packageDetails.volumetricWeight.length,
+        breadth: order.packageDetails.volumetricWeight.width,
+        height: order.packageDetails.volumetricWeight.height,
+        weight: chargeWeight,
+        cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
+        valueInINR: order.paymentDetails.amount,
+        userID: order.userId,
+        filteredServices: order.courierServiceName,
+      };
+      const additionalCharges = await calculateRateForDispute(payload);
+      const excessCharges = parseFloat(
+        (additionalCharges[0].forward.finalCharges - order.totalFreightCharges).toFixed(2)
+      );
+      
+      // const freightCharges = order.totalFreightCharges;
+      // const extraWeight = Math.ceil(
+      //   excessWeight / order.packageDetails.applicableWeight
+      // );
+      // const excessCharges = freightCharges * extraWeight;
 
       // **Create new discrepancy entry**
       const discrepancyEntry = new WeightDiscrepancy({
@@ -159,8 +182,6 @@ const uploadDispreancy = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
-
 
 const AllDiscrepancy = async (req, res) => {
   try {
@@ -523,13 +544,13 @@ const raiseDiscrepancies = async (req, res) => {
 
 const adminAcceptDiscrepancy = async (req, res) => {
   try {
-    const {awbNumber}  = req.body;
-    console.log(req.body)
+    const { awbNumber } = req.body;
+    console.log(req.body);
     console.log("Accepting discrepancy for AWB:", awbNumber);
     const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
     if (!discrepancy) {
       return res.status(404).json({ message: "Discrepancy not found" });
-    } 
+    }
 
     discrepancy.excessWeightCharges.pendingAmount = 0;
 
@@ -547,44 +568,46 @@ const adminAcceptDiscrepancy = async (req, res) => {
 
 const declineDiscrepancy = async (req, res) => {
   try {
-      const { awbNumber, text } = req.body;
+    const { awbNumber, text } = req.body;
 
-      console.log(`Processing discrepancy decline for AWB: ${awbNumber}`);
+    console.log(`Processing discrepancy decline for AWB: ${awbNumber}`);
 
-      // Validate input
-      if (!awbNumber || !text) {
-        // console.log("hii")
-          return res.status(400).json({ message: "AWB Number and reason are required" });
-      }
+    // Validate input
+    if (!awbNumber || !text) {
+      // console.log("hii")
+      return res
+        .status(400)
+        .json({ message: "AWB Number and reason are required" });
+    }
 
-      // Find the discrepancy
-      const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
-      if (!discrepancy) {
-          return res.status(404).json({ message: "Discrepancy not found" });
-      }
+    // Find the discrepancy
+    const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+    if (!discrepancy) {
+      return res.status(404).json({ message: "Discrepancy not found" });
+    }
 
-      // Update discrepancy status
-      Object.assign(discrepancy, {
-          status: "new",
-          adminStatus: "Discrepancy Declined",
-          clientStatus: "Discrepancy Declined",
-          discrepancyDeclinedReason: text,
-          discrepancyDeclinedAt: new Date(),
-      });
+    // Update discrepancy status
+    Object.assign(discrepancy, {
+      status: "new",
+      adminStatus: "Discrepancy Declined",
+      clientStatus: "Discrepancy Declined",
+      discrepancyDeclinedReason: text,
+      discrepancyDeclinedAt: new Date(),
+    });
 
-      await discrepancy.save();
+    await discrepancy.save();
 
-      return res.status(200).json({ message: "Discrepancy declined successfully" });
-
+    return res
+      .status(200)
+      .json({ message: "Discrepancy declined successfully" });
   } catch (error) {
-      console.error("Error declining discrepancy:", error);
-      return res.status(500).json({
-          message: "An error occurred while declining the discrepancy",
-          error: error.message
-      });
+    console.error("Error declining discrepancy:", error);
+    return res.status(500).json({
+      message: "An error occurred while declining the discrepancy",
+      error: error.message,
+    });
   }
 };
-
 
 module.exports = {
   downloadExcel,
@@ -595,5 +618,5 @@ module.exports = {
   AcceptAllDiscrepancies,
   raiseDiscrepancies,
   adminAcceptDiscrepancy,
-  declineDiscrepancy
+  declineDiscrepancy,
 };
