@@ -565,16 +565,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
 
-    const isCancelled = await Order.find({
-      awb_number: currentOrder.awb_number,
-      status: "Cancelled",
-    });
-    if (isCancelled) {
-      console.log("Order is allready cancelled");
-      return res.status(400).json({
-        error: "Order is allready cancelled",
-      });
-    }
+    
 
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
@@ -611,7 +602,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       
       if (result.error) {
         return res.status(400).json({
-          error: "Failed to cancel shipment with Delhivery",
+          error: result?.error|| "Failed to cancel shipment with Delhivery",
           details: result,
           orderId: currentOrder._id,
         });
