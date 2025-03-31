@@ -408,9 +408,11 @@ const shipmentTrackingforward = async (awb) => {
       mergeAttrs: true,
     });
 
+
+
     // Extract the field array
     const fields = jsonResponse["ecomexpress-objects"].object.field;
-
+// console.log("fields",fields[fields.length-1].object)
     // Convert field array into an object with key-value pairs
     const structuredData = {};
     fields.forEach((item) => {

@@ -565,8 +565,6 @@ const cancelOrdersAtBooked = async (req, res) => {
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
 
-    
-
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
       if (result.error) {
@@ -599,10 +597,10 @@ const cancelOrdersAtBooked = async (req, res) => {
     } else if (currentOrder.provider === "Delhivery") {
       // console.log("I am in it");
       const result = await cancelOrderDelhivery(currentOrder.awb_number);
-      
+
       if (result.error) {
         return res.status(400).json({
-          error: result?.error|| "Failed to cancel shipment with Delhivery",
+          error: result?.error || "Failed to cancel shipment with Delhivery",
           details: result,
           orderId: currentOrder._id,
         });
@@ -684,23 +682,18 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 const tracking = async (req, res) => {
   try {
-    // console.log(req.body);
     const allOrders = await Promise.all(
       req.body.map((order) => Order.findById(order._id))
     );
-    // const allOrders = await Order.find({ status: { $ne: "new" } });
 
-    // const lenghtdata=allOrders.length
-    // console.log("yyyyyyyyyy",lenghtdata)
     const updateOrderStatus = async (order, status, data) => {
-      // console.log("yuyuuyuyuyuuu", status);
-      if (data == "manifested" || data == "booked") {
+      if (data === "manifested" || data === "booked") {
         order.status = status;
       }
-      if (data == "in transit") {
+      if (data === "in transit") {
         order.status = status;
       }
-      if (data == "delivered") {
+      if (data === "delivered") {
         order.status = status;
       }
       await order.save();
@@ -708,50 +701,25 @@ const tracking = async (req, res) => {
 
     const trackingPromises = allOrders.map(async (order) => {
       try {
-        const { provider } = order;
-        const { awb_number } = order;
+        const { provider, awb_number } = order;
         let result;
-        //  console.log("00000000000",order)
+
         if (provider === "NimbusPost") {
           result = await trackShipmentNimbuspost(awb_number);
         } else if (provider === "Shiprocket") {
           result = await getTrackingByAWB(awb_number);
         } else if (provider === "Xpressbees") {
           result = await trackShipment(awb_number);
-          // console.log("sadasdas43",result)
-          // console.log("Tracking result", result);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
-          // console.log("Tracking result", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         } else if (provider === "DTDC") {
           result = await trackOrderDTDC(awb_number);
         } else if (provider === "EcomExpress") {
           result = await shipmentTrackingforward(awb_number);
-          // console.log("rerere", result);
         }
 
-        // if (result && result.data) {
-        //   // Remove any empty objects from tracking array
-        //   order.tracking = order.tracking.filter(item => Object.keys(item).length > 0);
-
-        //   const lastTracking = order.tracking[order.tracking.length - 1];
-
-        //   if (!lastTracking || lastTracking.Instructions !== result.data.Instructions) {
-        //     order.tracking.push({
-        //       status: result.data.Status,
-        //       StatusLocation: result.data.StatusLocation,
-        //       StatusDateTime: result.data.StatusDateTime,
-        //       Instructions: result.data.Instructions,
-        //     });
-
-        //     console.log("Tracking updated:", order.tracking);
-        //   } else {
-        //     console.log("Tracking data already exists.");
-        //   }
-        // }
-        // console.log("resulttt",result)
         if (result && result.success) {
           if (provider === "Delhivery") {
             const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
@@ -765,10 +733,9 @@ const tracking = async (req, res) => {
               cancelled: () =>
                 updateOrderStatus(order, "Cancelled", "cancelled"),
               "in transit": () =>
-                updateOrderStatus(order, "In-transit", "in transit"),
+                updateOrderStatus(order, "In-Transit", "in transit"),
               delivered: () =>
                 updateOrderStatus(order, "Delivered", "delivered"),
-
               booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
             };
 
@@ -777,6 +744,32 @@ const tracking = async (req, res) => {
             }
           } else if (provider === "EcomExpress") {
             console.log("result", result);
+            const trackingStatus = result.data?.tracking_status?.toLowerCase();
+            console.log("trackingSta", trackingStatus);
+
+            const ecomExpressStatusMap = {
+              pending: "Ready To Ship",
+              "picked up": "Ready To Ship",
+              "pickup assigned": "In-Transit",
+              "out for delivery": "In-Transit",
+              delivered: "Delivered",
+              "rto initiated": "In-Transit",
+              "rto in transit": "In-Transit",
+              "rto delivered": "Cancelled",
+              undelivered: "Cancelled",
+              cancelled: "Cancelled",
+            };
+
+            const mappedStatus = ecomExpressStatusMap[trackingStatus];
+            // console.log("mapped",mappedStatus)
+
+            if (mappedStatus) {
+              await updateOrderStatus(order, mappedStatus, trackingStatus);
+            } else {
+              console.warn(
+                `Unknown EcomExpress status: ${trackingStatus} for Order ID: ${order._id}`
+              );
+            }
           }
         }
       } catch (error) {
@@ -795,6 +788,7 @@ const tracking = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error });
   }
 };
+
 // setInterval(tracking, 60 * 600000);
 
 const trackOrders = async () => {
