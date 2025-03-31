@@ -193,6 +193,123 @@ async function calculateRateForService(payload) {
   }
 }
 
+async function calculateRateForDispute(payload) {
+  try {
+    const {
+      pickupPincode,
+      deliveryPincode,
+      length,
+      breadth,
+      height,
+      weight,
+      cod,
+      valueInINR,
+      userID,
+      filteredServices,
+      // rateCardType,
+    } = payload;
+
+    const result = await getZone(pickupPincode, deliveryPincode);
+
+    const currentZone = result.zone;
+
+    const ans = [];
+    const l = parseFloat(length);
+    const b = parseFloat(breadth);
+    const h = parseFloat(height);
+    const deadweight = parseFloat(weight) / 1000;
+    const volumetricWeight = (l * b * h) / 5000;
+    const chargedWeight = weight * 1000;
+
+    // let codCharge = 0;
+    const gstRate = 18;
+
+    // const rateCards = [];
+    const plan = await Plan.findOne({ userId: userID });
+    // console.log("palan",plan)
+    let RateCards = plan.rateCard;
+
+    const service = RateCards.filter((rate) => {
+      return rate.courierServiceName === filteredServices;
+    });
+    
+
+    console.log("serivi",service[0].weightPriceAdditional)
+
+    for (const rc of service) {
+      
+      const basicChargeForward = parseFloat(
+        rc.weightPriceBasic[0][currentZone]
+      );
+      const additionalChargeForward = parseFloat(
+        rc.weightPriceAdditional[0][currentZone]
+      );
+      console.log("addd",additionalChargeForward)
+
+      let totalForwardCharge;
+      const count = Math.ceil(
+        (chargedWeight - rc.weightPriceBasic[0].weight) /
+          rc.weightPriceAdditional[0].weight
+      );
+      // console.log("count",count)
+      if (rc.weightPriceBasic[0].weight >= chargedWeight) {
+        
+        totalForwardCharge = basicChargeForward;
+      } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
+        console.log("additi")
+        totalForwardCharge =
+          basicChargeForward + additionalChargeForward * count;
+      }
+      console.log("total",totalForwardCharge)
+      let codCharge = 0;
+      if (cod === "Yes") {
+        const orderValue = Number(valueInINR) || 0;
+        if (
+          typeof rc.codCharge === "number" &&
+          typeof rc.codPercent === "number"
+        ) {
+          const calculatedCodCharge = Math.max(
+            rc.codCharge,
+            orderValue * (rc.codPercent / 100)
+          );
+          codCharge += calculatedCodCharge;
+        } else {
+          console.error("COD charge or percentage is not properly defined.");
+        }
+      }
+
+      // console.log("cod",codCharge)
+
+      const gstAmountForward = (
+        (totalForwardCharge + codCharge) *
+        (gstRate / 100)
+      ).toFixed(2);
+      const totalChargesForward = (
+        totalForwardCharge +
+        codCharge +
+        (totalForwardCharge + codCharge) * (gstRate / 100)
+      ).toFixed(2);
+
+      const allRates = {
+        courierServiceName: rc.courierServiceName,
+        cod: codCharge,
+        forward: {
+          charges: totalForwardCharge,
+          gst: gstAmountForward,
+          finalCharges: totalChargesForward,
+        },
+      };
+
+      ans.push(allRates);
+    }
+    // console.log("0000000", ans);
+    return ans;
+  } catch (error) {
+    console.error("Error in Calculation:", error);
+    throw new Error("Error in Calculation");
+  }
+}
+
 async function calculateRateForServiceBulk(payload) {
   try {
     const {
@@ -313,4 +430,5 @@ module.exports = {
   calculateRate,
   calculateRateForService,
   calculateRateForServiceBulk,
+  calculateRateForDispute
 };
