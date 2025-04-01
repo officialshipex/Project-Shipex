@@ -10,6 +10,7 @@ const ticketSchema = new mongoose.Schema({
   }],
   ticketNumber: { type: String, unique: true, required: true },
   file: { type: String }, // Store file path if uploaded
+  message: { type: String, required: true }, // Added message field
   createdAt: { type: Date, default: Date.now },
 
   // User details
