@@ -258,16 +258,9 @@ const AcceptDiscrepancy = async (req, res) => {
         .json({ success: false, message: "Wallet not found" });
     }
 
-    console.log("Wallet Balance:", wallet.balance);
+    console.log("Wallet Balance (Before Deduction):", wallet.balance);
 
-    // Validate if the user has sufficient balance
-    if (wallet.balance < extraCharges) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Insufficient wallet balance" });
-    }
-
-    // Deduct extra charges from wallet balance
+    // Deduct extra charges from wallet balance (without checking balance)
     wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
 
     // Create a new transaction entry
@@ -309,6 +302,7 @@ const AcceptDiscrepancy = async (req, res) => {
   }
 };
 
+
 const AcceptAllDiscrepancies = async (req, res) => {
   try {
     console.log("User ID:", req.user._id);
@@ -339,7 +333,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
         .json({ success: false, message: "Wallet not found" });
     }
 
-    console.log("Wallet Balance:", wallet.balance);
+    console.log("Wallet Balance (Before Deduction):", wallet.balance);
 
     let totalExtraCharges = 0;
     let discrepanciesToUpdate = [];
@@ -367,14 +361,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
 
     console.log("Total Extra Charges:", totalExtraCharges);
 
-    // Validate if the user has sufficient balance
-    if (wallet.balance < totalExtraCharges) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Insufficient wallet balance" });
-    }
-
-    // Deduct total extra charges from wallet balance
+    // Deduct total extra charges from wallet balance (without checking sufficiency)
     wallet.balance = parseFloat(
       (wallet.balance - totalExtraCharges).toFixed(2)
     );
@@ -392,7 +379,6 @@ const AcceptAllDiscrepancies = async (req, res) => {
 
       // Push the transaction to wallet's transactions array
       wallet.transactions.push(newTransaction);
-      await wallet.save();
 
       // Update discrepancy status
       discrepancy.status = "Accepted";
@@ -401,6 +387,9 @@ const AcceptAllDiscrepancies = async (req, res) => {
       discrepancy.excessWeightCharges.pendingAmount = 0;
       await discrepancy.save();
     }
+
+    // Save wallet changes after all deductions
+    await wallet.save();
 
     return res.status(200).json({
       success: true,
@@ -416,6 +405,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
     });
   }
 };
+
 
 const autoAcceptDiscrepancies = async () => {
   try {
