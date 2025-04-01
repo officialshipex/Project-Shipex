@@ -1,5 +1,5 @@
-const {getAmazonAccessToken} = require("../Authorize/saveCourierController");
-const axios = require("axios")
+const { getAmazonAccessToken } = require("../Authorize/saveCourierController");
+const axios = require("axios");
 
 const createOneClickShipment = async (req, res) => {
   const accessToken = await getAmazonAccessToken();
@@ -142,7 +142,7 @@ const getShipmentTracking = async (trackingId, carrierId) => {
   }
 };
 
-const checkAmazonServiceability = async (provider,payload) => {
+const checkAmazonServiceability = async (provider, payload) => {
   // console.log("payloadprovider",provider,payload)
   const accessToken = await getAmazonAccessToken();
   if (!accessToken) return;
@@ -172,23 +172,28 @@ const checkAmazonServiceability = async (provider,payload) => {
       shipDate: new Date().toISOString(), // Current date-time
       packages: [
         {
-          dimensions: { length: payload.length, width: payload.breadth, height:payload.height, unit: "cm" },
-          weight: { value: payload.weight/1000, unit: "kg" },
+          dimensions: {
+            length: payload.length,
+            width: payload.breadth,
+            height: payload.height,
+            unit: "cm",
+          },
+          weight: { value: payload.weight / 1000, unit: "kg" },
         },
       ],
       channelDetails: { channelType: "Amazon" },
-    
     };
-// console.log("amaxon id",process.env.AMAZON_BUSINESS_ID)
+    // console.log("amaxon id",process.env.AMAZON_BUSINESS_ID)
+    console.log("access",accessToken)
     const response = await axios.post(
-      // "https://sandbox.sellingpartnerapi-na.amazon.com/shipping/v2/shipments/rates",
+      // "https://sandbox.sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       requestBody,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": "AmazonShipping_UK", // Adjust based on region
+          "x-amzn-shipping-business-id": "AmazonShipping_IN", // Adjust based on region
           "Content-Type": "application/json",
         },
       }
