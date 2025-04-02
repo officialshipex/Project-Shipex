@@ -210,7 +210,8 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   if (!pincode) {
     return "Pincode is required";
   }
-
+  console.log("klkkllkk",order_type)
+  console.log("iewoooooooooo",pincode)
   try {
     const response = await axios.get(`${url}/c/api/pin-codes/json?`, {
       headers: {
@@ -220,15 +221,15 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
         filter_codes: pincode,
       },
     });
-    // console.log(response)
+    // console.log("czxxxxxxxxxxxxxxx",response.data)
 
     let result = response.data.delivery_codes;
-
+    
     let finalResult = false;
 
     if (result.length > 0) {
       let data = result[0].postal_code;
-
+     
       let { pre_paid, cash, pickup, remarks } = data;
 
       finalResult =
@@ -236,6 +237,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
+    
     return { success: finalResult };
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
@@ -447,8 +449,24 @@ const updateClientWarehouse = async (req, res) => {
 
 const cancelOrderDelhivery = async (awb_number) => {
   console.log("I am in cancel order");
+
+  // Check if order is already cancelled
+  const isCancelled = await Order.findOne({
+    awb_number: awb_number,
+    status: "Cancelled",
+  });
+
+  if (isCancelled) {
+    console.log("Order is already cancelled");
+    return {
+      error: "Order is already cancelled",
+      code: 400,
+    };
+  }
+
+  // Prepare payload for cancellation request
   const payload = {
-    waybill: `${awb_number}`,
+    waybill: awb_number,
     cancellation: true,
   };
 
@@ -459,10 +477,10 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-    await Order.updateOne(
-      { awb_number: awb_number },
-      { $set: { status: "Cancelled" } }
-    );
+
+    // Update the order status in the database
+    await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
+
     if (response?.data?.status) {
       return { data: response.data, code: 201 };
     } else {
@@ -473,6 +491,7 @@ const cancelOrderDelhivery = async (awb_number) => {
       };
     }
   } catch (error) {
+    console.error("Error in cancelOrderDelhivery:", error);
     return {
       error: "Internal Server Error",
       message: error.message,
@@ -480,6 +499,7 @@ const cancelOrderDelhivery = async (awb_number) => {
     };
   }
 };
+
 
 module.exports = {
   createOrder,

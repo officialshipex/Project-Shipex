@@ -15,6 +15,9 @@ const {
   checkServiceabilityShreeMaruti,
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
+const {checkAmazonServiceability}=require("../AllCouriers/Amazon/Courier/couriers.controller")
+
+
 const checkServiceabilityAll = async (service, id, pincode) => {
   try {
 // console.log("kkkkkkkkkkk",service, id, pincode)
@@ -86,28 +89,26 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     //   return result;
     // }
 
-    // if (service.courierProviderName === "Xpressbees") {
-    //   const payload = {
-    //     origin: pincode,
-    //     destination: currentOrder.shipping_details.pinCode,
-    //     payment_type:
-    //       currentOrder.order_type === "Cash on Delivery" ? "cod" : "prepaid",
-    //     order_amount: currentOrder.sub_total,
-    //     weight: Math.max(
-    //       parseInt(currentOrder.shipping_cost.weight),
-    //       parseInt(currentOrder.shipping_cost.volumetricWeight)
-    //     ),
-    //     length: currentOrder.shipping_cost.dimensions.length,
-    //     breadth: currentOrder.shipping_cost.dimensions.width,
-    //     height: currentOrder.shipping_cost.dimensions.height,
-    //   };
+    if (service.provider === "Amazon") {
+      // console.log("orderer",currentOrder)
+    
+      const payload = {
+        origin: currentOrder.pickupAddress,
+        destination:currentOrder.receiverAddress,
+        payment_type:currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+        order_amount: currentOrder.paymentDetails?.amount || 0,
+        weight: weight || 0,
+        length:currentOrder.packageDetails.volumetricWeight?.length || 0,
+        breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
+        height: currentOrder.packageDetails.volumetricWeight?.height || 0
+      };
 
-    //   const result = await checkServiceabilityXpressBees(
-    //     service.courierProviderServiceName,
-    //     payload
-    //   );
-    //   return result;
-    // }
+      const result = await checkAmazonServiceability(
+        service.provider,
+        payload
+      );
+      return result;
+    }
 
     if (service.provider === "Delhivery") {
       
@@ -133,16 +134,17 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    if(service.provider==="EcomExpress"){
-      const payload={
-        originPincode:pincode,
-        destinationPincode:currentOrder.receiverAddress.pinCode
-      }
-      
-      const result=await checkServiceabilityEcomExpress(payload)
-      console.log(result)
-      return result
+    if (service.provider === "EcomExpress") {
+      const payload = {
+        originPincode: pincode, // Pickup location pincode
+        destinationPincode: currentOrder.receiverAddress.pinCode, // Delivery location pincode
+      };
+    
+      const result = await checkServiceabilityEcomExpress(payload.originPincode, payload.destinationPincode);
+      console.log("Serviceability Result:", result);
+      return result;
     }
+    
 
     // return false;
   } catch (error) {

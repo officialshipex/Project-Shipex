@@ -1,7 +1,7 @@
 const { register, login, googleLogin, googleLoginFail, verifySession } = require('../auth/auth.controller');
 // const { isAuthorized } = require('../middleware/auth.middleware');  // Commented as per your request
 // const passport = require('passport');
-const authRouter = require('express').Router();
+const   authRouter = require('express').Router();
 const passport = require('../config/passwordConfig');
 // Import the middleware here, if required
 const { isAuthorized } = require('../middleware/auth.middleware');
