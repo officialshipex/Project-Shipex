@@ -14,6 +14,7 @@ const TOKEN = process.env.DTDC_X_ACCESS_TOKEN
 const getToken = async (req, res) => {
     const { apiKey, username, password, token } = req.body.credentials; // Destructure credentials
     const { courierName, courierProvider, CODDays, status } = req.body; // Destructure courier data
+    console.log(PASSWORD)
 
     // Validate if the provided credentials match the expected ones
     if (API_TOKEN !== apiKey || USERNAME !== username || PASSWORD !== password || TOKEN !== token) {

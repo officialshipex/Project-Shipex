@@ -16,6 +16,7 @@ const {
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
 const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
 const {checkAmazonServiceability}=require("../AllCouriers/Amazon/Courier/couriers.controller")
+const {checkServiceabilityDTDC}=require("../AllCouriers/DTDC/Courier/couriers.controller")
 
 
 const checkServiceabilityAll = async (service, id, pincode) => {
@@ -117,7 +118,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         pincode,
         currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid"
       );
-      console.log("saaaaaaaaaaaaa",result)
+      // console.log("saaaaaaaaaaaaa",result)
       return result;
     }
 
@@ -130,7 +131,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         deliveryMode: "SURFACE",
       };
       const result = await checkServiceabilityShreeMaruti(payload);
-      console.log("resultttt",result)
+      // console.log("resultttt",result)
       return result;
     }
 
@@ -141,8 +142,17 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       };
     
       const result = await checkServiceabilityEcomExpress(payload.originPincode, payload.destinationPincode);
-      console.log("Serviceability Result:", result);
+      // console.log("Serviceability Result:", result);
       return result;
+    }
+    if(service.provider==="DTDC"){
+      const payload={
+        originPincode:pincode,
+        destinationPincode:currentOrder.receiverAddress.pinCode
+      }
+      const result=await checkServiceabilityDTDC(payload.originPincode, payload.destinationPincode)
+      console.log("rerere",result)
+      return result
     }
     
 

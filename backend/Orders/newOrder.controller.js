@@ -493,6 +493,7 @@ const ShipeNowOrder = async (req, res) => {
             ...rate,
             provider: matchedService.item.provider,
             courierType: matchedService.item.courierType,
+            courier:matchedService.item?.courier
             // Xid: matchedService.Xid[0],
           };
         }
@@ -500,7 +501,7 @@ const ShipeNowOrder = async (req, res) => {
         return null; // Return null for unmatched rates
       })
       .filter(Boolean); // Remove null values from the final array
-
+// console.log("update",updatedRates)
     res.status(201).json({
       success: true,
       order,
@@ -621,7 +622,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         currentOrder.status = "new";
       }
     } else if (currentOrder.provider === "DTDC") {
-      const result = await cancelOrderDTDC(currentOrder.orderId);
+      const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
         return {
           error: "Failed to cancel shipment with NimbusPost",
