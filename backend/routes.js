@@ -95,7 +95,7 @@ router.use("/EcomExpress", EcomExpressController);
 router.use("/Xpressbees", XpressbeesController);
 router.use("/ShreeMaruti", shreeMarutiController);
 router.use("/SmartShip", SmartShipController);
-router.use('/Dtdc',DtdcController)
+router.use('/DTDC',DtdcController)
 router.use("/Delhivery", DelhiveryController);
 router.use("/Amazon",AmazonRouter);
 
