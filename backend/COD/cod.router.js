@@ -14,7 +14,10 @@ const {
   CheckCodplan,
   remittanceTransactionData,
   courierCodRemittance,
-  CodRemittanceOrder
+  CodRemittanceOrder,
+  sellerremittanceTransactionData,
+  CourierdownloadSampleExcel,
+  uploadCourierCodRemittance
 } = require("./cod.controller");
 router.post("/codPlanUpdate", codPlanUpdate);
 router.get("/codRemittanceData", codRemittanceData);
@@ -22,9 +25,12 @@ router.get("/getCodRemitance", getCodRemitance);
 router.post("/codRemittanceRecharge", codRemittanceRecharge);
 router.get("/getAdminCodRemitanceData",getAdminCodRemitanceData)
 router.get("/download-excel",downloadSampleExcel)
+router.get("/download-excel-courier",CourierdownloadSampleExcel)
 router.post('/upload', upload.single('file'), uploadCodRemittance);
+router.post('/upload_courier', upload.single('file'), uploadCourierCodRemittance);
 router.get("/CheckCodplan",CheckCodplan)
 router.get("/remittanceTransactionData/:id",remittanceTransactionData)
+router.get("/sellerremittanceTransactionData/:id",sellerremittanceTransactionData)
 router.get("/courierCodRemittance",courierCodRemittance)
 router.get("/CodRemittanceOrder",CodRemittanceOrder)
 module.exports = router;
