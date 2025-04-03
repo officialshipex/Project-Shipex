@@ -7,61 +7,62 @@ const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
 const cron = require("node-cron");
 const { uploadToS3 } = require("../config/s3");
+const { calculateRateForDispute } = require("../Rate/calculateRateController");
 const downloadExcel = async (req, res) => {
-  // console.log("hii")
   try {
-    // Create a new workbook and add a worksheet
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Sample Bulk Order");
+    const worksheet = workbook.addWorksheet("Weight Discrepancy");
 
     // Define headers
     worksheet.columns = [
-      { header: "*AWB Number", key: "AWB_Number", width: 30 },
-      { header: "*Charge Weight", key: "Charge_Weight", width: 40 },
-      { header: "Length", key: "Length", width: 20 },
-      { header: "Breadth", key: "Breadth", width: 20 },
-      { header: "Height", key: "Height", width: 20 },
-
-      // { header: "*CODAmount", key: "CODAmount", width: 40 },
+      { header: "*AWB Number", key: "awb_number", width: 30 },
+      { header: "*Charge Weight", key: "charge_weight", width: 20 },
+      { header: "Length", key: "length", width: 15 },
+      { header: "Breadth", key: "breadth", width: 15 },
+      { header: "Height", key: "height", width: 15 },
     ];
 
-    // Add a sample row with mandatory product 1 and optional products
+    // Add a sample row
     worksheet.addRow({
-      AWB_Number: "1212121212",
-      Charge_Weight: "0.5",
-      Length: "10",
-      Breadth: "10",
-      Height: "10",
+      awb_number: "1212121212",
+      charge_weight: "0.5",
+      length: "10",
+      breadth: "10",
+      height: "10",
     });
 
-    // Format the header row
+    // Format header row (bold and centered)
     worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
       cell.alignment = { vertical: "middle", horizontal: "center" };
-      cell.font = { bold: true }; // Make headers bold
     });
 
-    // Set response headers for file download
+    // Generate the Excel file in memory
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set headers for file download
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Weight_Discrepancy_Sample_Format.xlsx"
+    );
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader("Content-Disposition", "attachment; filename=sample.xlsx");
 
-    // Write workbook to response stream
-    await workbook.xlsx.write(res);
-    res.end();
+    res.send(Buffer.from(buffer)); // ✅ Fix for corruption issue
   } catch (error) {
     console.error("Error generating Excel file:", error);
-    res
-      .status(500)
-      .json({ error: "Error generating Excel file", details: error.message });
+    res.status(500).json({ error: "Error generating Excel file" });
   }
 };
 
 const uploadDispreancy = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No file uploaded" });
     }
 
     const filePath = req.file.path; // Path of the uploaded file
@@ -72,13 +73,22 @@ const uploadDispreancy = async (req, res) => {
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
     for (const row of sheetData) {
-      const awbNumber = row["*AWB Number"];
+      const awbNumber = row["*AWB Number"]?.toString().trim(); // Ensure AWB Number is a string
       const chargeWeight = parseFloat(row["*Charge Weight"]);
 
       // Ensure AWB Number and Charge Weight are mandatory
       if (!awbNumber || isNaN(chargeWeight)) {
         console.log(`Skipping row due to missing mandatory fields:`, row);
         continue; // Skip this row
+      }
+
+      // **Check if discrepancy already exists**
+      const existingDiscrepancy = await WeightDiscrepancy.findOne({
+        awbNumber,
+      });
+      if (existingDiscrepancy) {
+        console.log(`Skipping AWB ${awbNumber} - Discrepancy already exists.`);
+        continue; // Skip this AWB number
       }
 
       // Fetch order data from DB using awbNumber
@@ -88,7 +98,7 @@ const uploadDispreancy = async (req, res) => {
         console.log(`Skipping order - AWB not found: ${awbNumber}`);
         continue; // Skip this AWB completely
       }
-
+      console.log("ordfdf", order);
       // Extract userId from the order
       const userId = order.userId;
 
@@ -101,58 +111,57 @@ const uploadDispreancy = async (req, res) => {
       const excessWeight = parseFloat(
         (chargeWeight - order.packageDetails.applicableWeight).toFixed(2)
       );
+      const payload = {
+        pickupPincode: order.pickupAddress.pinCode,
+        deliveryPincode: order.receiverAddress.pinCode,
+        length: order.packageDetails.volumetricWeight.length,
+        breadth: order.packageDetails.volumetricWeight.width,
+        height: order.packageDetails.volumetricWeight.height,
+        weight: chargeWeight,
+        cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
+        valueInINR: order.paymentDetails.amount,
+        userID: order.userId,
+        filteredServices: order.courierServiceName,
+      };
+      const additionalCharges = await calculateRateForDispute(payload);
+      const excessCharges = parseFloat(
+        (additionalCharges[0].forward.finalCharges - order.totalFreightCharges).toFixed(2)
+      );
+      
+      // const freightCharges = order.totalFreightCharges;
+      // const extraWeight = Math.ceil(
+      //   excessWeight / order.packageDetails.applicableWeight
+      // );
+      // const excessCharges = freightCharges * extraWeight;
 
-      const freightCharges = order.totalFreightCharges;
-      const extraWeight = Math.ceil(excessWeight / order.packageDetails.applicableWeight);
-      const excessCharges = freightCharges * extraWeight;
-
-      // Check if an existing discrepancy exists
-      let discrepancyEntry = await WeightDiscrepancy.findOne({ awbNumber });
-
-      if (discrepancyEntry) {
-        // **Update existing discrepancy**
-        discrepancyEntry.chargedWeight = {
+      // **Create new discrepancy entry**
+      const discrepancyEntry = new WeightDiscrepancy({
+        userId,
+        awbNumber: order.awb_number,
+        orderId: order.orderId,
+        productDetails: order.productDetails,
+        courierServiceName: order?.courierServiceName || order?.provider,
+        provider: order.provider,
+        enteredWeight: {
+          applicableWeight: order.packageDetails.applicableWeight,
+          deadWeight: order.packageDetails.deadWeight,
+        },
+        chargedWeight: {
           applicableWeight: chargeWeight,
           deadWeight: chargeWeight,
-        };
-        discrepancyEntry.chargeDimension = { length, breadth, height };
-        discrepancyEntry.excessWeightCharges = {
+        },
+        chargeDimension: { length, breadth, height },
+        excessWeightCharges: {
           excessWeight,
           excessCharges,
           pendingAmount: excessCharges,
-        };
-        discrepancyEntry.status = "new";
-        discrepancyEntry.adminStatus = "pending";
-        discrepancyEntry.updatedAt = new Date();
-      } else {
-        // **Create new discrepancy entry**
-        discrepancyEntry = new WeightDiscrepancy({
-          userId,
-          awbNumber: order.awb_number,
-          orderId: order.orderId,
-          productDetails: order.productDetails,
-          courierServiceName: order?.courierServiceName || order?.provider,
-          provider: order.provider,
-          enteredWeight: {
-            applicableWeight: order.packageDetails.applicableWeight,
-            deadWeight: order.packageDetails.deadWeight,
-          },
-          chargedWeight: {
-            applicableWeight: chargeWeight,
-            deadWeight: chargeWeight,
-          },
-          chargeDimension: { length, breadth, height },
-          excessWeightCharges: {
-            excessWeight,
-            excessCharges,
-            pendingAmount: excessCharges,
-          },
-          status: "new",
-          adminStatus: "pending",
-        });
-      }
+        },
+        status: "new",
+        adminStatus: "pending",
+      });
 
       await discrepancyEntry.save();
+      console.log(`Added new discrepancy for AWB: ${awbNumber}`);
     }
 
     // Delete the uploaded file after processing
@@ -173,7 +182,6 @@ const uploadDispreancy = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
 
 const AllDiscrepancy = async (req, res) => {
   try {
@@ -250,16 +258,9 @@ const AcceptDiscrepancy = async (req, res) => {
         .json({ success: false, message: "Wallet not found" });
     }
 
-    console.log("Wallet Balance:", wallet.balance);
+    console.log("Wallet Balance (Before Deduction):", wallet.balance);
 
-    // Validate if the user has sufficient balance
-    if (wallet.balance < extraCharges) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Insufficient wallet balance" });
-    }
-
-    // Deduct extra charges from wallet balance
+    // Deduct extra charges from wallet balance (without checking balance)
     wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
 
     // Create a new transaction entry
@@ -301,6 +302,7 @@ const AcceptDiscrepancy = async (req, res) => {
   }
 };
 
+
 const AcceptAllDiscrepancies = async (req, res) => {
   try {
     console.log("User ID:", req.user._id);
@@ -331,7 +333,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
         .json({ success: false, message: "Wallet not found" });
     }
 
-    console.log("Wallet Balance:", wallet.balance);
+    console.log("Wallet Balance (Before Deduction):", wallet.balance);
 
     let totalExtraCharges = 0;
     let discrepanciesToUpdate = [];
@@ -359,14 +361,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
 
     console.log("Total Extra Charges:", totalExtraCharges);
 
-    // Validate if the user has sufficient balance
-    if (wallet.balance < totalExtraCharges) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Insufficient wallet balance" });
-    }
-
-    // Deduct total extra charges from wallet balance
+    // Deduct total extra charges from wallet balance (without checking sufficiency)
     wallet.balance = parseFloat(
       (wallet.balance - totalExtraCharges).toFixed(2)
     );
@@ -384,7 +379,6 @@ const AcceptAllDiscrepancies = async (req, res) => {
 
       // Push the transaction to wallet's transactions array
       wallet.transactions.push(newTransaction);
-      await wallet.save();
 
       // Update discrepancy status
       discrepancy.status = "Accepted";
@@ -393,6 +387,9 @@ const AcceptAllDiscrepancies = async (req, res) => {
       discrepancy.excessWeightCharges.pendingAmount = 0;
       await discrepancy.save();
     }
+
+    // Save wallet changes after all deductions
+    await wallet.save();
 
     return res.status(200).json({
       success: true,
@@ -408,6 +405,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
     });
   }
 };
+
 
 const autoAcceptDiscrepancies = async () => {
   try {
@@ -536,13 +534,13 @@ const raiseDiscrepancies = async (req, res) => {
 
 const adminAcceptDiscrepancy = async (req, res) => {
   try {
-    const {awbNumber}  = req.body;
-    console.log(req.body)
+    const { awbNumber } = req.body;
+    console.log(req.body);
     console.log("Accepting discrepancy for AWB:", awbNumber);
     const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
     if (!discrepancy) {
       return res.status(404).json({ message: "Discrepancy not found" });
-    } 
+    }
 
     discrepancy.excessWeightCharges.pendingAmount = 0;
 
@@ -560,44 +558,46 @@ const adminAcceptDiscrepancy = async (req, res) => {
 
 const declineDiscrepancy = async (req, res) => {
   try {
-      const { awbNumber, text } = req.body;
+    const { awbNumber, text } = req.body;
 
-      console.log(`Processing discrepancy decline for AWB: ${awbNumber}`);
+    console.log(`Processing discrepancy decline for AWB: ${awbNumber}`);
 
-      // Validate input
-      if (!awbNumber || !text) {
-        // console.log("hii")
-          return res.status(400).json({ message: "AWB Number and reason are required" });
-      }
+    // Validate input
+    if (!awbNumber || !text) {
+      // console.log("hii")
+      return res
+        .status(400)
+        .json({ message: "AWB Number and reason are required" });
+    }
 
-      // Find the discrepancy
-      const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
-      if (!discrepancy) {
-          return res.status(404).json({ message: "Discrepancy not found" });
-      }
+    // Find the discrepancy
+    const discrepancy = await WeightDiscrepancy.findOne({ awbNumber });
+    if (!discrepancy) {
+      return res.status(404).json({ message: "Discrepancy not found" });
+    }
 
-      // Update discrepancy status
-      Object.assign(discrepancy, {
-          status: "new",
-          adminStatus: "Discrepancy Declined",
-          clientStatus: "Discrepancy Declined",
-          discrepancyDeclinedReason: text,
-          discrepancyDeclinedAt: new Date(),
-      });
+    // Update discrepancy status
+    Object.assign(discrepancy, {
+      status: "new",
+      adminStatus: "Discrepancy Declined",
+      clientStatus: "Discrepancy Declined",
+      discrepancyDeclinedReason: text,
+      discrepancyDeclinedAt: new Date(),
+    });
 
-      await discrepancy.save();
+    await discrepancy.save();
 
-      return res.status(200).json({ message: "Discrepancy declined successfully" });
-
+    return res
+      .status(200)
+      .json({ message: "Discrepancy declined successfully" });
   } catch (error) {
-      console.error("Error declining discrepancy:", error);
-      return res.status(500).json({
-          message: "An error occurred while declining the discrepancy",
-          error: error.message
-      });
+    console.error("Error declining discrepancy:", error);
+    return res.status(500).json({
+      message: "An error occurred while declining the discrepancy",
+      error: error.message,
+    });
   }
 };
-
 
 module.exports = {
   downloadExcel,
@@ -608,5 +608,5 @@ module.exports = {
   AcceptAllDiscrepancies,
   raiseDiscrepancies,
   adminAcceptDiscrepancy,
-  declineDiscrepancy
+  declineDiscrepancy,
 };

@@ -1,6 +1,10 @@
 const express = require("express");
 const axios = require("axios");
+const User = require("../../../models/User.model");
 require("dotenv").config();
+const Order = require("../../../models/newOrder.model");
+const Wallet = require("../../../models/wallet");
+const {getDTDCAuthToken}=require("../Authorize/saveCourierContoller")
 
 // const router = express.Router();
 
@@ -12,138 +16,347 @@ const X_ACCESS_TOKEN = process.env.DTDC_X_ACCESS_TOKEN;
 // Create a new shipment
 const createOrder = async (req, res) => {
   try {
-    // Log headers for debugging
     console.log("API Key:", API_KEY);
     console.log("Access Token:", X_ACCESS_TOKEN);
+
+    const { id, provider, finalCharges, courierServiceName, courier } =
+      req.body;
+    console.log(id, provider, finalCharges, courierServiceName, courier);
+if(!courier){
+  return res.status(400).json({success:false,message:"service_type_id missing please refresh your page"})
+}
+    // Fetch order, user, and wallet details
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+
+    const user = await User.findById(currentOrder.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const currentWallet = await Wallet.findById(user.Wallet);
+    if (!currentWallet) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Wallet not found" });
+    }
+
+    const productNames = currentOrder.productDetails
+      .map((product) => product.name)
+      .join(", "); // Convert array to a comma-separated string
+
+    // Construct shipment payload
+    const codCollectionMode =
+      currentOrder.paymentDetails.method === "COD" ? "cash" : null;
+    const codAmount =
+      currentOrder.paymentDetails.method === "COD"
+        ? currentOrder.paymentDetails.amount
+        : 0;
 
     const shipmentData = {
       consignments: [
         {
-          customer_code: req.body.customer_code,
-          service_type_id: req.body.service_type_id,
-          load_type: req.body.load_type,
-          description: req.body.description,
+          customer_code: "GL9711",
+          service_type_id: courier,
+          load_type: "NON-DOCUMENT",
+          description: productNames,
           dimension_unit: "cm",
-          length: req.body.length,
-          width: req.body.width,
-          height: req.body.height,
+          length: currentOrder.packageDetails.volumetricWeight.length,
+          width: currentOrder.packageDetails.volumetricWeight.width,
+          height: currentOrder.packageDetails.volumetricWeight.height,
           weight_unit: "kg",
-          weight: req.body.weight,
-          declared_value: req.body.declared_value,
-          num_pieces: req.body.num_pieces,
-          origin_details: req.body.origin_details,
-          destination_details: req.body.destination_details,
-          return_details: req.body.return_details,
-          customer_reference_number: req.body.customer_reference_number,
-          cod_collection_mode: req.body.cod_collection_mode || "",
-          cod_amount: req.body.cod_amount || "",
-          commodity_id: req.body.commodity_id,
-          eway_bill: req.body.eway_bill,
-          is_risk_surcharge_applicable: req.body.is_risk_surcharge_applicable || false,
-          invoice_number: req.body.invoice_number,
-          invoice_date: req.body.invoice_date,
-          reference_number: req.body.reference_number || ""
-        }
-      ]
+          weight: currentOrder.packageDetails.applicableWeight,
+          declared_value: currentOrder.paymentDetails.amount,
+          num_pieces: currentOrder.productDetails.length,
+
+          origin_details: {
+            name: currentOrder.pickupAddress.contactName,
+            phone: currentOrder.pickupAddress.phoneNumber,
+            address_line_1: currentOrder.pickupAddress.address,
+            pincode: currentOrder.pickupAddress.pinCode,
+            city: currentOrder.pickupAddress.city,
+            state: currentOrder.pickupAddress.state,
+          },
+
+          destination_details: {
+            name: currentOrder.receiverAddress.contactName,
+            phone: currentOrder.receiverAddress.phoneNumber,
+            address_line_1: currentOrder.receiverAddress.address,
+            pincode: currentOrder.receiverAddress.pinCode,
+            city: currentOrder.receiverAddress.city,
+            state: currentOrder.receiverAddress.state,
+          },
+
+          customer_reference_number: currentOrder.orderId,
+
+          // Ensure COD mode is correctly set
+          cod_collection_mode: codCollectionMode,
+          cod_amount: codAmount,
+
+          commodity_id: "7",
+          reference_number: "",
+        },
+      ],
     };
 
-    // API Call with Proper Authorization Header
-    const response = await axios.post(
-      `${DTDC_API_URL}/customer/integration/consignment/softdata`,
-      shipmentData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": API_KEY,
-          "Authorization": `Bearer ${X_ACCESS_TOKEN}`
+    // API call to DTDC
+    let response;
+    if (currentWallet.balance >= finalCharges) {
+      response = await axios.post(
+        `${DTDC_API_URL}/customer/integration/consignment/softdata`,
+        shipmentData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": API_KEY,
+            Authorization: `Bearer ${X_ACCESS_TOKEN}`,
+          },
         }
-      }
-    );
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Low Balance" });
+    }
+    if (response?.data?.data[0]?.success) {
+      const result = response.data.data[0];
+      currentOrder.status = "Ready To Ship";
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.reference_number;
+      currentOrder.shipment_id = `${result.customer_reference_number}`;
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      currentOrder.courierServiceName = courierServiceName;
+      currentOrder.shipmentCreatedAt = new Date();
+      let savedOrder = await currentOrder.save();
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      // console.log("sjakjska",balanceToBeDeducted)
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId || null, // Include if available
+            category: "debit",
+            amount: balanceToBeDeducted, // Fixing incorrect reference
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.reference_number || "", // Ensuring it follows the schema
+            description: `Freight Chages Applied`,
+          },
+        },
+      });
+    }else{
+      return res.status(400).json({message:"Error creating shipment"})
+    }
 
-    res.status(200).json({ success: true, data: response.data });
+    console.log(response.data.data);
+
+    return res
+      .status(200)
+      .json({
+        message: "Shipment Created Successfully",
+        success: true,
+        data: response.data,
+      });
   } catch (error) {
-    console.error("Error creating shipment:", error.response?.data || error.message);
-    res.status(500).json({ success: false, message: "Failed to create shipment", error: error.response?.data || error.message });
+    console.error(
+      "Error creating shipment:",
+      error.response?.data || error.message
+    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create shipment",
+      error: error.response?.data || error.message,
+    });
   }
 };
-
-
 
 // DTDC API Configuration from environment variables
 const DTDC_CANCEL_API_URL = `${DTDC_API_URL}/customer/integration/consignment/cancel`;
 
 // Cancel a shipment
-const cancelOrderDTDC = async (req, res) => {
+const cancelOrderDTDC = async (AWBNo) => {
   try {
-    const { AWBNo, customerCode } = req.body;
-
-    if (!AWBNo || !Array.isArray(AWBNo) || AWBNo.length === 0) {
-      return res.status(400).json({ success: false, message: "AWBNo is required and should be a non-empty array." });
+    // Validate inputs
+    if (!AWBNo || typeof AWBNo !== "string" || AWBNo.trim() === "") {
+      return {
+        success: false,
+        message: "AWBNo is required and should be a non-empty string.",
+      };
     }
 
-    if (!customerCode) {
-      return res.status(400).json({ success: false, message: "customerCode is required." });
-    }
+      const isCancelled = await Order.findOne({
+        awb_number: AWBNo,
+        status: "Cancelled",
+      });
+    
+      if (isCancelled) {
+        console.log("Order is already cancelled");
+        return {
+          error: "Order is already cancelled",
+          code: 400,
+        };
+      }
 
-    const requestData = { AWBNo, customerCode };
+    const customerCode = "GL9711"; // Hardcoded customer code
+
+    const requestData = { AWBNo: [AWBNo], customerCode }; // Convert AWBNo string to an array
+    console.log("Cancel Order Request Data:", requestData);
 
     // API Call with Proper Authorization Header
     const response = await axios.post(DTDC_CANCEL_API_URL, requestData, {
       headers: {
         "Content-Type": "application/json",
-        "api-key": API_KEY
-      }
+        "api-key": API_KEY,
+      },
     });
 
-    res.status(200).json({ success: true, data: response.data });
+    await Order.updateOne({awb_number:AWBNo},{$set:{status:"Cancelled"}});
+
+    console.log("DTDC Cancel Response:", response.data);
+    if(response?.data?.success){
+      return {
+        data:response.data,code:201
+      }
+    }
+    else{
+      return{
+        error:"Error in shipment cancellation",
+        details:response.data,
+        code:400
+      }
+    }
+
+    
   } catch (error) {
-    console.error("Error canceling shipment:", error.response?.data || error.message);
-    res.status(500).json({
+    console.error(
+      "Error canceling shipment:",
+      error.response?.data || error.message
+    );
+    return {
       success: false,
       message: "Failed to cancel shipment",
-      error: error.response?.data || error.message
-    });
+      error: error.response?.data || error.message,
+    };
   }
 };
-
-
-
-
 
 
 // DTDC Tracking API Config
-const DTDC_TRACKING_API_URL = `${DTDC_API_URL}/customer/integration/consignment/track` // Example: "http://dtdcapi.shipsy.io/api/customer/integration/consignment/track"
-
+const DTDC_TRACKING_API_URL = `https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails`; 
 
 // Track Order Controller
-const trackOrderDTDC = async (req, res) => {
+const trackOrderDTDC = async (AWBNo) => {
+  const access_key=await getDTDCAuthToken()
+  // console.log(access_key)
   try {
-    const { AWBNo } = req.body;
+    
 
-    // Validate Input
-    if (!AWBNo || !Array.isArray(AWBNo) || AWBNo.length === 0) {
-      return res.status(400).json({ success: false, message: "AWBNo is required and should be a non-empty array." });
-    }
+    const requestData = {
+      trkType:"cnno",
+      strcnno:AWBNo,
+      addtnlDtl: "Y"
+    };
 
-    const requestData = { AWBNo };
-
-    // API Call with Proper Headers
+    
     const response = await axios.post(DTDC_TRACKING_API_URL, requestData, {
       headers: {
         "Content-Type": "application/json",
-        "api-key": API_KEY
-      }
+        "x-access-token": access_key,
+      },
     });
+    // console.log(response.data)
+    return {success:true,data:response.data}
 
-    res.status(200).json({ success: true, data: response.data });
+    
   } catch (error) {
-    console.error("Error tracking shipment:", error.response?.data || error.message);
-    res.status(500).json({
-      success: false,
-      message: "Failed to track shipment",
-      error: error.response?.data || error.message
-    });
+    console.error(
+      "Error tracking shipment:",
+      error.response?.data || error.message
+    );
+    return {
+      success:false,error:error.response.message,status:500
+    }
+    
   }
 };
 
-module.exports = {createOrder, cancelOrderDTDC, trackOrderDTDC};
+const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
+  try {
+    if (!originPincode || !destinationPincode) {
+      return {
+        success: false,
+        error: "Both origin and destination pincodes are required.",
+      };
+    }
+
+    // API Request Body
+    const requestBody = {
+      orgPincode: originPincode,
+      desPincode: destinationPincode,
+    };
+
+    console.log("Request Body:", requestBody);
+
+    // Make API Call
+    const response = await axios.post(
+      "http://smarttrack.ctbsplus.dtdc.com/ratecalapi/PincodeApiCall",
+      requestBody,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const zipCodeResponse = response.data.ZIPCODE_RESP || [];
+    console.log("DTDC Response:", zipCodeResponse);
+
+    if (zipCodeResponse.length === 0) {
+      return { success: false }; // No data returned
+    }
+
+    // Filter responses for origin and destination
+    const originResponses = zipCodeResponse.filter(
+      (resp) => resp.ORGPIN === originPincode
+    );
+    const destinationResponses = zipCodeResponse.filter(
+      (resp) => resp.DESTPIN === destinationPincode
+    );
+
+    // Ensure every response for origin and destination is SUCCESS and SERVFLAG === "Y"
+    const isOriginServiceable =
+      originResponses.length > 0 &&
+      originResponses.every(
+        (resp) => resp.MESSAGE === "SUCCESS" && resp.SERVFLAG === "Y"
+      );
+    const isDestinationServiceable =
+      destinationResponses.length > 0 &&
+      destinationResponses.every(
+        (resp) => resp.MESSAGE === "SUCCESS" && resp.SERVFLAG === "Y"
+      );
+
+    // console.log("isOrigin:", isOriginServiceable);
+    // console.log("isDestination:", isDestinationServiceable);
+
+    // If both origin and destination are fully serviceable, return true
+    return { success: isOriginServiceable && isDestinationServiceable };
+  } catch (error) {
+    console.error("Error checking serviceability:", error.message);
+    return { success: false };
+  }
+};
+
+module.exports = {
+  createOrder,
+  cancelOrderDTDC,
+  trackOrderDTDC,
+  checkServiceabilityDTDC,
+};

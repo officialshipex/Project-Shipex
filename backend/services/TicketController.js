@@ -21,9 +21,9 @@ const generateTicketNumber = () => {
 
 // Create a new ticket
 const createTicket = async (req, res) => {
-  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, userId, email, isAdmin, company, status } = req.body;
+  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, userId, email, isAdmin, company, status, message } = req.body;
 
-  if (!category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !userId || !email || !company) {
+  if (!category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !userId || !email || !company || !message) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -53,6 +53,7 @@ const createTicket = async (req, res) => {
       email,
       isAdmin,
       company,
+      message,
       status: status || "active" // Default to "active" if not provided
     });
 
