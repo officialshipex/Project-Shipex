@@ -344,6 +344,20 @@ const cancelShipmentforward = async (awbs) => {
     throw new Error("Invalid AWB number."); // Throw an error instead of using res
   }
 
+  // Check if order is already cancelled
+    const isCancelled = await Order.findOne({
+      awb_number: awbs,
+      status: "Cancelled",
+    });
+  
+    if (isCancelled) {
+      console.log("Order is already cancelled");
+      return {
+        error: "Order is already cancelled",
+        code: 400,
+      };
+    }
+
   const BASE_URL = process.env.ECOMEXPRESS_URL;
   const url = `${BASE_URL}/apiv2/cancel_awb/`;
 
@@ -408,9 +422,11 @@ const shipmentTrackingforward = async (awb) => {
       mergeAttrs: true,
     });
 
+
+
     // Extract the field array
     const fields = jsonResponse["ecomexpress-objects"].object.field;
-
+// console.log("fields",fields[fields.length-1].object)
     // Convert field array into an object with key-value pairs
     const structuredData = {};
     fields.forEach((item) => {

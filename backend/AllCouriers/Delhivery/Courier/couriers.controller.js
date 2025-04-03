@@ -447,8 +447,24 @@ const updateClientWarehouse = async (req, res) => {
 
 const cancelOrderDelhivery = async (awb_number) => {
   console.log("I am in cancel order");
+
+  // Check if order is already cancelled
+  const isCancelled = await Order.findOne({
+    awb_number: awb_number,
+    status: "Cancelled",
+  });
+
+  if (isCancelled) {
+    console.log("Order is already cancelled");
+    return {
+      error: "Order is already cancelled",
+      code: 400,
+    };
+  }
+
+  // Prepare payload for cancellation request
   const payload = {
-    waybill: `${awb_number}`,
+    waybill: awb_number,
     cancellation: true,
   };
 
@@ -459,10 +475,10 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-    await Order.updateOne(
-      { awb_number: awb_number },
-      { $set: { status: "Cancelled" } }
-    );
+
+    // Update the order status in the database
+    await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
+
     if (response?.data?.status) {
       return { data: response.data, code: 201 };
     } else {
@@ -473,6 +489,7 @@ const cancelOrderDelhivery = async (awb_number) => {
       };
     }
   } catch (error) {
+    console.error("Error in cancelOrderDelhivery:", error);
     return {
       error: "Internal Server Error",
       message: error.message,
@@ -480,6 +497,7 @@ const cancelOrderDelhivery = async (awb_number) => {
     };
   }
 };
+
 
 module.exports = {
   createOrder,
