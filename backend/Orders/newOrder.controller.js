@@ -688,10 +688,17 @@ const tracking = async (req, res) => {
     );
 
     const updateOrderStatus = async (order, status, data) => {
+      console.log("data", data);
       if (data === "manifested" || data === "booked") {
         order.status = status;
       }
-      if (data === "in transit") {
+      if (
+        data === "in transit" ||
+        data === "out for pickup" ||
+        data === "shipment inscan at location" ||
+        data==="pickup assigned" ||
+        data==="shipment debagged at location"
+      ) {
         order.status = status;
       }
       if (data === "delivered") {
@@ -745,11 +752,16 @@ const tracking = async (req, res) => {
             }
           } else if (provider === "EcomExpress") {
             const trackingStatus = result.data?.tracking_status?.toLowerCase();
+            console.log("trak", trackingStatus);
 
             const ecomExpressStatusMap = {
               pending: "Ready To Ship",
               "picked up": "Ready To Ship",
               "pickup assigned": "In-transit",
+              "shipment inscan at location": "In-transit",
+              "shipment debagged at location":"In-transit",
+              "departed from location":"In-transit",
+              "out for pickup": "In-transit",
               "out for delivery": "In-transit",
               delivered: "Delivered",
               "rto initiated": "In-transit",
@@ -760,7 +772,7 @@ const tracking = async (req, res) => {
             };
 
             const mappedStatus = ecomExpressStatusMap[trackingStatus];
-            // console.log("mapped",mappedStatus)
+            console.log("mapped", mappedStatus);
 
             if (mappedStatus) {
               await updateOrderStatus(order, mappedStatus, trackingStatus);
