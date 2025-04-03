@@ -689,16 +689,26 @@ const tracking = async (req, res) => {
 
     const updateOrderStatus = async (order, status, data) => {
       console.log("data", data);
+      console.log("st", status);
       if (data === "manifested" || data === "booked") {
         order.status = status;
       }
       if (
         data === "in transit" ||
         data === "out for pickup" ||
+        data === "departed from location" ||
+        data === "out for delivery" ||
         data === "shipment inscan at location" ||
-        data==="pickup assigned" ||
-        data==="shipment debagged at location"
+        data === "pickup assigned" ||
+        data === "shipment debagged at location" ||
+        data === "bag inscan at location" ||
+        data === "bagged"||
+        data==="field pickup done"||
+        data==="pickup failed"
       ) {
+        order.status = status;
+      }
+      if (data === "RTO") {
         order.status = status;
       }
       if (data === "delivered") {
@@ -720,17 +730,21 @@ const tracking = async (req, res) => {
           result = await trackShipment(awb_number);
         } else if (provider === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
+          // console.log("rerer", result);
         } else if (provider === "ShreeMaruti") {
           result = await trackOrderShreeMaruti(awb_number);
         } else if (provider === "DTDC") {
           result = await trackOrderDTDC(awb_number);
+          console.log(result);
         } else if (provider === "EcomExpress") {
           result = await shipmentTrackingforward(awb_number);
+          console.log("ecom",result)
         }
 
         if (result && result.success) {
           if (provider === "Delhivery") {
             const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
+            console.log("status",status)
 
             const statusMap = {
               manifested: () => {
@@ -742,6 +756,11 @@ const tracking = async (req, res) => {
                 updateOrderStatus(order, "Cancelled", "cancelled"),
               "in transit": () =>
                 updateOrderStatus(order, "In-Transit", "in transit"),
+              dispatched: () =>
+                updateOrderStatus(order, "In-Transit", "in transit"),
+              rto: () => updateOrderStatus(order, "RTO", "RTO"),
+              pending: () =>
+                updateOrderStatus(order, "In-Transit", "in transit"), // Fix: Add pending as its own key
               delivered: () =>
                 updateOrderStatus(order, "Delivered", "delivered"),
               booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
@@ -756,18 +775,18 @@ const tracking = async (req, res) => {
 
             const ecomExpressStatusMap = {
               pending: "Ready To Ship",
-              "picked up": "Ready To Ship",
+              "picked up": "In-transit",
               "pickup assigned": "In-transit",
+              "bag inscan at location": "In-transit",
+              "field pickup done":"In-transit",
+              "pickup failed":"In-transit",
+              bagged: "In-transit",
               "shipment inscan at location": "In-transit",
-              "shipment debagged at location":"In-transit",
-              "departed from location":"In-transit",
+              "shipment debagged at location": "In-transit",
+              "departed from location": "In-transit",
               "out for pickup": "In-transit",
               "out for delivery": "In-transit",
               delivered: "Delivered",
-              "rto initiated": "In-transit",
-              "rto in transit": "In-transit",
-              "rto delivered": "Cancelled",
-              undelivered: "Cancelled",
               cancelled: "Cancelled",
             };
 
@@ -961,8 +980,9 @@ const trackOrders = async () => {
   }
 };
 
-// Run tracking every 1 minute
-setInterval(trackOrders, 60 * 1000);
+setInterval(trackOrders, 5 * 60 * 1000); // Calls every 5 minutes
+
+
 
 const mapTrackingResponse = (data, provider) => {
   switch (provider) {
@@ -976,18 +996,19 @@ const mapTrackingResponse = (data, provider) => {
         Instructions: data.tracking_status || null,
       };
     case "DTDC":
-      const latestTrackingEvent = data.trackDetails?.[0]; // Get the most recent tracking event
+      const lastTrackingEvent =
+        data.trackDetails?.[data.trackDetails.length - 1]; // Gets the last event
 
       return {
         Status: data.trackHeader.strStatus || "N/A",
         StatusLocation: data.trackHeader.strOrigin || "N/A",
-        StatusDateTime: latestTrackingEvent
+        StatusDateTime: lastTrackingEvent
           ? formatDTDCDateTime(
-              latestTrackingEvent.strActionDate,
-              latestTrackingEvent.strActionTime
+              lastTrackingEvent.strActionDate,
+              lastTrackingEvent.strActionTime
             )
           : null, // Use latest tracking event date/time, or null if missing
-        Instructions: latestTrackingEvent?.strAction || "N/A",
+        Instructions: lastTrackingEvent?.strAction || "N/A",
       };
 
     case "Shiprocket":
