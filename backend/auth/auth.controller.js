@@ -351,10 +351,31 @@ const verifySession = async (req, res) => {
   }
 };
 
+const forgetPassword = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Hash the new password before saving
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: "Password Reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating password", error });
+  }
+};
+
+
+
 module.exports = {
   register,
   login,
   googleLogin,
   googleLoginFail,
   verifySession,
+  forgetPassword
 };

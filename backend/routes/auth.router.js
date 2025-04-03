@@ -1,4 +1,4 @@
-const { register, login, googleLogin, googleLoginFail, verifySession } = require('../auth/auth.controller');
+const { register, login, googleLogin, googleLoginFail, verifySession,forgetPassword } = require('../auth/auth.controller');
 // const { isAuthorized } = require('../middleware/auth.middleware');  // Commented as per your request
 // const passport = require('passport');
 const   authRouter = require('express').Router();
@@ -11,7 +11,8 @@ authRouter.post('/register', register);
 
 // Login route - No need for authorization
 authRouter.post('/login', login);
-
+//forgetPassword  route - No need for authorization
+authRouter.post("/forgetPassword",forgetPassword)
 // Test route for Google in the backend
 // authRouter.get('/', loadAuth) // This is commented as per your request
 

@@ -171,7 +171,7 @@ cron.schedule("1 1 * * *", () => {
   codToBeRemitted();
 });
 // cron.schedule("*/1 * * * *", () => {
-//   console.log("Running scheduled task at 6 AM: Fetching orders...");
+//   console.log("Running scheduled task at 1 AM: Fetching orders...");
 //   codToBeRemitted();
 // });
 

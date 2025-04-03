@@ -210,8 +210,8 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
   if (!pincode) {
     return "Pincode is required";
   }
-  console.log("klkkllkk",order_type)
-  console.log("iewoooooooooo",pincode)
+  // console.log("klkkllkk",order_type)
+  // console.log("iewoooooooooo",pincode)
   try {
     const response = await axios.get(`${url}/c/api/pin-codes/json?`, {
       headers: {
@@ -221,8 +221,6 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
         filter_codes: pincode,
       },
     });
-    // console.log("czxxxxxxxxxxxxxxx",response.data)
-
     let result = response.data.delivery_codes;
     
     let finalResult = false;
