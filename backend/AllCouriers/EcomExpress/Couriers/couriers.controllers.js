@@ -433,7 +433,7 @@ const shipmentTrackingforward = async (awb) => {
       structuredData[item.name] = item._ || null;
     });
 
-    // console.log("Final Parsed Response:", structuredData.tracking_status);
+    // console.log("Final Parsed Response:", structuredData);
     return { success: true, data: structuredData, status: 200 };
   } catch (error) {
     console.error("Tracking API Error:", error.response?.data || error.message);

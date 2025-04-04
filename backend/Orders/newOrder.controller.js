@@ -6,6 +6,9 @@ const Courier = require("../models/AllCourierSchema");
 const CourierService = require("../models/CourierService.Schema");
 const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
+const Bottleneck = require("bottleneck");
+const cron = require("node-cron");
+
 const { codToBeRemitted } = require("../COD/cod.controller");
 const {
   cancelShipmentforward,
@@ -681,389 +684,302 @@ const cancelOrdersAtBooked = async (req, res) => {
       .send({ error: "An error occurred while cancelling orders." });
   }
 };
-const tracking = async (req, res) => {
-  try {
-    const allOrders = await Promise.all(
-      req.body.map((order) => Order.findById(order._id))
-    );
 
-    const updateOrderStatus = async (order, status, data) => {
-      console.log("data", data);
-      console.log("st", status);
-      if (data === "manifested" || data === "booked") {
-        order.status = status;
-      }
-      if (
-        data === "in transit" ||
-        data === "out for pickup" ||
-        data === "departed from location" ||
-        data === "out for delivery" ||
-        data === "shipment inscan at location" ||
-        data === "pickup assigned" ||
-        data === "shipment debagged at location" ||
-        data === "bag inscan at location" ||
-        data === "bagged"||
-        data==="field pickup done"||
-        data==="pickup failed"
-      ) {
-        order.status = status;
-      }
-      if (data === "RTO") {
-        order.status = status;
-      }
-      if (data === "delivered") {
-        order.status = status;
-      }
-      await order.save();
+
+const limiter = new Bottleneck({
+  minTime: 100, // 10 requests per second (100ms delay between each)
+  maxConcurrent: 10, // Maximum 10 at the same time
+  reservoir: 750, // Max 750 calls per minute
+  reservoirRefreshAmount: 750,
+  reservoirRefreshInterval: 60 * 1000, // Refresh every 1 minute
+});
+
+// Define your single order tracking logic
+const trackSingleOrder = async (order) => {
+  try {
+    // console.log("Tracking order:", order.orderId);
+    const { provider, awb_number } = order;
+    if (!provider || !awb_number) return;
+
+    const trackingFunctions = {
+      Xpressbees: trackShipment,
+      Delhivery: trackShipmentDelhivery,
+      ShreeMaruti: trackOrderShreeMaruti,
+      DTDC: trackOrderDTDC,
+      EcomExpress: shipmentTrackingforward,
     };
 
-    const trackingPromises = allOrders.map(async (order) => {
-      try {
-        const { provider, awb_number } = order;
-        let result;
+    if (!trackingFunctions[provider]) {
+      console.warn(`Unknown provider: ${provider} for Order ID: ${order._id}`);
+      return;
+    }
 
-        if (provider === "NimbusPost") {
-          result = await trackShipmentNimbuspost(awb_number);
-        } else if (provider === "Shiprocket") {
-          result = await getTrackingByAWB(awb_number);
-        } else if (provider === "Xpressbees") {
-          result = await trackShipment(awb_number);
-        } else if (provider === "Delhivery") {
-          result = await trackShipmentDelhivery(awb_number);
-          // console.log("rerer", result);
-        } else if (provider === "ShreeMaruti") {
-          result = await trackOrderShreeMaruti(awb_number);
-        } else if (provider === "DTDC") {
-          result = await trackOrderDTDC(awb_number);
-          console.log(result);
-        } else if (provider === "EcomExpress") {
-          result = await shipmentTrackingforward(awb_number);
-          console.log("ecom",result)
-        }
+    const result = await trackingFunctions[provider](awb_number);
+    if (!result || !result.success || !result.data) return;
 
-        if (result && result.success) {
-          if (provider === "Delhivery") {
-            const status = result.data?.Status.toLowerCase().replace(/_/g, " ");
-            console.log("status",status)
+    const normalizedData = mapTrackingResponse(result.data, provider);
+    if (!normalizedData) {
+      console.warn(`Failed to map tracking data for AWB: ${awb_number}`);
+      return;
+    }
 
-            const statusMap = {
-              manifested: () => {
-                if (order.status !== "Cancelled") {
-                  updateOrderStatus(order, "Ready To Ship", "manifested");
-                }
-              },
-              cancelled: () =>
-                updateOrderStatus(order, "Cancelled", "cancelled"),
-              "in transit": () =>
-                updateOrderStatus(order, "In-Transit", "in transit"),
-              dispatched: () =>
-                updateOrderStatus(order, "In-Transit", "in transit"),
-              rto: () => updateOrderStatus(order, "RTO", "RTO"),
-              pending: () =>
-                updateOrderStatus(order, "In-Transit", "in transit"), // Fix: Add pending as its own key
-              delivered: () =>
-                updateOrderStatus(order, "Delivered", "delivered"),
-              booked: () => updateOrderStatus(order, "Ready To Ship", "booked"),
-            };
+    let newStatus = order.status;
 
-            if (statusMap[status]) {
-              await statusMap[status]();
-            }
-          } else if (provider === "EcomExpress") {
-            const trackingStatus = result.data?.tracking_status?.toLowerCase();
-            console.log("trak", trackingStatus);
+    if (provider === "EcomExpress") {
+      const ecomExpressStatusMapping = {
+        "pickup scheduled": "Ready To Ship",
+        "pickup failed": "Ready To Ship",
+        "pickup assigned": "In-transit",
+        "soft data uploaded": "Ready To Ship",
+        "departed from location": "In-transit",
+        "shipment debagged at location": "In-transit",
+        "out for pickup": "In-transit",
+        "field pickup done": "In-transit",
+        "bag inscan at location": "In-transit",
+        "arrived at destination": "In-transit",
+        bagged: "In-transit",
+        "out for delivery": "Out for Delivery",
+        delivered: "Delivered",
+        "rto lock": "RTO",
+        cancelled: "Cancelled",
+        lost: "Cancelled",
+        undelivered: "In-transit",
+        "not picked": "Ready To Ship",
+      };
 
-            const ecomExpressStatusMap = {
-              pending: "Ready To Ship",
-              "picked up": "In-transit",
-              "pickup assigned": "In-transit",
-              "bag inscan at location": "In-transit",
-              "field pickup done":"In-transit",
-              "pickup failed":"In-transit",
-              bagged: "In-transit",
-              "shipment inscan at location": "In-transit",
-              "shipment debagged at location": "In-transit",
-              "departed from location": "In-transit",
-              "out for pickup": "In-transit",
-              "out for delivery": "In-transit",
-              delivered: "Delivered",
-              cancelled: "Cancelled",
-            };
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      newStatus = ecomExpressStatusMapping[instruction] || order.status;
 
-            const mappedStatus = ecomExpressStatusMap[trackingStatus];
-            console.log("mapped", mappedStatus);
-
-            if (mappedStatus) {
-              await updateOrderStatus(order, mappedStatus, trackingStatus);
-            } else {
-              console.warn(
-                `Unknown EcomExpress status: ${trackingStatus} for Order ID: ${order._id}`
-              );
-            }
-          } else if (provider === "DTDC") {
-            const normalizedData = mapTrackingResponse(result.data, "DTDC");
-
-            if (!normalizedData) {
-              console.warn(
-                `Failed to map tracking data for DTDC AWB: ${awb_number}`
-              );
-              return;
-            }
-
-            console.log("DTDC Tracking Data:", normalizedData);
-
-            const dtdcStatusMap = {
-              "Ready To Ship": ["Softdata Upload", "Pickup Awaited"],
-              "In-transit": ["In Transit", "Dispatched"],
-              "Out for Delivery": ["Out for Delivery"],
-              Delivered: ["Delivered"],
-              Cancelled: ["RTO Initiated", "RTO Delivered", "Undelivered"],
-            };
-
-            let orderStatus = null;
-
-            for (const [mappedStatus, statusList] of Object.entries(
-              dtdcStatusMap
-            )) {
-              if (statusList.includes(normalizedData.Status)) {
-                orderStatus = mappedStatus;
-                break;
-              }
-            }
-
-            if (orderStatus) {
-              await updateOrderStatus(
-                order,
-                orderStatus,
-                normalizedData.Status
-              );
-            } else {
-              console.warn(
-                `Unknown DTDC status: ${normalizedData.Status} for Order ID: ${order._id}`
-              );
-            }
-          }
-        }
-      } catch (error) {
-        console.error(
-          `Error processing order ID: ${order._id}, AWB: ${order.awb_number}`,
-          error
-        );
+      if (instruction === "undelivered") {
+        order.ndrStatus = "ndr";
+        order.ndrReason = {
+          date: new Date(),
+          reason: normalizedData.Instructions,
+        };
       }
-    });
 
-    await Promise.all(trackingPromises);
+      if (order.status === "RTO" && instruction === "delivered") {
+        newStatus = "RTO Delivered";
+      }
+    }
+    if (provider === "DTDC") {
+      const DTDCStatusMapping = {
+        "order received": "Ready To Ship",
+        "pickup failed": "Ready To Ship",
+        "pickup awaited":"Ready To Ship",
+        "softdata upload":"Ready To Ship",
+        "pickup scheduled": "In-transit",
+        "not picked": "Ready To Ship",
+        "picked up": "In-transit",
+        "booked": "In-transit",
+        "in transit": "In-transit",
+        "departed from location": "In-transit",
+        "out for delivery": "Out for Delivery",
+        delivered: "Delivered",
+        "rto processed & forwarded": "RTO",
+        "rto booked":"RTO",
+        cancelled: "Cancelled",
+        lost: "Cancelled",
+        undelivered: "In-transit",
+        "not picked": "Ready To Ship",
+      };
 
-    res.status(200).json({ message: "Tracking updated successfully" });
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      newStatus = DTDCStatusMapping[instruction] || order.status;
+
+      if (instruction === "not delivered") {
+        order.ndrStatus = "ndr";
+        order.ndrReason = {
+          date: new Date(),
+          reason: normalizedData.Instructions,
+        };
+      }
+
+      if (order.status === "RTO" && instruction === "rto delivered") {
+        newStatus = "RTO Delivered";
+      }
+    } else {
+      const statusMappings = {
+        "manifest uploaded": "Ready To Ship",
+        "shipment picked up": "In-transit",
+        "shipment recieved at origin center": "In-transit",
+        "not picked": "Ready To Ship",
+        "bag added to trip": "In-transit",
+        "trip arrived": "In-transit",
+        "bag received at facility": "In-transit",
+        "shipment received at facility": "In-transit",
+        "shipment inscan at location": "In-transit",
+        "bag added to trip": "In-transit",
+        "trip arrived": "In-transit",
+        "bag inscan at location": "In-transit",
+        bagged: "In-transit",
+        "field pickup done": "In-transit",
+        "out for delivery": "Out for Delivery",
+        "call placed to consignee": "Out for Delivery",
+        "dispatched for rto": "RTO",
+        "return accepted": "RTO",
+        "Delivered to consignee": "Delivered",
+        "seller cancelled the order": "Cancelled",
+      };
+
+      const status = normalizedData.Instructions?.toLowerCase();
+      const instruction = normalizedData.Instructions?.toLowerCase();
+
+      if (order.status === "RTO" && instruction === "delivered") {
+        newStatus = "RTO Delivered";
+      } else {
+        newStatus = statusMappings[status] || order.status;
+      }
+
+      if (status === "delivered") {
+        newStatus = "Delivered";
+        order.ndrStatus = "Delivered";
+      }
+    }
+
+    // NDR logic
+    const eligibleNSLCodes = [
+      "EOD-74",
+      "EOD-15",
+      "EOD-104",
+      "EOD-43",
+      "EOD-86",
+      "EOD-11",
+      "EOD-69",
+      "EOD-6",
+    ];
+
+    if (
+      normalizedData.StatusCode &&
+      eligibleNSLCodes.includes(normalizedData.StatusCode)
+    ) {
+      order.ndrStatus = "ndr";
+      order.ndrReason = {
+        date: new Date(),
+        reason: normalizedData.Instructions,
+      };
+    }
+
+    if (newStatus && order.status !== newStatus) {
+      order.status = newStatus;
+    }
+
+    // Prevent duplicate tracking logs
+    const lastTrackingEntry = order.tracking[order.tracking.length - 1];
+    if (
+      !lastTrackingEntry ||
+      lastTrackingEntry.Instructions !== normalizedData.Instructions
+    ) {
+      order.tracking.push({
+        status: normalizedData.Status,
+        StatusLocation: normalizedData.StatusLocation,
+        StatusDateTime: normalizedData.StatusDateTime,
+        Instructions: normalizedData.Instructions,
+      });
+    }
+
+    await order.save();
   } catch (error) {
-    console.error("Error in tracking:", error);
-    res.status(500).json({ message: "Internal server error", error });
+    console.error(
+      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+      error
+    );
   }
 };
 
-// setInterval(tracking, 60 * 600000);
-
+// Main controller
 const trackOrders = async () => {
   try {
-    const allOrders = await Order.find({ status: { $ne: "new" } }); // Fetch all orders except those with "new" status
-    // console.log("order")
-    const trackingPromises = allOrders.map(async (order) => {
-      try {
-        const { provider, awb_number } = order;
-        let result;
-        // console.log("order")
-        // Fetch tracking information from the respective provider
-        if (provider === "NimbusPost") {
-          result = await trackShipmentNimbuspost(awb_number);
-        } else if (provider === "Shiprocket") {
-          result = await getTrackingByAWB(awb_number);
-        } else if (provider === "Xpressbees") {
-          result = await trackShipment(awb_number);
-        } else if (provider === "Delhivery") {
-          result = await trackShipmentDelhivery(awb_number);
-          // console.log(result);
-        } else if (provider === "ShreeMaruti") {
-          result = await trackOrderShreeMaruti(awb_number);
-        } else if (provider === "EcomExpress") {
-          result = await shipmentTrackingforward(awb_number);
-          // console.log("rerere", result);
-        } else if (provider === "DTDC") {
-          result = await trackOrderDTDC(awb_number);
-        }
+    const pLimit = await import("p-limit").then((mod) => mod.default);
+    const limit = pLimit(10); // Max 10 concurrent executions
 
-        if (!result || !result.success || !result.data) {
-          return;
-        }
-        // console.log(result.data)
-
-        const normalizedData = mapTrackingResponse(result.data, provider);
-        if (!normalizedData) {
-          console.warn(`Failed to map tracking data for AWB: ${awb_number}`);
-          return;
-        }
-
-        // const {
-        //   Status,
-        //   StatusCode,
-        //   StatusLocation,
-        //   StatusDateTime,
-        //   Instructions,
-        // } = result.data;
-        // console.log("result data",result.data)
-        // List of NSL codes that qualify for "RE-ATTEMPT"
-        const eligibleNSLCodes = [
-          "EOD-74",
-          "EOD-15",
-          "EOD-104",
-          "EOD-43",
-          "EOD-86",
-          "EOD-11",
-          "EOD-69",
-          "EOD-6",
-        ];
-        // console.log("norer",normalizedData)
-
-        // Check if the StatusCode is in the eligible list
-        if (
-          normalizedData.StatusCode &&
-          eligibleNSLCodes.includes(normalizedData.StatusCode)
-        ) {
-          order.ndrStatus = "RTO-intransit"; // Update ndrStatus
-          // if (!Array.isArray(order.ndrHistory)) {
-          //   order.ndrHistory = [];
-          // }
-          // console.log("order",order)
-
-          order.ndrReason = {
-            date: new Date(), // or provide an appropriate date value
-            reason: normalizedData.Instructions,
-          };
-          // console.log(order.awb_number);
-        }
-        if (normalizedData.Status === "Delivered") {
-          order.ndrStatus = "Delivered";
-        }
-
-        const Instructions = normalizedData.Instructions;
-        const newTrackingEntry = {
-          status: normalizedData.Status,
-          StatusLocation: normalizedData.StatusLocation,
-          StatusDateTime: normalizedData.StatusDateTime,
-          Instructions: normalizedData.Instructions,
-        };
-        // console.log("newer",newTrackingEntry)
-
-        // Remove empty objects from tracking array
-        order.tracking = order.tracking.filter(
-          (item) => Object.keys(item).length > 0
-        );
-        // Check if the latest tracking entry is different before adding
-        const lastTracking = order.tracking[order.tracking.length - 1];
-        if (!lastTracking || lastTracking.Instructions !== Instructions) {
-          order.tracking.push(newTrackingEntry);
-          await order.save();
-          // if (Status=== "Delivered" && order.paymentDetails.method==="COD") {
-          //   codToBeRemitted(order)
-          // }
-        }
-      } catch (error) {
-        console.error(
-          `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
-          error
-        );
-      }
+    const allOrders = await Order.find({
+      status: { $nin: ["new", "delivered"] },
     });
 
+    console.log(`📦 Found ${allOrders.length} orders to track`);
+
+    const limitedTrack = limiter.wrap(trackSingleOrder); // apply rate limiter
+
+    const trackingPromises = allOrders.map(
+      (order) => limit(() => limitedTrack(order)) // limit concurrency
+    );
+
     await Promise.all(trackingPromises);
+
+    console.log("✅ All tracking updates completed");
   } catch (error) {
-    console.error("Error in tracking orders:", error);
+    console.error("❌ Error in tracking orders:", error);
   }
 };
+// cron.schedule('0 * * * *', async () => {
+//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
+//   await trackOrders();
+// });
 
-setInterval(trackOrders, 5 * 60 * 1000); // Calls every 5 minutes
-
-
+cron.schedule("*/2 * * * *", async () => {
+  console.log("🕒 Cron Job Triggered: Starting Order Tracking");
+  await trackOrders();
+});
 
 const mapTrackingResponse = (data, provider) => {
-  switch (provider) {
-    case "EcomExpress":
-      return {
-        // AWBNumber: data.awb_number || null,
-        Status: data.reason_code_description || "N/A",
-        // StatusCode: data.status || null,
-        StatusLocation: data.current_location_name || "N/A",
-        StatusDateTime: data.last_update_datetime || null,
-        Instructions: data.tracking_status || null,
-      };
-    case "DTDC":
-      const lastTrackingEvent =
-        data.trackDetails?.[data.trackDetails.length - 1]; // Gets the last event
+  const providerMappings = {
+    EcomExpress: {
+      Status: data.reason_code_description || "N/A",
+      StatusLocation: data.current_location_name || "N/A",
+      StatusDateTime: data.last_update_datetime || null,
+      Instructions: data.tracking_status || null,
+    },
+    DTDC: {
+      Status: data.trackHeader?.strStatus || "N/A",
+      StatusLocation: data.trackHeader?.strOrigin || "N/A",
+      StatusDateTime: data.trackDetails?.length
+        ? formatDTDCDateTime(
+            data.trackDetails[data.trackDetails.length - 1].strActionDate,
+            data.trackDetails[data.trackDetails.length - 1].strActionTime
+          )
+        : null,
+      Instructions: data.trackDetails?.length
+        ? data.trackDetails[data.trackDetails.length - 1].strAction
+        : "N/A",
+    },
+    Shiprocket: {
+      Status: data.current_status || null,
+      StatusLocation: data.location || "Unknown",
+      StatusDateTime: data.timestamp || null,
+      Instructions: data.instructions || null,
+    },
+    NimbusPost: {
+      Status: data.status || null,
+      StatusCode: data.status_code || null,
+      StatusLocation: data.city || "Unknown",
+      StatusDateTime: data.updated_on || null,
+      Instructions: data.remarks || null,
+    },
+    Delhivery: {
+      Status: data.Status || null,
+      StatusCode: data.StatusCode || null,
+      StatusLocation: data.StatusLocation || "Unknown",
+      StatusDateTime: data.StatusDateTime || null,
+      Instructions: data.Instructions || null,
+    },
+    Xpressbees: {
+      Status: data.tracking_status || null,
+      StatusCode: data.status_code || null,
+      StatusLocation: data.location || "Unknown",
+      StatusDateTime: data.last_update || null,
+      Instructions: data.remarks || null,
+    },
+    ShreeMaruti: {
+      Status: data.status || null,
+      StatusCode: data.status_code || null,
+      StatusLocation: data.current_location || "Unknown",
+      StatusDateTime: data.updated_at || null,
+      Instructions: data.message || null,
+    },
+  };
 
-      return {
-        Status: data.trackHeader.strStatus || "N/A",
-        StatusLocation: data.trackHeader.strOrigin || "N/A",
-        StatusDateTime: lastTrackingEvent
-          ? formatDTDCDateTime(
-              lastTrackingEvent.strActionDate,
-              lastTrackingEvent.strActionTime
-            )
-          : null, // Use latest tracking event date/time, or null if missing
-        Instructions: lastTrackingEvent?.strAction || "N/A",
-      };
-
-    case "Shiprocket":
-      return {
-        // AWBNumber: data.awb || null,
-        Status: data.current_status || null,
-        // StatusCode: data.status_code || null,
-        StatusLocation: data.location || "Unknown",
-        StatusDateTime: data.timestamp || null,
-        Instructions: data.instructions || null,
-      };
-
-    case "NimbusPost":
-      return {
-        AWBNumber: data.waybill || null,
-        Status: data.status || null,
-        StatusCode: data.status_code || null,
-        StatusLocation: data.city || "Unknown",
-        StatusDateTime: data.updated_on || null,
-        Instructions: data.remarks || null,
-      };
-
-    case "Delhivery":
-      return {
-        // AWBNumber: data.waybill || null,
-        Status: data.Status || null,
-        StatusCode: data.StatusCode || null,
-        StatusLocation: data.StatusLocation || "Unknown",
-        StatusDateTime: data.StatusDateTime || null,
-        Instructions: data.Instructions || null,
-      };
-
-    case "Xpressbees":
-      return {
-        AWBNumber: data.awb || null,
-        Status: data.tracking_status || null,
-        StatusCode: data.status_code || null,
-        StatusLocation: data.location || "Unknown",
-        StatusDateTime: data.last_update || null,
-        Instructions: data.remarks || null,
-      };
-
-    case "ShreeMaruti":
-      return {
-        AWBNumber: data.awb_number || null,
-        Status: data.status || null,
-        StatusCode: data.status_code || null,
-        StatusLocation: data.current_location || "Unknown",
-        StatusDateTime: data.updated_at || null,
-        Instructions: data.message || null,
-      };
-
-    default:
-      return null; // If provider is unknown, return null
-  }
+  return providerMappings[provider] || null;
 };
 
 // setInterval(trackOrders, 60 * 100000);
@@ -1188,7 +1104,7 @@ module.exports = {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
-  tracking,
+  // tracking,
   updateOrder,
   passbook,
   getUser,

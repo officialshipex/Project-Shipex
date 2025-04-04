@@ -278,7 +278,8 @@ const trackShipmentDelhivery = async (waybill) => {
       status === "Delivered" ||
       status === "Pending" ||
       status==="Dispatched" ||
-      status ==="RTO"
+      status ==="RTO" ||
+      status ==="Not Picked"
     ) {
       return {
         success: true,
