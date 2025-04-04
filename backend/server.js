@@ -28,6 +28,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(helmet());
+// Only allow from same origin (common)
+app.use(
+  helmet.frameguard({ action: 'sameorigin' }) 
+);
+
 app.use(cors()); // ✅ Only call once
 app.use(compression());
 
