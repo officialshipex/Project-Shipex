@@ -12,7 +12,7 @@ const {
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
   cancelOrdersAtBooked,
-  tracking,
+  // tracking,
   updateOrder,
   passbook,
   getUser,
@@ -37,7 +37,7 @@ router.get("/ship/:id", ShipeNowOrder);
 router.get("/pincode/:pincode", getPinCodeDetails);
 router.post("/cancelOrdersAtNotShipped",cancelOrdersAtNotShipped)
 router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
-router.post("/tracking",tracking)
+// router.post("/tracking",tracking)
 router.get("/passbook",passbook)
 router.get("/getUser",getUser)
 router.post("/webhookTracking",trackOrders)
