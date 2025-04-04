@@ -27,7 +27,7 @@ const {awb_number,action}=req.body
         else {
             return res.status(400).json({ error: 'Unsupported platform' });
         }
-console.log("resererer",response)
+// console.log("resererer",response)
         res.json({ success: response.success, data: response.error });
     } catch (error) {
         res.status(500).json({ error: error.message });
