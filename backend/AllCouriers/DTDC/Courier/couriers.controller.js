@@ -4,6 +4,7 @@ const User = require("../../../models/User.model");
 require("dotenv").config();
 const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
+const {getDTDCAuthToken}=require("../Authorize/saveCourierContoller")
 
 // const router = express.Router();
 
@@ -249,23 +250,30 @@ const cancelOrderDTDC = async (AWBNo) => {
 
 
 // DTDC Tracking API Config
-const DTDC_TRACKING_API_URL = `${DTDC_API_URL}/customer/integration/consignment/track`; // Example: "http://dtdcapi.shipsy.io/api/customer/integration/consignment/track"
+const DTDC_TRACKING_API_URL = `https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails`; 
 
 // Track Order Controller
 const trackOrderDTDC = async (AWBNo) => {
+  const access_key=await getDTDCAuthToken()
+  // console.log(access_key)
   try {
     
 
-    const requestData = { AWBNo };
+    const requestData = {
+      trkType:"cnno",
+      strcnno:AWBNo,
+      addtnlDtl: "Y"
+    };
 
     
     const response = await axios.post(DTDC_TRACKING_API_URL, requestData, {
       headers: {
         "Content-Type": "application/json",
-        "api-key": API_KEY,
+        "x-access-token": access_key,
       },
     });
-    console.log("trac",response)
+    // console.log(response.data)
+    return {success:true,data:response.data}
 
     
   } catch (error) {
@@ -273,6 +281,9 @@ const trackOrderDTDC = async (AWBNo) => {
       "Error tracking shipment:",
       error.response?.data || error.message
     );
+    return {
+      success:false,error:error.response.message,status:500
+    }
     
   }
 };

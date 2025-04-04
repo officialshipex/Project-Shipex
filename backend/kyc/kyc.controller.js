@@ -407,7 +407,7 @@ verfication.post("/verify-otp", async (req, res) => {
       user: userId,
       aadhaarNumber: aadhaarNo,
       status: response.data.status,
-      sonOf: response.data.care_of,
+      sonOf: response?.data?.care_of || "N/A",
       dob: response.data.dob,
       email: response.data.email,
       gender: response.data.gender,
