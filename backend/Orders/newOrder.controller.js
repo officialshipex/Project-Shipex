@@ -1191,7 +1191,7 @@ module.exports = {
   getpickupAddress,
   getreceiverAddress,
   newPickupAddress,
-  newReciveAddress,
+  newReciveAddress,   
   ShipeNowOrder,
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
