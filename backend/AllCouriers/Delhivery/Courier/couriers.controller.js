@@ -276,7 +276,9 @@ const trackShipmentDelhivery = async (waybill) => {
       status === "Manifested" ||
       status === "In Transit" ||
       status === "Delivered" ||
-      status === "Pending"
+      status === "Pending" ||
+      status==="Dispatched" ||
+      status ==="RTO"
     ) {
       return {
         success: true,
@@ -284,13 +286,14 @@ const trackShipmentDelhivery = async (waybill) => {
         data: response.data.ShipmentData[0].Shipment.Status,
       };
     } else {
+
       return {
         success: false,
         data: "Error in tracking",
       };
     }
   } catch (error) {
-    // console.error("Error tracking shipment:", error);
+    console.error("Error tracking shipment:");
     return {
       success: false,
       data: "Error in tracking",

@@ -64,14 +64,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     };
   }
 
-  // Step 1: Get current time and check if action is allowed
-  // const currentHour = moment().utcOffset("+05:30").hour();
-  // if (action === "RE-ATTEMPT" && currentHour < 21) {
-  //   return {
-  //     success: false,
-  //     error: "Re-attempt can only be requested after 9 PM IST.",
-  //   };
-  // }
+
 
   try {
     // Step 2: Fetch order details to check NSL code & attempt count
@@ -122,7 +115,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     // Step 4: Wait 5 seconds before fetching status
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // Step 5: Fetch NDR status
+    // Step 5: Fetch NDR status 
     const ndrStatusResponse = await axios.get(
       `https://track.delhivery.com/api/cmu/get_bulk_upl/${request_id}?verbose=true`,
       {
