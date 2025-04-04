@@ -9,8 +9,8 @@ const ticketSchema = new mongoose.Schema({
     required: function () { return this.awbType === "multiple"; } 
   }],
   ticketNumber: { type: String, unique: true, required: true },
-  file: { type: String }, // Store file path if uploaded
-  message: { type: String, required: true }, // Added message field
+  file: { type: String },
+  message: { type: String, required: true }, 
   createdAt: { type: Date, default: Date.now },
 
   // User details
