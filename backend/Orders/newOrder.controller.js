@@ -197,14 +197,19 @@ const newReciveAddress = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    // console.log(req.user._id)
-    const orders = await Order.find({ userId: req.user._id });
+    const orders = await Order.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.json(orders);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
+
 
 const updateOrder = async (req, res) => {
   try {
@@ -685,7 +690,6 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 
-
 const limiter = new Bottleneck({
   minTime: 100, // 10 requests per second (100ms delay between each)
   maxConcurrent: 10, // Maximum 10 at the same time
@@ -750,6 +754,10 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
 
+      if(order.status==="RTO" && instruction === "bagged"){
+        newStatus = "RTO In-transit";
+      }
+
       if (instruction === "undelivered") {
         order.ndrStatus = "ndr";
         order.ndrReason = {
@@ -766,22 +774,23 @@ const trackSingleOrder = async (order) => {
       const DTDCStatusMapping = {
         "order received": "Ready To Ship",
         "pickup failed": "Ready To Ship",
-        "pickup awaited":"Ready To Ship",
-        "softdata upload":"Ready To Ship",
+        "pickup awaited": "Ready To Ship",
+        "softdata upload": "Ready To Ship",
         "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
         "picked up": "Ready To Ship",
-        "booked": "Ready To Ship",
+        booked: "Ready To Ship",
         "in transit": "In-transit",
         "departed from location": "In-transit",
         "out for delivery": "Out for Delivery",
         delivered: "Delivered",
         "rto processed & forwarded": "RTO",
-        "rto booked":"RTO",
+        "rto in transit": "RTO In-transit",
+        "rto delivered": "RTO Delivered",
+        "rto booked": "RTO",
         cancelled: "Cancelled",
         lost: "Cancelled",
         undelivered: "In-transit",
-        
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
@@ -816,14 +825,25 @@ const trackSingleOrder = async (order) => {
         "field pickup done": "In-transit",
         "out for delivery": "Out for Delivery",
         "call placed to consignee": "Out for Delivery",
+        "consignee refused to accept/order cancelled": "In-transit",
+        "incomplete address & contact details": "In-transit",
+        "package details changed by shipper": " In-transit",
         "dispatched for rto": "RTO",
         "return accepted": "RTO",
-        "Delivered to consignee": "Delivered",
+        "delivered to consignee": "Delivered",
         "seller cancelled the order": "Cancelled",
       };
 
       const status = normalizedData.Instructions?.toLowerCase();
       const instruction = normalizedData.Instructions?.toLowerCase();
+
+      if (
+        order.tracking[order.tracking.length - 1].instruction ===
+          "no client instructions to reattempt" &&
+        normalizedData.Instructions === "added to bag"
+      ) {
+        newStatus = "RTO In-transit";
+      }
 
       if (order.status === "RTO" && instruction === "delivered") {
         newStatus = "RTO Delivered";
@@ -917,10 +937,10 @@ const trackOrders = async () => {
 //   await trackOrders();
 // });
 
-cron.schedule("*/2 * * * *", async () => {
-  console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-  await trackOrders();
-});
+// cron.schedule("*/2 * * * *", async () => {
+//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
+//   await trackOrders();
+// });
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
