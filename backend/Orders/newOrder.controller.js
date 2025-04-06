@@ -768,10 +768,10 @@ const trackSingleOrder = async (order) => {
         "pickup failed": "Ready To Ship",
         "pickup awaited":"Ready To Ship",
         "softdata upload":"Ready To Ship",
-        "pickup scheduled": "In-transit",
+        "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
-        "picked up": "In-transit",
-        "booked": "In-transit",
+        "picked up": "Ready To Ship",
+        "booked": "Ready To Ship",
         "in transit": "In-transit",
         "departed from location": "In-transit",
         "out for delivery": "Out for Delivery",
@@ -781,7 +781,7 @@ const trackSingleOrder = async (order) => {
         cancelled: "Cancelled",
         lost: "Cancelled",
         undelivered: "In-transit",
-        "not picked": "Ready To Ship",
+        
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
