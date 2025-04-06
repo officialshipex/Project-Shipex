@@ -12,7 +12,7 @@ const CourierServiceSchema = new mongoose.Schema({
   courierType: {
     type: String,
     required: true,
-    enum: ["Domestic (Surface)", "International"],
+    enum: ["Domestic (Surface)", "Domestic (Air)"],
   },
   name: {
     type: String,
