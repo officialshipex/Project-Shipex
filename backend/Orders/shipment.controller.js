@@ -51,7 +51,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     //   return result;
     // }
     const weight= (currentOrder.packageDetails?.applicableWeight)*1000
-    if (service.provider === "Xpressbees") {
+    if (service.provider === "Xpressbee") {
       const payload = {
         origin: pincode,
         destination:currentOrder.receiverAddress?.pinCode || "",
