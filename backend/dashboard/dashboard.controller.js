@@ -1,58 +1,60 @@
 const Order = require("../models/newOrder.model");
 const dashboard = async (req, res) => {
   try {
-    
-    const userid = req.user._id;
-    const orders = await Order.find({ userId: userid });
-    // console.log(orders)
-    if (!orders || orders.length === 0) {
-      // console.log("hi")
-      return res.status(400).json({ message: "No orders found for this user" });
-    }
+    const userId = req.user._id;
 
-    const deliveredOrders = orders.filter((order) =>
-      ["Delivered", "new", "In-transit", "Ready To Ship"].includes(order.status)
-    );
-    const shiping = orders.filter((order) =>
-      ["Delivered", "In-transit", "Ready To Ship"].includes(order.status)
-    );
-    const shipingLength = shiping.length;
-    const Shipments = orders.filter((order) =>
-      ["new", "Ready To Ship"].includes(order.status)
-    );
-    const TotalShipments = shiping.length;
-    const Delivereds = deliveredOrders.length;
-    // Total delivered
-    const deliveredOrder = orders.filter((order) =>
-      ["Delivered"].includes(order.status)
-    );
-    const Delivered = deliveredOrder.length;
-    const TotalShipment = shiping.reduce((total, order) => {
-      return total + order.totalFreightCharges; // Sum up the amount for each delivered order
-    }, 0);
-    // console.log("sknsk",TotalShipment)
-    // Total Revenue
-    const totalRevenue = deliveredOrders.reduce((total, order) => {
-      return total + order.paymentDetails.amount; // Sum up the amount for each delivered order
-    }, 0);
-    //Average Shipping
-    //  const averageShipping=totalRevenue/Delivered;
-    const averageShipping = Math.round(TotalShipment / shipingLength); // Rounds to the nearest whole number
+    const orders = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $facet: {
+          totalOrders: [{ $count: "count" }],
+          deliveredOrders: [
+            { $match: { status: "Delivered" } },
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: "$paymentDetails.amount" },
+                deliveredCount: { $sum: 1 }
+              }
+            }
+          ],
+          shippingOrders: [
+            { $match: { status: { $in: ["Delivered", "In-transit", "Ready To Ship"] } } },
+            {
+              $group: {
+                _id: null,
+                totalFreight: { $sum: "$totalFreightCharges" },
+                shippingCount: { $sum: 1 }
+              }
+            }
+          ],
+          pendingOrders: [
+            { $match: { status: "new" } },
+            { $count: "count" }
+          ],
+          inTransitOrders: [
+            { $match: { status: "In-transit" } },
+            { $count: "count" }
+          ],
+          pendingPickupOrders: [
+            { $match: { status: "Ready To Ship" } },
+            { $count: "count" }
+          ]
+        }
+      }
+    ]);
 
-    const pending = orders.filter((order) => order.status === "new");
-    const pendingOrder = pending.length;
-    //total order
-    const Intransit = orders.filter((order) => order.status === "In-transit");
-    const intransite = Intransit.length;
-    const totalorder = orders.length;
+    const data = orders[0];
 
-    //pending pickup
-    const pendingdata = orders.filter(
-      (order) => order.status === "Ready To Ship"
-    );
-    const pendingdatapickup = pendingdata.length;
-
-    // console.log(xpreesbees)
+    const totalorder = data.totalOrders[0]?.count || 0;
+    const Delivered = data.deliveredOrders[0]?.deliveredCount || 0;
+    const totalRevenue = data.deliveredOrders[0]?.totalRevenue || 0;
+    const TotalShipments = data.shippingOrders[0]?.shippingCount || 0;
+    const totalFreight = data.shippingOrders[0]?.totalFreight || 0;
+    const averageShipping = TotalShipments > 0 ? Math.round(totalFreight / TotalShipments) : 0;
+    const pendingOrder = data.pendingOrders[0]?.count || 0;
+    const intransite = data.inTransitOrders[0]?.count || 0;
+    const pendingdatapickup = data.pendingPickupOrders[0]?.count || 0;
 
     return res.status(200).json({
       totalorder,
@@ -62,12 +64,14 @@ const dashboard = async (req, res) => {
       pendingOrder,
       intransite,
       TotalShipments,
-      pendingdatapickup,
+      pendingdatapickup
     });
   } catch (error) {
-    return res.status(400).json({ message: "Order not present" });
+    console.error("Dashboard Error:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 module.exports = {
   dashboard,
