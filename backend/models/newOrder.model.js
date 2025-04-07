@@ -101,6 +101,9 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Add the compound index
+orderSchema.index({ userId: 1, createdAt: -1 });
+
 const Shipment = mongoose.model("newOrder", orderSchema);
 
 module.exports = Shipment;
