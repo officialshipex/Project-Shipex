@@ -11,31 +11,31 @@ const rtoCharges = async (req, res) => {
       }
 
      const order= await Order.find({userId:userID,status:"RTO"})
-      order.map(async(item)=>{
+      // order.map(async(item)=>{
    
       // item.tracking.filter(async(e)=>{
-         if(e.Instructions==="Consignee refused to accept/order cancelled" && item.status!=="RTO"){
-          // await Order.updateOne({ _id: item._id }, { $set: { status: "RTO" } });
-          let result = await getZone(
-            item.pickupAddress.pinCode,
-            item.receiverAddress.pinCode
-          );
-          let currentZone = result.zone;
-          const plans=await Plan.findOne({userId})
-          const ratecards = await rateCards.findOne({ 
-            plan: plans.planName,courierServiceName:item.courierServiceName 
-          });
-          const applicableWeight=((item.packageDetails.applicableWeight)*1000)-(ratecards.weightPriceBasic[0][currentZone])
+      //    if(e.Instructions==="Consignee refused to accept/order cancelled" && item.status!=="RTO"){
+      //     // await Order.updateOne({ _id: item._id }, { $set: { status: "RTO" } });
+      //     let result = await getZone(
+      //       item.pickupAddress.pinCode,
+      //       item.receiverAddress.pinCode
+      //     );
+      //     let currentZone = result.zone;
+      //     const plans=await Plan.findOne({userId})
+      //     const ratecards = await rateCards.findOne({ 
+      //       plan: plans.planName,courierServiceName:item.courierServiceName 
+      //     });
+      //     const applicableWeight=((item.packageDetails.applicableWeight)*1000)-(ratecards.weightPriceBasic[0][currentZone])
           
-          // console.log(ratecards)
-          let basicChargef = parseFloat(ratecards.weightPriceBasic[0][currentZone]);
-          let totalChargesForward=basicChargef
-          // if(){
+      //     // console.log(ratecards)
+      //     let basicChargef = parseFloat(ratecards.weightPriceBasic[0][currentZone]);
+      //     let totalChargesForward=basicChargef
+      //     // if(){
 
-          // }
+      //     // }
           
-         }
-       })
+      //    }
+      //  })
       // })
     //   res.status(200).json({ message: "RTO charges processed successfully." });
     } catch (error) {
