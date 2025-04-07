@@ -195,15 +195,50 @@ const newReciveAddress = async (req, res) => {
   }
 };
 
+// const getOrders = async (req, res) => {
+//   try {
+//     const orders = await Order.find({ userId: req.user._id })
+//       .sort({ createdAt: -1 })
+//       .lean();
+
+//     res.json(orders);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .lean();
+    const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit = limitQuery === 'All' || !limitQuery ? null : parseInt(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
+    const status = req.query.status;
+    // console.log(status)
 
-    res.json(orders);
+    const filter = { userId };
+    if (status && status !== "All") {
+      filter.status = status;
+    }
+
+    const totalCount = await Order.countDocuments(filter);
+
+    let query = Order.find(filter).sort({ createdAt: -1 });
+    if (limit) query = query.skip(skip).limit(limit);
+
+    const orders = await query.lean();
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+
+    res.json({
+      orders,
+      totalPages,
+      totalCount,
+      currentPage: page,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching paginated orders:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -754,7 +789,7 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
 
-      if(order.status==="RTO" && instruction === "bagged"){
+      if (order.status === "RTO" && instruction === "bagged") {
         newStatus = "RTO In-transit";
       }
 
@@ -807,6 +842,10 @@ const trackSingleOrder = async (order) => {
       if (order.status === "RTO" && instruction === "rto delivered") {
         newStatus = "RTO Delivered";
       }
+      if(instruction==="delivered"){
+        newStatus="Delivered";
+        ndrStatus="Delivered;"
+      }
     } else {
       const statusMappings = {
         "manifest uploaded": "Ready To Ship",
@@ -845,13 +884,13 @@ const trackSingleOrder = async (order) => {
         newStatus = "RTO In-transit";
       }
 
-      if (order.status === "RTO" && instruction === "delivered") {
+      if (order.status === "RTO" && instruction === "delivered to consignee") {
         newStatus = "RTO Delivered";
       } else {
         newStatus = statusMappings[status] || order.status;
       }
 
-      if (status === "delivered") {
+      if (instruction === "delivered to consignee") {
         newStatus = "Delivered";
         order.ndrStatus = "Delivered";
       }
