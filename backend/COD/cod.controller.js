@@ -133,9 +133,9 @@ const codToBeRemitted = async () => {
           };
           existingRemittance.sameDayDelhiveryOrders.push(dateEntry);
           existingRemittance.CODToBeRemitted += order.paymentDetails.amount;
-          // await existingRemittance.save();
+          await existingRemittance.save();
         }
-        // await existingRemittance.save();
+        await existingRemittance.save();
       } else {
         const newRemittance = new codRemittance({
           userId: order.userId,
@@ -150,7 +150,7 @@ const codToBeRemitted = async () => {
           ],
         });
 
-        // await newRemittance.save();
+        await newRemittance.save();
         // console.log("33333333333", newRemittance);
       }
     }
