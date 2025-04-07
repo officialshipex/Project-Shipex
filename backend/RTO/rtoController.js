@@ -5,15 +5,15 @@ const zoneManagementController = require("../Rate/zoneManagementController");
 const getZone = zoneManagementController.getZone;
 const rtoCharges = async (req, res) => {
     try {
-      const userId = req.user?._id;
-      
-      if (!userId) {
+      const userID = req.user?._id;
+      if (!userID) {
         return res.status(400).json({ message: "User ID not found in request." });
       }
 
-     const order= await Order.find({userId})
-      order.map((item)=>{
-       item.tracking.filter(async(e)=>{
+     const order= await Order.find({userId:userID,status:"RTO"})
+      order.map(async(item)=>{
+   
+      // item.tracking.filter(async(e)=>{
          if(e.Instructions==="Consignee refused to accept/order cancelled" && item.status!=="RTO"){
           // await Order.updateOne({ _id: item._id }, { $set: { status: "RTO" } });
           let result = await getZone(
@@ -36,7 +36,7 @@ const rtoCharges = async (req, res) => {
           
          }
        })
-      })
+      // })
     //   res.status(200).json({ message: "RTO charges processed successfully." });
     } catch (error) {
       console.error("Error in rtoCharges:", error);
