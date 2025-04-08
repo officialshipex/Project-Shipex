@@ -317,7 +317,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
     );
 
     const zipCodeResponse = response.data.ZIPCODE_RESP || [];
-    console.log("DTDC Response:", zipCodeResponse);
+    // console.log("DTDC Response:", zipCodeResponse);
 
     if (zipCodeResponse.length === 0) {
       return { success: false }; // No data returned
@@ -343,8 +343,8 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
         (resp) => resp.MESSAGE === "SUCCESS" && resp.SERVFLAG === "Y"
       );
 
-    // console.log("isOrigin:", isOriginServiceable);
-    // console.log("isDestination:", isDestinationServiceable);
+    console.log("isOrigin:", isOriginServiceable);
+    console.log("isDestination:", isDestinationServiceable);
 
     // If both origin and destination are fully serviceable, return true
     return { success: isOriginServiceable && isDestinationServiceable };
