@@ -2,84 +2,106 @@ const RateCard = require("../models/rateCards.js");
 const zoneManagementController = require("./zoneManagementController.js");
 const getZone = zoneManagementController.getZone;
 const Plan = require("../models/Plan.model.js");
+const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers.js")
+const {checkPincodeServiceabilityDelhivery}=require("../AllCouriers/Delhivery/Courier/couriers.controller.js")
+const {checkServiceabilityDTDC}=require("../AllCouriers/DTDC/Courier/couriers.controller.js")
+
+
 
 const calculateRate = async (req, res) => {
   try {
     const id = req.user._id;
-    let result = await getZone(
-      req.body.pickUpPincode,
-      req.body.deliveryPincode
-    );
+    const { pickUpPincode, deliveryPincode, applicableWeight, paymentType, declaredValue } = req.body;
+    console.log(pickUpPincode,deliveryPincode,applicableWeight,paymentType,declaredValue)
+
+    let result = await getZone(pickUpPincode, deliveryPincode);
     let currentZone = result.zone;
     const plan = await Plan.findOne({ userId: id });
-
     let rateCards = plan.rateCard;
+    const order_type=paymentType==="COD"?"cod":"prepaid"
 
     let ans = [];
-    const chargedWeight = req.body.applicableWeight * 1000;
+    const chargedWeight = applicableWeight * 1000;
+    const gst = 18;
+    // console.log("rate",rateCards)
 
-    let gst = 18;
-    let provider;
-    let mode;
     for (let rc of rateCards) {
-      provider = rc.courierProviderName;
-      mode = rc.mode;
-      let basicChargef = parseFloat(rc.weightPriceBasic[0][currentZone]);
-      let additionalChargef = parseFloat(
-        rc.weightPriceAdditional[0][currentZone]
-      );
+      const provider = rc.courierProviderName;
+      const mode = rc.mode;
+      let serviceable;
 
-      let finalChargef;
+      if (!["EcomExpress", "Delhivery", "DTDC"].includes(provider)) {
+        continue;
+      }
+
+      // Check serviceability per provider
+      if (provider === "EcomExpress") {
+        serviceable = await checkServiceabilityEcomExpress(pickUpPincode, deliveryPincode);
+        console.log("ecom",serviceable)
+
+      } else if (provider === "Delhivery") {
+        serviceable = await checkPincodeServiceabilityDelhivery(pickUpPincode, order_type);
+        // console.log("dele",serviceable)
+      } else if (provider === "DTDC") {
+        serviceable = await checkServiceabilityDTDC(pickUpPincode, deliveryPincode);
+        // console.log("check",serviceable)
+      }
+
+      // if (!isServiceable) continue; // Skip if not serviceable
+
+      if(serviceable.success===false){
+        continue;
+      }
+
+      let basicCharge = parseFloat(rc.weightPriceBasic[0][currentZone]);
+      let additionalCharge = parseFloat(rc.weightPriceAdditional[0][currentZone]);
+
+      let finalCharge;
       const count = Math.ceil(
         (chargedWeight - rc.weightPriceBasic[0].weight) /
-          rc.weightPriceAdditional[0].weight
+        rc.weightPriceAdditional[0].weight
       );
+
       if (rc.weightPriceBasic[0].weight >= chargedWeight) {
-        finalChargef = basicChargef;
-      } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
-        finalChargef = basicChargef + additionalChargef * count;
+        finalCharge = basicCharge;
+      } else {
+        finalCharge = basicCharge + additionalCharge * count;
       }
+
       let cod = 0;
-      if (req.body.paymentType === "COD") {
-        const orderValue = Number(req.body.declaredValue) || 0;
+      if (paymentType === "COD") {
+        const orderValue = Number(declaredValue) || 0;
         if (
           typeof rc.codCharge === "number" &&
           typeof rc.codPercent === "number"
         ) {
-          let finalCod = Math.max(
-            rc.codCharge,
-            orderValue * (rc.codPercent / 100)
-          );
-
-          cod += finalCod;
-        } else {
-          console.error("COD charge or percentage is not properly defined.");
+          cod = Math.max(rc.codCharge, orderValue * (rc.codPercent / 100));
         }
       }
-      // console.log("22222200",cod)
-      let gstAmountf = (finalChargef + cod) * (gst / 100).toFixed(2);
-      let totchargesf = Math.round(finalChargef + cod + gstAmountf);
 
-      let allRates = {};
-      allRates.courierServiceName = rc.courierServiceName;
-      allRates.cod = cod;
-      allRates.provider = provider;
-      allRates.mode = mode;
-      allRates.forward = {
-        charges: finalChargef,
-        gst: gstAmountf,
-        finalCharges: totchargesf,
-      };
+      let gstAmount = Number(((finalCharge + cod) * gst) / 100).toFixed(2);
+      let totalCharges = Math.round(finalCharge + cod + parseFloat(gstAmount));
 
-      ans.push(allRates);
+      ans.push({
+        courierServiceName: rc.courierServiceName,
+        provider,
+        mode,
+        cod,
+        forward: {
+          charges: finalCharge,
+          gst: gstAmount,
+          finalCharges: totalCharges,
+        },
+      });
     }
-    // console.log("1111111111111111",ans)
+
     res.status(201).json(ans);
   } catch (error) {
-    console.log("Error in Calculation");
+    console.error("Error in Calculation:", error);
     res.status(500).json({ error: "Error in Calculation" });
   }
 };
+
 
 async function calculateRateForService(payload) {
   try {

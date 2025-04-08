@@ -5,6 +5,7 @@ const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { fetchBulkWaybills } = require("../Authorize/saveCourierController");
 const checkServiceabilityEcomExpress = async (originPincode, destinationPincode) => {
+  // console.log("eocmcm")
   if (!originPincode || !destinationPincode) {
     return { success: false, error: "Both origin and destination pincodes are required." };
   }
