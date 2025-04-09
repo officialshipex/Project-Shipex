@@ -53,7 +53,7 @@ const createOneClickShipment = async (req, res) => {
 
   try {
     const response = await axios.post(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/oneClickShipment",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/oneClickShipment",
       shipmentData,
       {
         headers: {
@@ -85,7 +85,7 @@ const cancelShipment = async (shipmentId) => {
 
   try {
     const response = await axios.put(
-      `https://sandbox.shipping-api.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
+      `https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
       {},
       {
         headers: {
@@ -121,7 +121,7 @@ const getShipmentTracking = async (trackingId, carrierId) => {
 
   try {
     const response = await axios.get(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/tracking",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/tracking",
       {
         params: { trackingId, carrierId },
         headers: {
@@ -143,13 +143,13 @@ const getShipmentTracking = async (trackingId, carrierId) => {
 };
 
 const checkAmazonServiceability = async (provider, payload) => {
-  // console.log("payloadprovider",provider,payload)
+  console.log("payloadprovider", provider, payload);
   const accessToken = await getAmazonAccessToken();
   if (!accessToken) return;
 
   const shipFrom = {
     name: payload.origin.contactName,
-    addressLine1: payload.origin.address,
+    addressLine1: payload.origin.address.slice(0, 60), // Truncate to 60 chars
     city: payload.origin.city,
     postalCode: payload.origin.pinCode,
     countryCode: "IN",
@@ -157,36 +157,68 @@ const checkAmazonServiceability = async (provider, payload) => {
 
   const shipTo = {
     name: payload.destination.contactName,
-    addressLine1: payload.destination.address,
+    addressLine1: payload.destination.address.slice(0, 60), // Truncate to 60 chars
     city: payload.destination.city,
     postalCode: payload.destination.pinCode,
     countryCode: "IN",
   };
 
-  // console.log("ahiptdkfl",shipTo,shipFrom)
+  console.log("ahiptdkfl", payload.weight);
 
   try {
     const requestBody = {
       shipFrom,
       shipTo,
-      shipDate: new Date().toISOString(), // Current date-time
+      shipDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+
       packages: [
         {
           dimensions: {
             length: payload.length,
             width: payload.breadth,
             height: payload.height,
-            unit: "cm",
+            unit: "CENTIMETER",
           },
-          weight: { value: payload.weight / 1000, unit: "kg" },
+          weight: { value: payload.weight / 1000, unit: "KILOGRAM" },
+          insuredValue: {
+            value: 100,
+            unit: "INR",
+          },
+          packageClientReferenceId: `${payload.orderId}`,
+          items: [
+            {
+              itemValue: {
+                value: 2,
+                unit: "INR",
+              },
+              // "description": "book:1",
+              // "itemIdentifier": "item-11111",
+              quantity: 1,
+              weight: {
+                unit: "GRAM",
+                value: 400,
+              },
+              isHazmat: false,
+              // "productType": "books:1",
+              invoiceDetails: {
+                invoiceDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+              },
+            },
+          ],
         },
       ],
-      channelDetails: { channelType: "Amazon" },
+      taxDetails: [
+        {
+          taxType: "GST",
+          taxRegistrationNumber: "06FKCPS6109D3Z7",
+        },
+      ],
+      channelDetails: { channelType: "EXTERNAL" },
     };
     // console.log("amaxon id",process.env.AMAZON_BUSINESS_ID)
-    console.log("access",accessToken)
+    console.log("rererques", requestBody);
+    console.log("access", accessToken);
     const response = await axios.post(
-      // "https://sandbox.sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       requestBody,
       {
@@ -198,18 +230,21 @@ const checkAmazonServiceability = async (provider, payload) => {
         },
       }
     );
-
-    if (response.data.rates && response.data.rates.length > 0) {
+    console.log("rate", response.data.payload.rates);
+    console.log("reer", response.data.payload.ineligibleRates);
+    if (response.payload.data.rates && response.data.payload.rates.length > 0) {
       console.log("✅ Amazon Shipping is available for this pincode.");
-      console.log("Available Rates:", response.data.rates);
+      return { success: true, reason: "pincodes are serviceable." };
     } else {
       console.log("❌ Amazon does not service this pincode.");
+      return { success: false, reason: "Pincodes are not serviceable" };
     }
   } catch (error) {
     console.error(
       "Error checking serviceability:",
       error.response?.data || error.message
     );
+    return { success: false, reason: "Error checking serviceability" };
   }
 };
 
