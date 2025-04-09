@@ -985,7 +985,7 @@ const startTrackingLoop = async () => {
 };
 
 // Start the tracking loop
-startTrackingLoop();
+// startTrackingLoop();
 
 // cron.schedule("*/5 * * * *", async () => {
 //   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
@@ -1002,7 +1002,7 @@ const mapTrackingResponse = (data, provider) => {
     },
     DTDC: {
       Status: data.trackHeader?.strStatus || "N/A",
-      StatusLocation: data.trackDetails.length
+      StatusLocation: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strOrigin
         : "N/A",
       StatusDateTime: data.trackDetails?.length
