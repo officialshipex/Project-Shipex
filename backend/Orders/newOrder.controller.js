@@ -985,7 +985,7 @@ const startTrackingLoop = async () => {
 };
 
 // Start the tracking loop
-startTrackingLoop();
+// startTrackingLoop();
 
 // cron.schedule("*/5 * * * *", async () => {
 //   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
