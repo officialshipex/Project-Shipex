@@ -922,13 +922,10 @@ const trackSingleOrder = async (order) => {
 
     // Prevent duplicate tracking logs
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
-    const isDuplicate =
-      lastTrackingEntry &&
-      lastTrackingEntry.Instructions === normalizedData.Instructions &&
-      lastTrackingEntry.StatusDateTime === normalizedData.StatusDateTime &&
-      lastTrackingEntry.StatusLocation === normalizedData.StatusLocation;
-
-    if (!isDuplicate) {
+    if (
+      !lastTrackingEntry ||
+      lastTrackingEntry.Instructions !== normalizedData.Instructions
+    ) {
       order.tracking.push({
         status: normalizedData.Status,
         StatusLocation: normalizedData.StatusLocation,
