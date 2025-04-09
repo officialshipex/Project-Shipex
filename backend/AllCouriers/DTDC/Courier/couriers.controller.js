@@ -153,6 +153,7 @@ if(!courier){
         },
       });
     }else{
+      console.log("ererer",response.data)
       return res.status(400).json({message:"Error creating shipment"})
     }
 
