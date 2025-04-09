@@ -353,6 +353,7 @@ const verifySession = async (req, res) => {
 
 const forgetPassword = async (req, res) => {
   const { email, newPassword } = req.body;
+  // console.log("hii")
 
   try {
     const user = await User.findOne({ email });
@@ -365,6 +366,7 @@ const forgetPassword = async (req, res) => {
 
     res.json({ message: "Password Reset successfully" });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ message: "Error updating password", error });
   }
 };
