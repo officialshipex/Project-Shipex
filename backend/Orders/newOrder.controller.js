@@ -213,7 +213,8 @@ const getOrders = async (req, res) => {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit = limitQuery === 'All' || !limitQuery ? null : parseInt(limitQuery);
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const status = req.query.status;
     // console.log(status)
@@ -242,9 +243,6 @@ const getOrders = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
-
 
 const updateOrder = async (req, res) => {
   try {
@@ -733,7 +731,6 @@ const limiter = new Bottleneck({
   reservoirRefreshInterval: 60 * 1000, // Refresh every 1 minute
 });
 
-// Define your single order tracking logic
 const trackSingleOrder = async (order) => {
   try {
     // console.log("Tracking order:", order.orderId);
@@ -842,9 +839,9 @@ const trackSingleOrder = async (order) => {
       if (order.status === "RTO" && instruction === "rto delivered") {
         newStatus = "RTO Delivered";
       }
-      if(instruction==="delivered"){
-        newStatus="Delivered";
-        ndrStatus="Delivered;"
+      if (instruction === "delivered") {
+        newStatus = "Delivered";
+        ndrStatus = "Delivered";
       }
     } else {
       const statusMappings = {
@@ -925,10 +922,13 @@ const trackSingleOrder = async (order) => {
 
     // Prevent duplicate tracking logs
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
-    if (
-      !lastTrackingEntry ||
-      lastTrackingEntry.Instructions !== normalizedData.Instructions
-    ) {
+    const isDuplicate =
+      lastTrackingEntry &&
+      lastTrackingEntry.Instructions === normalizedData.Instructions &&
+      lastTrackingEntry.StatusDateTime === normalizedData.StatusDateTime &&
+      lastTrackingEntry.StatusLocation === normalizedData.StatusLocation;
+
+    if (!isDuplicate) {
       order.tracking.push({
         status: normalizedData.Status,
         StatusLocation: normalizedData.StatusLocation,
@@ -985,7 +985,7 @@ const startTrackingLoop = async () => {
 };
 
 // Start the tracking loop
-startTrackingLoop();
+// startTrackingLoop();
 
 // cron.schedule("*/5 * * * *", async () => {
 //   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
@@ -1002,7 +1002,9 @@ const mapTrackingResponse = (data, provider) => {
     },
     DTDC: {
       Status: data.trackHeader?.strStatus || "N/A",
-      StatusLocation: data.trackHeader?.strOrigin || "N/A",
+      StatusLocation: data.trackDetails.length
+        ? data.trackDetails[data.trackDetails.length - 1].strOrigin
+        : "N/A",
       StatusDateTime: data.trackDetails?.length
         ? formatDTDCDateTime(
             data.trackDetails[data.trackDetails.length - 1].strActionDate,

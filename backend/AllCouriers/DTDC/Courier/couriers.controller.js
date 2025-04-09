@@ -289,6 +289,7 @@ const trackOrderDTDC = async (AWBNo) => {
   }
 };
 
+
 const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
   try {
     if (!originPincode || !destinationPincode) {
