@@ -21,7 +21,7 @@ const checkServiceabilityEcomExpress = async (originPincode, destinationPincode)
     originFormData.append("pincode", originPincode);
 
     const originResponse = await axios.post(url, originFormData, { headers: originFormData.getHeaders() });
-    console.log("Origin Serviceability:", originResponse.data);
+    // console.log("Origin Serviceability:", originResponse.data);
 
     if (!originResponse?.data?.length || !originResponse.data[0].active) {
       return { success: false, reason: "Origin pincode not serviceable", data: originResponse.data };
@@ -34,7 +34,7 @@ const checkServiceabilityEcomExpress = async (originPincode, destinationPincode)
     destinationFormData.append("pincode", destinationPincode);
 
     const destinationResponse = await axios.post(url, destinationFormData, { headers: destinationFormData.getHeaders() });
-    console.log("Destination Serviceability:", destinationResponse.data);
+    // console.log("Destination Serviceability:", destinationResponse.data);
 
     if (!destinationResponse?.data?.length || !destinationResponse.data[0].active) {
       return { success: false, reason: "Destination pincode not serviceable", data: destinationResponse.data };

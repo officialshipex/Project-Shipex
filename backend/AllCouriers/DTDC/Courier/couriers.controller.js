@@ -303,7 +303,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
       desPincode: destinationPincode,
     };
 
-    console.log("Request Body:", requestBody);
+    // console.log("Request Body:", requestBody);
 
     // Make API Call
     const response = await axios.post(
@@ -343,8 +343,8 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
         (resp) => resp.MESSAGE === "SUCCESS" && resp.SERVFLAG === "Y"
       );
 
-    console.log("isOrigin:", isOriginServiceable);
-    console.log("isDestination:", isDestinationServiceable);
+    // console.log("isOrigin:", isOriginServiceable);
+    // console.log("isDestination:", isDestinationServiceable);
 
     // If both origin and destination are fully serviceable, return true
     return { success: isOriginServiceable && isDestinationServiceable };

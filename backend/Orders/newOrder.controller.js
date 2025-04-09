@@ -490,7 +490,7 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-        console.log("iiiii", result);
+        // console.log("iiiii", result);
         if (result && result.success) {
           return {
             item,
