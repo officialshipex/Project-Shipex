@@ -7,6 +7,7 @@ const {createOneClickShipment,
     checkAmazonServiceability,}=require("../AllCouriers/Amazon/Courier/couriers.controller")
 
 const router=express.Router();
+router.post("/createShipment",createOneClickShipment)
 
 router.post("/getToken",getToken);
 router.post("/cancelShipment",cancelShipment);
