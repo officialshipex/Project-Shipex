@@ -971,15 +971,26 @@ const trackOrders = async () => {
     console.error("❌ Error in tracking orders:", error);
   }
 };
-// cron.schedule('0 * * * *', async () => {
+
+const startTrackingLoop = async () => {
+  try {
+    console.log("🕒 Starting Order Tracking");
+    await trackOrders();
+    console.log("⏳ Waiting for 5 minutes before next tracking cycle...");
+    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Wait 5 minutes, then call again
+  } catch (error) {
+    console.error("❌ Error in tracking loop:", error);
+    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Retry after 5 minutes even on error
+  }
+};
+
+// Start the tracking loop
+startTrackingLoop();
+
+// cron.schedule("*/5 * * * *", async () => {
 //   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
 //   await trackOrders();
 // });
-
-cron.schedule("*/5 * * * *", async () => {
-  console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-  await trackOrders();
-});
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
