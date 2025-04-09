@@ -101,7 +101,8 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         weight: weight || 0,
         length:currentOrder.packageDetails.volumetricWeight?.length || 0,
         breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
-        height: currentOrder.packageDetails.volumetricWeight?.height || 0
+        height: currentOrder.packageDetails.volumetricWeight?.height || 0,
+        productDetails:currentOrder.productDetails
       };
 
       const result = await checkAmazonServiceability(

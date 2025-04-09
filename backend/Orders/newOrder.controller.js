@@ -490,7 +490,7 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-        console.log("iiiii", result);
+        // console.log("iiiii", result);
         if (result && result.success) {
           return {
             item,
@@ -726,7 +726,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 
 const limiter = new Bottleneck({
-  minTime: 100, // 10 requests per second (100ms delay between each)
+  minTime: 1000, // 10 requests per second (1000ms delay between each)
   maxConcurrent: 10, // Maximum 10 at the same time
   reservoir: 750, // Max 750 calls per minute
   reservoirRefreshAmount: 750,
@@ -877,7 +877,7 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
 
       if (
-        order.tracking[order.tracking.length - 1].instruction ===
+        order.tracking[order.tracking.length - 1]?.instruction ===
           "no client instructions to reattempt" &&
         normalizedData.Instructions === "added to bag"
       ) {
@@ -953,7 +953,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "delivered"] },
+      status: { $nin: ["new", "Delivered"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -976,10 +976,10 @@ const trackOrders = async () => {
 //   await trackOrders();
 // });
 
-// cron.schedule("*/2 * * * *", async () => {
-//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-//   await trackOrders();
-// });
+cron.schedule("*/5 * * * *", async () => {
+  console.log("🕒 Cron Job Triggered: Starting Order Tracking");
+  await trackOrders();
+});
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
