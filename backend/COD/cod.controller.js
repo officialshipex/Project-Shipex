@@ -229,7 +229,7 @@ const remittanceScheduleData = async () => {
           continue;
         }
         // console.log("hjjhhjhjhjhj",dayDifference,Codplans)
-        if (dayDifference === Codplans) {
+        if (dayDifference <=9) {
           //
           // if (true) {
           // console.log("kkkkkkkkkkk", value);
@@ -407,7 +407,7 @@ const fetchExtraData = async () => {
 };
 // cron.schedule("*/1 * * * *", () => {
 //     console.log("Running scheduled task at 4 AM: Fetching orders...");
-//     remittanceScheduleData();
+//     fetchExtraData();
 //   });
 cron.schedule("30 1 * * *", () => {
   console.log("Running scheduled task at 4.30 AM: Fetching orders...");

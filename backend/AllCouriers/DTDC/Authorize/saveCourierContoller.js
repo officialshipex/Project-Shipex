@@ -89,7 +89,7 @@ const getDTDCAuthToken = async () => {
     // console.log("DTDC Auth Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error fetching DTDC auth token:", error.message);
+    // console.error("Error fetching DTDC auth token:", error.message);
     return {
       success: false,
       message: "Failed to authenticate with DTDC",
