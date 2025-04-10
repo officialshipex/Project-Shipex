@@ -944,7 +944,8 @@ const trackSingleOrder = async (order) => {
       // Just update the last entry if the checkpoint is the same
       lastTrackingEntry.status = normalizedData.Status;
       lastTrackingEntry.Instructions = normalizedData.Instructions;
-    } else {
+    } else if(!lastTrackingEntry ||
+      lastTrackingEntry.Instructions !== normalizedData.Instructions) {
       // It's a new checkpoint, so push it
       order.tracking.push({
         status: normalizedData.Status,
@@ -1001,7 +1002,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop()
+// startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
