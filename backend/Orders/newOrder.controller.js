@@ -1001,6 +1001,8 @@ const startTrackingLoop = async () => {
   }
 };
 
+startTrackingLoop()
+
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
     EcomExpress: {
