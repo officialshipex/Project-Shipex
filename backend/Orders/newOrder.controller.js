@@ -26,6 +26,9 @@ const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const {
+  cancelShipment,
+} = require("../AllCouriers/Amazon/Courier/couriers.controller");
+const {
   cancelOrderShreeMaruti,
   trackOrderShreeMaruti,
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
@@ -666,7 +669,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
         return {
-          error: "Failed to cancel shipment with NimbusPost",
+          error: "Failed to cancel shipment with DTDC",
           details: result,
           orderId: currentOrder._id,
         };
@@ -675,7 +678,16 @@ const cancelOrdersAtBooked = async (req, res) => {
       const result = await cancelShipmentforward(currentOrder.awb_number);
       if (result.error) {
         return {
-          error: "Failed to cancel shipment with NimbusPost",
+          error: "Failed to cancel shipment with EcomExpress",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
+    } else if (currentOrder.provider === "Amazon") {
+      const result = await cancelShipment(currentOrder.awb_number);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with Amazon",
           details: result,
           orderId: currentOrder._id,
         };
@@ -922,10 +934,18 @@ const trackSingleOrder = async (order) => {
 
     // Prevent duplicate tracking logs
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
-    if (
-      !lastTrackingEntry ||
-      (lastTrackingEntry.Instructions !== normalizedData.Instructions && lastTrackingEntry.Instructions !== "Pickup Scheduled")
-    ) {
+
+    const isSameCheckpoint =
+      lastTrackingEntry &&
+      lastTrackingEntry.StatusLocation === normalizedData.StatusLocation &&
+      lastTrackingEntry.StatusDateTime === normalizedData.StatusDateTime;
+
+    if (isSameCheckpoint) {
+      // Just update the last entry if the checkpoint is the same
+      lastTrackingEntry.status = normalizedData.Status;
+      lastTrackingEntry.Instructions = normalizedData.Instructions;
+    } else {
+      // It's a new checkpoint, so push it
       order.tracking.push({
         status: normalizedData.Status,
         StatusLocation: normalizedData.StatusLocation,
@@ -980,14 +1000,6 @@ const startTrackingLoop = async () => {
     setTimeout(startTrackingLoop, 5 * 60 * 1000); // Retry after 5 minutes even on error
   }
 };
-
-// Start the tracking loop
-startTrackingLoop();
-
-// cron.schedule("*/5 * * * *", async () => {
-//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-//   await trackOrders();
-// });
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
