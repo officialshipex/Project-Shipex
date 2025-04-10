@@ -924,7 +924,7 @@ const trackSingleOrder = async (order) => {
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
     if (
       !lastTrackingEntry ||
-      lastTrackingEntry.Instructions !== normalizedData.Instructions
+      (lastTrackingEntry.Instructions !== normalizedData.Instructions && lastTrackingEntry.Instructions !== "Pickup Scheduled")
     ) {
       order.tracking.push({
         status: normalizedData.Status,
@@ -982,7 +982,7 @@ const startTrackingLoop = async () => {
 };
 
 // Start the tracking loop
-startTrackingLoop();
+// startTrackingLoop();
 
 // cron.schedule("*/5 * * * *", async () => {
 //   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
