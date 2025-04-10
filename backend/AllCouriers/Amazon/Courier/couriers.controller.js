@@ -1,6 +1,6 @@
 const { getAmazonAccessToken } = require("../Authorize/saveCourierController");
 const axios = require("axios");
-const Order=require("../../../models/newOrder.model")
+const Order = require("../../../models/newOrder.model");
 
 const createOneClickShipment = async (req, res) => {
   try {
@@ -8,84 +8,70 @@ const createOneClickShipment = async (req, res) => {
     if (!accessToken) {
       return res.status(401).json({ error: "Access token missing" });
     }
-
+    // console.log(req.body)
     const { id, provider, finalCharges, courierServiceName } = req.body;
     const currentOrder = await Order.findById(id);
+    const weight = currentOrder.packageDetails?.applicableWeight * 1000;
+    const payload = {
+      origin: currentOrder.pickupAddress,
+      destination: currentOrder.receiverAddress,
+      payment_type:
+        currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+      order_amount: currentOrder.paymentDetails?.amount || 0,
+      weight: weight || 0,
+      length: currentOrder.packageDetails.volumetricWeight?.length || 0,
+      breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
+      height: currentOrder.packageDetails.volumetricWeight?.height || 0,
+      productDetails: currentOrder.productDetails,
+    };
+    const { rate } = await checkAmazonServiceability("Amazon", payload);
+
+    // const { id, requestToken, rateId } = req.body;
+
     if (!currentOrder) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    const amazonBusinessId = process.env.AMAZON_BUSINESS_ID || "AmazonShipping_IN"; // Default to India region
-
-    const {
-      pickupAddress,
-      receiverAddress,
-      packageDetails,
-      orderId,
-      paymentDetails,
-    } = currentOrder;
-
     const shipmentData = {
-      shipFrom: {
-        name: pickupAddress.contactName,
-        addressLine1: pickupAddress.address.slice(0, 60),
-        city: pickupAddress.city,
-        stateOrRegion: pickupAddress.state,
-        postalCode: pickupAddress.pinCode,
-        countryCode: "IN",
+      requestToken: "amzn1.rq.99343242158747.100",
+      rateId: rate,
+      requestedDocumentSpecification: {
+        format: "PDF",
+        size: {
+          width: 4.0,
+          length: 6.0,
+          unit: "INCH",
+        },
+        dpi: 300,
+        pageLayout: "DEFAULT",
+        needFileJoining: false,
+        requestedDocumentTypes: ["LABEL"],
+        requestedLabelCustomization: {
+          requestAttributes: [
+            // "PACKAGE_CLIENT_REFERENCE_ID",
+            currentOrder.orderId,
+            currentOrder.paymentDetails.amount
+
+            // "COLLECT_ON_DELIVERY_AMOUNT",
+          ],
+        },
       },
-      shipTo: {
-        name: receiverAddress.contactName,
-        addressLine1: receiverAddress.address.slice(0, 60),
-        city: receiverAddress.city,
-        stateOrRegion: receiverAddress.state,
-        postalCode: receiverAddress.pinCode,
-        countryCode: "IN",
-      },
-      returnTo: {
-        name: pickupAddress.contactName,
-        addressLine1: pickupAddress.address.slice(0, 60),
-        city: pickupAddress.city,
-        stateOrRegion: pickupAddress.state,
-        postalCode: pickupAddress.pinCode,
-        countryCode: "IN",
-      },
-      shipDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-      goodsOwner: "Seller",
-      packages: [
+      requestedValueAddedServices: [
         {
-          weight: {
-            value: packageDetails.applicableWeight || packageDetails.deadWeight || 0.5,
-            unit: "KILOGRAM",
-          },
-          dimensions: {
-            length: packageDetails.volumetricWeight.length || 10,
-            width: packageDetails.volumetricWeight.width || 10,
-            height: packageDetails.volumetricWeight.height || 10,
-            unit: "CENTIMETER",
-          },
+          id: "CollectOnDelivery",
         },
       ],
-      channelDetails: {
-        channelType: "EXTERNAL",
-      },
-      labelSpecifications: {
-        format: "PDF",
-        size: "4x6",
-      },
-      serviceSelection: {
-        serviceId: courierServiceName || "AMZ-GROUND",
-      },
     };
+    console.log("shipment data", shipmentData);
 
     const response = await axios.post(
-      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/oneClickShipment",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
       shipmentData,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          // Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
           "Content-Type": "application/json",
         },
       }
@@ -98,15 +84,17 @@ const createOneClickShipment = async (req, res) => {
       shipment: response.data,
     });
   } catch (error) {
-    console.error("❌ Error creating OneClickShipment:", error.response?.data || error.message);
+    console.error(
+      "❌ Error creating shipment:",
+      error.response?.data || error.message
+    );
     return res.status(500).json({
       success: false,
-      error: "Error creating OneClickShipment",
+      error: "Error creating shipment",
       details: error.response?.data || error.message,
     });
   }
 };
-
 
 const cancelShipment = async (shipmentId) => {
   const accessToken = await getAmazonAccessToken();
@@ -116,18 +104,27 @@ const cancelShipment = async (shipmentId) => {
     return;
   }
 
-  const amazonBusinessId =
-    process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
+  const isCancelled = await Order.findOne({
+    awb_number: shipmentId,
+    status: "Cancelled",
+  });
+  if (isCancelled) {
+    console.log("order is allready cancelled");
+    return {
+      error: "Order is allready cancelled",
+      code: 400,
+    };
+  }
 
   try {
     const response = await axios.put(
-      `https://sandbox.shipping-api.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
+      `https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
       {},
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
           "Content-Type": "application/json",
         },
       }
@@ -180,7 +177,7 @@ const getShipmentTracking = async (trackingId, carrierId) => {
 
 const checkAmazonServiceability = async (provider, payload) => {
   try {
-    console.log("payloadprovider", payload);
+    // console.log("payloadprovider", payload);
 
     const accessToken = await getAmazonAccessToken();
     if (!accessToken) return { success: false, reason: "Missing access token" };
@@ -269,20 +266,30 @@ const checkAmazonServiceability = async (provider, payload) => {
     const ineligibleRates = response.data.payload.ineligibleRates || [];
 
     if (rates.length > 0) {
-      console.log("✅ Amazon Shipping is available for this pincode.",rates);
-      return { success: true, reason: "Pincodes are serviceable"};
+      // console.log("✅ Amazon Shipping is available for this pincode.", rates);
+      return {
+        success: true,
+        reason: "Pincodes are serviceable",
+        rate: response.data.payload.rates[0].rateId,
+      };
     } else if (ineligibleRates.length > 0) {
       console.log("❌ Amazon does not service this pincode.");
-      return { success: false, reason: "Pincodes are not serviceable", ineligibleRates };
+      return {
+        success: false,
+        reason: "Pincodes are not serviceable",
+        ineligibleRates,
+      };
     } else {
       return { success: false, reason: "No rates returned by Amazon" };
     }
   } catch (error) {
-    console.error("Error checking serviceability:", error.response?.data || error.message);
+    console.error(
+      "Error checking serviceability:",
+      error.response?.data || error.message
+    );
     return { success: false, reason: "Error checking serviceability" };
   }
 };
-
 
 module.exports = {
   createOneClickShipment,
