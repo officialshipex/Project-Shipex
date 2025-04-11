@@ -1,6 +1,11 @@
 const { getAmazonAccessToken } = require("../Authorize/saveCourierController");
 const axios = require("axios");
 const Order = require("../../../models/newOrder.model");
+const Wallet = require("../../../models/wallet");
+const User = require("../../../models/User.model");
+const { s3 } = require("../../../config/s3");
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
+
 
 const createOneClickShipment = async (req, res) => {
   try {
@@ -11,6 +16,20 @@ const createOneClickShipment = async (req, res) => {
     // console.log(req.body)
     const { id, provider, finalCharges, courierServiceName } = req.body;
     const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    const user = await User.findById(currentOrder.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const currentWallet = await Wallet.findById(user.Wallet);
+    if (!currentWallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
     const weight = currentOrder.packageDetails?.applicableWeight * 1000;
     const payload = {
       origin: currentOrder.pickupAddress,
@@ -23,17 +42,17 @@ const createOneClickShipment = async (req, res) => {
       breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
       height: currentOrder.packageDetails.volumetricWeight?.height || 0,
       productDetails: currentOrder.productDetails,
+      orderId:currentOrder.orderId
     };
-    const { rate } = await checkAmazonServiceability("Amazon", payload);
+    const { rate, requestToken } = await checkAmazonServiceability(
+      "Amazon",
+      payload
+    );
 
     // const { id, requestToken, rateId } = req.body;
 
-    if (!currentOrder) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
     const shipmentData = {
-      requestToken: "amzn1.rq.99343242158747.100",
+      requestToken: requestToken,
       rateId: rate,
       requestedDocumentSpecification: {
         format: "PDF",
@@ -48,39 +67,93 @@ const createOneClickShipment = async (req, res) => {
         requestedDocumentTypes: ["LABEL"],
         requestedLabelCustomization: {
           requestAttributes: [
-            // "PACKAGE_CLIENT_REFERENCE_ID",
-            currentOrder.orderId,
-            currentOrder.paymentDetails.amount
+            "PACKAGE_CLIENT_REFERENCE_ID",
+            // currentOrder.orderId,
+            // currentOrder.paymentDetails.amount
 
-            // "COLLECT_ON_DELIVERY_AMOUNT",
+            "COLLECT_ON_DELIVERY_AMOUNT",
           ],
         },
       },
-      requestedValueAddedServices: [
-        {
-          id: "CollectOnDelivery",
-        },
-      ],
     };
     console.log("shipment data", shipmentData);
+    let response;
 
-    const response = await axios.post(
-      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
-      shipmentData,
-      {
-        headers: {
-          // Authorization: `Bearer ${accessToken}`,
-          "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": "AmazonShipping_IN",
-          "Content-Type": "application/json",
+    if (currentWallet.balance >= finalCharges) {
+      response = await axios.post(
+        "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
+        shipmentData,
+        {
+          headers: {
+            // Authorization: `Bearer ${accessToken}`,
+            "x-amz-access-token": accessToken,
+            "x-amzn-shipping-business-id": "AmazonShipping_IN",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Low Balance" });
+    }
+
+    if (response?.data?.payload) {
+      const result = response.data.payload;
+      const base64Label =
+        result.packageDocumentDetails[0].packageDocuments[0].contents;
+      const labelBuffer = Buffer.from(base64Label, "base64");
+      const labelKey = `labels/${Date.now()}_${
+        currentOrder.orderId || "label"
+      }.pdf`;
+
+      const uploadCommand = new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: labelKey,
+        Body: labelBuffer,
+        ContentType: "application/pdf",
+      });
+      
+
+      await s3.send(uploadCommand);
+
+      const labelUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${labelKey}`;
+
+      currentOrder.status = "Ready To Ship";
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.packageDocumentDetails[0].trackingId;
+      currentOrder.shipment_id = `${result.shipmentId}`;
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      currentOrder.courierServiceName = courierServiceName;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.label = labelUrl;
+      let savedOrder = await currentOrder.save();
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId || null,
+            category: "debit",
+            amount: balanceToBeDeducted,
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.packageDocumentDetails[0].trackingId || "",
+            description: "Freight Charges Applied",
+          },
         },
-      }
-    );
+      });
+    } else {
+      console.log("eror", response.data);
+      return res.status(400).json({ message: "Error creating shipment" });
+    }
 
     console.log("✅ Shipment Created:", response.data);
     return res.status(200).json({
       success: true,
-      message: "Shipment created successfully",
+      message: "Shipment Created Successfully",
       shipment: response.data,
     });
   } catch (error) {
@@ -130,43 +203,63 @@ const cancelShipment = async (shipmentId) => {
       }
     );
 
-    console.log("Shipment Cancelled Successfully");
-    return response.data; // Amazon returns an empty object on success
+    await Order.updateOne(
+      { shipment_id: shipmentId },
+      { $set: { status: "Cancelled" } }
+    );
+
+    if (response?.data?.payload) {
+      console.log("Shipment Cancelled Successfully");
+      return {
+        data: response.data,
+        code: 201,
+      };
+    } else {
+      return {
+        error: "Error in shipment cancellation",
+        details: response.data,
+        code: 400,
+      };
+    }
+
+    // return response.data; // Amazon returns an empty object on success
   } catch (error) {
     console.error(
       "Error cancelling shipment:",
       error.response?.data || error.message
     );
+    return {
+      success: false,
+      message: "Failed to cancel shipment",
+      error: error.response?.data,
+    };
   }
 };
 
 // cancelShipment(121212)
 
-const getShipmentTracking = async (trackingId, carrierId) => {
+const getShipmentTracking = async (trackingId) => {
   const accessToken = await getAmazonAccessToken();
   if (!accessToken) {
     console.error("Failed to get access token");
     return;
   }
 
-  const amazonBusinessId =
-    process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
-
   try {
     const response = await axios.get(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/tracking",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/tracking",
       {
-        params: { trackingId, carrierId },
+        params: { trackingId: trackingId, carrierId: "ATS" },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
         },
       }
     );
 
-    console.log("Tracking Information:", response.data);
-    return response.data;
+    console.log("Tracking Information:", response.data.payload.eventHistory[0].eventCode);
+    return {success:true,data:response.data.payload};
   } catch (error) {
     console.error(
       "Error fetching tracking information:",
@@ -177,7 +270,7 @@ const getShipmentTracking = async (trackingId, carrierId) => {
 
 const checkAmazonServiceability = async (provider, payload) => {
   try {
-    // console.log("payloadprovider", payload);
+    console.log("payloadprovider", payload);
 
     const accessToken = await getAmazonAccessToken();
     if (!accessToken) return { success: false, reason: "Missing access token" };
@@ -215,20 +308,20 @@ const checkAmazonServiceability = async (provider, payload) => {
             unit: "KILOGRAM",
           },
           insuredValue: {
-            value: payload.order_amount || 100,
+            value: payload.order_amount,
             unit: "INR",
           },
-          packageClientReferenceId: `${payload.orderId || "ORDER123"}`,
+          packageClientReferenceId: `${payload.orderId}`,
           items: [
             {
               itemValue: {
-                value: payload.order_amount || 2,
+                value: payload.order_amount,
                 unit: "INR",
               },
               quantity: 1,
               weight: {
                 unit: "GRAM",
-                value: payload.weight || 400,
+                value: payload.weight,
               },
               isHazmat: false,
               invoiceDetails: {
@@ -248,6 +341,7 @@ const checkAmazonServiceability = async (provider, payload) => {
         channelType: "EXTERNAL",
       },
     };
+    console.log("body", requestBody);
 
     const response = await axios.post(
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
@@ -264,6 +358,7 @@ const checkAmazonServiceability = async (provider, payload) => {
 
     const rates = response.data.payload.rates || [];
     const ineligibleRates = response.data.payload.ineligibleRates || [];
+    console.log("reat", response.data.payload);
 
     if (rates.length > 0) {
       // console.log("✅ Amazon Shipping is available for this pincode.", rates);
@@ -271,6 +366,7 @@ const checkAmazonServiceability = async (provider, payload) => {
         success: true,
         reason: "Pincodes are serviceable",
         rate: response.data.payload.rates[0].rateId,
+        requestToken: response.data.payload.requestToken,
       };
     } else if (ineligibleRates.length > 0) {
       console.log("❌ Amazon does not service this pincode.");

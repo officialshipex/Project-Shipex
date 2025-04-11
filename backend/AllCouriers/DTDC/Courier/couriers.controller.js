@@ -148,7 +148,7 @@ if(!courier){
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
             awb_number: result.reference_number || "", // Ensuring it follows the schema
-            description: `Freight Chages Applied`,
+            description: `Freight Charges Applied`,
           },
         },
       });
