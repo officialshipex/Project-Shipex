@@ -264,8 +264,8 @@ const trackShipmentDelhivery = async (waybill) => {
       }
     );
     // console.log(response)
-    // console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.Status)
-    // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
+    console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.AWB)
+    console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
