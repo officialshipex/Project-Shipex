@@ -116,18 +116,10 @@ async function calculateRateForService(payload) {
     const plan = await Plan.findOne({ userId: userID });
     let RateCards = plan.rateCard;
 
-    // for (rc of RateCards) {
-    //   let currentRate = await RateCard.findOne({
-    //     courierProviderName: fls.item.provider,
-    //     courierServiceName: fls.item.name,
-    //   });
-    //   rateCards.push(currentRate);
-    // }
-    // const finalRate = rateCards.filter(Boolean);
+    
 
     for (const rc of RateCards) {
-      // const basicWeight = parseFloat(rc.weightPriceBasic[0].weight);
-      // const additionalWeight = parseFloat(rc.weightPriceAdditional[0].weight);
+      
       const basicChargeForward = parseFloat(
         rc.weightPriceBasic[0][currentZone]
       );
