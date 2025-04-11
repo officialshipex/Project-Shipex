@@ -33,8 +33,8 @@ const AmazonRouter=require("./AllCouriersRoutes/amazon.router")
 const LabelRouter = require("./label/label.router");
 const couriersB2CRoutes = require("./routes/couriersB2C.router");
 // const courierServicesRoutes=require('./routes/courierServiceB2C.router');
-const rtoCharges=require("./RTO/rtoRouter")
-router.use("/Rto",isAuthorized,rtoCharges)
+// const rtoCharges=require("./RTO/rtoRouter")
+// router.use("/Rto",isAuthorized,rtoCharges)
 const allocationRouter = require("./addons/orderAllocationEngine/OAE.router");
 const userRouter = require("./routes/user.router");
 const WareHouse = require("./routes/warehouse.router");
