@@ -27,6 +27,7 @@ const {
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const {
   cancelShipment,
+  getShipmentTracking,
 } = require("../AllCouriers/Amazon/Courier/couriers.controller");
 const {
   cancelOrderShreeMaruti,
@@ -684,7 +685,7 @@ const cancelOrdersAtBooked = async (req, res) => {
         };
       }
     } else if (currentOrder.provider === "Amazon") {
-      const result = await cancelShipment(currentOrder.awb_number);
+      const result = await cancelShipment(currentOrder.shipment_id);
       if (result.error) {
         return {
           error: "Failed to cancel shipment with Amazon",
@@ -755,6 +756,7 @@ const trackSingleOrder = async (order) => {
       ShreeMaruti: trackOrderShreeMaruti,
       DTDC: trackOrderDTDC,
       EcomExpress: shipmentTrackingforward,
+      Amazon: getShipmentTracking,
     };
 
     if (!trackingFunctions[provider]) {
@@ -855,7 +857,34 @@ const trackSingleOrder = async (order) => {
         newStatus = "Delivered";
         ndrStatus = "Delivered";
       }
-    } else {
+    }if(provider==="Amazon"){
+      const amazonStatusMapping = {
+        "readyforreceive": "Ready To Ship",
+        "pickup failed": "Ready To Ship",
+        "pickup awaited": "Ready To Ship",
+        "softdata upload": "Ready To Ship",
+        "pickup scheduled": "Ready To Ship",
+        "not picked": "Ready To Ship",
+        "picked up": "Ready To Ship",
+        booked: "Ready To Ship",
+        "in transit": "In-transit",
+        "departed from location": "In-transit",
+        "out for delivery": "Out for Delivery",
+        delivered: "Delivered",
+        "rto processed & forwarded": "RTO",
+        "rto in transit": "RTO In-transit",
+        "rto delivered": "RTO Delivered",
+        "rto booked": "RTO",
+        pickupcancelled: "Cancelled",
+        lost: "Cancelled",
+        undelivered: "In-transit",
+      };
+
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      newStatus = amazonStatusMapping[instruction] || order.status;
+
+    }
+     else {
       const statusMappings = {
         "manifest uploaded": "Ready To Ship",
         "shipment picked up": "In-transit",
@@ -944,8 +973,10 @@ const trackSingleOrder = async (order) => {
       // Just update the last entry if the checkpoint is the same
       lastTrackingEntry.status = normalizedData.Status;
       lastTrackingEntry.Instructions = normalizedData.Instructions;
-    } else if(!lastTrackingEntry ||
-      lastTrackingEntry.Instructions !== normalizedData.Instructions) {
+    } else if (
+      !lastTrackingEntry ||
+      lastTrackingEntry.Instructions !== normalizedData.Instructions
+    ) {
       // It's a new checkpoint, so push it
       order.tracking.push({
         status: normalizedData.Status,
@@ -1025,6 +1056,18 @@ const mapTrackingResponse = (data, provider) => {
         : null,
       Instructions: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strAction
+        : "N/A",
+    },
+    Amazon: {
+      Status: data.summary?.status || "N/A",
+      StatusLocation: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.location?.city
+        : "N/A",
+      StatusDateTime: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.eventTime
+        : "N/A",
+      Instructions: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.eventCode
         : "N/A",
     },
     Shiprocket: {
