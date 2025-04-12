@@ -28,24 +28,20 @@ const { generateKeySync } = require("crypto");
 // In user controller
 const getUsers = async (req, res) => {
   try {
-    const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
-    // console.log(req.user.id);
+      const allUsers = await User.find({ kycDone: true }); 
+      const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
 
-    // Check if the logged-in user exists in the list of KYC-approved users
-    const isSeller = allUsers.some(
-      (user) => user._id.toString() === req.user.id
-    );
-    // console.log(isSeller);
 
-    res.status(201).json({
-      success: true,
-      sellers: allUsers.map((user) => ({
-        userId: user.userId,
-        id: user._id,
-        name: `${user.fullname}`, // Ensure to format the name as needed
-      })),
-      isSeller, // Add this field to check if the user is a seller
-    });
+      res.status(201).json({
+          success: true,
+          sellers: allUsers.map(user => ({
+              userId: user.userId,
+              id:user._id,
+              name: `${user.fullname}`,
+              
+          })),
+          isSeller, // Add this field to check if the user is a seller
+      });
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({
@@ -68,9 +64,8 @@ const getAllUsers = async (req, res) => {
         const aadhar = await Aadhar.findOne({ user: user._id });
         const pan = await Pan.findOne({ user: user._id });
         const gst = await Gst.findOne({ user: user._id });
-        const codPlan = await CodPlans.findOne({ user: user._id });
-        const rateCard = await Plan.findOne({ userId: user._id });
-
+        const codPlan=await CodPlans.findOne({user:user._id})
+        const rateCard=await Plan.findOne({userId:user._id})
         return {
           userId: user?.userId || "N/A",
           fullname: user.fullname,
