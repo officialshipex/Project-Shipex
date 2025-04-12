@@ -800,7 +800,7 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
-console.log("rew",result.rto_awb)
+      console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
         (newStatus === "RTO" || newStatus === "RTO In-transit") &&
@@ -1041,7 +1041,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop()
+// startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -1234,7 +1234,7 @@ module.exports = {
   getpickupAddress,
   getreceiverAddress,
   newPickupAddress,
-  newReciveAddress,   
+  newReciveAddress,
   ShipeNowOrder,
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
