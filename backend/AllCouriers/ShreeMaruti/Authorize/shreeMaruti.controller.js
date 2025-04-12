@@ -130,7 +130,7 @@ const isEnabeled = async (req, res) => {
             // throw new Error(`Login failed: ${response.status}`);
         }
     } catch (error) {
-        console.error("Response error:", error.response?.data || error.message);
+        // console.error("Response error:", error.response?.data || error.message);
         // throw new Error(`Error in authentication: ${error.message}`);
     }
 };

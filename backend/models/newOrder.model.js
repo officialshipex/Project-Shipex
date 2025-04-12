@@ -89,6 +89,7 @@ const orderSchema = new mongoose.Schema(
     courierServiceName: {
       type: String,
     },
+    RTOCharges: { type: String },
     tracking: [
       {
         status: { type: String },

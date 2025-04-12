@@ -292,7 +292,7 @@ const trackShipmentDelhivery = async (waybill) => {
       };
     }
   } catch (error) {
-    console.error("Error tracking shipment:");
+    // console.error("Error tracking shipment:");
     return {
       success: false,
       data: "Error in tracking",
