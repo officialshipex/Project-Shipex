@@ -791,6 +791,7 @@ const trackSingleOrder = async (order) => {
         "out for delivery": "Out for Delivery",
         delivered: "Delivered",
         "rto lock": "RTO",
+        returned: "RTO In-transit",
         cancelled: "Cancelled",
         lost: "Cancelled",
         undelivered: "In-transit",
@@ -799,6 +800,14 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
+console.log("rew",result.rto_awb)
+      // ✅ Update AWB if it's an RTO and ref_awb exists
+      if (
+        (newStatus === "RTO" || newStatus === "RTO In-transit") &&
+        result.rto_awb
+      ) {
+        order.awb_number = result.rto_awb;
+      }
 
       if (order.status === "RTO" && instruction === "bagged") {
         newStatus = "RTO In-transit";
@@ -857,9 +866,10 @@ const trackSingleOrder = async (order) => {
         newStatus = "Delivered";
         ndrStatus = "Delivered";
       }
-    }if(provider==="Amazon"){
+    }
+    if (provider === "Amazon") {
       const amazonStatusMapping = {
-        "readyforreceive": "Ready To Ship",
+        readyforreceive: "Ready To Ship",
         "pickup failed": "Ready To Ship",
         "pickup awaited": "Ready To Ship",
         "softdata upload": "Ready To Ship",
@@ -882,9 +892,7 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = amazonStatusMapping[instruction] || order.status;
-
-    }
-     else {
+    } else {
       const statusMappings = {
         "manifest uploaded": "Ready To Ship",
         "shipment picked up": "In-transit",
@@ -905,8 +913,8 @@ const trackSingleOrder = async (order) => {
         "consignee refused to accept/order cancelled": "In-transit",
         "incomplete address & contact details": "In-transit",
         "package details changed by shipper": " In-transit",
-        "dispatched for rto": "RTO",
-        "return accepted": "RTO",
+        "dispatched for rto": "RTO In-transit",
+        "return accepted": "RTO Delivered",
         "delivered to consignee": "Delivered",
         "seller cancelled the order": "Cancelled",
       };
