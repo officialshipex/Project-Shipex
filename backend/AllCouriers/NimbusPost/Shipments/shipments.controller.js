@@ -168,7 +168,7 @@ const trackShipmentsInBulk = async (req, res) => {
             return res.status(400).json({ error: 'Error tracking shipments in bulk', details: response.data });
         }
     } catch (error) {
-        console.error('Error in tracking shipments in bulk:', error.response?.data || error.message);
+        // console.error('Error in tracking shipments in bulk:', error.response?.data || error.message);
         return res.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
 };

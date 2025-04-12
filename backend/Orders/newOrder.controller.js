@@ -996,10 +996,10 @@ console.log("rew",result.rto_awb)
 
     await order.save();
   } catch (error) {
-    console.error(
-      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
-      error
-    );
+    // console.error(
+    //   `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+    //   error
+    // );
   }
 };
 
@@ -1234,7 +1234,7 @@ module.exports = {
   getpickupAddress,
   getreceiverAddress,
   newPickupAddress,
-  newReciveAddress,
+  newReciveAddress,   
   ShipeNowOrder,
   getPinCodeDetails,
   cancelOrdersAtNotShipped,

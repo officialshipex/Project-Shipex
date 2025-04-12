@@ -28,19 +28,17 @@ const { generateKeySync } = require("crypto");
 // In user controller
 const getUsers = async (req, res) => {
   try {
-      const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
-      // console.log(req.user.id);
-
-      // Check if the logged-in user exists in the list of KYC-approved users
+      const allUsers = await User.find({ kycDone: true }); 
       const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
-      // console.log(isSeller);
+
 
       res.status(201).json({
           success: true,
           sellers: allUsers.map(user => ({
               userId: user.userId,
               id:user._id,
-              name: `${user.fullname}`, // Ensure to format the name as needed
+              name: `${user.fullname}`,
+              
           })),
           isSeller, // Add this field to check if the user is a seller
       });
@@ -68,7 +66,6 @@ const getAllUsers = async (req, res) => {
         const gst = await Gst.findOne({ user: user._id });
         const codPlan=await CodPlans.findOne({user:user._id})
         const rateCard=await Plan.findOne({userId:user._id})
-
         return {
           userId: user?.userId || "N/A",
           fullname: user.fullname,

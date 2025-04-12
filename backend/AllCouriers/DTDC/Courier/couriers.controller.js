@@ -278,10 +278,10 @@ const trackOrderDTDC = async (AWBNo) => {
 
     
   } catch (error) {
-    console.error(
-      "Error tracking shipment:",
-      error.response?.data || error.message
-    );
+    // console.error(
+    //   "Error tracking shipment:",
+    //   error.response?.data || error.message
+    // );
     return {
       success:false,error:error.response.message,status:500
     }
