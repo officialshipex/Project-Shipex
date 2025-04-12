@@ -4,10 +4,16 @@ const user = require("../../../models/User.model");
 const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { fetchBulkWaybills } = require("../Authorize/saveCourierController");
-const checkServiceabilityEcomExpress = async (originPincode, destinationPincode) => {
+const checkServiceabilityEcomExpress = async (
+  originPincode,
+  destinationPincode
+) => {
   // console.log("eocmcm")
   if (!originPincode || !destinationPincode) {
-    return { success: false, error: "Both origin and destination pincodes are required." };
+    return {
+      success: false,
+      error: "Both origin and destination pincodes are required.",
+    };
   }
 
   const BASE_URL = process.env.ECOMEXPRESS_URL;
@@ -20,11 +26,17 @@ const checkServiceabilityEcomExpress = async (originPincode, destinationPincode)
     originFormData.append("password", process.env.ECOMEXPRESS_PASS);
     originFormData.append("pincode", originPincode);
 
-    const originResponse = await axios.post(url, originFormData, { headers: originFormData.getHeaders() });
+    const originResponse = await axios.post(url, originFormData, {
+      headers: originFormData.getHeaders(),
+    });
     console.log("Origin Serviceability:", originResponse.data);
 
     if (!originResponse?.data?.length || !originResponse.data[0].active) {
-      return { success: false, reason: "Origin pincode not serviceable", data: originResponse.data };
+      return {
+        success: false,
+        reason: "Origin pincode not serviceable",
+        data: originResponse.data,
+      };
     }
 
     // Check Destination Pincode
@@ -33,21 +45,31 @@ const checkServiceabilityEcomExpress = async (originPincode, destinationPincode)
     destinationFormData.append("password", process.env.ECOMEXPRESS_PASS);
     destinationFormData.append("pincode", destinationPincode);
 
-    const destinationResponse = await axios.post(url, destinationFormData, { headers: destinationFormData.getHeaders() });
+    const destinationResponse = await axios.post(url, destinationFormData, {
+      headers: destinationFormData.getHeaders(),
+    });
     console.log("Destination Serviceability:", destinationResponse.data);
 
-    if (!destinationResponse?.data?.length || !destinationResponse.data[0].active) {
-      return { success: false, reason: "Destination pincode not serviceable", data: destinationResponse.data };
+    if (
+      !destinationResponse?.data?.length ||
+      !destinationResponse.data[0].active
+    ) {
+      return {
+        success: false,
+        reason: "Destination pincode not serviceable",
+        data: destinationResponse.data,
+      };
     }
 
     return { success: true, message: "Both pincodes are serviceable." };
-
   } catch (error) {
-    console.error("EcomExpress Serviceability Error:", error.response?.data || error.message);
+    console.error(
+      "EcomExpress Serviceability Error:",
+      error.response?.data || error.message
+    );
     return { success: false, error: error.response?.data || error.message };
   }
 };
-
 
 const fetchAWB = async (req, res) => {
   const { count, type } = req.body;
@@ -346,18 +368,18 @@ const cancelShipmentforward = async (awbs) => {
   }
 
   // Check if order is already cancelled
-    const isCancelled = await Order.findOne({
-      awb_number: awbs,
-      status: "Cancelled",
-    });
-  
-    if (isCancelled) {
-      console.log("Order is already cancelled");
-      return {
-        error: "Order is already cancelled",
-        code: 400,
-      };
-    }
+  const isCancelled = await Order.findOne({
+    awb_number: awbs,
+    status: "Cancelled",
+  });
+
+  if (isCancelled) {
+    console.log("Order is already cancelled");
+    return {
+      error: "Order is already cancelled",
+      code: 400,
+    };
+  }
 
   const BASE_URL = process.env.ECOMEXPRESS_URL;
   const url = `${BASE_URL}/apiv2/cancel_awb/`;
@@ -423,19 +445,18 @@ const shipmentTrackingforward = async (awb) => {
       mergeAttrs: true,
     });
 
-
-
     // Extract the field array
     const fields = jsonResponse["ecomexpress-objects"].object.field;
-// console.log("fields",fields[fields.length-1].object)
+    // console.log("fields",fields)
     // Convert field array into an object with key-value pairs
     const structuredData = {};
     fields.forEach((item) => {
       structuredData[item.name] = item._ || null;
     });
-
+    const refAWB = structuredData["ref_awb"];
+    console.log("RTO AWB Number (ref_awb):", refAWB);
     // console.log("Final Parsed Response:", structuredData);
-    return { success: true, data: structuredData, status: 200 };
+    return { success: true, data: structuredData,rto_awb: refAWB, status: 200 };
   } catch (error) {
     console.error("Tracking API Error:", error.response?.data || error.message);
 
@@ -450,6 +471,7 @@ const shipmentTrackingforward = async (awb) => {
     }
   }
 };
+// shipmentTrackingforward("456000001077")
 
 // REVERSE JOURNEY
 const manifestAwbRev = async (req, res) => {
