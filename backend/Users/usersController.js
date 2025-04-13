@@ -158,6 +158,7 @@ const changeUser = async (req, res) => {
     console.log("hi");
     const userId = req.user.id; // Assumes you're using JWT auth middleware that sets req.user
     const { adminTab } = req.body;
+    console.log("ad",adminTab)
 
     if (typeof adminTab !== "boolean") {
       return res.status(400).json({ message: "Invalid adminTab value" });
