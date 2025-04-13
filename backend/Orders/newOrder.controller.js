@@ -800,7 +800,7 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
-console.log("rew",result.rto_awb)
+      console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
         (newStatus === "RTO" || newStatus === "RTO In-transit") &&
@@ -838,6 +838,7 @@ console.log("rew",result.rto_awb)
         "in transit": "In-transit",
         "departed from location": "In-transit",
         "out for delivery": "Out for Delivery",
+        "otp based delivered":"Delivered",
         delivered: "Delivered",
         "rto processed & forwarded": "RTO",
         "rto in transit": "RTO In-transit",
@@ -870,20 +871,22 @@ console.log("rew",result.rto_awb)
     if (provider === "Amazon") {
       const amazonStatusMapping = {
         readyforreceive: "Ready To Ship",
+        "label created":"Ready To Ship",
         "pickup failed": "Ready To Ship",
         "pickup awaited": "Ready To Ship",
         "softdata upload": "Ready To Ship",
         "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
         "picked up": "Ready To Ship",
-        booked: "Ready To Ship",
-        "in transit": "In-transit",
-        "departed from location": "In-transit",
+        "package has left the carrier facility": "In-transit",
+        "package picked up": "In-transit",
+        "package arrived at the carrier facility": "In-transit",
+        "undeliverable":"ndr",
         "out for delivery": "Out for Delivery",
-        delivered: "Delivered",
-        "rto processed & forwarded": "RTO",
+        "package delivered": "Delivered",
+        "return initiated": "RTO",
         "rto in transit": "RTO In-transit",
-        "rto delivered": "RTO Delivered",
+        "returned to seller": "RTO Delivered",
         "rto booked": "RTO",
         pickupcancelled: "Cancelled",
         lost: "Cancelled",
@@ -892,6 +895,14 @@ console.log("rew",result.rto_awb)
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = amazonStatusMapping[instruction] || order.status;
+
+      if((order.status==="RTO" || order.status==="RTO In-transit") && (instruction==="package arrived at the carrier facility" || instruction==="package has left the carrier facility")){
+        newStatus="RTO In-transit"
+      }
+
+
+
+
     } else {
       const statusMappings = {
         "manifest uploaded": "Ready To Ship",
@@ -1234,7 +1245,7 @@ module.exports = {
   getpickupAddress,
   getreceiverAddress,
   newPickupAddress,
-  newReciveAddress,   
+  newReciveAddress,
   ShipeNowOrder,
   getPinCodeDetails,
   cancelOrdersAtNotShipped,
