@@ -96,7 +96,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       const payload = {
         origin: currentOrder.pickupAddress,
         destination:currentOrder.receiverAddress,
-        payment_type:currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+        payment_type:currentOrder.paymentDetails?.method,
         order_amount: currentOrder.paymentDetails?.amount || 0,
         weight: weight || 0,
         length:currentOrder.packageDetails.volumetricWeight?.length || 0,
