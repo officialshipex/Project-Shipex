@@ -10,10 +10,12 @@ const {
   calculateRateForService,
   calculateRateForServiceBulk,
 } = require("../Rate/calculateRateController");
+
 const {
   createShipmentFunctionDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
 const {createShipmentFunctionEcomExpress} = require("../AllCouriers/EcomExpress/Couriers/bulkShipment.controller");
+const {createOrderDTDC}=require("../AllCouriers/DTDC/Courier/bulkShipment.controller")
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
@@ -88,6 +90,15 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
+      case "DTDC":
+        result=await createOrderDTDC(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;  
       case "ShreeMaruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
