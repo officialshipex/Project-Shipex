@@ -6,6 +6,7 @@ const userController=require("../Users/usersController");
 const { isAuthorized } = require("../middleware/auth.middleware")
 
 router.get('/getUserDetails',isAuthorized,userController.getUserDetails);
+router.post('/getUserDetails',isAuthorized,userController.changeUser);
 router.get('/getAllUsers',isAuthorized,userController.getUsers);
 router.get('/getAllPlans',isAuthorized,userController.getAllPlans);
 router.get('/getUsers',isAuthorized,userController.getAllUsers);
