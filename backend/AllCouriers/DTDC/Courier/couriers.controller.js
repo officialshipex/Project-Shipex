@@ -148,11 +148,12 @@ if(!courier){
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
             awb_number: result.reference_number || "", // Ensuring it follows the schema
-            description: `Freight Chages Applied`,
+            description: `Freight Charges Applied`,
           },
         },
       });
     }else{
+      console.log("ererer",response.data)
       return res.status(400).json({message:"Error creating shipment"})
     }
 
@@ -277,16 +278,17 @@ const trackOrderDTDC = async (AWBNo) => {
 
     
   } catch (error) {
-    console.error(
-      "Error tracking shipment:",
-      error.response?.data || error.message
-    );
+    // console.error(
+    //   "Error tracking shipment:",
+    //   error.response?.data || error.message
+    // );
     return {
       success:false,error:error.response.message,status:500
     }
     
   }
 };
+
 
 const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
   try {
@@ -303,7 +305,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
       desPincode: destinationPincode,
     };
 
-    console.log("Request Body:", requestBody);
+    // console.log("Request Body:", requestBody);
 
     // Make API Call
     const response = await axios.post(
@@ -343,8 +345,8 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
         (resp) => resp.MESSAGE === "SUCCESS" && resp.SERVFLAG === "Y"
       );
 
-    console.log("isOrigin:", isOriginServiceable);
-    console.log("isDestination:", isDestinationServiceable);
+    // console.log("isOrigin:", isOriginServiceable);
+    // console.log("isDestination:", isDestinationServiceable);
 
     // If both origin and destination are fully serviceable, return true
     return { success: isOriginServiceable && isDestinationServiceable };

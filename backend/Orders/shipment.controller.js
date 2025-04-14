@@ -25,6 +25,8 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     const currentOrder = await Order.findById(id);
     if (!currentOrder) throw new Error("Order not found");
 
+    // console.log("ser",service)
+
     
 // console.log(currentOrder)
     // console.log("pincode",pincode);
@@ -94,15 +96,20 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       // console.log("orderer",currentOrder)
     
       const payload = {
+        orderId:currentOrder.orderId,
         origin: currentOrder.pickupAddress,
         destination:currentOrder.receiverAddress,
-        payment_type:currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+        payment_type:currentOrder.paymentDetails?.method,
         order_amount: currentOrder.paymentDetails?.amount || 0,
         weight: weight || 0,
         length:currentOrder.packageDetails.volumetricWeight?.length || 0,
         breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
-        height: currentOrder.packageDetails.volumetricWeight?.height || 0
+        height: currentOrder.packageDetails.volumetricWeight?.height || 0,
+        productDetails:currentOrder.productDetails,
+        orderId:currentOrder.orderId
       };
+
+
 
       const result = await checkAmazonServiceability(
         service.provider,
