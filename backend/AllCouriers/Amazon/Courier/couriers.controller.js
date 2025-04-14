@@ -1,74 +1,166 @@
 const { getAmazonAccessToken } = require("../Authorize/saveCourierController");
 const axios = require("axios");
+const Order = require("../../../models/newOrder.model");
+const Wallet = require("../../../models/wallet");
+const User = require("../../../models/User.model");
+const { s3 } = require("../../../config/s3");
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const createOneClickShipment = async (req, res) => {
-  const accessToken = await getAmazonAccessToken();
-  const amazonBusinessId =
-    process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
-
-  const shipmentData = {
-    shipFrom: {
-      name: "John Doe",
-      addressLine1: "123 Main St",
-      city: "Seattle",
-      stateOrRegion: "WA",
-      postalCode: "98101",
-      countryCode: "US",
-    },
-    shipTo: {
-      name: "Jane Smith",
-      addressLine1: "456 Elm St",
-      city: "Los Angeles",
-      stateOrRegion: "CA",
-      postalCode: "90001",
-      countryCode: "US",
-    },
-    returnTo: {
-      name: "Return Dept.",
-      addressLine1: "789 Pine St",
-      city: "New York",
-      stateOrRegion: "NY",
-      postalCode: "10001",
-      countryCode: "US",
-    },
-    shipDate: new Date().toISOString(), // Current date-time
-    goodsOwner: "Seller",
-    packages: [
-      {
-        weight: { value: 2.5, unit: "KG" },
-        dimensions: { length: 10, width: 5, height: 5, unit: "CM" },
-      },
-    ],
-    channelDetails: {
-      channelType: "NonAmazon",
-    },
-    labelSpecifications: {
-      format: "PDF",
-      size: "4x6",
-    },
-    serviceSelection: {
-      serviceId: "AMZ-GROUND",
-    },
-  };
-
   try {
-    const response = await axios.post(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/oneClickShipment",
-      shipmentData,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const accessToken = await getAmazonAccessToken();
+    if (!accessToken) {
+      return res.status(401).json({ error: "Access token missing" });
+    }
+    // console.log(req.body)
+    const { id, provider, finalCharges, courierServiceName } = req.body;
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    const user = await User.findById(currentOrder.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const currentWallet = await Wallet.findById(user.Wallet);
+    if (!currentWallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
 
-    console.log("Shipment Created:", response.data);
-    return response.data;
+    const weight = currentOrder.packageDetails?.applicableWeight * 1000;
+    const payload = {
+      origin: currentOrder.pickupAddress,
+      destination: currentOrder.receiverAddress,
+      payment_type: currentOrder.paymentDetails?.method,
+      order_amount: currentOrder.paymentDetails?.amount || 0,
+      weight: weight || 0,
+      length: currentOrder.packageDetails.volumetricWeight?.length || 0,
+      breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
+      height: currentOrder.packageDetails.volumetricWeight?.height || 0,
+      productDetails: currentOrder.productDetails,
+      orderId: currentOrder.orderId,
+    };
+    const { rate, requestToken, valueAddedServiceIds } =
+      await checkAmazonServiceability("Amazon", payload);
+
+    console.log("Extracted VAS IDs from rate:", valueAddedServiceIds);
+
+    // const { id, requestToken, rateId } = req.body;
+
+    const isCOD = payload.payment_type === "COD";
+
+    const shipmentData = {
+      requestToken,
+      rateId: rate,
+      requestedDocumentSpecification: {
+        format: "PDF",
+        size: {
+          width: 4.0,
+          length: 6.0,
+          unit: "INCH",
+        },
+        dpi: 300,
+        pageLayout: "DEFAULT",
+        needFileJoining: false,
+        requestedDocumentTypes: ["LABEL"],
+      },
+      // Use requestedValueAddedServices
+      requestedValueAddedServices: [
+        ...(isCOD ? [{ id: "CollectOnDelivery" }] : []),
+      ],
+    };
+
+    // console.log("shipment data", shipmentData);
+    let response;
+
+    if (currentWallet.balance >= finalCharges) {
+      response = await axios.post(
+        "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
+        shipmentData,
+        {
+          headers: {
+            // Authorization: `Bearer ${accessToken}`,
+            "x-amz-access-token": accessToken,
+            "x-amzn-shipping-business-id": "AmazonShipping_IN",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Low Balance" });
+    }
+
+    if (response?.data?.payload) {
+      const result = response.data.payload;
+      const base64Label =
+        result.packageDocumentDetails[0].packageDocuments[0].contents;
+      const labelBuffer = Buffer.from(base64Label, "base64");
+      const labelKey = `labels/${Date.now()}_${
+        currentOrder.orderId || "label"
+      }.pdf`;
+
+      const uploadCommand = new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: labelKey,
+        Body: labelBuffer,
+        ContentType: "application/pdf",
+      });
+
+      await s3.send(uploadCommand);
+
+      const labelUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${labelKey}`;
+
+      currentOrder.status = "Ready To Ship";
+      currentOrder.cancelledAtStage = null;
+      currentOrder.awb_number = result.packageDocumentDetails[0].trackingId;
+      currentOrder.shipment_id = `${result.shipmentId}`;
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      currentOrder.courierServiceName = courierServiceName;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.label = labelUrl;
+      let savedOrder = await currentOrder.save();
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+      await currentWallet.updateOne({
+        $inc: { balance: -balanceToBeDeducted },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId || null,
+            category: "debit",
+            amount: balanceToBeDeducted,
+            balanceAfterTransaction:
+              currentWallet.balance - balanceToBeDeducted,
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.packageDocumentDetails[0].trackingId || "",
+            description: "Freight Charges Applied",
+          },
+        },
+      });
+    } else {
+      console.log("eror", response.data);
+      return res.status(400).json({ message: "Error creating shipment" });
+    }
+
+    console.log("✅ Shipment Created:", response.data);
+    return res.status(200).json({
+      success: true,
+      message: "Shipment Created Successfully",
+      shipment: response.data,
+    });
   } catch (error) {
-    console.error("Error creating OneClickShipment:", error.response.data);
+    console.error(
+      "❌ Error creating shipment:",
+      error.response?.data || error.message
+    );
+    return res.status(500).json({
+      success: false,
+      error: "Error creating shipment",
+      details: error.response?.data || error.message,
+    });
   }
 };
 
@@ -80,60 +172,92 @@ const cancelShipment = async (shipmentId) => {
     return;
   }
 
-  const amazonBusinessId =
-    process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
+  const isCancelled = await Order.findOne({
+    awb_number: shipmentId,
+    status: "Cancelled",
+  });
+  if (isCancelled) {
+    console.log("order is allready cancelled");
+    return {
+      error: "Order is allready cancelled",
+      code: 400,
+    };
+  }
 
   try {
     const response = await axios.put(
-      `https://sandbox.shipping-api.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
+      `https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/${shipmentId}/cancel`,
       {},
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
           "Content-Type": "application/json",
         },
       }
     );
 
-    console.log("Shipment Cancelled Successfully");
-    return response.data; // Amazon returns an empty object on success
+    await Order.updateOne(
+      { shipment_id: shipmentId },
+      { $set: { status: "Cancelled" } }
+    );
+
+    if (response?.data?.payload) {
+      console.log("Shipment Cancelled Successfully");
+      return {
+        data: response.data,
+        code: 201,
+      };
+    } else {
+      return {
+        error: "Error in shipment cancellation",
+        details: response.data,
+        code: 400,
+      };
+    }
+
+    // return response.data; // Amazon returns an empty object on success
   } catch (error) {
     console.error(
       "Error cancelling shipment:",
       error.response?.data || error.message
     );
+    return {
+      success: false,
+      message: "Failed to cancel shipment",
+      error: error.response?.data,
+    };
   }
 };
 
 // cancelShipment(121212)
 
-const getShipmentTracking = async (trackingId, carrierId) => {
+const getShipmentTracking = async (trackingId) => {
   const accessToken = await getAmazonAccessToken();
   if (!accessToken) {
     console.error("Failed to get access token");
     return;
   }
 
-  const amazonBusinessId =
-    process.env.AMAZON_BUSINESS_ID || "AmazonShipping_UK"; // Default Business ID
-
   try {
     const response = await axios.get(
-      "https://sandbox.shipping-api.amazon.com/shipping/v2/tracking",
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/tracking",
       {
-        params: { trackingId, carrierId },
+        params: { trackingId: trackingId, carrierId: "ATS" },
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": amazonBusinessId,
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
         },
       }
     );
 
-    console.log("Tracking Information:", response.data);
-    return response.data;
+    console.log(
+      "Tracking Information:",
+      response.data.payload.eventHistory[0].eventCode
+    );
+    return { success: true, data: response.data.payload };
   } catch (error) {
     console.error(
       "Error fetching tracking information:",
@@ -143,73 +267,145 @@ const getShipmentTracking = async (trackingId, carrierId) => {
 };
 
 const checkAmazonServiceability = async (provider, payload) => {
-  // console.log("payloadprovider",provider,payload)
-  const accessToken = await getAmazonAccessToken();
-  if (!accessToken) return;
-
-  const shipFrom = {
-    name: payload.origin.contactName,
-    addressLine1: payload.origin.address,
-    city: payload.origin.city,
-    postalCode: payload.origin.pinCode,
-    countryCode: "IN",
-  };
-
-  const shipTo = {
-    name: payload.destination.contactName,
-    addressLine1: payload.destination.address,
-    city: payload.destination.city,
-    postalCode: payload.destination.pinCode,
-    countryCode: "IN",
-  };
-
-  // console.log("ahiptdkfl",shipTo,shipFrom)
-
   try {
+    // console.log("payloadprovider", payload);
+
+    const accessToken = await getAmazonAccessToken();
+    if (!accessToken) return { success: false, reason: "Missing access token" };
+
+    const shipFrom = {
+      name: payload.origin.contactName,
+      addressLine1: payload.origin.address.slice(0, 60),
+      city: payload.origin.city,
+      postalCode: payload.origin.pinCode,
+      countryCode: "IN",
+    };
+
+    const shipTo = {
+      name: payload.destination.contactName,
+      addressLine1: payload.destination.address.slice(0, 60),
+      city: payload.destination.city,
+      postalCode: payload.destination.pinCode,
+      countryCode: "IN",
+    };
+
     const requestBody = {
       shipFrom,
       shipTo,
-      shipDate: new Date().toISOString(), // Current date-time
+      shipDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
       packages: [
         {
           dimensions: {
             length: payload.length,
             width: payload.breadth,
             height: payload.height,
-            unit: "cm",
+            unit: "CENTIMETER",
           },
-          weight: { value: payload.weight / 1000, unit: "kg" },
+          weight: {
+            value: payload.weight / 1000, // Convert grams to kg
+            unit: "KILOGRAM",
+          },
+          insuredValue: {
+            value: payload.order_amount,
+            unit: "INR",
+          },
+          packageClientReferenceId: `${payload.orderId}`,
+          items: [
+            {
+              itemValue: {
+                value: payload.order_amount,
+                unit: "INR",
+              },
+              quantity: 1,
+              weight: {
+                unit: "GRAM",
+                value: payload.weight,
+              },
+              isHazmat: false,
+              invoiceDetails: {
+                invoiceDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+              },
+            },
+          ],
         },
       ],
-      channelDetails: { channelType: "Amazon" },
+      taxDetails: [
+        {
+          taxType: "GST",
+          taxRegistrationNumber: "06FKCPS6109D3Z7",
+        },
+      ],
+      channelDetails: {
+        channelType: "EXTERNAL",
+      },
+      ...(payload.payment_type === "COD" && {
+        valueAddedServices: {
+          collectOnDelivery: {
+            amount: {
+              value: payload.order_amount,
+              unit: "INR",
+            },
+          },
+        },
+      }),
     };
-    // console.log("amaxon id",process.env.AMAZON_BUSINESS_ID)
-    console.log("access",accessToken)
+
+    // console.log("body", requestBody);
+
     const response = await axios.post(
-      // "https://sandbox.sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
       requestBody,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "x-amz-access-token": accessToken,
-          "x-amzn-shipping-business-id": "AmazonShipping_IN", // Adjust based on region
+          "x-amzn-shipping-business-id": "AmazonShipping_IN",
           "Content-Type": "application/json",
         },
       }
     );
 
-    if (response.data.rates && response.data.rates.length > 0) {
-      console.log("✅ Amazon Shipping is available for this pincode.");
-      console.log("Available Rates:", response.data.rates);
-    } else {
+    const rates = response.data.payload.rates || [];
+    const ineligibleRates = response.data.payload.ineligibleRates || [];
+    console.log("reat", response.data.payload);
+
+    if (rates.length > 0) {
+      const selectedRate = rates[0]; // Use the first rate (or allow user to pick one)
+
+      const valueAddedServiceIds =
+        selectedRate.availableValueAddedServiceGroups?.flatMap((group) => {
+          // Some APIs return valueAddedServices instead of valueAddedServiceIds
+          if (group.valueAddedServiceIds) return group.valueAddedServiceIds;
+          if (group.valueAddedServices)
+            return group.valueAddedServices.map((vas) => vas.id);
+          return [];
+        }) || [];
+
+      console.log("val", valueAddedServiceIds);
+
+      return {
+        success: true,
+        reason: "Pincodes are serviceable",
+        rate: selectedRate.rateId,
+        requestToken: response.data.payload.requestToken,
+        valueAddedServiceIds, // ✅ include this in return
+      };
+    } else if (ineligibleRates.length > 0) {
       console.log("❌ Amazon does not service this pincode.");
+      return {
+        success: false,
+        reason: "Pincodes are not serviceable",
+        ineligibleRates,
+      };
+    } else {
+      return { success: false, reason: "No rates returned by Amazon" };
     }
   } catch (error) {
     console.error(
       "Error checking serviceability:",
       error.response?.data || error.message
     );
+    return { success: false, reason: "Error checking serviceability" };
   }
 };
 

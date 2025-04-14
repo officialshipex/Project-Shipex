@@ -106,3 +106,35 @@ exports.deleteRole = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
+
+// Login function
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+      // Check if the user exists
+      const role = await Role.findOne({ email });
+      if (!role) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Validate password
+      const isPasswordValid = await bcrypt.compare(password, role.password);
+      if (!isPasswordValid) {
+          return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      // Create JWT token
+      const token = jwt.sign(
+          { userId: role._id, email: role.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '1h' }
+      );
+
+      return res.status(200).json({ token });
+
+  } catch (error) {
+      console.error('Login Error:', error);
+      return res.status(500).json({ message: 'Server Error' });
+  }
+};

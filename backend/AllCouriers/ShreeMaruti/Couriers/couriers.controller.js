@@ -398,11 +398,11 @@ const trackOrderShreeMaruti = async (awbNumber) => {
       };
     }
   } catch (error) {
-    console.error(
-      "Error tracking order:",
-      error.response?.data || error.message
-    );
-    console.log(error);
+    // console.error(
+    //   "Error tracking order:",
+    //   error.response?.data || error.message
+    // );
+    // console.log(error);
 
     return {
       success: false,

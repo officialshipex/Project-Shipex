@@ -9,4 +9,7 @@ router.get("/:id", roleController.getRoleById);
 router.put("/updateRole/:id", roleController.updateRole);
 router.delete("/deleteRole/:id", roleController.deleteRole);
 
+// Login route
+router.post("/e-login", roleController.login);
+
 module.exports = router;

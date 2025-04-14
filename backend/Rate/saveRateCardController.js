@@ -165,17 +165,49 @@ const getUsersWithPlans = async (req, res) => {
 const updateRateCard = async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedRateCard = await RateCard.findByIdAndUpdate(id, req.body, { new: true });
+
+    // Step 1: Update the main RateCard document
+    const updatedRateCard = await RateCard.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updatedRateCard) {
       return res.status(404).json({ message: "Rate Card not found" });
     }
 
-    res.status(200).json(updatedRateCard);
+    // Step 2: Find all plans with the given plan name
+    const plans = await Plan.find({ planName: req.body.plan });
+
+    // Step 3: Loop over plans and update matching rateCard object
+    for (const plan of plans) {
+      let modified = false;
+
+      plan.rateCard = plan.rateCard.map((rc) => {
+        if (rc._id.toString() === id) {
+          modified = true;
+          return {
+            ...rc._doc, // existing structure
+            ...updatedRateCard.toObject(), // overwrite with new data
+          };
+        }
+        return rc;
+      });
+
+      if (modified) {
+        await plan.save();
+      }
+    }
+
+    res.status(200).json({ message: "Rate Card updated in matching plans." });
   } catch (error) {
+    console.error("Error updating rate card in plans:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+
+
 
 
 

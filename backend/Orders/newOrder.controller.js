@@ -26,6 +26,10 @@ const {
   cancelOrderDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/couriers.controller");
 const {
+  cancelShipment,
+  getShipmentTracking,
+} = require("../AllCouriers/Amazon/Courier/couriers.controller");
+const {
   cancelOrderShreeMaruti,
   trackOrderShreeMaruti,
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
@@ -213,7 +217,8 @@ const getOrders = async (req, res) => {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit = limitQuery === 'All' || !limitQuery ? null : parseInt(limitQuery);
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const status = req.query.status;
     // console.log(status)
@@ -242,9 +247,6 @@ const getOrders = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
-
 
 const updateOrder = async (req, res) => {
   try {
@@ -490,7 +492,7 @@ const ShipeNowOrder = async (req, res) => {
           order.pickupAddress.pinCode
         );
 
-        console.log("iiiii", result);
+        // console.log("iiiii", result);
         if (result && result.success) {
           return {
             item,
@@ -668,7 +670,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
         return {
-          error: "Failed to cancel shipment with NimbusPost",
+          error: "Failed to cancel shipment with DTDC",
           details: result,
           orderId: currentOrder._id,
         };
@@ -677,7 +679,16 @@ const cancelOrdersAtBooked = async (req, res) => {
       const result = await cancelShipmentforward(currentOrder.awb_number);
       if (result.error) {
         return {
-          error: "Failed to cancel shipment with NimbusPost",
+          error: "Failed to cancel shipment with EcomExpress",
+          details: result,
+          orderId: currentOrder._id,
+        };
+      }
+    } else if (currentOrder.provider === "Amazon") {
+      const result = await cancelShipment(currentOrder.shipment_id);
+      if (result.error) {
+        return {
+          error: "Failed to cancel shipment with Amazon",
           details: result,
           orderId: currentOrder._id,
         };
@@ -726,14 +737,13 @@ const cancelOrdersAtBooked = async (req, res) => {
 };
 
 const limiter = new Bottleneck({
-  minTime: 100, // 10 requests per second (100ms delay between each)
+  minTime: 1000, // 10 requests per second (1000ms delay between each)
   maxConcurrent: 10, // Maximum 10 at the same time
   reservoir: 750, // Max 750 calls per minute
   reservoirRefreshAmount: 750,
   reservoirRefreshInterval: 60 * 1000, // Refresh every 1 minute
 });
 
-// Define your single order tracking logic
 const trackSingleOrder = async (order) => {
   try {
     // console.log("Tracking order:", order.orderId);
@@ -746,6 +756,7 @@ const trackSingleOrder = async (order) => {
       ShreeMaruti: trackOrderShreeMaruti,
       DTDC: trackOrderDTDC,
       EcomExpress: shipmentTrackingforward,
+      Amazon: getShipmentTracking,
     };
 
     if (!trackingFunctions[provider]) {
@@ -780,6 +791,7 @@ const trackSingleOrder = async (order) => {
         "out for delivery": "Out for Delivery",
         delivered: "Delivered",
         "rto lock": "RTO",
+        returned: "RTO In-transit",
         cancelled: "Cancelled",
         lost: "Cancelled",
         undelivered: "In-transit",
@@ -788,6 +800,14 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       newStatus = ecomExpressStatusMapping[instruction] || order.status;
+      console.log("rew", result.rto_awb);
+      // ✅ Update AWB if it's an RTO and ref_awb exists
+      if (
+        (newStatus === "RTO" || newStatus === "RTO In-transit") &&
+        result.rto_awb
+      ) {
+        order.awb_number = result.rto_awb;
+      }
 
       if (order.status === "RTO" && instruction === "bagged") {
         newStatus = "RTO In-transit";
@@ -818,6 +838,7 @@ const trackSingleOrder = async (order) => {
         "in transit": "In-transit",
         "departed from location": "In-transit",
         "out for delivery": "Out for Delivery",
+        "otp based delivered":"Delivered",
         delivered: "Delivered",
         "rto processed & forwarded": "RTO",
         "rto in transit": "RTO In-transit",
@@ -842,10 +863,46 @@ const trackSingleOrder = async (order) => {
       if (order.status === "RTO" && instruction === "rto delivered") {
         newStatus = "RTO Delivered";
       }
-      if(instruction==="delivered"){
-        newStatus="Delivered";
-        ndrStatus="Delivered;"
+      if (instruction === "delivered") {
+        newStatus = "Delivered";
+        ndrStatus = "Delivered";
       }
+    }
+    if (provider === "Amazon") {
+      const amazonStatusMapping = {
+        readyforreceive: "Ready To Ship",
+        "label created":"Ready To Ship",
+        "pickup failed": "Ready To Ship",
+        "pickup awaited": "Ready To Ship",
+        "softdata upload": "Ready To Ship",
+        "pickup scheduled": "Ready To Ship",
+        "not picked": "Ready To Ship",
+        "picked up": "Ready To Ship",
+        "package has left the carrier facility": "In-transit",
+        "package picked up": "In-transit",
+        "package arrived at the carrier facility": "In-transit",
+        "undeliverable":"ndr",
+        "out for delivery": "Out for Delivery",
+        "package delivered": "Delivered",
+        "return initiated": "RTO",
+        "rto in transit": "RTO In-transit",
+        "returned to seller": "RTO Delivered",
+        "rto booked": "RTO",
+        pickupcancelled: "Cancelled",
+        lost: "Cancelled",
+        undelivered: "In-transit",
+      };
+
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      newStatus = amazonStatusMapping[instruction] || order.status;
+
+      if((order.status==="RTO" || order.status==="RTO In-transit") && (instruction==="package arrived at the carrier facility" || instruction==="package has left the carrier facility")){
+        newStatus="RTO In-transit"
+      }
+
+
+
+
     } else {
       const statusMappings = {
         "manifest uploaded": "Ready To Ship",
@@ -867,8 +924,8 @@ const trackSingleOrder = async (order) => {
         "consignee refused to accept/order cancelled": "In-transit",
         "incomplete address & contact details": "In-transit",
         "package details changed by shipper": " In-transit",
-        "dispatched for rto": "RTO",
-        "return accepted": "RTO",
+        "dispatched for rto": "RTO In-transit",
+        "return accepted": "RTO Delivered",
         "delivered to consignee": "Delivered",
         "seller cancelled the order": "Cancelled",
       };
@@ -877,7 +934,7 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
 
       if (
-        order.tracking[order.tracking.length - 1].instruction ===
+        order.tracking[order.tracking.length - 1]?.instruction ===
           "no client instructions to reattempt" &&
         normalizedData.Instructions === "added to bag"
       ) {
@@ -925,10 +982,21 @@ const trackSingleOrder = async (order) => {
 
     // Prevent duplicate tracking logs
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
-    if (
+
+    const isSameCheckpoint =
+      lastTrackingEntry &&
+      lastTrackingEntry.StatusLocation === normalizedData.StatusLocation &&
+      lastTrackingEntry.StatusDateTime === normalizedData.StatusDateTime;
+
+    if (isSameCheckpoint) {
+      // Just update the last entry if the checkpoint is the same
+      lastTrackingEntry.status = normalizedData.Status;
+      lastTrackingEntry.Instructions = normalizedData.Instructions;
+    } else if (
       !lastTrackingEntry ||
       lastTrackingEntry.Instructions !== normalizedData.Instructions
     ) {
+      // It's a new checkpoint, so push it
       order.tracking.push({
         status: normalizedData.Status,
         StatusLocation: normalizedData.StatusLocation,
@@ -939,10 +1007,10 @@ const trackSingleOrder = async (order) => {
 
     await order.save();
   } catch (error) {
-    console.error(
-      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
-      error
-    );
+    // console.error(
+    //   `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+    //   error
+    // );
   }
 };
 
@@ -953,7 +1021,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "delivered"] },
+      status: { $nin: ["new", "Delivered"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -971,15 +1039,20 @@ const trackOrders = async () => {
     console.error("❌ Error in tracking orders:", error);
   }
 };
-// cron.schedule('0 * * * *', async () => {
-//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-//   await trackOrders();
-// });
 
-// cron.schedule("*/2 * * * *", async () => {
-//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-//   await trackOrders();
-// });
+const startTrackingLoop = async () => {
+  try {
+    console.log("🕒 Starting Order Tracking");
+    await trackOrders();
+    console.log("⏳ Waiting for 5 minutes before next tracking cycle...");
+    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Wait 5 minutes, then call again
+  } catch (error) {
+    console.error("❌ Error in tracking loop:", error);
+    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Retry after 5 minutes even on error
+  }
+};
+
+startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -991,7 +1064,9 @@ const mapTrackingResponse = (data, provider) => {
     },
     DTDC: {
       Status: data.trackHeader?.strStatus || "N/A",
-      StatusLocation: data.trackHeader?.strOrigin || "N/A",
+      StatusLocation: data.trackDetails?.length
+        ? data.trackDetails[data.trackDetails.length - 1].strOrigin
+        : "N/A",
       StatusDateTime: data.trackDetails?.length
         ? formatDTDCDateTime(
             data.trackDetails[data.trackDetails.length - 1].strActionDate,
@@ -1000,6 +1075,18 @@ const mapTrackingResponse = (data, provider) => {
         : null,
       Instructions: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strAction
+        : "N/A",
+    },
+    Amazon: {
+      Status: data.summary?.status || "N/A",
+      StatusLocation: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.location?.city
+        : "N/A",
+      StatusDateTime: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.eventTime
+        : "N/A",
+      Instructions: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.eventCode
         : "N/A",
     },
     Shiprocket: {

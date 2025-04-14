@@ -28,29 +28,27 @@ const { generateKeySync } = require("crypto");
 // In user controller
 const getUsers = async (req, res) => {
   try {
-      const allUsers = await User.find({ kycDone: true }); // Get all KYC-approved users
-      // console.log(req.user.id);
-
-      // Check if the logged-in user exists in the list of KYC-approved users
+      const allUsers = await User.find({ kycDone: true }); 
       const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
-      // console.log(isSeller);
+
 
       res.status(201).json({
           success: true,
           sellers: allUsers.map(user => ({
               userId: user.userId,
               id:user._id,
-              name: `${user.fullname}`, // Ensure to format the name as needed
+              name: `${user.fullname}`,
+              
           })),
           isSeller, // Add this field to check if the user is a seller
       });
   } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({
-          success: false,
-          message: "Failed to fetch users",
-          error: error.message,
-      });
+    console.error("Error fetching users:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+      error: error.message,
+    });
   }
 };
 
@@ -68,7 +66,6 @@ const getAllUsers = async (req, res) => {
         const gst = await Gst.findOne({ user: user._id });
         const codPlan=await CodPlans.findOne({user:user._id})
         const rateCard=await Plan.findOne({userId:user._id})
-
         return {
           userId: user?.userId || "N/A",
           fullname: user.fullname,
@@ -77,11 +74,11 @@ const getAllUsers = async (req, res) => {
           company: user.company,
           accountStatus: user.kycDone,
           kycStatus: user.kycDone,
-          walletAmount: user.Wallet?.balance || 0, 
+          walletAmount: user.Wallet?.balance || 0,
           creditLimit: user?.creditLimit || 0,
           rateCard: rateCard?.planName || 0,
-          codPlan: codPlan ? codPlan.planName : "N/A", 
-          createdAt:user.createdAt,
+          codPlan: codPlan ? codPlan.planName : "N/A",
+          createdAt: user.createdAt,
           // Account Details
           accountDetails: account
             ? {
@@ -137,7 +134,6 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-
 const getUserDetails = async (req, res) => {
   try {
     const existsingUser = await User.findById(req.user._id)
@@ -154,6 +150,37 @@ const getUserDetails = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+const changeUser = async (req, res) => {
+  try {
+    console.log("hi");
+    const userId = req.user.id; // Assumes you're using JWT auth middleware that sets req.user
+    const { adminTab } = req.body;
+    console.log("ad",adminTab)
+
+    if (typeof adminTab !== "boolean") {
+      return res.status(400).json({ message: "Invalid adminTab value" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { adminTab },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "User tab view updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating user adminTab:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -174,50 +201,54 @@ const getAllPlans = async (req, res) => {
 };
 
 const assignPlan = async (req, res) => {
-    try {
-        const { userId, userName, planName, rateCards } = req.body;
+  try {
+    const { userId, userName, planName, rateCards } = req.body;
 
-        if (!planName || !rateCards) {
-            return res.status(400).json({ error: "Plan name and rate card are required" });
-        }
-
-        console.log(rateCards);
-        
-        // Check if there is an existing plan for the user
-        let existingPlan = await Plan.findOne({ userId });
-
-        console.log(existingPlan);
-
-        if (existingPlan) {
-            // Update existing plan details (both plan name & rate cards)
-            existingPlan.planName = planName;
-            existingPlan.rateCard = rateCards;
-            existingPlan.assignedAt = new Date(); // Update timestamp
-
-            await existingPlan.save();
-
-            return res.status(200).json({ message: "Plan updated successfully", plan: existingPlan });
-        }
-
-        // If no existing plan, create a new one
-        const newPlan = new Plan({
-            userId,
-            userName,
-            planName,
-            rateCard: rateCards,
-            assignedAt: new Date(),
-        });
-
-        await newPlan.save();
-
-        res.status(201).json({ message: "Plan assigned successfully", plan: newPlan });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to assign plan" });
+    if (!planName || !rateCards) {
+      return res
+        .status(400)
+        .json({ error: "Plan name and rate card are required" });
     }
+
+    console.log(rateCards);
+
+    // Check if there is an existing plan for the user
+    let existingPlan = await Plan.findOne({ userId });
+
+    console.log(existingPlan);
+
+    if (existingPlan) {
+      // Update existing plan details (both plan name & rate cards)
+      existingPlan.planName = planName;
+      existingPlan.rateCard = rateCards;
+      existingPlan.assignedAt = new Date(); // Update timestamp
+
+      await existingPlan.save();
+
+      return res
+        .status(200)
+        .json({ message: "Plan updated successfully", plan: existingPlan });
+    }
+
+    // If no existing plan, create a new one
+    const newPlan = new Plan({
+      userId,
+      userName,
+      planName,
+      rateCard: rateCards,
+      assignedAt: new Date(),
+    });
+
+    await newPlan.save();
+
+    res
+      .status(201)
+      .json({ message: "Plan assigned successfully", plan: newPlan });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to assign plan" });
+  }
 };
-  
 
 const getRatecards = async (req, res) => {
   try {
@@ -262,4 +293,5 @@ module.exports = {
   assignPlan,
   getRatecards,
   getAllUsers,
+  changeUser,
 };
