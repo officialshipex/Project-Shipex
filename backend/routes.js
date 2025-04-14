@@ -46,6 +46,10 @@ const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
 const dashboard=require("./dashboard/dashboard,router")
 const channel=require("./Channels/allChannel.routes")
+
+const adminOrderRoute=require("./routes/adminOrder.router")
+router.use("/admin",adminOrderRoute)
+
 router.use("/channel",channel)
 const ndrRoutes=require("./routes/ndr.router")
 router.use("/ndr",ndrRoutes)
