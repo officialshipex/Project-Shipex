@@ -788,7 +788,7 @@ const trackSingleOrder = async (order) => {
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = ecomExpressStatusMapping[instruction];
+      order.status = ecomExpressStatusMapping[instruction] ;
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
@@ -839,7 +839,7 @@ const trackSingleOrder = async (order) => {
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = DTDCStatusMapping[instruction];
+      order.status = DTDCStatusMapping[instruction] ;
 
       if (instruction === "not delivered") {
         order.ndrStatus = "ndr";
@@ -876,7 +876,7 @@ const trackSingleOrder = async (order) => {
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = amazonStatusMapping[instruction];
+      order.status = amazonStatusMapping[instruction];
 
       if((order.status==="RTO" || order.status==="RTO In-transit") && (instruction==="package arrived at the carrier facility" || instruction==="package has left the carrier facility")){
         newStatus="RTO In-transit"
@@ -930,7 +930,7 @@ const trackSingleOrder = async (order) => {
       if ((order.status === "RTO In-transit"||order.status==="RTO") && instruction === "delivered to consignee") {
         newStatus = "RTO Delivered";
       } else {
-        newStatus = statusMappings[status];
+        newStatus = statusMappings[status] ;
       }
 
       if (instruction === "delivered to consignee") {
@@ -1038,7 +1038,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop()
+startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
