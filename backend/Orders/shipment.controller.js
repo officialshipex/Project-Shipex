@@ -129,7 +129,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    if (service.provider === "ShreeMaruti") {
+    if (service.provider === "ShreeMarut") {
       const payload = {
         fromPincode: parseInt(pincode),
         toPincode: parseInt(currentOrder.receiverAddress.pinCode),
