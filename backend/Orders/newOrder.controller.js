@@ -976,10 +976,10 @@ const trackOrders = async () => {
 //   await trackOrders();
 // });
 
-cron.schedule("*/2 * * * *", async () => {
-  console.log("🕒 Cron Job Triggered: Starting Order Tracking");
-  await trackOrders();
-});
+// cron.schedule("*/2 * * * *", async () => {
+//   console.log("🕒 Cron Job Triggered: Starting Order Tracking");
+//   await trackOrders();
+// });
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
