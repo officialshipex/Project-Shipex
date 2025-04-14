@@ -229,7 +229,7 @@ const remittanceScheduleData = async () => {
           continue;
         }
         // console.log("hjjhhjhjhjhj",dayDifference,Codplans)
-        if (dayDifference <=9) {
+        if (dayDifference <= 9) {
           //
           // if (true) {
           // console.log("kkkkkkkkkkk", value);
@@ -679,19 +679,16 @@ const uploadCodRemittance = async (req, res) => {
       return res.status(400).json({ error: "Unsupported file format" });
     }
 
-    // Validation: Check if file contains data
     if (!codRemittances || codRemittances.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "The uploaded file is empty or contains invalid data" });
+      return res.status(400).json({
+        error: "The uploaded file is empty or contains invalid data",
+      });
     }
 
-    // Process each remittance row
     for (const row of codRemittances) {
       const remittance = await adminCodRemittance.findOne({
         remitanceId: row["*RemittanceID"],
       });
-      // console.log()
 
       if (!remittance) {
         return res.status(400).json({
@@ -703,7 +700,6 @@ const uploadCodRemittance = async (req, res) => {
         userId: remittance.userId,
       });
 
-      // FIX: Handle missing userRemittance by creating a new record
       if (!userRemittance) {
         console.log(
           `No COD Remittance found for user ${userID}, creating a new one.`
@@ -713,10 +709,11 @@ const uploadCodRemittance = async (req, res) => {
           userId: userID,
           TotalCODRemitted: 0,
           TotalDeductionfromCOD: 0,
+          RemittanceInitiated: 0,
           remittanceData: [],
         });
 
-        await userRemittance.save(); // Save the new document
+        await userRemittance.save();
       }
 
       for (const item of remittance.orderDetails.orders) {
@@ -727,32 +724,29 @@ const uploadCodRemittance = async (req, res) => {
           continue;
         }
 
+        const paymentAmount = Number(order?.paymentDetails?.amount || 0);
+
         let existingCodRemittanceOrders = await CodRemittanceOrders.findOne({
           userId: userID,
         });
-        // let existingCodRemittance
+
         if (!existingCodRemittanceOrders) {
-          console.log(`No COD Remittance found for user ${userID}`);
+          console.log(`No COD Remittance Orders found for user ${userID}`);
           continue;
         }
 
-        // Find order in the existing COD Remittance data
         const orderIndex =
           existingCodRemittanceOrders.codRemittanceOrderData.findIndex(
             (data) => data.orderID.toString() === order.orderId.toString()
           );
 
         if (orderIndex !== -1) {
-          // Update status only if it is currently "Pending"
           if (
             existingCodRemittanceOrders.codRemittanceOrderData[orderIndex]
               .status === "Pending"
           ) {
-            existingCodRemittanceOrders.codRemittanceOrderData[
-              orderIndex
-            ].status = "Paid";
-
-            const paymentAmount = Number(order?.paymentDetails?.amount) || 0;
+            existingCodRemittanceOrders.codRemittanceOrderData[orderIndex].status =
+              "Paid";
 
             existingCodRemittanceOrders.totalCodRemittanceDue =
               Number(existingCodRemittanceOrders.totalCodRemittanceDue || 0) -
@@ -762,39 +756,39 @@ const uploadCodRemittance = async (req, res) => {
               Number(existingCodRemittanceOrders.totalCodRemittancePaid || 0) +
               paymentAmount;
 
-            // Validate before saving
-            if (isNaN(existingCodRemittanceOrders.totalCodRemittancePaid)) {
-              console.error(
-                "Invalid totalCodRemittancePaid:",
-                existingCodRemittanceOrders.totalCodRemittancePaid
-              );
+            if (
+              isNaN(existingCodRemittanceOrders.totalCodRemittancePaid) ||
+              isNaN(existingCodRemittanceOrders.totalCodRemittanceDue)
+            ) {
+              console.error("Invalid remittance values detected");
               return res
                 .status(500)
                 .json({ error: "Invalid remittance amount" });
             }
 
-            // Save the updated document
             await existingCodRemittanceOrders.save();
           }
         }
+
+        // Safely subtract from RemittanceInitiated
+        if (userRemittance.RemittanceInitiated >= paymentAmount) {
+          userRemittance.RemittanceInitiated -= paymentAmount;
+        }
+         else {
+          console.warn(
+            `RemittanceInitiated (${userRemittance.RemittanceInitiated}) is less than paymentAmount (${paymentAmount}). Skipping deduction to avoid negative value.`
+          );
+        }
       }
 
-      // Ensure values are properly initialized and avoid NaN
-      userRemittance.TotalCODRemitted =
-        Number(userRemittance.TotalCODRemitted || 0) +
-        Number(remittance.totalCod || 0);
+      // Add to totals
+      userRemittance.TotalCODRemitted += Number(remittance.totalCod || 0);
 
-      userRemittance.TotalDeductionfromCOD =
-        Number(userRemittance.TotalDeductionfromCOD || 0) +
+      userRemittance.TotalDeductionfromCOD +=
         Number(remittance.amountCreditedToWallet || 0) +
         Number(remittance.earlyCodCharges || 0) +
         Number(remittance.adjustedAmount || 0);
-      userRemittance.RemittanceInitiated =
-        Number(userRemittance.RemittanceInitiated || 0) -
-        (Number(userRemittance.TotalCODRemitted || 0) +
-          Number(userRemittance.TotalDeductionfromCOD || 0));
 
-      // Debugging - Ensure values are numbers
       if (
         isNaN(userRemittance.TotalCODRemitted) ||
         isNaN(userRemittance.TotalDeductionfromCOD)
@@ -806,11 +800,11 @@ const uploadCodRemittance = async (req, res) => {
         return res.status(500).json({ error: "Invalid remittance values" });
       }
 
-      // Add remittance data
+      // Add remittance details
       userRemittance.remittanceData.push({
         date: remittance.date,
         remittanceId: remittance.remitanceId,
-        utr: row["*UTR"] || "N/A", // Use default if UTR is missing
+        utr: row["*UTR"] || "N/A",
         codAvailable: remittance.totalCod || 0,
         amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
         earlyCodCharges: remittance.earlyCodCharges || 0,
@@ -824,14 +818,12 @@ const uploadCodRemittance = async (req, res) => {
         },
       });
 
-      // Save the updated userRemittance document
       await userRemittance.save();
 
       remittance.status = "Paid";
       await remittance.save();
     }
 
-    // **Delete the uploaded file after processing**
     fs.unlink(req.file.path, (err) => {
       if (err) {
         console.error("Error deleting file:", err);
@@ -851,6 +843,7 @@ const uploadCodRemittance = async (req, res) => {
       .json({ error: "An error occurred while processing the file" });
   }
 };
+
 
 const CheckCodplan = async (req, res) => {
   try {

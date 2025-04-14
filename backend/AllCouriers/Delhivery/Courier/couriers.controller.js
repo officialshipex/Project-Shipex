@@ -450,7 +450,7 @@ const updateClientWarehouse = async (req, res) => {
 };
 
 const cancelOrderDelhivery = async (awb_number) => {
-  console.log("I am in cancel order");
+  // console.log("I am in cancel order");
 
   // Check if order is already cancelled
   const isCancelled = await Order.findOne({
@@ -477,8 +477,6 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-
-    // Update the order status in the database
     await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
 
     if (response?.data?.status) {
