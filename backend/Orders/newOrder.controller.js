@@ -810,6 +810,18 @@ const trackSingleOrder = async (order) => {
           date: new Date(),
           reason: normalizedData.Instructions,
         };
+        const ndrHistoryEntry = {
+          date: new Date(),
+          action:Instructions,
+          remark: normalizedData.Instructions,
+           
+          attempt: attemptCount + 1,
+        };
+    
+        // order.ndrStatus = "Action_Requested";
+        order.ndrHistory.push(ndrHistoryEntry);
+        await order.save();
+    
       }
 
       if (order.status === "RTO" && instruction === "delivered") {
@@ -848,6 +860,17 @@ const trackSingleOrder = async (order) => {
           date: new Date(),
           reason: normalizedData.Instructions,
         };
+        const ndrHistoryEntry = {
+          date: new Date(),
+          action:instruction,
+          remark: normalizedData.Instructions,
+           
+          attempt: attemptCount + 1,
+        };
+    
+        // order.ndrStatus = "Action_Requested";
+        order.ndrHistory.push(ndrHistoryEntry);
+        await order.save();
       }
 
       if (order.status === "RTO" && instruction === "rto delivered") {
