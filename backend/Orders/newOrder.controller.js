@@ -833,7 +833,7 @@ const trackSingleOrder = async (order) => {
         "softdata upload": "Ready To Ship",
         "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
-        "picked up": "Ready To Ship",
+        "picked up": "In-transit",
         booked: "Ready To Ship",
         "in transit": "In-transit",
         "departed from location": "In-transit",
