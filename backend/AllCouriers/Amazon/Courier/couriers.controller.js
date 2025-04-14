@@ -6,7 +6,6 @@ const User = require("../../../models/User.model");
 const { s3 } = require("../../../config/s3");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 
-
 const createOneClickShipment = async (req, res) => {
   try {
     const accessToken = await getAmazonAccessToken();
@@ -34,25 +33,26 @@ const createOneClickShipment = async (req, res) => {
     const payload = {
       origin: currentOrder.pickupAddress,
       destination: currentOrder.receiverAddress,
-      payment_type:
-        currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid",
+      payment_type: currentOrder.paymentDetails?.method,
       order_amount: currentOrder.paymentDetails?.amount || 0,
       weight: weight || 0,
       length: currentOrder.packageDetails.volumetricWeight?.length || 0,
       breadth: currentOrder.packageDetails.volumetricWeight?.width || 0,
       height: currentOrder.packageDetails.volumetricWeight?.height || 0,
       productDetails: currentOrder.productDetails,
-      orderId:currentOrder.orderId
+      orderId: currentOrder.orderId,
     };
-    const { rate, requestToken } = await checkAmazonServiceability(
-      "Amazon",
-      payload
-    );
+    const { rate, requestToken, valueAddedServiceIds } =
+      await checkAmazonServiceability("Amazon", payload);
+
+    console.log("Extracted VAS IDs from rate:", valueAddedServiceIds);
 
     // const { id, requestToken, rateId } = req.body;
 
+    const isCOD = payload.payment_type === "COD";
+
     const shipmentData = {
-      requestToken: requestToken,
+      requestToken,
       rateId: rate,
       requestedDocumentSpecification: {
         format: "PDF",
@@ -65,18 +65,14 @@ const createOneClickShipment = async (req, res) => {
         pageLayout: "DEFAULT",
         needFileJoining: false,
         requestedDocumentTypes: ["LABEL"],
-        requestedLabelCustomization: {
-          requestAttributes: [
-            "PACKAGE_CLIENT_REFERENCE_ID",
-            // currentOrder.orderId,
-            // currentOrder.paymentDetails.amount
-
-            "COLLECT_ON_DELIVERY_AMOUNT",
-          ],
-        },
       },
+      // Use requestedValueAddedServices
+      requestedValueAddedServices: [
+        ...(isCOD ? [{ id: "CollectOnDelivery" }] : []),
+      ],
     };
-    console.log("shipment data", shipmentData);
+
+    // console.log("shipment data", shipmentData);
     let response;
 
     if (currentWallet.balance >= finalCharges) {
@@ -111,7 +107,6 @@ const createOneClickShipment = async (req, res) => {
         Body: labelBuffer,
         ContentType: "application/pdf",
       });
-      
 
       await s3.send(uploadCommand);
 
@@ -258,8 +253,11 @@ const getShipmentTracking = async (trackingId) => {
       }
     );
 
-    console.log("Tracking Information:", response.data.payload.eventHistory[0].eventCode);
-    return {success:true,data:response.data.payload};
+    console.log(
+      "Tracking Information:",
+      response.data.payload.eventHistory[0].eventCode
+    );
+    return { success: true, data: response.data.payload };
   } catch (error) {
     console.error(
       "Error fetching tracking information:",
@@ -270,7 +268,7 @@ const getShipmentTracking = async (trackingId) => {
 
 const checkAmazonServiceability = async (provider, payload) => {
   try {
-    console.log("payloadprovider", payload);
+    // console.log("payloadprovider", payload);
 
     const accessToken = await getAmazonAccessToken();
     if (!accessToken) return { success: false, reason: "Missing access token" };
@@ -340,8 +338,19 @@ const checkAmazonServiceability = async (provider, payload) => {
       channelDetails: {
         channelType: "EXTERNAL",
       },
+      ...(payload.payment_type === "COD" && {
+        valueAddedServices: {
+          collectOnDelivery: {
+            amount: {
+              value: payload.order_amount,
+              unit: "INR",
+            },
+          },
+        },
+      }),
     };
-    console.log("body", requestBody);
+
+    // console.log("body", requestBody);
 
     const response = await axios.post(
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",
@@ -361,12 +370,25 @@ const checkAmazonServiceability = async (provider, payload) => {
     console.log("reat", response.data.payload);
 
     if (rates.length > 0) {
-      // console.log("✅ Amazon Shipping is available for this pincode.", rates);
+      const selectedRate = rates[0]; // Use the first rate (or allow user to pick one)
+
+      const valueAddedServiceIds =
+        selectedRate.availableValueAddedServiceGroups?.flatMap((group) => {
+          // Some APIs return valueAddedServices instead of valueAddedServiceIds
+          if (group.valueAddedServiceIds) return group.valueAddedServiceIds;
+          if (group.valueAddedServices)
+            return group.valueAddedServices.map((vas) => vas.id);
+          return [];
+        }) || [];
+
+      console.log("val", valueAddedServiceIds);
+
       return {
         success: true,
         reason: "Pincodes are serviceable",
-        rate: response.data.payload.rates[0].rateId,
+        rate: selectedRate.rateId,
         requestToken: response.data.payload.requestToken,
+        valueAddedServiceIds, // ✅ include this in return
       };
     } else if (ineligibleRates.length > 0) {
       console.log("❌ Amazon does not service this pincode.");
