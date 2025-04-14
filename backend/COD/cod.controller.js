@@ -75,7 +75,7 @@ const codPlanUpdate = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "An error occurred while updating the COD Plan",
-      error: error.message, // Send error details for debugging (optional)
+      error: error.message,
     });
   }
 };
@@ -92,9 +92,7 @@ const codToBeRemitted = async () => {
         order.paymentDetails.method === "COD"
       );
     });
-
     for (const order of deliveredCODOrders) {
-      // console.log("8888888",order)
       const latestTracking = order.tracking?.[order.tracking.length - 1];
       const deliveryDate = latestTracking?.StatusDateTime;
 
@@ -111,7 +109,6 @@ const codToBeRemitted = async () => {
       const existingRemittance = await codRemittance.findOne({
         userId: order.userId,
       });
-      // console.log("jkkkjjkjk",existingRemittance)
       if (existingRemittance) {
         let dateEntry = existingRemittance.sameDayDelhiveryOrders?.find(
           (entry) =>
@@ -149,9 +146,7 @@ const codToBeRemitted = async () => {
             },
           ],
         });
-
         await newRemittance.save();
-        // console.log("33333333333", newRemittance);
       }
     }
 
