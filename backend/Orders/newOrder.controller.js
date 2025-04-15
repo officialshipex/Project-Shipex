@@ -1061,7 +1061,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop()
+// startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
