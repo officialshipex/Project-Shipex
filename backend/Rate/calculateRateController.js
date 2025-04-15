@@ -40,7 +40,7 @@ const calculateRate = async (req, res) => {
         console.log("ecom",serviceable)
 
       } else if (provider === "Delhivery") {
-        serviceable = await checkPincodeServiceabilityDelhivery(pickUpPincode, order_type);
+        serviceable = await checkPincodeServiceabilityDelhivery(deliveryPincode, order_type);
         // console.log("dele",serviceable)
       } else if (provider === "DTDC") {
         serviceable = await checkServiceabilityDTDC(pickUpPincode, deliveryPincode);
