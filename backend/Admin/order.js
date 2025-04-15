@@ -44,7 +44,7 @@ const getOrdersByStatus = async (req, res) => {
 };
 
   
-  // GET /admin/searchUsers?query=some_text
+
 const searchUser=async (req, res) => {
   const { query } = req.query;
 
