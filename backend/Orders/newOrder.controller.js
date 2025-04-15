@@ -237,6 +237,42 @@ const getOrders = async (req, res) => {
   }
 };
 
+const getOrdersByNdrStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
+    const status = req.query.status;
+    // console.log(status)
+
+    const filter = { userId };
+    if (status && status !== "All") {
+      filter.ndrStatus = status;
+    }
+
+    const totalCount = await Order.countDocuments(filter);
+
+    let query = Order.find(filter).sort({ createdAt: -1 });
+    if (limit) query = query.skip(skip).limit(limit);
+
+    const orders = await query.lean();
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+
+    res.json({
+      orders,
+      totalPages,
+      totalCount,
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error("Error fetching paginated orders:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1249,6 +1285,7 @@ const formatDTDCDateTime = (dateStr, timeStr) => {
 module.exports = {
   newOrder,
   getOrders,
+  getOrdersByNdrStatus,
   updatedStatusOrders,
   getOrdersById,
   getpickupAddress,

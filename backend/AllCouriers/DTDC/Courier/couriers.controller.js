@@ -154,7 +154,7 @@ if(!courier){
       });
     }else{
       console.log("ererer",response.data)
-      return res.status(400).json({message:"Error creating shipment"})
+      return res.status(400).json({message:response.data.data[0].message})
     }
 
     console.log(response.data.data);
@@ -169,7 +169,7 @@ if(!courier){
   } catch (error) {
     console.error(
       "Error creating shipment:",
-      error.response?.data || error.message
+      error.response
     );
     return res.status(500).json({
       success: false,
@@ -319,7 +319,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
     );
 
     const zipCodeResponse = response.data.ZIPCODE_RESP || [];
-    // console.log("DTDC Response:", zipCodeResponse);
+    console.log("DTDC Response:", zipCodeResponse);
 
     if (zipCodeResponse.length === 0) {
       return { success: false }; // No data returned

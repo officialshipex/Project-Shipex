@@ -2,6 +2,7 @@ const express = require("express");
 const {
   newOrder,
   getOrders,
+  getOrdersByNdrStatus,
   updatedStatusOrders,
   getOrdersById,
   getpickupAddress,
@@ -27,6 +28,7 @@ const router = express.Router();
 router.put("/updateOrder/:orderId", updateOrder);
 router.post("/neworder", newOrder);
 router.get("/orders", getOrders);
+router.get("/ndr",getOrdersByNdrStatus);
 router.post("/clone",updatedStatusOrders)
 router.get("/getOrderById/:id",getOrdersById)
 router.get("/pickupAddress", getpickupAddress);
