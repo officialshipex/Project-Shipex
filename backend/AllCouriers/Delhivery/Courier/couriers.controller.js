@@ -264,8 +264,8 @@ const trackShipmentDelhivery = async (waybill) => {
       }
     );
     // console.log(response)
-    console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.AWB)
-    console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
+    // console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.AWB)
+    // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
@@ -450,7 +450,7 @@ const updateClientWarehouse = async (req, res) => {
 };
 
 const cancelOrderDelhivery = async (awb_number) => {
-  console.log("I am in cancel order");
+  // console.log("I am in cancel order");
 
   // Check if order is already cancelled
   const isCancelled = await Order.findOne({
@@ -465,8 +465,6 @@ const cancelOrderDelhivery = async (awb_number) => {
       code: 400,
     };
   }
-
-  // Prepare payload for cancellation request
   const payload = {
     waybill: awb_number,
     cancellation: true,
@@ -479,8 +477,6 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-
-    // Update the order status in the database
     await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
 
     if (response?.data?.status) {
