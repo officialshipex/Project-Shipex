@@ -20,7 +20,7 @@ const ZONE_E_STATES = [
   "himachal",
   "leh ladakh",
   "andaman nicobar",
-  "kerala",
+  // "kerala",
   "assam",
   "meghalaya",
   "manipur",
