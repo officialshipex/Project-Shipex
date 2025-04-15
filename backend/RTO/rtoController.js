@@ -10,7 +10,7 @@ const rtoCharges = async (req, res) => {
     const gstRate = 18;
     const order = await Order.find({
       // userId: userID,
-      status: "RTO",
+      status: "RTO Delivered",
       RTOCharges: { $exists: false },
     });
 
