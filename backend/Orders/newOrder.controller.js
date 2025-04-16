@@ -253,7 +253,11 @@ const getOrdersByNdrStatus = async (req, res) => {
 
     const totalCount = await Order.countDocuments(filter);
 
-    let query = Order.find(filter).sort({ createdAt: -1 });
+    let query = Order.find(filter).sort({
+      "ndrReason.date": -1,
+      createdAt: -1,
+    });
+
     if (limit) query = query.skip(skip).limit(limit);
 
     const orders = await query.lean();
@@ -839,20 +843,42 @@ const trackSingleOrder = async (order) => {
       if (instruction === "undelivered") {
         order.ndrStatus = "ndr";
         order.ndrReason = {
-          date: new Date(),
+          date: normalizedData.StatusDateTime,
           reason: normalizedData.Instructions,
         };
-        const ndrHistoryEntry = {
-          date: new Date(),
-          action: Instructions,
-          remark: normalizedData.Instructions,
+        const lastEntryDate = new Date(
+          order.ndrHistory[order.ndrHistory.length - 1]?.date
+        ).toDateString();
+        const currentStatusDate = new Date(
+          normalizedData.StatusDateTime
+        ).toDateString();
 
-          attempt: attemptCount + 1,
-        };
+        if (
+          order.ndrHistory.length === 0 ||
+          lastEntryDate !== currentStatusDate
+        ) {
+          if (!Array.isArray(order.ndrHistory)) {
+            order.ndrHistory = [];
+          }
+          if (
+            normalizedData.StatusCode &&
+            eligibleNSLCodes.includes(normalizedData.StatusCode)
+          ) {
+            order.ndrStatus = "ndr";
+            order.ndrReason = {
+              date: normalizedData.StatusDateTime,
+              reason: normalizedData.Instructions,
+            };
+          }
 
-        // order.ndrStatus = "Action_Requested";
-        order.ndrHistory.push(ndrHistoryEntry);
-        await order.save();
+          const ndrHistoryEntry = {
+            date: normalizedData.StatusDateTime,
+            action: "Auto Reattempt",
+            remark: normalizedData.Instructions,
+            attempt: attemptCount + 1,
+          };
+          order.ndrHistory.push(ndrHistoryEntry);
+        }
       }
 
       if (
@@ -892,20 +918,42 @@ const trackSingleOrder = async (order) => {
       if (instruction === "not delivered") {
         order.ndrStatus = "ndr";
         order.ndrReason = {
-          date: new Date(),
+          date: normalizedData.StatusDateTime,
           reason: normalizedData.Instructions,
         };
-        const ndrHistoryEntry = {
-          date: new Date(),
-          action: instruction,
-          remark: normalizedData.Instructions,
+        const lastEntryDate = new Date(
+          order.ndrHistory[order.ndrHistory.length - 1]?.date
+        ).toDateString();
+        const currentStatusDate = new Date(
+          normalizedData.StatusDateTime
+        ).toDateString();
 
-          attempt: attemptCount + 1,
-        };
+        if (
+          order.ndrHistory.length === 0 ||
+          lastEntryDate !== currentStatusDate
+        ) {
+          if (!Array.isArray(order.ndrHistory)) {
+            order.ndrHistory = [];
+          }
+          if (
+            normalizedData.StatusCode &&
+            eligibleNSLCodes.includes(normalizedData.StatusCode)
+          ) {
+            order.ndrStatus = "ndr";
+            order.ndrReason = {
+              date: normalizedData.StatusDateTime,
+              reason: normalizedData.Instructions,
+            };
+          }
 
-        // order.ndrStatus = "Action_Requested";
-        order.ndrHistory.push(ndrHistoryEntry);
-        await order.save();
+          const ndrHistoryEntry = {
+            date: normalizedData.StatusDateTime,
+            action: "Auto Reattempt",
+            remark: normalizedData.Instructions,
+            attempt: attemptCount + 1,
+          };
+          order.ndrHistory.push(ndrHistoryEntry);
+        }
       }
 
       if (
@@ -1016,10 +1064,16 @@ const trackSingleOrder = async (order) => {
         "EOD-6",
       ];
 
+      const lastEntryDate = new Date(
+        order.ndrHistory[order.ndrHistory.length - 1]?.date
+      ).toDateString();
+      const currentStatusDate = new Date(
+        normalizedData.StatusDateTime
+      ).toDateString();
+
       if (
         order.ndrHistory.length === 0 ||
-        order.ndrHistory[order.ndrHistory.length - 1].date !==
-          normalizedData.StatusDateTime
+        lastEntryDate !== currentStatusDate
       ) {
         if (!Array.isArray(order.ndrHistory)) {
           order.ndrHistory = [];
@@ -1037,7 +1091,7 @@ const trackSingleOrder = async (order) => {
 
         const ndrHistoryEntry = {
           date: normalizedData.StatusDateTime,
-          action:"Auto Reattempt",
+          action: "Auto Reattempt",
           remark: normalizedData.Instructions,
           attempt: attemptCount + 1,
         };
