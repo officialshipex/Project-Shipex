@@ -1037,7 +1037,7 @@ const trackSingleOrder = async (order) => {
 
         const ndrHistoryEntry = {
           date: normalizedData.StatusDateTime,
-          action,
+          action:"Auto Reattempt",
           remark: normalizedData.Instructions,
           attempt: attemptCount + 1,
         };
