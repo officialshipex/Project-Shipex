@@ -199,18 +199,7 @@ const newReciveAddress = async (req, res) => {
   }
 };
 
-// const getOrders = async (req, res) => {
-//   try {
-//     const orders = await Order.find({ userId: req.user._id })
-//       .sort({ createdAt: -1 })
-//       .lean();
 
-//     res.json(orders);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// };
 
 const getOrders = async (req, res) => {
   try {
@@ -226,6 +215,42 @@ const getOrders = async (req, res) => {
     const filter = { userId };
     if (status && status !== "All") {
       filter.status = status;
+    }
+
+    const totalCount = await Order.countDocuments(filter);
+
+    let query = Order.find(filter).sort({ createdAt: -1 });
+    if (limit) query = query.skip(skip).limit(limit);
+
+    const orders = await query.lean();
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+
+    res.json({
+      orders,
+      totalPages,
+      totalCount,
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error("Error fetching paginated orders:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getOrdersByNdrStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
+    const status = req.query.status;
+    // console.log(status)
+
+    const filter = { userId };
+    if (status && status !== "All") {
+      filter.ndrStatus = status;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -799,7 +824,7 @@ const trackSingleOrder = async (order) => {
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = ecomExpressStatusMapping[instruction] || order.status;
+      order.status = ecomExpressStatusMapping[instruction] ;
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
@@ -819,9 +844,21 @@ const trackSingleOrder = async (order) => {
           date: new Date(),
           reason: normalizedData.Instructions,
         };
+        const ndrHistoryEntry = {
+          date: new Date(),
+          action:Instructions,
+          remark: normalizedData.Instructions,
+           
+          attempt: attemptCount + 1,
+        };
+    
+        // order.ndrStatus = "Action_Requested";
+        order.ndrHistory.push(ndrHistoryEntry);
+        await order.save();
+    
       }
 
-      if (order.status === "RTO" && instruction === "delivered") {
+      if ((order.status === "RTO" || order.status==="RTO In-transit") && instruction === "delivered") {
         newStatus = "RTO Delivered";
       }
     }
@@ -833,7 +870,7 @@ const trackSingleOrder = async (order) => {
         "softdata upload": "Ready To Ship",
         "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
-        "picked up": "Ready To Ship",
+        "picked up": "In-transit",
         booked: "Ready To Ship",
         "in transit": "In-transit",
         "departed from location": "In-transit",
@@ -850,7 +887,7 @@ const trackSingleOrder = async (order) => {
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = DTDCStatusMapping[instruction] || order.status;
+      order.status = DTDCStatusMapping[instruction] ;
 
       if (instruction === "not delivered") {
         order.ndrStatus = "ndr";
@@ -858,9 +895,20 @@ const trackSingleOrder = async (order) => {
           date: new Date(),
           reason: normalizedData.Instructions,
         };
+        const ndrHistoryEntry = {
+          date: new Date(),
+          action:instruction,
+          remark: normalizedData.Instructions,
+           
+          attempt: attemptCount + 1,
+        };
+    
+        // order.ndrStatus = "Action_Requested";
+        order.ndrHistory.push(ndrHistoryEntry);
+        await order.save();
       }
 
-      if (order.status === "RTO" && instruction === "rto delivered") {
+      if ((order.status === "RTO" || order.status==="RTO In-transit") && instruction === "rto delivered") {
         newStatus = "RTO Delivered";
       }
       if (instruction === "delivered") {
@@ -873,11 +921,6 @@ const trackSingleOrder = async (order) => {
         readyforreceive: "Ready To Ship",
         "label created":"Ready To Ship",
         "pickup failed": "Ready To Ship",
-        "pickup awaited": "Ready To Ship",
-        "softdata upload": "Ready To Ship",
-        "pickup scheduled": "Ready To Ship",
-        "not picked": "Ready To Ship",
-        "picked up": "Ready To Ship",
         "package has left the carrier facility": "In-transit",
         "package picked up": "In-transit",
         "package arrived at the carrier facility": "In-transit",
@@ -885,19 +928,21 @@ const trackSingleOrder = async (order) => {
         "out for delivery": "Out for Delivery",
         "package delivered": "Delivered",
         "return initiated": "RTO",
-        "rto in transit": "RTO In-transit",
         "returned to seller": "RTO Delivered",
-        "rto booked": "RTO",
         pickupcancelled: "Cancelled",
         lost: "Cancelled",
         undelivered: "In-transit",
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
-      newStatus = amazonStatusMapping[instruction] || order.status;
+      order.status = amazonStatusMapping[instruction];
 
       if((order.status==="RTO" || order.status==="RTO In-transit") && (instruction==="package arrived at the carrier facility" || instruction==="package has left the carrier facility")){
         newStatus="RTO In-transit"
+      }
+
+      if((order.status==="RTO" || order.status==="RTO In-transit") && (instruction==="package delivered")){
+        newStatus="RTO Delivered"
       }
 
 
@@ -941,10 +986,10 @@ const trackSingleOrder = async (order) => {
         newStatus = "RTO In-transit";
       }
 
-      if (order.status === "RTO" && instruction === "delivered to consignee") {
+      if ((order.status === "RTO In-transit"||order.status==="RTO") && instruction === "delivered to consignee") {
         newStatus = "RTO Delivered";
       } else {
-        newStatus = statusMappings[status] || order.status;
+        newStatus = statusMappings[status] ;
       }
 
       if (instruction === "delivered to consignee") {
@@ -1240,6 +1285,7 @@ const formatDTDCDateTime = (dateStr, timeStr) => {
 module.exports = {
   newOrder,
   getOrders,
+  getOrdersByNdrStatus,
   updatedStatusOrders,
   getOrdersById,
   getpickupAddress,
