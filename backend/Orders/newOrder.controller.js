@@ -830,14 +830,14 @@ const trackSingleOrder = async (order) => {
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
-        (newStatus === "RTO" || newStatus === "RTO In-transit") &&
+        (order.status === "RTO" || order.status === "RTO In-transit") &&
         result.rto_awb
       ) {
         order.awb_number = result.rto_awb;
       }
 
       if (order.status === "RTO" && instruction === "bagged") {
-        newStatus = "RTO In-transit";
+        order.status = "RTO In-transit";
       }
 
       if (instruction === "undelivered") {
@@ -884,7 +884,7 @@ const trackSingleOrder = async (order) => {
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "delivered"
       ) {
-        newStatus = "RTO Delivered";
+        order.status = "RTO Delivered";
       }
     }
     if (provider === "DTDC") {
@@ -958,10 +958,10 @@ const trackSingleOrder = async (order) => {
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "rto delivered"
       ) {
-        newStatus = "RTO Delivered";
+        order.status = "RTO Delivered";
       }
       if (instruction === "delivered") {
-        newStatus = "Delivered";
+        order.status = "Delivered";
         ndrStatus = "Delivered";
       }
     }
@@ -991,14 +991,14 @@ const trackSingleOrder = async (order) => {
         (instruction === "package arrived at the carrier facility" ||
           instruction === "package has left the carrier facility")
       ) {
-        newStatus = "RTO In-transit";
+        order.status = "RTO In-transit";
       }
 
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "package delivered"
       ) {
-        newStatus = "RTO Delivered";
+        order.status = "RTO Delivered";
       }
     } else {
       const statusMappings = {
@@ -1035,20 +1035,20 @@ const trackSingleOrder = async (order) => {
           "no client instructions to reattempt" &&
         normalizedData.Instructions === "added to bag"
       ) {
-        newStatus = "RTO In-transit";
+        order.status = "RTO In-transit";
       }
 
       if (
         (order.status === "RTO In-transit" || order.status === "RTO") &&
         instruction === "delivered to consignee"
       ) {
-        newStatus = "RTO Delivered";
+        order.status = "RTO Delivered";
       } else {
-        newStatus = statusMappings[status];
+        order.status = statusMappings[status];
       }
 
       if (instruction === "delivered to consignee") {
-        newStatus = "Delivered";
+        order.status = "Delivered";
         order.ndrStatus = "Delivered";
       }
       const eligibleNSLCodes = [
@@ -1094,9 +1094,9 @@ const trackSingleOrder = async (order) => {
         });
       }
 
-      if (newStatus && order.status !== newStatus) {
-        order.status = newStatus;
-      }
+      // if (order.status && order.status !== order.status) {
+      //   order.status = order.status;
+      // }
     }
 
     // Prevent duplicate tracking logs
@@ -1105,7 +1105,8 @@ const trackSingleOrder = async (order) => {
     const isSameCheckpoint =
       lastTrackingEntry &&
       lastTrackingEntry.StatusLocation === normalizedData.StatusLocation &&
-      lastTrackingEntry.StatusDateTime === normalizedData.StatusDateTime;
+      new Date(lastTrackingEntry.StatusDateTime).getTime() ===
+        new Date(normalizedData.StatusDateTime).getTime();
 
     if (isSameCheckpoint) {
       // Just update the last entry if the checkpoint is the same
