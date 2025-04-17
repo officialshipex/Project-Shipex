@@ -800,22 +800,25 @@ const trackSingleOrder = async (order) => {
       return;
     }
 
-
     if (provider === "EcomExpress") {
       const ecomExpressStatusMapping = {
-        "pickup scheduled": "Ready To Ship",
-        "pickup failed": "Ready To Ship",
-        "pickup assigned": "In-transit",
         "soft data uploaded": "Ready To Ship",
-        "departed from location": "In-transit",
-        "shipment debagged at location": "In-transit",
+        "pickup assigned": "In-transit",
         "out for pickup": "In-transit",
+        "pickup failed": "Ready To Ship",
+        "pickup scheduled": "Ready To Ship",
         "field pickup done": "In-transit",
-        "bag inscan at location": "In-transit",
-        "arrived at destination": "In-transit",
         bagged: "In-transit",
+        "bag added to connection": "In-transit",
+        "departed from location": "In-transit",
+        "redirected to another": "In-transit",
+        "bag inscan at location": "In-transit",
+        "shipment debagged at location": "In-transit",
         "out for delivery": "Out for Delivery",
+        undelivered: "Undelivered",
         delivered: "Delivered",
+        "arrived at destination": "In-transit",
+        "ofd lock": "RTO",
         "rto lock": "RTO",
         returned: "RTO In-transit",
         cancelled: "Cancelled",
@@ -827,8 +830,8 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = ecomExpressStatusMapping[instruction];
 
-      if(ecomExpressStatusMapping[instruction]==="Out for Delivery"){
-        order.ndrStatus="Out for Delivery";
+      if (ecomExpressStatusMapping[instruction] === "Out for Delivery") {
+        order.ndrStatus = "Out for Delivery";
       }
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
@@ -839,9 +842,16 @@ const trackSingleOrder = async (order) => {
         order.awb_number = result.rto_awb;
       }
 
-      if (order.status === "RTO" && instruction === "bagged") {
+      if (
+        (order.status === "RTO" || order.status === "RTO In-transit") &&
+        (instruction === "bagged" ||
+          instruction === "bag added to connection" ||
+          instruction === "departed from location" ||
+          instruction === "bag inscan at location" ||
+          instruction === "shipment debagged at location")
+      ) {
         order.status = "RTO In-transit";
-        order.ndrStatus="RTO In-transit";
+        order.ndrStatus = "RTO In-transit";
       }
 
       if (instruction === "undelivered") {
@@ -864,7 +874,7 @@ const trackSingleOrder = async (order) => {
           if (!Array.isArray(order.ndrHistory)) {
             order.ndrHistory = [];
           }
-          
+
           const attemptCount = order.ndrHistory?.length || 0;
           order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
@@ -874,13 +884,19 @@ const trackSingleOrder = async (order) => {
           });
         }
       }
-
+      if (
+        (order.status === "RTO" || order.status === "RTO In-transit") &&
+        instruction === "out for delivery"
+      ) {
+        order.status = "RTO Out for Delivery";
+        order.ndrStatus = "RTO Out for Delivery";
+      }
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "delivered"
       ) {
         order.status = "RTO Delivered";
-        order.ndrStatus="RTO Delivered";
+        order.ndrStatus = "RTO Delivered";
       }
     }
     if (provider === "DTDC") {
@@ -891,30 +907,46 @@ const trackSingleOrder = async (order) => {
         "softdata upload": "Ready To Ship",
         "pickup scheduled": "Ready To Ship",
         "not picked": "Ready To Ship",
+        "pickup reassigned": "Ready To Ship",
         "picked up": "In-transit",
-        booked: "Ready To Ship",
+        booked: "In-transit",
         "in transit": "In-transit",
-        "departed from location": "In-transit",
+        "reached at destination": "In-transit",
+        "mis route": "In-transit",
+        "fdm prepared": "In-transit",
+        "wrong pincode": "In-transit",
+        "waiting for rto approval": "In-transit",
+        "non serviceable location": "In-transit",
+        "disturbed/ prohibited area": "In-transit",
+        "e-waybill dispute": "In-transit",
+        "shipment received after cut-off time at destination": "In-transit",
+        "off-loaded by airlines (central team access)": "In-transit",
         "out for delivery": "Out for Delivery",
-        "otp based delivered": "Delivered",
         delivered: "Delivered",
+        "not delivered": "Undelivered",
         "rto processed & forwarded": "RTO",
-        "rto in transit": "RTO In-transit",
-        "rto delivered": "RTO Delivered",
         "rto booked": "RTO",
-        cancelled: "Cancelled",
-        lost: "Cancelled",
-        undelivered: "In-transit",
+        "rto in transit": "RTO In-transit",
+        "rto reached at destination": "RTO In-transit",
+        "rto delivered": "RTO Delivered",
       };
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = DTDCStatusMapping[instruction];
 
-      if(DTDCStatusMapping[instruction]==="Out for Delivery"){
-        order.ndrStatus="Out for Delivery"
+      if(order.status==="RTO"){
+        order.ndrStatus="RTO"
+      }
+      if(order.status==="RTO In-transit"){
+        order.ndrStatus="RTO In-transit"
+      }
+
+      if (DTDCStatusMapping[instruction] === "Out for Delivery") {
+        order.ndrStatus = "Out for Delivery";
       }
 
       if (instruction === "not delivered") {
+        order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
@@ -949,7 +981,7 @@ const trackSingleOrder = async (order) => {
         instruction === "rto delivered"
       ) {
         order.status = "RTO Delivered";
-        order.ndrStatus="RTO Delivered"
+        order.ndrStatus = "RTO Delivered";
       }
       if (instruction === "delivered") {
         order.status = "Delivered";
@@ -957,101 +989,108 @@ const trackSingleOrder = async (order) => {
       }
     }
     if (provider === "Amazon") {
-      const amazonStatusMapping = {
-        readyforreceive: "Ready To Ship",
-        "label created": "Ready To Ship",
-        "pickup failed": "Ready To Ship",
-        "package has left the carrier facility": "In-transit",
-        "package picked up": "In-transit",
-        "package arrived at the carrier facility": "In-transit",
-        undeliverable: "ndr",
-        "out for delivery": "Out for Delivery",
-        "package delivered": "Delivered",
-        "return initiated": "RTO",
-        "returned to seller": "RTO Delivered",
-        pickupcancelled: "Cancelled",
-        lost: "Cancelled",
-        undelivered: "In-transit",
-      };
-
-      const instruction = normalizedData.Instructions?.toLowerCase();
-      order.status = amazonStatusMapping[instruction];
-      if(amazonStatusMapping[instruction]==="Out for Delivery"){
-        order.ndrStatus="Out for Delivery"
+      if (normalizedData.ShipmentType === "FORWARD") {
+        if (normalizedData.Instructions === "ReadyForReceive") {
+          order.status = "Ready To Ship";
+        }
+        if (
+          normalizedData.Instructions === "PickupDone" ||
+          normalizedData.Instructions === "ArrivedAtCarrierFacility" ||
+          normalizedData.Instructions === "Departed"
+        ) {
+          order.status = "In-transit";
+        }
+        if (normalizedData.Instructions === "Undeliverable") {
+          order.status = "Undelivered";
+          order.ndrStatus = "Undelivered";
+        }
+      } else {
+        if (
+          normalizedData.Instructions === "ReturnInitiated" &&
+          order.status === "Undelivered"
+        ) {
+          order.status = "RTO";
+          order.ndrStatus = "RTO";
+        }
+        if (
+          normalizedData.Instructions === "ArrivedAtCarrierFacility" ||
+          normalizedData.Instructions === "Departed" ||
+          normalizedData.Instructions ===
+            "Package arrived at the carrier facility" ||
+          normalizedData.Instructions ===
+            "Package has left the carrier facility"
+        ) {
+          order.status = "RTO In-transit";
+          order.ndrStatus = "RTO In-transit";
+        }
+        if (normalizedData.Instructions === "ReturnInitiated") {
+          order.status = "RTO In-transit";
+        }
+        if (normalizedData.Instructions === "OutForDelivery") {
+          order.status = "RTO Out for Delivery";
+        }
+        if (normalizedData.Instructions === "Delivered") {
+          order.status = "RTO Delivered";
+          order.ndrStatus = "RTO Delivered";
+        }
       }
+      if (normalizedData.Instructions === "Undeliverable") {
+        order.status = "Undelivered";
+        order.ndrStatus = "Undelivered";
+        order.ndrReason = {
+          date: normalizedData.StatusDateTime,
+          reason: normalizedData.Instructions,
+        };
+        const lastEntryDate = new Date(
+          order.ndrHistory[order.ndrHistory.length - 1]?.date
+        ).toDateString();
+        const currentStatusDate = new Date(
+          normalizedData.StatusDateTime
+        ).toDateString();
 
-      if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
-        (instruction === "package arrived at the carrier facility" ||
-          instruction === "package has left the carrier facility")
-      ) {
-        order.status = "RTO In-transit";
-        order.ndrStatus="RTO In-transit"
-      }
-
-      if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
-        instruction === "package delivered"
-      ) {
-        order.status = "RTO Delivered";
-        order.ndrStatus="RTO Delivered"
+        if (
+          order.ndrHistory.length === 0 ||
+          lastEntryDate !== currentStatusDate
+        ) {
+          if (!Array.isArray(order.ndrHistory)) {
+            order.ndrHistory = [];
+          }
+          const attemptCount = order.ndrHistory?.length || 0;
+          order.ndrHistory.push({
+            date: normalizedData.StatusDateTime,
+            action: "Auto Reattempt",
+            remark: normalizedData.Instructions,
+            attempt: attemptCount + 1,
+          });
+        }
       }
     } else {
-      const statusMappings = {
-        "manifest uploaded": "Ready To Ship",
-        "shipment picked up": "In-transit",
-        "shipment recieved at origin center": "In-transit",
-        "not picked": "Ready To Ship",
-        "bag added to trip": "In-transit",
-        "trip arrived": "In-transit",
-        "bag received at facility": "In-transit",
-        "shipment received at facility": "In-transit",
-        "shipment inscan at location": "In-transit",
-        "bag added to trip": "In-transit",
-        "trip arrived": "In-transit",
-        "bag inscan at location": "In-transit",
-        bagged: "In-transit",
-        "field pickup done": "In-transit",
-        "out for delivery": "Out for Delivery",
-        "call placed to consignee": "Out for Delivery",
-        "consignee refused to accept/order cancelled": "In-transit",
-        "incomplete address & contact details": "In-transit",
-        "package details changed by shipper": " In-transit",
-        "dispatched for rto": "RTO In-transit",
-        "return accepted": "RTO Delivered",
-        "delivered to consignee": "Delivered",
-        "seller cancelled the order": "Cancelled",
+      const statusMap = {
+        "UD:Manifested": { status: "Ready To Ship" },
+        "UD:In Transit": { status: "In-transit" },
+        "UD:Dispatched": { status: "Out for Delivery" },
+        "RT:In Transit": {
+          status: "RTO In-transit",
+          ndrStatus: "RTO In-transit",
+        },
+        "DL:RTO": { status: "RTO Delivered", ndrStatus: "RTO Delivered" },
+        "DL:Delivered": { status: "Delivered" },
       };
 
-      const status = normalizedData.Instructions?.toLowerCase();
-      const instruction = normalizedData.Instructions?.toLowerCase();
+      const key = `${normalizedData.StatusType}:${normalizedData.Status}`;
+      const mapped = statusMap[key];
 
-      if(statusMappings[status]==="Out for Delivery"){
-        order.ndrStatus="Out for Delivery"
-      }
-      if (
-        order.tracking[order.tracking.length - 1]?.instruction ===
-          "no client instructions to reattempt" &&
-        normalizedData.Instructions === "added to bag"
+      if (mapped) {
+        order.status = mapped.status;
+        if (mapped.ndrStatus) order.ndrStatus = mapped.ndrStatus;
+      } else if (
+        normalizedData.StatusType === "UD" &&
+        normalizedData.Status === "Pending" &&
+        normalizedData.StatusCode === "ST-108"
       ) {
-        order.status = "RTO In-transit";
-        order.ndrStatus="RTO In-transit";
+        order.status = "RTO";
       }
 
-      if (
-        (order.status === "RTO In-transit" || order.status === "RTO") &&
-        instruction === "delivered to consignee"
-      ) {
-        order.status = "RTO Delivered";
-        order.ndrStatus="RTO Delivered";
-      } else {
-        order.status = statusMappings[status];
-      }
-
-      if (instruction === "delivered to consignee") {
-        order.status = "Delivered";
-        order.ndrStatus = "Delivered";
-      }
       const eligibleNSLCodes = [
         "EOD-74",
         "EOD-15",
@@ -1081,6 +1120,7 @@ const trackSingleOrder = async (order) => {
           eligibleNSLCodes.includes(normalizedData.StatusCode)
         ) {
           order.ndrStatus = "Undelivered";
+          order.status = "Undelivered";
           order.ndrReason = {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
@@ -1094,13 +1134,8 @@ const trackSingleOrder = async (order) => {
           attempt: attemptCount + 1,
         });
       }
-
-      // if (order.status && order.status !== order.status) {
-      //   order.status = order.status;
-      // }
     }
 
-    // Prevent duplicate tracking logs
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];
 
     const isSameCheckpoint =
@@ -1129,11 +1164,10 @@ const trackSingleOrder = async (order) => {
     await order.save();
   } catch (error) {
     console.error(
-      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number} ${error}`
     );
   }
 };
-
 
 // Main controller
 const trackOrders = async () => {
@@ -1142,7 +1176,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "Delivered","RTO Delivered"] },
+      status: { $nin: ["new", "Delivered", "RTO Delivered", "Cancelled"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -1173,7 +1207,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop()
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -1209,6 +1243,9 @@ const mapTrackingResponse = (data, provider) => {
       Instructions: data.eventHistory?.length
         ? data.eventHistory[data.eventHistory.length - 1]?.eventCode
         : "N/A",
+      ShipmentType: data.eventHistory?.length
+        ? data.eventHistory[data.eventHistory.length - 1]?.shipmentType
+        : "N/A",
     },
     Shiprocket: {
       Status: data.current_status || null,
@@ -1224,7 +1261,8 @@ const mapTrackingResponse = (data, provider) => {
       Instructions: data.remarks || null,
     },
     Delhivery: {
-      Status: data.Status || null,
+      Status: data.Status || "N/A",
+      StatusType: data.StatusType || "N/A",
       StatusCode: data.StatusCode || null,
       StatusLocation: data.StatusLocation || "Unknown",
       StatusDateTime: data.StatusDateTime || null,
