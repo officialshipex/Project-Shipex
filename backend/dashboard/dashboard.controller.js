@@ -2,6 +2,8 @@ const Order = require("../models/newOrder.model");
 const dashboard = async (req, res) => {
   try {
     const userId = req.user._id;
+    const deliveredOrders = await Order.find({ userId, status: "Delivered" });
+    // console.log("Delivered Orders:", deliveredOrders.length);
 
     const orders = await Order.aggregate([
       { $match: { userId } },
@@ -39,13 +41,16 @@ const dashboard = async (req, res) => {
           pendingPickupOrders: [
             { $match: { status: "Ready To Ship" } },
             { $count: "count" }
-          ]
+          ],
+          RTOOrders: [
+            { $match: { status: "RTO Delivered" } },
+            { $count: "count" }
+          ] 
         }
       }
     ]);
 
     const data = orders[0];
-
     const totalorder = data.totalOrders[0]?.count || 0;
     const Delivered = data.deliveredOrders[0]?.deliveredCount || 0;
     const totalRevenue = data.deliveredOrders[0]?.totalRevenue || 0;
@@ -55,7 +60,7 @@ const dashboard = async (req, res) => {
     const pendingOrder = data.pendingOrders[0]?.count || 0;
     const intransite = data.inTransitOrders[0]?.count || 0;
     const pendingdatapickup = data.pendingPickupOrders[0]?.count || 0;
-
+    const RTOOrders = data.RTOOrders[0]?.count || 0;
     return res.status(200).json({
       totalorder,
       totalRevenue,
@@ -64,7 +69,8 @@ const dashboard = async (req, res) => {
       pendingOrder,
       intransite,
       TotalShipments,
-      pendingdatapickup
+      pendingdatapickup,
+      RTOOrders
     });
   } catch (error) {
     console.error("Dashboard Error:", error);
