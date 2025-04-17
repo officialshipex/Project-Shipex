@@ -2,18 +2,6 @@ const mongoose = require("mongoose");
 const { courierCodRemittance } = require("./cod.controller");
 
 const CodRemittanceOrderSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  totalCodRemittance: {
-    type: Number,
-  },
-  totalCodRemittancePaid: {
-    type: Number,
-  },
-  totalCodRemittanceDue: {
-    type: Number,
-  },
-  codRemittanceOrderData: [
-    {
       Date: {
         type: Date,
       },
@@ -43,8 +31,7 @@ const CodRemittanceOrderSchema = new mongoose.Schema({
         enum: ["Pending", "Paid"],
         default: "Pending",
       },
-    },
-  ],
+    
 });
 
 const CodRemittanceOrder = mongoose.model(
