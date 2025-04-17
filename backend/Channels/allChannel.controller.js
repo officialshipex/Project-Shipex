@@ -361,11 +361,11 @@ const fulfillOrder = async (req, res) => {
       });
       orderDetails = orderResponse.data.order;
     } catch (error) {
-      console.error("Error fetching order details:", error.response?.data || error);
+      // console.error("Error fetching order details:", error.response?.data || error);
       return res.status(404).json({ message: "Order not found on Shopify" });
     }
 
-    console.log("Order details:", orderDetails);
+    // console.log("Order details:", orderDetails);
 
     // Check if the order is already fulfilled
     if (orderDetails.fulfillment_status === "fulfilled") {

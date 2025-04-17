@@ -25,7 +25,6 @@ const rtoCharges = async (req, res) => {
         plan: plans.planName,
         courierServiceName: item.courierServiceName,
       });
-
       const extraWeight =
         item.packageDetails.applicableWeight * 1000 -
         ratecards.weightPriceBasic[0].weight;

@@ -1142,7 +1142,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "Delivered"] },
+      status: { $nin: ["new", "Delivered","RTO Delivered"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -1173,7 +1173,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop()
+startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -1330,7 +1330,7 @@ const GetTrackingByAwb = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    console.log("Order details:", order);
+    // console.log("Order details:", order);
     res.status(200).json(order);
   } catch (error) {
     console.error("Error fetching tracking details:", error);
