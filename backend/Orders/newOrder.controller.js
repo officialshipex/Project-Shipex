@@ -826,6 +826,10 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = ecomExpressStatusMapping[instruction];
+
+      if(ecomExpressStatusMapping[instruction]==="Out for Delivery"){
+        order.ndrStatus="Out for Delivery";
+      }
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
@@ -906,6 +910,10 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = DTDCStatusMapping[instruction];
 
+      if(DTDCStatusMapping[instruction]==="Out for Delivery"){
+        order.ndrStatus="Out for Delivery"
+      }
+
       if (instruction === "not delivered") {
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -968,6 +976,9 @@ const trackSingleOrder = async (order) => {
 
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = amazonStatusMapping[instruction];
+      if(amazonStatusMapping[instruction]==="Out for Delivery"){
+        order.ndrStatus="Out for Delivery"
+      }
 
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
@@ -1015,6 +1026,9 @@ const trackSingleOrder = async (order) => {
       const status = normalizedData.Instructions?.toLowerCase();
       const instruction = normalizedData.Instructions?.toLowerCase();
 
+      if(statusMappings[status]==="Out for Delivery"){
+        order.ndrStatus="Out for Delivery"
+      }
       if (
         order.tracking[order.tracking.length - 1]?.instruction ===
           "no client instructions to reattempt" &&
@@ -1114,10 +1128,9 @@ const trackSingleOrder = async (order) => {
 
     await order.save();
   } catch (error) {
-    // console.error(
-    //   `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
-    //   error
-    // );
+    console.error(
+      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number}`,
+    );
   }
 };
 
@@ -1160,7 +1173,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop()
+// startTrackingLoop()
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
