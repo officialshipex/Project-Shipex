@@ -800,7 +800,6 @@ const trackSingleOrder = async (order) => {
       return;
     }
 
-    let newStatus = order.status;
 
     if (provider === "EcomExpress") {
       const ecomExpressStatusMapping = {
@@ -838,10 +837,11 @@ const trackSingleOrder = async (order) => {
 
       if (order.status === "RTO" && instruction === "bagged") {
         order.status = "RTO In-transit";
+        order.ndrStatus="RTO In-transit";
       }
 
       if (instruction === "undelivered") {
-        order.ndrStatus = "ndr";
+        order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.Instructions,
@@ -860,17 +860,8 @@ const trackSingleOrder = async (order) => {
           if (!Array.isArray(order.ndrHistory)) {
             order.ndrHistory = [];
           }
-          if (
-            normalizedData.StatusCode &&
-            eligibleNSLCodes.includes(normalizedData.StatusCode)
-          ) {
-            order.ndrStatus = "ndr";
-            order.ndrReason = {
-              date: normalizedData.StatusDateTime,
-              reason: normalizedData.Instructions,
-            };
-          }
-
+          
+          const attemptCount = order.ndrHistory?.length || 0;
           order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
             action: "Auto Reattempt",
@@ -885,6 +876,7 @@ const trackSingleOrder = async (order) => {
         instruction === "delivered"
       ) {
         order.status = "RTO Delivered";
+        order.ndrStatus="RTO Delivered";
       }
     }
     if (provider === "DTDC") {
@@ -915,7 +907,7 @@ const trackSingleOrder = async (order) => {
       order.status = DTDCStatusMapping[instruction];
 
       if (instruction === "not delivered") {
-        order.ndrStatus = "ndr";
+        order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.Instructions,
@@ -934,17 +926,7 @@ const trackSingleOrder = async (order) => {
           if (!Array.isArray(order.ndrHistory)) {
             order.ndrHistory = [];
           }
-          if (
-            normalizedData.StatusCode &&
-            eligibleNSLCodes.includes(normalizedData.StatusCode)
-          ) {
-            order.ndrStatus = "ndr";
-            order.ndrReason = {
-              date: normalizedData.StatusDateTime,
-              reason: normalizedData.Instructions,
-            };
-          }
-
+          const attemptCount = order.ndrHistory?.length || 0;
           order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
             action: "Auto Reattempt",
@@ -959,10 +941,11 @@ const trackSingleOrder = async (order) => {
         instruction === "rto delivered"
       ) {
         order.status = "RTO Delivered";
+        order.ndrStatus="RTO Delivered"
       }
       if (instruction === "delivered") {
         order.status = "Delivered";
-        ndrStatus = "Delivered";
+        order.ndrStatus = "Delivered";
       }
     }
     if (provider === "Amazon") {
@@ -992,6 +975,7 @@ const trackSingleOrder = async (order) => {
           instruction === "package has left the carrier facility")
       ) {
         order.status = "RTO In-transit";
+        order.ndrStatus="RTO In-transit"
       }
 
       if (
@@ -999,6 +983,7 @@ const trackSingleOrder = async (order) => {
         instruction === "package delivered"
       ) {
         order.status = "RTO Delivered";
+        order.ndrStatus="RTO Delivered"
       }
     } else {
       const statusMappings = {
@@ -1036,6 +1021,7 @@ const trackSingleOrder = async (order) => {
         normalizedData.Instructions === "added to bag"
       ) {
         order.status = "RTO In-transit";
+        order.ndrStatus="RTO In-transit";
       }
 
       if (
@@ -1043,6 +1029,7 @@ const trackSingleOrder = async (order) => {
         instruction === "delivered to consignee"
       ) {
         order.status = "RTO Delivered";
+        order.ndrStatus="RTO Delivered";
       } else {
         order.status = statusMappings[status];
       }
@@ -1079,13 +1066,13 @@ const trackSingleOrder = async (order) => {
           normalizedData.StatusCode &&
           eligibleNSLCodes.includes(normalizedData.StatusCode)
         ) {
-          order.ndrStatus = "ndr";
+          order.ndrStatus = "Undelivered";
           order.ndrReason = {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
         }
-
+        const attemptCount = order.ndrHistory?.length || 0;
         order.ndrHistory.push({
           date: normalizedData.StatusDateTime,
           action: "Auto Reattempt",
@@ -1133,6 +1120,7 @@ const trackSingleOrder = async (order) => {
     // );
   }
 };
+
 
 // Main controller
 const trackOrders = async () => {
