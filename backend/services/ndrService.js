@@ -2,8 +2,8 @@ const axios = require("axios");
 const DELHIVERY_API_URL = process.env.DELHIVERY_URL;
 const DEL_API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../models/newOrder.model");
-const moment = require("moment")
-const FormData = require('form-data');;
+const moment = require("moment");
+const FormData = require("form-data");
 
 const ordersDatabase = [
   {
@@ -45,67 +45,71 @@ const callNimbustNdrApi = async (orderDetails) => {
 };
 
 //Function to call Ecom Express NDR API
-const callEcomExpressNdrApi = async (req, res) => {
+const callEcomExpressNdrApi = async (
+  awb_number,
+  action,
+  comments,
+  scheduled_delivery_date,
+  scheduled_delivery_slot,
+  mobile,
+  consignee_address
+) => {
   try {
-    const { shipments } = req.body; // Array of shipment resolution objects
+    const shipment = {
+      awb: awb_number,
+      instruction: action,
+      comments,
+    };
+const order=await Order.findOne({awb_number});
+    if (action === "RE-ATTEMPT") {
+      if (!scheduled_delivery_date || !scheduled_delivery_slot) {
+        return {
+          success: false,
+          error:
+            "For 'RE-ATTEMPT', 'scheduled_delivery_date' and 'scheduled_delivery_slot' are required",
+        };
+      }
 
-    // Validate input
-    if (!Array.isArray(shipments) || shipments.length === 0) {
-      return res.status(400).json({ message: "Shipments array is required" });
+      shipment.scheduled_delivery_date = scheduled_delivery_date;
+      shipment.scheduled_delivery_slot = scheduled_delivery_slot;
+
+      if (consignee_address) {
+        const { CA1, CA2, CA3, CA4, pincode } = consignee_address;
+        if (!CA1 || !CA2 || !CA3 || !CA4 || !pincode) {
+          return {
+            success: false,
+            error:
+              "Incomplete consignee_address. Fields CA1, CA2, CA3, CA4, and pincode are required",
+          };
+        }
+        shipment.consignee_address = consignee_address;
+      }
+
+      if (!mobile) {
+        return {
+          success: false,
+          error: "For RE-ATTEMPT with address change, 'mobile' is required",
+        };
+      }
+
+      shipment.mobile = mobile;
+    } else if (action === "RTO") {
+      // RTO needs no extra data, just log that it's being returned
+      // No changes to the shipment object needed
+    } else {
+      return {
+        success: false,
+        error: "Invalid action. Only 'RE-ATTEMPT' or 'RTO' are supported",
+      };
     }
 
     const form = new FormData();
-    form.append('username', process.env.ECOMEXPRESS_GMAIL); // Replace with real values
-    form.append('password', process.env.ECOMEXPRESS_PASS);
-
-    // Validate each shipment and check required fields
-    for (let shipment of shipments) {
-      const { awb, instruction, comments } = shipment;
-
-      if (!awb || !instruction || !comments) {
-        return res.status(400).json({
-          message: "Each shipment must include 'awb', 'instruction', and 'comments'",
-        });
-      }
-
-      // If instruction is RAD, check extra fields
-      if (instruction === 'RAD') {
-        const {
-          scheduled_delivery_date,
-          scheduled_delivery_slot,
-          consignee_address,
-          mobile,
-        } = shipment;
-
-        if (!scheduled_delivery_date || !scheduled_delivery_slot) {
-          return res.status(400).json({
-            message: "For RAD instruction, 'scheduled_delivery_date' and 'scheduled_delivery_slot' are required",
-          });
-        }
-
-        // Optional: validate address fields if address change is intended
-        if (consignee_address) {
-          const { CA1, CA2, CA3, CA4, pincode } = consignee_address;
-          if (!CA1 || !CA2 || !CA3 || !CA4 || !pincode) {
-            return res.status(400).json({
-              message: "Incomplete consignee_address. Fields CA1, CA2, CA3, CA4, and pincode are required",
-            });
-          }
-        }
-
-        if (!mobile) {
-          return res.status(400).json({
-            message: "For RAD with address change, 'mobile' is required",
-          });
-        }
-      }
-    }
-
-    // Append final validated JSON input
-    form.append('json_input', JSON.stringify(shipments));
+    form.append("username", process.env.ECOMEXPRESS_GMAIL);
+    form.append("password", process.env.ECOMEXPRESS_PASS);
+    form.append("json_input", JSON.stringify([shipment]));
 
     const response = await axios.post(
-      'https://clbeta.ecomexpress.in/apiv2/ndr_resolutions/',
+      "https://clbeta.ecomexpress.in/apiv2/ndr_resolutions/",
       form,
       {
         headers: {
@@ -114,18 +118,42 @@ const callEcomExpressNdrApi = async (req, res) => {
       }
     );
 
-    res.status(200).json({
-      message: 'NDR submitted successfully',
+    if(response.data[0].status){
+      if (!Array.isArray(order.ndrHistory)) {
+        order.ndrHistory = [];
+      }
+  
+      // Step 7: Save history entry
+      const ndrHistoryEntry = {
+        date: new Date(),
+        action,
+        remark:
+          order.tracking.length > 0
+            ? order.tracking[order.tracking.length - 1].Instructions // Get last tracking instruction
+            : remark, // Fallback to existing remark if tracking is empty
+        attempt: attemptCount + 1,
+      };
+  
+      order.ndrStatus = "Action_Requested";
+      order.ndrHistory.push(ndrHistoryEntry);
+      await order.save();
+    }
+
+    return {
+      success: true,
+      error: "NDR submitted successfully",
       data: response.data,
-    });
+    };
   } catch (error) {
-    console.error('Ecom Express API Error:', error.response?.data || error.message);
-    res.status(500).json({
-      message: 'Failed to submit NDR',
-      error: error.response?.data || error.message,
-    });
+    console.error("Ecom Express API Error:", error.response?.data || error.message);
+    return {
+      success: false,
+      error: "Failed to submit NDR",
+      details: error.response?.data || error.message,
+    };
   }
 };
+
 
 async function handleDelhiveryNdrAction(awb_number, action) {
   if (!awb_number || !action) {
@@ -135,12 +163,10 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     };
   }
 
-
-
   try {
     // Step 2: Fetch order details to check NSL code & attempt count
     const order = await Order.findOne({ awb_number });
-    console.log(order);
+    // console.log(order);
     if (!order) {
       return { success: false, error: "Order not found" };
     }
@@ -186,7 +212,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     // Step 4: Wait 5 seconds before fetching status
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // Step 5: Fetch NDR status 
+    // Step 5: Fetch NDR status
     const ndrStatusResponse = await axios.get(
       `https://track.delhivery.com/api/cmu/get_bulk_upl/${request_id}?verbose=true`,
       {
@@ -194,8 +220,11 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       }
     );
     console.log("ndr status", ndrStatusResponse.data);
-    if(ndrStatusResponse.data.status==="Failure"){
-      return { success: false, error: ndrStatusResponse.data.failed_wbns[0].message };
+    if (ndrStatusResponse.data.status === "Failure") {
+      return {
+        success: false,
+        error: ndrStatusResponse.data.failed_wbns[0].message,
+      };
     }
     if (!ndrStatusResponse.data) {
       return { success: false, error: "Failed to fetch NDR status" };
