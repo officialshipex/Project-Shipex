@@ -871,13 +871,12 @@ const trackSingleOrder = async (order) => {
             };
           }
 
-          const ndrHistoryEntry = {
+          order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
             action: "Auto Reattempt",
             remark: normalizedData.Instructions,
             attempt: attemptCount + 1,
-          };
-          order.ndrHistory.push(ndrHistoryEntry);
+          });
         }
       }
 
@@ -946,13 +945,12 @@ const trackSingleOrder = async (order) => {
             };
           }
 
-          const ndrHistoryEntry = {
+          order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
             action: "Auto Reattempt",
             remark: normalizedData.Instructions,
             attempt: attemptCount + 1,
-          };
-          order.ndrHistory.push(ndrHistoryEntry);
+          });
         }
       }
 
@@ -1070,14 +1068,13 @@ const trackSingleOrder = async (order) => {
       const currentStatusDate = new Date(
         normalizedData.StatusDateTime
       ).toDateString();
-
+      if (!Array.isArray(order.ndrHistory)) {
+        order.ndrHistory = [];
+      }
       if (
         order.ndrHistory.length === 0 ||
         lastEntryDate !== currentStatusDate
       ) {
-        if (!Array.isArray(order.ndrHistory)) {
-          order.ndrHistory = [];
-        }
         if (
           normalizedData.StatusCode &&
           eligibleNSLCodes.includes(normalizedData.StatusCode)
@@ -1089,13 +1086,12 @@ const trackSingleOrder = async (order) => {
           };
         }
 
-        const ndrHistoryEntry = {
+        order.ndrHistory.push({
           date: normalizedData.StatusDateTime,
           action: "Auto Reattempt",
           remark: normalizedData.Instructions,
           attempt: attemptCount + 1,
-        };
-        order.ndrHistory.push(ndrHistoryEntry);
+        });
       }
 
       if (newStatus && order.status !== newStatus) {
