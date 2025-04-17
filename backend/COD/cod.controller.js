@@ -82,18 +82,12 @@ const codPlanUpdate = async (req, res) => {
 
 const codToBeRemitted = async () => {
   try {
-    const allOrders = await Order.find({});
-    // Filter orders where the last tracking status is "Delivered" and payment method is "COD"
-    const deliveredCODOrders = allOrders.filter((order) => {
-      const lastTracking = order.tracking?.[order.tracking.length - 1];
-      return (
-        lastTracking?.status === "Delivered" &&
-        order.paymentDetails.method === "COD"
-      );
+    const deliveredCodOrders = await Order.find({
+      status: "Delivered",
+      "paymentDetails.method": "COD",
     });
 
-    // console.log("---------->",deliveredCODOrders.length)
-    for (const order of deliveredCODOrders) {
+    for (const order of deliveredCodOrders) {
       const latestTracking = order.tracking?.[order.tracking.length - 1];
       const deliveryDate = latestTracking?.StatusDateTime;
 
@@ -105,18 +99,17 @@ const codToBeRemitted = async () => {
       const formattedDeliveryDate = new Date(deliveryDate)
         .toISOString()
         .split("T")[0];
-
       // Check if remittance already exists for this user
       const existingRemittance = await codRemittance.findOne({
         userId: order.userId,
       });
+
       if (existingRemittance) {
         let dateEntry = existingRemittance.sameDayDelhiveryOrders?.find(
           (entry) =>
             new Date(entry.date).toISOString().split("T")[0] ===
             formattedDeliveryDate
         );
-
         if (dateEntry) {
           if (!dateEntry.orders.includes(order._id)) {
             dateEntry.orders.push(order._id);
@@ -160,7 +153,7 @@ const codToBeRemitted = async () => {
     };
   }
 };
-
+// codToBeRemitted();
 cron.schedule("1 1 * * *", () => {
   console.log("Running scheduled task at 1:01 AM: Fetching orders...");
   codToBeRemitted();
@@ -169,7 +162,15 @@ cron.schedule("1 1 * * *", () => {
 //   console.log("Running scheduled task at 1 AM: Fetching orders...");
 //   codToBeRemitted();
 // });
-
+const data = async () => {
+  try {
+    await adminCodRemittance.deleteMany({ status: "Pending" });
+    console.log("Pending remittances deleted successfully.");
+  } catch (error) {
+    console.error("Error deleting pending remittances:", error);
+  }
+};
+// data()
 const remittanceScheduleData = async () => {
   try {
     const remittanceData = await codRemittance.find();
@@ -182,7 +183,6 @@ const remittanceScheduleData = async () => {
         CodPlan.findOne({ user: remittance.userId }),
         codRemittance.findOne({ userId: remittance.userId }),
       ]);
-
       if (!codplans || !codplans.planName) {
         console.log(
           `No plan found for user: ${remittance.userId}. Creating a new plan.`
@@ -196,7 +196,6 @@ const remittanceScheduleData = async () => {
         await newPlan.save();
         continue; // Skip processing for this user in the current iteration
       }
-
       if (
         !remitted ||
         !Array.isArray(remitted.sameDayDelhiveryOrders) ||
@@ -226,46 +225,45 @@ const remittanceScheduleData = async () => {
         }
 
         if (dayDifference === Codplans) {
-          let Recharge = remitted.rechargeAmount;
-          let rechargeAmount = Recharge;
+        // if (dayDifference >=7) {
 
+        // if(true){
+          let rechargeAmount = remitted.rechargeAmount || 0; // safer in case it's undefined
           let afterRecharge = 0;
           let extraAmount = 0;
-          // console.log("fhfhhf", value.codcal);
+
           if (rechargeAmount <= value.codcal) {
-            // Deduct recharge amount from codcal
+            // Deduct recharge amount fully from codcal
             afterRecharge = value.codcal - rechargeAmount;
             extraAmount = rechargeAmount;
             rechargeAmount = 0;
           } else {
-            // If rechargeAmount is greater, adjust rechargeAmount
+            // Only a part of rechargeAmount is used
             rechargeAmount = rechargeAmount - value.codcal;
             afterRecharge = 0;
             extraAmount = value.codcal;
           }
 
-          let updateQuery = {
-            $inc: {
-              RemittanceInitiated: value.codcal, // Always update RemittanceInitiated
-            },
-            $set: { rechargeAmount: rechargeAmount },
-          };
+          // Prepare update query
+          const codToBeDeducted = Math.min(remitted.CODToBeRemitted, afterRecharge);
 
-          // Only deduct from CODToBeRemitted if it's greater than 0
-          // if (remitted.CODToBeRemitted > 0) {
-          //   updateQuery.$inc.CODToBeRemitted = -afterRecharge;
-          // }
-          // Only deduct from CODToBeRemitted if it's greater than 0
-          if (remitted.CODToBeRemitted > 0) {
-            const codToBeDeducted = Math.min(
-              remitted.CODToBeRemitted,
-              afterRecharge
+          if (codToBeDeducted > 0) {
+            await codRemittance.updateOne(
+              { _id: remitted._id, CODToBeRemitted: { $gte: codToBeDeducted } },
+              {
+                $inc: {
+                  CODToBeRemitted: -codToBeDeducted,
+                  RemittanceInitiated: value.codcal,
+                },
+                $set: {
+                  rechargeAmount: rechargeAmount,
+                },
+              }
             );
-            updateQuery.$inc.CODToBeRemitted = -codToBeDeducted;
+          } else {
+            console.log(`Skipping deduction to avoid negative COD for ${remitted._id}`);
           }
-
-          await codRemittance.updateOne({ _id: remitted._id }, updateQuery);
-
+          
           if (!username.Wallet) {
             console.log(`User ${remittance.userId} has no associated Wallet`);
             continue;
@@ -314,7 +312,8 @@ const remittanceScheduleData = async () => {
             userId: remittance.userId,
             userName: username.fullname,
             remitanceId,
-            totalCod: totalValue,
+            totalCod: Number(totalValue.toFixed(2)),
+
             amountCreditedToWallet: extraAmount,
             adjustedAmount: creditedAmount,
             earlyCodCharges: chargesPercentage,
@@ -332,6 +331,17 @@ const remittanceScheduleData = async () => {
             newRemittance = new afterPlan(remittanceDetails);
           }
           await newRemittance.save();
+          await codRemittance.updateOne(
+            { _id: remitted._id },
+            {
+              $pull: {
+                sameDayDelhiveryOrders: {
+                  date: { $eq: new Date(value.date).toISOString() },
+                },
+              },
+            }
+          );
+
           console.log(
             `Remittance created for user: ${remittance.userId}, ID: ${remitanceId}`
           );
@@ -342,7 +352,6 @@ const remittanceScheduleData = async () => {
         }
       }
     }
-
     console.log("Remittance schedule processing completed.");
   } catch (error) {
     console.error("Error fetching remittance schedule data:", error);
@@ -724,50 +733,10 @@ const uploadCodRemittance = async (req, res) => {
 
         const paymentAmount = Number(order?.paymentDetails?.amount || 0);
 
-        let existingCodRemittanceOrders = await CodRemittanceOrders.findOne({
-          userId: userID,
-        });
-
-        if (!existingCodRemittanceOrders) {
-          console.log(`No COD Remittance Orders found for user ${userID}`);
-          continue;
-        }
-
-        const orderIndex =
-          existingCodRemittanceOrders.codRemittanceOrderData.findIndex(
-            (data) => data.orderID.toString() === order.orderId.toString()
-          );
-
-        if (orderIndex !== -1) {
-          if (
-            existingCodRemittanceOrders.codRemittanceOrderData[orderIndex]
-              .status === "Pending"
-          ) {
-            existingCodRemittanceOrders.codRemittanceOrderData[
-              orderIndex
-            ].status = "Paid";
-
-            existingCodRemittanceOrders.totalCodRemittanceDue =
-              Number(existingCodRemittanceOrders.totalCodRemittanceDue || 0) -
-              paymentAmount;
-
-            existingCodRemittanceOrders.totalCodRemittancePaid =
-              Number(existingCodRemittanceOrders.totalCodRemittancePaid || 0) +
-              paymentAmount;
-
-            if (
-              isNaN(existingCodRemittanceOrders.totalCodRemittancePaid) ||
-              isNaN(existingCodRemittanceOrders.totalCodRemittanceDue)
-            ) {
-              console.error("Invalid remittance values detected");
-              return res
-                .status(500)
-                .json({ error: "Invalid remittance amount" });
-            }
-
-            await existingCodRemittanceOrders.save();
-          }
-        }
+        await CodRemittanceOrders.findOneAndUpdate(
+          { orderID: order.orderId },          
+          { $set: { status: "Paid" } },                      
+        );
 
         // Safely subtract from RemittanceInitiated
         if (userRemittance.RemittanceInitiated >= paymentAmount) {
