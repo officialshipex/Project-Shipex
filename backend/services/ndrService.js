@@ -4,6 +4,9 @@ const DEL_API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../models/newOrder.model");
 const moment = require("moment");
 const FormData = require("form-data");
+const {
+  getDTDCAuthToken,
+} = require("../AllCouriers/DTDC/Authorize/saveCourierContoller");
 
 const ordersDatabase = [
   {
@@ -60,7 +63,7 @@ const callEcomExpressNdrApi = async (
       instruction: action,
       comments,
     };
-const order=await Order.findOne({awb_number});
+    const order = await Order.findOne({ awb_number });
     if (action === "RE-ATTEMPT") {
       if (!scheduled_delivery_date || !scheduled_delivery_slot) {
         return {
@@ -118,11 +121,11 @@ const order=await Order.findOne({awb_number});
       }
     );
 
-    if(response.data[0].status){
+    if (response.data[0].status) {
       if (!Array.isArray(order.ndrHistory)) {
         order.ndrHistory = [];
       }
-  
+
       // Step 7: Save history entry
       const ndrHistoryEntry = {
         date: new Date(),
@@ -133,7 +136,7 @@ const order=await Order.findOne({awb_number});
             : remark, // Fallback to existing remark if tracking is empty
         attempt: attemptCount + 1,
       };
-  
+
       order.ndrStatus = "Action_Requested";
       order.ndrHistory.push(ndrHistoryEntry);
       await order.save();
@@ -145,7 +148,10 @@ const order=await Order.findOne({awb_number});
       data: response.data,
     };
   } catch (error) {
-    console.error("Ecom Express API Error:", error.response?.data || error.message);
+    console.error(
+      "Ecom Express API Error:",
+      error.response?.data || error.message
+    );
     return {
       success: false,
       error: "Failed to submit NDR",
@@ -153,7 +159,6 @@ const order=await Order.findOne({awb_number});
     };
   }
 };
-
 
 async function handleDelhiveryNdrAction(awb_number, action) {
   if (!awb_number || !action) {
@@ -249,6 +254,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     };
 
     order.ndrStatus = "Action_Requested";
+    order.status="Undelivered";
     order.ndrHistory.push(ndrHistoryEntry);
     await order.save();
 
@@ -268,35 +274,117 @@ async function handleDelhiveryNdrAction(awb_number, action) {
   }
 }
 
-async function getNdrStatus(request_id) {
-  if (!request_id) {
-    return { success: false, error: "Missing request_id" };
+const submitNdrToDtdc = async (
+  awb_number,
+  customer_code,
+  rtoAction,
+  remarks
+) => {
+  const failedOrders = [];
+  const payload = [];
+  console.log("asd", awb_number, customer_code, rtoAction, remarks);
+
+  if (!awb_number || !customer_code || !rtoAction) {
+    failedOrders.push({ awb_number, error: "Missing required fields" });
+  } else if (rtoAction === "1" && (!remarks || remarks.trim() === "")) {
+    failedOrders.push({
+      awb_number,
+      error: "Remarks required for Re-attempt (rtoAction 1)",
+    });
+  } else {
+    const rtoActionValue =
+      rtoAction === "RE-ATTEMPT" ? "1" : rtoAction === "RTO" ? "2" : rtoAction;
+    payload.push({
+      consgNumber: awb_number,
+      custCode: process.env.DTDC_USERNAME,
+      rtoAction: rtoActionValue,
+      remarks: remarks || "",
+    });
   }
 
-  try {
-    const response = await axios.get(
-      `${DELHIVERY_API_URL}/api/cmu/get_bulk_upl/${request_id}?verbose=true`,
-      {
-        headers: {
-          Authorization: `Token ${DEL_API_TOKEN}`,
-        },
-      }
-    );
-
-    console.log("NDR Status Response:", response.data);
-    return { success: true, status_data: response.data };
-  } catch (error) {
-    console.error(
-      "Error fetching NDR status:",
-      error.response?.data || error.message
-    );
+  if (payload.length === 0) {
     return {
-      success: false,
-      error: "Failed to fetch NDR status",
-      details: error.response?.data || error.message,
+      status: 400,
+      error: "No valid orders to submit",
+      failedOrders,
     };
   }
-}
+
+  const url = "http://bodb.dtdc.com/ctbs-sraa-api/sraa/validateAndSave";
+  const auth = {
+    username: process.env.DTDC_USERNAME,
+    password: process.env.DTDC_PASSWORD,
+  };
+
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Basic R0w5NzExOkdMOTcxMUAyMDI1",
+      },
+    });
+
+    const result = response.data; // single object since only 1 order
+    const originalOrder = payload[0];
+
+    const isConsignmentValid =
+      result?.result?.validConsignmentResponse?.consignments &&
+      result.result.validConsignmentResponse.consignments.length > 0;
+
+    if (result.status === "OK" && isConsignmentValid) {
+      const orderInDb = await Order.findOne({
+        awb_number: originalOrder.consgNumber,
+      });
+
+      if (orderInDb) {
+        if (!Array.isArray(orderInDb.ndrHistory)) {
+          orderInDb.ndrHistory = [];
+        }
+
+        const latestInstruction =
+          orderInDb.tracking?.[orderInDb.tracking.length - 1]?.Instructions ||
+          originalOrder.remarks;
+
+        const ndrHistoryEntry = {
+          date: new Date(),
+          action: originalOrder.rtoAction === "1" ? "RE-ATTEMPT" : "RTO",
+          remark: latestInstruction,
+          attempt: orderInDb.ndrHistory.length + 1,
+        };
+
+        orderInDb.ndrStatus = "Action_Requested";
+        orderInDb.status="Undelivered"
+        orderInDb.ndrHistory.push(ndrHistoryEntry);
+        await orderInDb.save();
+
+        return {
+          status: 200,
+          error: "DTDC NDR submission completed",
+          success: result.status === "OK",
+          failedOrders,
+          dtdcResponse: result,
+        };
+      }
+    } if (!isConsignmentValid) {
+      return {
+        status:401,
+        error:"Invalid consignment",
+        success:false
+      }
+    }
+    
+
+    
+  } catch (error) {
+    console.error("DTDC Submission Error:", error?.response || error.message);
+    return {
+      success: false,
+      status: 500,
+      error: "Error occurred while submitting NDR to DTDC",
+      details: error?.response?.data || error.message,
+    };
+  }
+};
 
 module.exports = {
   getOrderDetails,
@@ -304,4 +392,5 @@ module.exports = {
   callNimbustNdrApi,
   callEcomExpressNdrApi,
   handleDelhiveryNdrAction,
+  submitNdrToDtdc,
 };
