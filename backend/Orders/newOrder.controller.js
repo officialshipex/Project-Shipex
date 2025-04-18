@@ -924,6 +924,7 @@ const trackSingleOrder = async (order) => {
         "e-waybill dispute": "In-transit",
         "shipment received after cut-off time at destination": "In-transit",
         "off-loaded by airlines (central team access)": "In-transit",
+        "weekly off":"In-transit",
         "out for delivery": "Out for Delivery",
         "otp based delivered":"Delivered",
         delivered: "Delivered",
@@ -1211,7 +1212,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop();
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
