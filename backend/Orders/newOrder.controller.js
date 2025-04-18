@@ -836,10 +836,13 @@ const trackSingleOrder = async (order) => {
       console.log("rew", result.rto_awb);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
+        (order.status === "RTO In-transit") &&
         result.rto_awb
       ) {
         order.awb_number = result.rto_awb;
+      }
+      else{
+        order.awb_number=result.awb_number
       }
 
       if (
@@ -922,6 +925,7 @@ const trackSingleOrder = async (order) => {
         "shipment received after cut-off time at destination": "In-transit",
         "off-loaded by airlines (central team access)": "In-transit",
         "out for delivery": "Out for Delivery",
+        "otp based delivered":"Delivered",
         delivered: "Delivered",
         "not delivered": "Undelivered",
         "rto processed & forwarded": "RTO",
@@ -983,7 +987,7 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO Delivered";
         order.ndrStatus = "RTO Delivered";
       }
-      if (instruction === "delivered") {
+      if (instruction === "delivered" || instruction==="otp based delivered") {
         order.status = "Delivered";
         order.ndrStatus = "Delivered";
       }
@@ -1176,7 +1180,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "Delivered", "RTO Delivered", "Cancelled"] },
+      status: { $nin: ["new", "Cancelled"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
