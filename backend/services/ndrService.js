@@ -325,6 +325,8 @@ const submitNdrToDtdc = async (
     });
 
     const result = response.data; // single object since only 1 order
+    console.log("re",response.data.result.invalidConsignmentResponse.consignmentsNotFoundResponse);
+    
     const originalOrder = payload[0];
 
     const isConsignmentValid =
