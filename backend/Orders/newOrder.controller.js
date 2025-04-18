@@ -1180,7 +1180,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "Cancelled"] },
+      status: { $nin: ["new", "Cancelled","Delivered","RTO Delivered"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
