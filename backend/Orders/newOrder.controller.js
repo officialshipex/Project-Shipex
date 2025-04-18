@@ -833,7 +833,7 @@ const trackSingleOrder = async (order) => {
       if (ecomExpressStatusMapping[instruction] === "Out for Delivery") {
         order.ndrStatus = "Out for Delivery";
       }
-      console.log("rew", result.rto_awb);
+      console.log("rew", result);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (
         (order.status === "RTO In-transit") &&
@@ -842,7 +842,7 @@ const trackSingleOrder = async (order) => {
         order.awb_number = result.rto_awb;
       }
       else{
-        order.awb_number=result.awb_number
+        order.awb_number=result.data.awb_number
       }
 
       if (

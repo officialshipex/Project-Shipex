@@ -418,6 +418,7 @@ const cancelShipmentforward = async (awbs) => {
     }
   }
 };
+// cancelShipmentforward("456000001774")
 
 // const axios = require("axios");
 const { parseStringPromise } = require("xml2js");
@@ -471,7 +472,7 @@ const shipmentTrackingforward = async (awb) => {
     }
   }
 };
-// shipmentTrackingforward("456000001077")
+
 
 // REVERSE JOURNEY
 const manifestAwbRev = async (req, res) => {
