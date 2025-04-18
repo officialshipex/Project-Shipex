@@ -823,7 +823,7 @@ const trackSingleOrder = async (order) => {
         returned: "RTO In-transit",
         cancelled: "Cancelled",
         lost: "Cancelled",
-        undelivered: "In-transit",
+        // undelivered: "In-transit",
         "not picked": "Ready To Ship",
       };
 
@@ -975,7 +975,7 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.push({
             date: normalizedData.StatusDateTime,
             action: "Auto Reattempt",
-            remark: normalizedData.Instructions,
+            remark: instruction,
             attempt: attemptCount + 1,
           });
         }
