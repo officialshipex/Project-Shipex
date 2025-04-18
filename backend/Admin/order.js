@@ -1,11 +1,12 @@
-const Order=require("../models/newOrder.model")
-const User=require("../models/User.model")
+const Order = require("../models/newOrder.model");
+const User = require("../models/User.model");
 
 const getOrdersByStatus = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
 
     const status = req.query.status;
@@ -24,7 +25,7 @@ const getOrdersByStatus = async (req, res) => {
 
     let query = Order.find(filter)
       .sort({ createdAt: -1 })
-      .populate("userId", "fullname email phoneNumber company");
+      .populate("userId", "fullname email phoneNumber company userId");
 
     if (limit) query = query.skip(skip).limit(limit);
 
@@ -43,26 +44,41 @@ const getOrdersByStatus = async (req, res) => {
   }
 };
 
-  
-
-const searchUser=async (req, res) => {
+const searchUser = async (req, res) => {
   const { query } = req.query;
+  console.log("Search query:", query);
+
+  if (!query || query.trim() === "") {
+    return res.status(400).json({ message: "Query parameter is required." });
+  }
 
   try {
-      const users = await User.find({
-          $or: [
-              { fullname: new RegExp(query, 'i') },
-              { email: new RegExp(query, 'i') },
-              { phoneNumber: new RegExp(query, 'i') }
-          ]
-      }).select("fullname email phoneNumber _id");
-      console.log("user",users)
+    const regex = new RegExp(query, "i");
+    const conditions = [
+      { fullname: regex },
+      { email: regex },
+      { phoneNumber: regex },
+    ];
 
-      res.json({ users });
+    // If the query is a number, also search in userId
+    if (!isNaN(query)) {
+      conditions.push({ userId: Number(query) });
+    }
+
+    const users = await User.find({ $or: conditions }).select(
+      "fullname email phoneNumber _id userId"
+    );
+
+    console.log("Matched users:", users);
+    res.json({ users });
   } catch (err) {
-      res.status(500).json({ message: 'Error searching users' });
+    console.error("Error while searching users:", err);
+    res.status(500).json({ message: "Error searching users" });
   }
 };
+
+
+
 
 const getAllOrdersByNdrStatus = async (req, res) => {
   try {
@@ -71,16 +87,25 @@ const getAllOrdersByNdrStatus = async (req, res) => {
     const limit =
       limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
+
     const status = req.query.status;
+    const userId = req.query.userId; // ✅ Accept userId from query if provided
 
     const filter = {};
     if (status && status !== "All") {
       filter.ndrStatus = status;
     }
 
+    if (userId) {
+      filter.userId = userId; // ✅ Optional userId filter
+    }
+
     const totalCount = await Order.countDocuments(filter);
 
-    let query = Order.find(filter).sort({ createdAt: -1 });
+    let query = Order.find(filter)
+      .sort({ "ndrReason.date": -1, createdAt: -1 })
+      .populate("userId", "fullname email phoneNumber company userId");
+
     if (limit) query = query.skip(skip).limit(limit);
 
     const orders = await query.lean();
@@ -93,11 +118,9 @@ const getAllOrdersByNdrStatus = async (req, res) => {
       currentPage: page,
     });
   } catch (error) {
-    console.error("Error fetching all paginated orders:", error);
+    console.error("Error fetching NDR orders:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
-
-  module.exports={getOrdersByStatus,searchUser,getAllOrdersByNdrStatus}
+module.exports = { getOrdersByStatus, searchUser, getAllOrdersByNdrStatus };
