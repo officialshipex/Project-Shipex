@@ -58,9 +58,22 @@ const callEcomExpressNdrApi = async (
   consignee_address
 ) => {
   try {
+    let instructionValue = "";
+
+    if (action === "RE-ATTEMPT") {
+      instructionValue = "RAD";
+    } else if (action === "RTO") {
+      instructionValue = "RTO";
+    } else {
+      return {
+        success: false,
+        error: "Invalid action. Only 'RE-ATTEMPT' or 'RTO' are supported",
+      };
+    }
+
     const shipment = {
       awb: awb_number,
-      instruction: action,
+      instruction: instructionValue,
       comments,
     };
     const order = await Order.findOne({ awb_number });
@@ -75,23 +88,47 @@ const callEcomExpressNdrApi = async (
 
       shipment.scheduled_delivery_date = scheduled_delivery_date;
       shipment.scheduled_delivery_slot = scheduled_delivery_slot;
+      console.log("consignement address", consignee_address);
 
-      if (consignee_address) {
-        const { CA1, CA2, CA3, CA4, pincode } = consignee_address;
-        if (!CA1 || !CA2 || !CA3 || !CA4 || !pincode) {
-          return {
-            success: false,
-            error:
-              "Incomplete consignee_address. Fields CA1, CA2, CA3, CA4, and pincode are required",
-          };
-        }
-        shipment.consignee_address = consignee_address;
+      // Fallback to order.receiverAddress if not provided in the API call
+      const isEmptyAddress =
+        !consignee_address ||
+        !consignee_address.CA1?.trim() ||
+        !consignee_address.CA2?.trim() ||
+        !consignee_address.CA4?.trim() 
+        // !consignee_address.pincode?.trim();
+
+      if (isEmptyAddress) {
+        const r = order.receiverAddress;
+        consignee_address = {
+          CA1: r.address || "",
+          CA2: `${r.city || ""}, ${r.state || ""}`,
+          CA3: "", // optional, fill if needed
+          CA4: r.contactName || "",
+          // pincode: r.pinCode || "",
+        };
+      }
+      console.log(consignee_address);
+      const { CA1, CA2, CA3, CA4 } = consignee_address;
+      if (!CA1 || !CA2 || !CA4 ) {
+        return {
+          success: false,
+          error:
+            "Incomplete consignee_address. Fields CA1, CA2, CA4, and pincode are required",
+        };
+      }
+
+      shipment.consignee_address = consignee_address;
+
+      // Fallback to order.receiverAddress.phoneNumber if mobile not given
+      if (!mobile) {
+        mobile = order.receiverAddress?.phoneNumber;
       }
 
       if (!mobile) {
         return {
           success: false,
-          error: "For RE-ATTEMPT with address change, 'mobile' is required",
+          error: "Mobile number is required but not found in request or order",
         };
       }
 
@@ -111,8 +148,12 @@ const callEcomExpressNdrApi = async (
     form.append("password", process.env.ECOMEXPRESS_PASS);
     form.append("json_input", JSON.stringify([shipment]));
 
+    console.log("ECOMEXPRESS_GMAIL", process.env.ECOMEXPRESS_GMAIL);
+    console.log("ECOMEXPRESS_PASS", process.env.ECOMEXPRESS_PASS);
+    console.log("json_input", JSON.stringify([shipment]));
+
     const response = await axios.post(
-      "https://clbeta.ecomexpress.in/apiv2/ndr_resolutions/",
+      "https://api.ecomexpress.in/apiv2/ndr_resolutions/",
       form,
       {
         headers: {
@@ -121,19 +162,20 @@ const callEcomExpressNdrApi = async (
       }
     );
 
+    console.log("resoso", response.data);
+
     if (response.data[0].status) {
       if (!Array.isArray(order.ndrHistory)) {
         order.ndrHistory = [];
       }
+      const attemptCount = order.ndrHistory?.length || 0;
 
       // Step 7: Save history entry
       const ndrHistoryEntry = {
         date: new Date(),
         action,
-        remark:
-          order.tracking.length > 0
-            ? order.tracking[order.tracking.length - 1].Instructions // Get last tracking instruction
-            : remark, // Fallback to existing remark if tracking is empty
+        remark:comments,
+          // Fallback to existing remark if tracking is empty
         attempt: attemptCount + 1,
       };
 
@@ -148,10 +190,7 @@ const callEcomExpressNdrApi = async (
       data: response.data,
     };
   } catch (error) {
-    console.error(
-      "Ecom Express API Error:",
-      error.response?.data || error.message
-    );
+    console.error("Ecom Express API Error:", error.response.data);
     return {
       success: false,
       error: "Failed to submit NDR",
@@ -254,7 +293,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     };
 
     order.ndrStatus = "Action_Requested";
-    order.status="Undelivered";
+    order.status = "Undelivered";
     order.ndrHistory.push(ndrHistoryEntry);
     await order.save();
 
@@ -325,8 +364,12 @@ const submitNdrToDtdc = async (
     });
 
     const result = response.data; // single object since only 1 order
-    console.log("re",response.data.result.invalidConsignmentResponse.consignmentsNotFoundResponse);
-    
+    console.log(
+      "re",
+      response.data.result.invalidConsignmentResponse
+        .consignmentsNotFoundResponse
+    );
+
     const originalOrder = payload[0];
 
     const isConsignmentValid =
@@ -355,7 +398,7 @@ const submitNdrToDtdc = async (
         };
 
         orderInDb.ndrStatus = "Action_Requested";
-        orderInDb.status="Undelivered"
+        orderInDb.status = "Undelivered";
         orderInDb.ndrHistory.push(ndrHistoryEntry);
         await orderInDb.save();
 
@@ -367,16 +410,14 @@ const submitNdrToDtdc = async (
           dtdcResponse: result,
         };
       }
-    } if (!isConsignmentValid) {
-      return {
-        status:401,
-        error:"Invalid consignment",
-        success:false
-      }
     }
-    
-
-    
+    if (!isConsignmentValid) {
+      return {
+        status: 401,
+        error: "Invalid consignment",
+        success: false,
+      };
+    }
   } catch (error) {
     console.error("DTDC Submission Error:", error?.response || error.message);
     return {

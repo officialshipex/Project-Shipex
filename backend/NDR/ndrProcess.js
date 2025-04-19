@@ -37,7 +37,7 @@ const ndrProcessController = async (req, res) => {
       response = await callShiprocketNdrApi(orderDetails);
     } else if (orderDetails.platform === "nimbust") {
       response = await callNimbustNdrApi(orderDetails);
-    } else if (orderDetails.platform === "ecomexpress") {
+    } else if (orderDetails.provider === "EcomExpress") {
       response = await callEcomExpressNdrApi(
         awb_number,
         action,
