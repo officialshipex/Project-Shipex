@@ -813,9 +813,11 @@ const trackSingleOrder = async (order) => {
         "departed from location": "In-transit",
         "redirected to another": "In-transit",
         "bag inscan at location": "In-transit",
+        "origin facility inscan": "In-transit",
         "shipment debagged at location": "In-transit",
         "out for delivery": "Out for Delivery",
         undelivered: "Undelivered",
+        "mass update": "Undelivered",
         delivered: "Delivered",
         "arrived at destination": "In-transit",
         "ofd lock": "RTO",
@@ -835,14 +837,10 @@ const trackSingleOrder = async (order) => {
       }
       console.log("rew", result);
       // ✅ Update AWB if it's an RTO and ref_awb exists
-      if (
-        (order.status === "RTO In-transit") &&
-        result.rto_awb
-      ) {
+      if (order.status === "RTO In-transit" && result.rto_awb) {
         order.awb_number = result.rto_awb;
-      }
-      else{
-        order.awb_number=result.data.awb_number
+      } else {
+        order.awb_number = result.data.awb_number;
       }
 
       if (
@@ -861,7 +859,7 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
-          reason: normalizedData.Instructions,
+          reason: normalizedData.ReasonCode,
         };
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
@@ -879,12 +877,14 @@ const trackSingleOrder = async (order) => {
           }
 
           const attemptCount = order.ndrHistory?.length || 0;
-          order.ndrHistory.push({
-            date: normalizedData.StatusDateTime,
-            action: "Auto Reattempt",
-            remark: normalizedData.Instructions,
-            attempt: attemptCount + 1,
-          });
+          if (instruction === "undelivered") {
+            order.ndrHistory.push({
+              date: normalizedData.StatusDateTime,
+              action: "Auto Reattempt",
+              remark: normalizedData.ReasonCode,
+              attempt: attemptCount + 1,
+            });
+          }
         }
       }
       if (
@@ -924,9 +924,9 @@ const trackSingleOrder = async (order) => {
         "e-waybill dispute": "In-transit",
         "shipment received after cut-off time at destination": "In-transit",
         "off-loaded by airlines (central team access)": "In-transit",
-        "weekly off":"In-transit",
+        "weekly off": "In-transit",
         "out for delivery": "Out for Delivery",
-        "otp based delivered":"Delivered",
+        "otp based delivered": "Delivered",
         delivered: "Delivered",
         "not delivered": "Undelivered",
         "rto processed & forwarded": "RTO",
@@ -939,11 +939,11 @@ const trackSingleOrder = async (order) => {
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = DTDCStatusMapping[instruction];
 
-      if(order.status==="RTO"){
-        order.ndrStatus="RTO"
+      if (order.status === "RTO") {
+        order.ndrStatus = "RTO";
       }
-      if(order.status==="RTO In-transit"){
-        order.ndrStatus="RTO In-transit"
+      if (order.status === "RTO In-transit") {
+        order.ndrStatus = "RTO In-transit";
       }
 
       if (DTDCStatusMapping[instruction] === "Out for Delivery") {
@@ -955,7 +955,7 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
-          reason: normalizedData.Instructions,
+          reason: normalizedData.StrRemarks,
         };
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
@@ -972,12 +972,14 @@ const trackSingleOrder = async (order) => {
             order.ndrHistory = [];
           }
           const attemptCount = order.ndrHistory?.length || 0;
-          order.ndrHistory.push({
-            date: normalizedData.StatusDateTime,
-            action: "Auto Reattempt",
-            remark: instruction,
-            attempt: attemptCount + 1,
-          });
+          if (instruction === "not delivered") {
+            order.ndrHistory.push({
+              date: normalizedData.StatusDateTime,
+              action: "Auto Reattempt",
+              remark: normalizedData.StrRemarks,
+              attempt: attemptCount + 1,
+            });
+          }
         }
       }
 
@@ -988,7 +990,10 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO Delivered";
         order.ndrStatus = "RTO Delivered";
       }
-      if (instruction === "delivered" || instruction==="otp based delivered") {
+      if (
+        instruction === "delivered" ||
+        instruction === "otp based delivered"
+      ) {
         order.status = "Delivered";
         order.ndrStatus = "Delivered";
       }
@@ -1181,7 +1186,7 @@ const trackOrders = async () => {
     const limit = pLimit(10); // Max 10 concurrent executions
 
     const allOrders = await Order.find({
-      status: { $nin: ["new", "Cancelled","Delivered","RTO Delivered"] },
+      status: { $nin: ["new", "Cancelled", "Delivered", "RTO Delivered"] },
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -1221,9 +1226,11 @@ const mapTrackingResponse = (data, provider) => {
       StatusLocation: data.current_location_name || "N/A",
       StatusDateTime: data.last_update_datetime || null,
       Instructions: data.tracking_status || null,
+      ReasonCode: data.reason_code_description || null,
     },
     DTDC: {
       Status: data.trackHeader?.strStatus || "N/A",
+      StrRemarks: data.trackHeader?.strRemarks || "N/A",
       StatusLocation: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strOrigin
         : "N/A",
