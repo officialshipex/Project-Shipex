@@ -4,6 +4,7 @@ const DEL_API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../models/newOrder.model");
 const moment = require("moment");
 const FormData = require("form-data");
+const {getAmazonAccessToken}=require("../AllCouriers/Amazon/Authorize/saveCourierController")
 const {
   getDTDCAuthToken,
 } = require("../AllCouriers/DTDC/Authorize/saveCourierContoller");
@@ -95,8 +96,8 @@ const callEcomExpressNdrApi = async (
         !consignee_address ||
         !consignee_address.CA1?.trim() ||
         !consignee_address.CA2?.trim() ||
-        !consignee_address.CA4?.trim() 
-        // !consignee_address.pincode?.trim();
+        !consignee_address.CA4?.trim();
+      // !consignee_address.pincode?.trim();
 
       if (isEmptyAddress) {
         const r = order.receiverAddress;
@@ -110,7 +111,7 @@ const callEcomExpressNdrApi = async (
       }
       console.log(consignee_address);
       const { CA1, CA2, CA3, CA4 } = consignee_address;
-      if (!CA1 || !CA2 || !CA4 ) {
+      if (!CA1 || !CA2 || !CA4) {
         return {
           success: false,
           error:
@@ -174,8 +175,8 @@ const callEcomExpressNdrApi = async (
       const ndrHistoryEntry = {
         date: new Date(),
         action,
-        remark:comments,
-          // Fallback to existing remark if tracking is empty
+        remark: comments,
+        // Fallback to existing remark if tracking is empty
         attempt: attemptCount + 1,
       };
 
@@ -191,6 +192,106 @@ const callEcomExpressNdrApi = async (
     };
   } catch (error) {
     console.error("Ecom Express API Error:", error.response.data);
+    return {
+      success: false,
+      error: "Failed to submit NDR",
+      details: error.response?.data || error.message,
+    };
+  }
+};
+
+const submitNdrToAmazon = async (
+  awb_number,
+  action,
+  comments,
+  scheduled_delivery_date,
+  
+) => {
+  const accessToken=await getAmazonAccessToken();
+  try {
+    // Map to Amazon's expected format
+    let ndrAction;
+    if (action === "RE-ATTEMPT") {
+      ndrAction = "REATTEMPT";
+    } else if (action === "RTO") {
+      ndrAction = "RTO";
+    } else if (action === "RESCHEDULE") {
+      ndrAction = "RESCHEDULE";
+    } else {
+      return {
+        success: false,
+        error: "Invalid action. Allowed values: RE-ATTEMPT, RTO, RESCHEDULE",
+      };
+    }
+
+    const url =
+      "https://sandbox.sellingpartnerapi-na.amazon.com/shipping/v2/ndrFeedback";
+
+    const headers = {
+      "Content-Type": "application/json",
+      "x-amz-access-token": accessToken,
+      "x-amzn-shipping-business-id": "AmazonShipping_IN",
+    };
+
+    const payload = {
+      trackingId: awb_number,
+      ndrAction,
+    };
+
+    // Attach ndrRequestData conditionally
+    if (ndrAction === "RESCHEDULE") {
+      if (!scheduled_delivery_date) {
+        return {
+          success: false,
+          error: "scheduled_delivery_date is required for RESCHEDULE",
+        };
+      }
+      payload.ndrRequestData = { rescheduleDate: scheduled_delivery_date };
+    } else if (ndrAction === "REATTEMPT") {
+      if (!comments) {
+        return {
+          success: false,
+          error: "comments are required for RE-ATTEMPT",
+        };
+      }
+      payload.ndrRequestData = { additionalAddressNotes: comments };
+    }
+
+    // Send request
+    const response = await axios.post(url, payload, { headers });
+
+    // Check response and update order
+    if (response.data) {
+      const order = await Order.findOne({ awb_number });
+
+      if (!Array.isArray(order.ndrHistory)) {
+        order.ndrHistory = [];
+      }
+
+      const attemptCount = order.ndrHistory.length;
+
+      const ndrHistoryEntry = {
+        date: new Date(),
+        action,
+        remark: comments,
+        attempt: attemptCount + 1,
+      };
+
+      order.ndrStatus = "Action_Requested";
+      order.ndrHistory.push(ndrHistoryEntry);
+      await order.save();
+    }
+
+    return {
+      success: true,
+      message: "NDR submitted successfully",
+      data: response.data,
+    };
+  } catch (error) {
+    console.error(
+      "Amazon NDR Submission Error:",
+      error.response?.data || error.message
+    );
     return {
       success: false,
       error: "Failed to submit NDR",
@@ -436,4 +537,5 @@ module.exports = {
   callEcomExpressNdrApi,
   handleDelhiveryNdrAction,
   submitNdrToDtdc,
+  submitNdrToAmazon,
 };

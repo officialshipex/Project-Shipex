@@ -814,6 +814,7 @@ const trackSingleOrder = async (order) => {
         "redirected to another": "In-transit",
         "bag inscan at location": "In-transit",
         "origin facility inscan": "In-transit",
+        "shipment inscan at location": "In-transit",
         "shipment debagged at location": "In-transit",
         "out for delivery": "Out for Delivery",
         undelivered: "Undelivered",
@@ -878,6 +879,7 @@ const trackSingleOrder = async (order) => {
 
           const attemptCount = order.ndrHistory?.length || 0;
           if (instruction === "undelivered") {
+            // console.log("sta",instruction)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -1013,6 +1015,34 @@ const trackSingleOrder = async (order) => {
         if (normalizedData.Instructions === "Undeliverable") {
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
+          order.ndrReason = {
+            date: normalizedData.StatusDateTime,
+            reason: normalizedData.Instructions,
+          };
+          const lastEntryDate = new Date(
+            order.ndrHistory[order.ndrHistory.length - 1]?.date
+          ).toDateString();
+          const currentStatusDate = new Date(
+            normalizedData.StatusDateTime
+          ).toDateString();
+
+          if (
+            order.ndrHistory.length === 0 ||
+            lastEntryDate !== currentStatusDate
+          ) {
+            if (!Array.isArray(order.ndrHistory)) {
+              order.ndrHistory = [];
+            }
+            const attemptCount = order.ndrHistory?.length || 0;
+            if (instruction === "not delivered") {
+              order.ndrHistory.push({
+                date: normalizedData.StatusDateTime,
+                action: "Auto Reattempt",
+                remark: normalizedData.Instructions,
+                attempt: attemptCount + 1,
+              });
+            }
+          }
         }
       } else {
         if (
