@@ -4,7 +4,8 @@ const {
   callNimbustNdrApi,
   callEcomExpressNdrApi,
   handleDelhiveryNdrAction,
-  submitNdrToDtdc
+  submitNdrToDtdc,
+  submitNdrToAmazon
 } = require("../services/ndrService");
 const Order = require("../models/newOrder.model");
 
@@ -51,6 +52,8 @@ const ndrProcessController = async (req, res) => {
       response = await handleDelhiveryNdrAction(awb_number, action);
     } else if(orderDetails.provider==="DTDC"){
       response=await submitNdrToDtdc(awb_number,customer_code,rtoAction,remarks)
+    } else if(orderDetails.provider==="Amazon"){
+      response=await submitNdrToAmazon(awb_number,action,comments,scheduled_delivery_date)
     }
     else {
       return res.status(400).json({ error: "Unsupported platform" });
