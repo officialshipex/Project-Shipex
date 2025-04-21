@@ -30,21 +30,21 @@ const calculateRate = async (req, res) => {
       const mode = rc.mode;
       let serviceable;
 
-      if (!["EcomExpress", "Delhivery", "DTDC"].includes(provider)) {
+      if (!["EcomExpres", "Delhivery", "DTDC"].includes(provider)) {
         continue;
       }
 
       // Check serviceability per provider
-      if (provider === "EcomExpress") {
+      if (provider === "EcomExpres") {
         serviceable = await checkServiceabilityEcomExpress(pickUpPincode, deliveryPincode);
         console.log("ecom",serviceable)
 
       } else if (provider === "Delhivery") {
         serviceable = await checkPincodeServiceabilityDelhivery(deliveryPincode, order_type);
-        // console.log("dele",serviceable)
+        console.log("dele",serviceable)
       } else if (provider === "DTDC") {
         serviceable = await checkServiceabilityDTDC(pickUpPincode, deliveryPincode);
-        // console.log("check",serviceable)
+        console.log("check",serviceable)
       }
 
       // if (!isServiceable) continue; // Skip if not serviceable

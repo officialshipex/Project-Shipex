@@ -142,7 +142,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    if (service.provider === "EcomExpress") {
+    if (service.provider === "EcomExpres") {
       const payload = {
         originPincode: pincode, // Pickup location pincode
         destinationPincode: currentOrder.receiverAddress.pinCode, // Delivery location pincode
