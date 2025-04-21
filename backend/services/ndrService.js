@@ -4,7 +4,9 @@ const DEL_API_TOKEN = process.env.DEL_API_TOKEN;
 const Order = require("../models/newOrder.model");
 const moment = require("moment");
 const FormData = require("form-data");
-const {getAmazonAccessToken}=require("../AllCouriers/Amazon/Authorize/saveCourierController")
+const {
+  getAmazonAccessToken,
+} = require("../AllCouriers/Amazon/Authorize/saveCourierController");
 const {
   getDTDCAuthToken,
 } = require("../AllCouriers/DTDC/Authorize/saveCourierContoller");
@@ -204,10 +206,9 @@ const submitNdrToAmazon = async (
   awb_number,
   action,
   comments,
-  scheduled_delivery_date,
-  
+  scheduled_delivery_date
 ) => {
-  const accessToken=await getAmazonAccessToken();
+  const accessToken = await getAmazonAccessToken();
   try {
     // Map to Amazon's expected format
     let ndrAction;
@@ -309,15 +310,13 @@ async function handleDelhiveryNdrAction(awb_number, action) {
   }
 
   try {
-    // Step 2: Fetch order details to check NSL code & attempt count
     const order = await Order.findOne({ awb_number });
-    // console.log(order);
     if (!order) {
       return { success: false, error: "Order not found" };
     }
 
     const attemptCount = order.ndrHistory?.length || 0;
-    // console.log(attemptCount)
+
     if (attemptCount < 0 || attemptCount > 2) {
       return {
         success: false,
@@ -325,12 +324,42 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       };
     }
 
-    // Step 3: Call Delhivery NDR API
+    // ✅ If action is RTO, skip API call and handle manually
+    if (action.toUpperCase() === "RTO") {
+      if (!Array.isArray(order.ndrHistory)) {
+        order.ndrHistory = [];
+      }
+
+      const ndrHistoryEntry = {
+        date: new Date(),
+        action,
+        remark:
+          order.tracking.length > 0
+            ? order.tracking[order.tracking.length - 1].Instructions
+            : "Manual RTO Requested",
+        attempt: attemptCount + 1,
+      };
+
+      order.manualRTOStatus = "Action_Requested";
+      order.ndrStatus = "Action_Requested";
+      order.status = "Undelivered";
+      order.ndrHistory.push(ndrHistoryEntry);
+
+      await order.save();
+
+      return {
+        success: true,
+        manualRTO: true,
+        updated_order: order,
+      };
+    }
+
+    // Step 3: Call Delhivery NDR API (for non-RTO actions only)
     const payload = {
       data: [
         {
-          waybill: String(awb_number).trim(), // Ensure it's a string
-          act: String(action).trim().toUpperCase(), // Ensure action is uppercase
+          waybill: String(awb_number).trim(),
+          act: String(action).trim().toUpperCase(),
         },
       ],
     };
@@ -348,48 +377,40 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       }
     );
 
-    console.log("Response Data:", response.data);
     const request_id = response.data?.request_id || null;
     if (!request_id) {
       return { success: false, error: "No request_id returned from API" };
     }
 
-    // Step 4: Wait 5 seconds before fetching status
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // Step 5: Fetch NDR status
     const ndrStatusResponse = await axios.get(
       `https://track.delhivery.com/api/cmu/get_bulk_upl/${request_id}?verbose=true`,
       {
         headers: { Authorization: `Token ${DEL_API_TOKEN}` },
       }
     );
-    console.log("ndr status", ndrStatusResponse.data);
+
     if (ndrStatusResponse.data.status === "Failure") {
       return {
         success: false,
         error: ndrStatusResponse.data.failed_wbns[0].message,
       };
     }
-    if (!ndrStatusResponse.data) {
-      return { success: false, error: "Failed to fetch NDR status" };
-    }
 
     const { status, remark } = ndrStatusResponse.data;
 
-    // Step 6: Ensure ndrHistory exists
     if (!Array.isArray(order.ndrHistory)) {
       order.ndrHistory = [];
     }
 
-    // Step 7: Save history entry
     const ndrHistoryEntry = {
       date: new Date(),
       action,
       remark:
         order.tracking.length > 0
-          ? order.tracking[order.tracking.length - 1].Instructions // Get last tracking instruction
-          : remark, // Fallback to existing remark if tracking is empty
+          ? order.tracking[order.tracking.length - 1].Instructions
+          : remark,
       attempt: attemptCount + 1,
     };
 
