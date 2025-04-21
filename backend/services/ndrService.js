@@ -303,7 +303,7 @@ const submitNdrToAmazon = async (
     return {
       success: false,
       error: error.response?.data.errors[0].details,
-      details: error.response?.data[0].details || error.message,
+      // details: error.response?.data[0].details || error.message,
     };
   }
 };

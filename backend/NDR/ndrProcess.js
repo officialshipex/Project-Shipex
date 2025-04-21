@@ -62,7 +62,8 @@ const ndrProcessController = async (req, res) => {
     console.log("resererer",response)
     res.json({ success: response.success, data: response.error });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.log(error)
+    res.status(500).json({ data: error.response.error });
   }
 };
 
