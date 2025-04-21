@@ -1012,7 +1012,11 @@ const trackSingleOrder = async (order) => {
         ) {
           order.status = "In-transit";
         }
-        if (normalizedData.Instructions === "Undeliverable") {
+        if(normalizedData.Instructions==="OutForDelivery"){
+          order.status="Out for Delivery"
+          order.ndrStatus="Out for Delivery"
+        }
+        if (normalizedData.Instructions === "DeliveryAttempted") {
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
           order.ndrReason = {
@@ -1034,7 +1038,7 @@ const trackSingleOrder = async (order) => {
               order.ndrHistory = [];
             }
             const attemptCount = order.ndrHistory?.length || 0;
-            if (instruction === "not delivered") {
+            if (instruction === "deliveryattempted") {
               order.ndrHistory.push({
                 date: normalizedData.StatusDateTime,
                 action: "Auto Reattempt",
@@ -1074,36 +1078,7 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "RTO Delivered";
         }
       }
-      if (normalizedData.Instructions === "Undeliverable") {
-        order.status = "Undelivered";
-        order.ndrStatus = "Undelivered";
-        order.ndrReason = {
-          date: normalizedData.StatusDateTime,
-          reason: normalizedData.Instructions,
-        };
-        const lastEntryDate = new Date(
-          order.ndrHistory[order.ndrHistory.length - 1]?.date
-        ).toDateString();
-        const currentStatusDate = new Date(
-          normalizedData.StatusDateTime
-        ).toDateString();
-
-        if (
-          order.ndrHistory.length === 0 ||
-          lastEntryDate !== currentStatusDate
-        ) {
-          if (!Array.isArray(order.ndrHistory)) {
-            order.ndrHistory = [];
-          }
-          const attemptCount = order.ndrHistory?.length || 0;
-          order.ndrHistory.push({
-            date: normalizedData.StatusDateTime,
-            action: "Auto Reattempt",
-            remark: normalizedData.Instructions,
-            attempt: attemptCount + 1,
-          });
-        }
-      }
+     
     } else {
       const statusMap = {
         "UD:Manifested": { status: "Ready To Ship" },
