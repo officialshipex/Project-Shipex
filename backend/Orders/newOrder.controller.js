@@ -816,7 +816,7 @@ const trackSingleOrder = async (order) => {
         "origin facility inscan": "In-transit",
         "shipment inscan at location": "In-transit",
         "shipment debagged at location": "In-transit",
-        "redirected to another delivery center (dc update)":"In-transit",
+        "redirected to another delivery center (dc update)": "In-transit",
         "out for delivery": "Out for Delivery",
         undelivered: "Undelivered",
         "mass update": "Undelivered",
@@ -857,7 +857,7 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "RTO In-transit";
       }
 
-      if (instruction === "undelivered") {
+      if (instruction === "undelivered" && order.ndrStatus!=="Action_Requested") {
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
@@ -928,7 +928,7 @@ const trackSingleOrder = async (order) => {
         "shipment received after cut-off time at destination": "In-transit",
         "off-loaded by airlines (central team access)": "In-transit",
         "weekly off": "In-transit",
-        "stock scan":"In-transit",
+        "stock scan": "In-transit",
         "out for delivery": "Out for Delivery",
         "otp based delivered": "Delivered",
         delivered: "Delivered",
@@ -954,7 +954,10 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "Out for Delivery";
       }
 
-      if (instruction === "not delivered") {
+      if (
+        instruction === "not delivered" &&
+        order.ndrStatus !== "Action_Requested"
+      ) {
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -1014,11 +1017,14 @@ const trackSingleOrder = async (order) => {
         ) {
           order.status = "In-transit";
         }
-        if(normalizedData.Instructions==="OutForDelivery"){
-          order.status="Out for Delivery"
-          order.ndrStatus="Out for Delivery"
+        if (normalizedData.Instructions === "OutForDelivery") {
+          order.status = "Out for Delivery";
+          order.ndrStatus = "Out for Delivery";
         }
-        if (normalizedData.Instructions === "DeliveryAttempted") {
+        if (
+          normalizedData.Instructions === "DeliveryAttempted" &&
+          order.ndrStatus !== "Action_Requested"
+        ) {
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
           order.ndrReason = {
@@ -1080,12 +1086,11 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "RTO Delivered";
         }
       }
-     
     } else {
       const statusMap = {
         "UD:Manifested": { status: "Ready To Ship" },
         "UD:In Transit": { status: "In-transit" },
-        "UD:Dispatched": { status: "Out for Delivery" },
+        "UD:Dispatched": { status: "Out for Delivery",ndrStatus:"Out for Delivery" },
         "RT:In Transit": {
           status: "RTO In-transit",
           ndrStatus: "RTO In-transit",
