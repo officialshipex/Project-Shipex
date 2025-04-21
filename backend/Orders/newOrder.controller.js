@@ -837,7 +837,7 @@ const trackSingleOrder = async (order) => {
       if (ecomExpressStatusMapping[instruction] === "Out for Delivery") {
         order.ndrStatus = "Out for Delivery";
       }
-      console.log("rew", result);
+      // console.log("rew", result);
       // ✅ Update AWB if it's an RTO and ref_awb exists
       if (order.status === "RTO In-transit" && result.rto_awb) {
         order.awb_number = result.rto_awb;
@@ -857,7 +857,11 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "RTO In-transit";
       }
 
-      if (instruction === "undelivered" && order.ndrStatus!=="Action_Requested") {
+      if (
+        normalizedData.Instructions === "Undelivered" &&
+        order.ndrStatus !== "Action_Requested"
+      ) {
+        order.status="Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
@@ -877,8 +881,6 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.length === 0 ||
           lastEntryDate !== currentStatusDate
         ) {
-         
-
           const attemptCount = order.ndrHistory?.length || 0;
           if (instruction === "undelivered") {
             // console.log("sta",instruction)
@@ -922,7 +924,7 @@ const trackSingleOrder = async (order) => {
         "mis route": "In-transit",
         "fdm prepared": "In-transit",
         "wrong pincode": "In-transit",
-        "waiting for rto approval": "In-transit",
+        "waiting for rto approval from origin": "In-transit",
         "non serviceable location": "In-transit",
         "disturbed/ prohibited area": "In-transit",
         "e-waybill dispute": "In-transit",
@@ -934,6 +936,7 @@ const trackSingleOrder = async (order) => {
         "otp based delivered": "Delivered",
         delivered: "Delivered",
         "not delivered": "Undelivered",
+        "set rto initiated":"Undelivered",
         "rto processed & forwarded": "RTO",
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
@@ -955,8 +958,15 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "Out for Delivery";
       }
 
+      if(normalizedData.Status==="SETRTO"){
+        order.reattempt=true;
+      }
+      else{
+        order.reattempt=false;
+      }
+
       if (
-        instruction === "not delivered" &&
+        normalizedData.Instructions === "Not Delivered" &&
         order.ndrStatus !== "Action_Requested"
       ) {
         order.status = "Undelivered";
@@ -979,7 +989,6 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.length === 0 ||
           lastEntryDate !== currentStatusDate
         ) {
-          
           const attemptCount = order.ndrHistory?.length || 0;
           if (instruction === "not delivered") {
             order.ndrHistory.push({
@@ -1047,7 +1056,6 @@ const trackSingleOrder = async (order) => {
             order.ndrHistory.length === 0 ||
             lastEntryDate !== currentStatusDate
           ) {
-            
             const attemptCount = order.ndrHistory?.length || 0;
             if (normalizedData.Instructions === "DeliveryAttempted") {
               order.ndrHistory.push({
@@ -1093,7 +1101,10 @@ const trackSingleOrder = async (order) => {
       const statusMap = {
         "UD:Manifested": { status: "Ready To Ship" },
         "UD:In Transit": { status: "In-transit" },
-        "UD:Dispatched": { status: "Out for Delivery",ndrStatus:"Out for Delivery" },
+        "UD:Dispatched": {
+          status: "Out for Delivery",
+          ndrStatus: "Out for Delivery",
+        },
         "RT:In Transit": {
           status: "RTO In-transit",
           ndrStatus: "RTO In-transit",
@@ -1135,7 +1146,7 @@ const trackSingleOrder = async (order) => {
       const currentStatusDate = new Date(
         normalizedData.StatusDateTime
       ).toDateString();
-      
+
       if (
         order.ndrHistory.length === 0 ||
         lastEntryDate !== currentStatusDate
@@ -1244,7 +1255,9 @@ const mapTrackingResponse = (data, provider) => {
       ReasonCode: data.reason_code_description || null,
     },
     DTDC: {
-      Status: data.trackHeader?.strStatus || "N/A",
+      Status: data.trackDetails?.length
+        ? data.trackDetails[data.trackDetails.length - 1].strCode
+        : "N/A",
       StrRemarks: data.trackHeader?.strRemarks || "N/A",
       StatusLocation: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strOrigin
