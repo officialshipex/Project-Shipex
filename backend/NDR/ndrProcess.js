@@ -54,11 +54,12 @@ const ndrProcessController = async (req, res) => {
       response=await submitNdrToDtdc(awb_number,customer_code,rtoAction,remarks)
     } else if(orderDetails.provider==="Amazon"){
       response=await submitNdrToAmazon(awb_number,action,comments,scheduled_delivery_date)
+      console.log("re",response)
     }
     else {
       return res.status(400).json({ error: "Unsupported platform" });
     }
-    // console.log("resererer",response)
+    console.log("resererer",response)
     res.json({ success: response.success, data: response.error });
   } catch (error) {
     res.status(500).json({ error: error.message });

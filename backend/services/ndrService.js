@@ -226,7 +226,7 @@ const submitNdrToAmazon = async (
     }
 
     const url =
-      "https://sandbox.sellingpartnerapi-na.amazon.com/shipping/v2/ndrFeedback";
+      "https://sellingpartnerapi-eu.amazon.com/shipping/v2/ndrFeedback";
 
     const headers = {
       "Content-Type": "application/json",
@@ -261,6 +261,13 @@ const submitNdrToAmazon = async (
     // Send request
     const response = await axios.post(url, payload, { headers });
 
+    console.log("response",response)
+    console.log("Amazon NDR Response:", {
+      status: response.status,
+      headers: response.headers,
+      data: response.data,
+    });
+
     // Check response and update order
     if (response.data) {
       const order = await Order.findOne({ awb_number });
@@ -291,12 +298,12 @@ const submitNdrToAmazon = async (
   } catch (error) {
     console.error(
       "Amazon NDR Submission Error:",
-      error.response?.data || error.message
+      error.response?.data.errors[0].details
     );
     return {
       success: false,
-      error: "Failed to submit NDR",
-      details: error.response?.data || error.message,
+      error: error.response?.data.errors[0].details,
+      details: error.response?.data[0].details || error.message,
     };
   }
 };
