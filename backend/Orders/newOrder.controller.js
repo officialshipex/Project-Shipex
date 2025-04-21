@@ -863,6 +863,9 @@ const trackSingleOrder = async (order) => {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.ReasonCode,
         };
+        if (!Array.isArray(order.ndrHistory)) {
+          order.ndrHistory = [];
+        }
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
         ).toDateString();
@@ -874,9 +877,7 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.length === 0 ||
           lastEntryDate !== currentStatusDate
         ) {
-          if (!Array.isArray(order.ndrHistory)) {
-            order.ndrHistory = [];
-          }
+         
 
           const attemptCount = order.ndrHistory?.length || 0;
           if (instruction === "undelivered") {
@@ -964,6 +965,9 @@ const trackSingleOrder = async (order) => {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.StrRemarks,
         };
+        if (!Array.isArray(order.ndrHistory)) {
+          order.ndrHistory = [];
+        }
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
         ).toDateString();
@@ -975,9 +979,7 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.length === 0 ||
           lastEntryDate !== currentStatusDate
         ) {
-          if (!Array.isArray(order.ndrHistory)) {
-            order.ndrHistory = [];
-          }
+          
           const attemptCount = order.ndrHistory?.length || 0;
           if (instruction === "not delivered") {
             order.ndrHistory.push({
@@ -1031,6 +1033,9 @@ const trackSingleOrder = async (order) => {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
+          if (!Array.isArray(order.ndrHistory)) {
+            order.ndrHistory = [];
+          }
           const lastEntryDate = new Date(
             order.ndrHistory[order.ndrHistory.length - 1]?.date
           ).toDateString();
@@ -1042,9 +1047,7 @@ const trackSingleOrder = async (order) => {
             order.ndrHistory.length === 0 ||
             lastEntryDate !== currentStatusDate
           ) {
-            if (!Array.isArray(order.ndrHistory)) {
-              order.ndrHistory = [];
-            }
+            
             const attemptCount = order.ndrHistory?.length || 0;
             if (normalizedData.Instructions === "DeliveryAttempted") {
               order.ndrHistory.push({
@@ -1123,16 +1126,16 @@ const trackSingleOrder = async (order) => {
         "EOD-69",
         "EOD-6",
       ];
-
+      if (!Array.isArray(order.ndrHistory)) {
+        order.ndrHistory = [];
+      }
       const lastEntryDate = new Date(
         order.ndrHistory[order.ndrHistory.length - 1]?.date
       ).toDateString();
       const currentStatusDate = new Date(
         normalizedData.StatusDateTime
       ).toDateString();
-      if (!Array.isArray(order.ndrHistory)) {
-        order.ndrHistory = [];
-      }
+      
       if (
         order.ndrHistory.length === 0 ||
         lastEntryDate !== currentStatusDate
