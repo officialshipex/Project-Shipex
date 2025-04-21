@@ -255,7 +255,7 @@ const getShipmentTracking = async (trackingId) => {
 
     console.log(
       "Tracking Information:",
-      response.data.payload.eventHistory[0].eventCode
+      response.data.payload.eventHistory[response.data.payload.eventHistory.length-1].eventCode
     );
     return { success: true, data: response.data.payload };
   } catch (error) {

@@ -1038,7 +1038,7 @@ const trackSingleOrder = async (order) => {
               order.ndrHistory = [];
             }
             const attemptCount = order.ndrHistory?.length || 0;
-            if (instruction === "deliveryattempted") {
+            if (normalizedData.Instructions === "deliveryattempted") {
               order.ndrHistory.push({
                 date: normalizedData.StatusDateTime,
                 action: "Auto Reattempt",
