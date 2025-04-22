@@ -893,13 +893,13 @@ const trackSingleOrder = async (order) => {
           }
         }
       }
-      if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
-        instruction === "out for delivery"
-      ) {
-        order.status = "RTO Out for Delivery";
-        order.ndrStatus = "RTO Out for Delivery";
-      }
+      // if (
+      //   (order.status === "RTO" || order.status === "RTO In-transit") &&
+      //   instruction === "out for delivery"
+      // ) {
+      //   order.status = "Out for Delivery";
+      //   order.ndrStatus = "Out for Delivery";
+      // }
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "delivered"
@@ -942,6 +942,7 @@ const trackSingleOrder = async (order) => {
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
         "rto reached at destination": "RTO In-transit",
+        "rto out for delivery":"RTO In-transit",
         "rto delivered": "RTO Delivered",
       };
 
@@ -1090,9 +1091,9 @@ const trackSingleOrder = async (order) => {
         if (normalizedData.Instructions === "ReturnInitiated") {
           order.status = "RTO In-transit";
         }
-        if (normalizedData.Instructions === "OutForDelivery") {
-          order.status = "RTO Out for Delivery";
-        }
+        // if (normalizedData.Instructions === "OutForDelivery") {
+        //   order.status = "RTO Out for Delivery";
+        // }
         if (normalizedData.Instructions === "Delivered") {
           order.status = "RTO Delivered";
           order.ndrStatus = "RTO Delivered";
