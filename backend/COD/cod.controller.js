@@ -173,7 +173,7 @@ const remittanceScheduleData = async () => {
   try {
     const remittanceData = await codRemittance.find();
     const today = new Date();
-    const isTodayMWF = [3, 5].includes(today.getDay());
+    const isTodayMWF = [2, 5].includes(today.getDay());
 
     for (const remittance of remittanceData) {
       const [codplans, remitted] = await Promise.all([
@@ -210,7 +210,7 @@ const remittanceScheduleData = async () => {
           continue;
         }
 
-        if (dayDifference<=10) {
+        if (dayDifference===Codplans) {
           const refreshedRemittance = await codRemittance.findOne({ _id: remitted._id });
           const exists = refreshedRemittance.sameDayDelhiveryOrders.some(
             (item) => new Date(item.date).toISOString() === new Date(value.date).toISOString()
@@ -327,7 +327,7 @@ const remittanceScheduleData = async () => {
             totalCod: Number(totalValue.toFixed(2)),
             amountCreditedToWallet: extraAmount,
             adjustedAmount: creditedAmount,
-            earlyCodCharges: chargesPercentage,
+            earlyCodCharges:  Number(chargesPercentage.toFixed(2)),
             status: totalValue === 0 ? "Paid" : "Pending",
             orderDetails: {
               date: today,
@@ -373,7 +373,7 @@ cron.schedule("20 1 * * *", () => {
 const fetchExtraData = async () => {
   try {
     const today = new Date();
-    const isTodayMWF = [3, 5].includes(today.getDay()); // Check if today is Monday, Wednesday, or Sunday
+    const isTodayMWF = [2, 5].includes(today.getDay()); // Check if today is Monday, Wednesday, or Sunday
     // console.log(isTodayMWF)
     const afterCodPlans = await afterPlan.find();
 
