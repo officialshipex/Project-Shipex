@@ -856,11 +856,15 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO In-transit";
         order.ndrStatus = "RTO In-transit";
       }
+      if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
+        order.ndrStatus="Delivered";
+      }
 
       if (
         normalizedData.Instructions === "Undelivered" &&
         order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out for delivery"
       ) {
+        
         order.status="Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -883,7 +887,7 @@ const trackSingleOrder = async (order) => {
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Undelivered") {
-            // console.log("sta",instruction)
+            console.log("ecom",normalizedData.ReasonCode)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -959,6 +963,9 @@ const trackSingleOrder = async (order) => {
       if (DTDCStatusMapping[instruction] === "Out for Delivery") {
         order.ndrStatus = "Out for Delivery";
       }
+      if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
+        order.ndrStatus="Delivered";
+      }
 
       if(normalizedData.Status==="SETRTO"){
         order.reattempt=true;
@@ -971,6 +978,7 @@ const trackSingleOrder = async (order) => {
         normalizedData.Instructions === "Not Delivered" &&
         order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out For Delivery"
       ) {
+        
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -993,6 +1001,7 @@ const trackSingleOrder = async (order) => {
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Not Delivered") {
+            console.log("dtdc",normalizedData.StrRemarks)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -1033,6 +1042,12 @@ const trackSingleOrder = async (order) => {
         if (normalizedData.Instructions === "OutForDelivery") {
           order.status = "Out for Delivery";
           order.ndrStatus = "Out for Delivery";
+        }
+        if(normalizedData.Instructions==="Delivered"){
+          order.status="Delivered";
+        }
+        if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
+          order.ndrStatus="Delivered";
         }
         if (
           normalizedData.Instructions === "DeliveryAttempted" &&
@@ -1115,6 +1130,7 @@ const trackSingleOrder = async (order) => {
         "DL:Delivered": { status: "Delivered" },
       };
 
+    
       const key = `${normalizedData.StatusType}:${normalizedData.Status}`;
       const mapped = statusMap[key];
 
@@ -1127,6 +1143,10 @@ const trackSingleOrder = async (order) => {
         normalizedData.StatusCode === "ST-108"
       ) {
         order.status = "RTO";
+      }
+
+      if((order.ndrStatus==="Undelivered"||order.ndrStatus==="Out for Delivery")&&normalizedData.Status==="Delivered"){
+        order.ndrStatus="Delivered"
       }
 
       const eligibleNSLCodes = [
@@ -1245,7 +1265,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop();
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
