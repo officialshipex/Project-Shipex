@@ -816,7 +816,7 @@ const trackSingleOrder = async (order) => {
         "origin facility inscan": "In-transit",
         "shipment inscan at location": "In-transit",
         "shipment debagged at location": "In-transit",
-        "redirected to another delivery center (dc update)": "In-transit",
+        "redirected to another delivery center (dc update) ": "In-transit",
         "out for delivery": "Out for Delivery",
         undelivered: "Undelivered",
         "mass update": "Undelivered",
@@ -859,7 +859,7 @@ const trackSingleOrder = async (order) => {
 
       if (
         normalizedData.Instructions === "Undelivered" &&
-        order.ndrStatus !== "Action_Requested"
+        order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out for delivery"
       ) {
         order.status="Undelivered";
         order.ndrStatus = "Undelivered";
@@ -867,9 +867,9 @@ const trackSingleOrder = async (order) => {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.ReasonCode,
         };
-        if (!Array.isArray(order.ndrHistory)) {
-          order.ndrHistory = [];
-        }
+        // if (!Array.isArray(order.ndrHistory)) {
+        //   order.ndrHistory = [];
+        // }
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
         ).toDateString();
@@ -882,7 +882,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
-          if (instruction === "undelivered") {
+          if (normalizedData.Instructions === "Undelivered") {
             // console.log("sta",instruction)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
@@ -918,6 +918,7 @@ const trackSingleOrder = async (order) => {
         "not picked": "Ready To Ship",
         "pickup reassigned": "Ready To Ship",
         "picked up": "In-transit",
+        "shipment under investigation":"In-transit",
         booked: "In-transit",
         "in transit": "In-transit",
         "reached at destination": "In-transit",
@@ -967,7 +968,7 @@ const trackSingleOrder = async (order) => {
 
       if (
         normalizedData.Instructions === "Not Delivered" &&
-        order.ndrStatus !== "Action_Requested"
+        order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out For Delivery"
       ) {
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
@@ -975,9 +976,9 @@ const trackSingleOrder = async (order) => {
           date: normalizedData.StatusDateTime,
           reason: normalizedData.StrRemarks,
         };
-        if (!Array.isArray(order.ndrHistory)) {
-          order.ndrHistory = [];
-        }
+        // if (!Array.isArray(order.ndrHistory)) {
+        //   order.ndrHistory = [];
+        // }
         const lastEntryDate = new Date(
           order.ndrHistory[order.ndrHistory.length - 1]?.date
         ).toDateString();
@@ -990,7 +991,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
-          if (instruction === "not delivered") {
+          if (normalizedData.Instructions === "Not Delivered") {
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -1034,7 +1035,7 @@ const trackSingleOrder = async (order) => {
         }
         if (
           normalizedData.Instructions === "DeliveryAttempted" &&
-          order.ndrStatus !== "Action_Requested"
+          order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="OutForDelivery"
         ) {
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
@@ -1042,9 +1043,9 @@ const trackSingleOrder = async (order) => {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
-          if (!Array.isArray(order.ndrHistory)) {
-            order.ndrHistory = [];
-          }
+          // if (!Array.isArray(order.ndrHistory)) {
+          //   order.ndrHistory = [];
+          // }
           const lastEntryDate = new Date(
             order.ndrHistory[order.ndrHistory.length - 1]?.date
           ).toDateString();
@@ -1137,9 +1138,9 @@ const trackSingleOrder = async (order) => {
         "EOD-69",
         "EOD-6",
       ];
-      if (!Array.isArray(order.ndrHistory)) {
-        order.ndrHistory = [];
-      }
+      // if (!Array.isArray(order.ndrHistory)) {
+      //   order.ndrHistory = [];
+      // }
       const lastEntryDate = new Date(
         order.ndrHistory[order.ndrHistory.length - 1]?.date
       ).toDateString();
