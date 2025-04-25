@@ -837,8 +837,15 @@ const trackSingleOrder = async (order) => {
       if (ecomExpressStatusMapping[instruction] === "Out for Delivery") {
         order.ndrStatus = "Out for Delivery";
       }
-      // console.log("rew", result);
-      // ✅ Update AWB if it's an RTO and ref_awb exists
+      console.log("status",normalizedData.Status,normalizedData.Instructions)
+      if (
+        normalizedData.Status === "Returned" &&
+        normalizedData.Instructions === "Undelivered"
+      ) {
+        console.log("rto",order.awb_number)
+        order.status = "RTO In-transit";
+        order.ndrStatus = "RTO In-transit";
+      }
       if (order.status === "RTO In-transit" && result.rto_awb) {
         order.awb_number = result.rto_awb;
       } else {
@@ -1265,12 +1272,12 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop();
+startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
     EcomExpress: {
-      Status: data.reason_code_description || "N/A",
+      Status: data.rts_system_delivery_status || "N/A",
       StatusLocation: data.current_location_name || "N/A",
       StatusDateTime: data.last_update_datetime || null,
       Instructions: data.tracking_status || null,
