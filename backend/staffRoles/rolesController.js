@@ -1,68 +1,77 @@
 // controllers/roleController.js
 const Role = require('../models/roles.modal')
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-exports.createRole = async (req, res) => {
-    try {
-        const {
-            fullName,
-            email,
-            contactNumber,
-            password,
-            isActive,
-            role,
-            accessRights,
-        } = req.body;
 
-        // Check if a user already exists with this email
-        const existingUser = await Role.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: "Email ID already exists" });
-        }
+const createRole = async (req, res) => {
+  try {
+    const {
+      fullName,
+      email,
+      contactNumber,
+      password,
+      isActive,
+      role,
+      accessRights,
+      isAdmin = true, // Default to true if not provided
+      adminTab = true, // Default to true if not provided
+    } = req.body;
 
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create new Role with actual access rights objects
-        const newRole = new Role({
-            fullName,
-            email,
-            contactNumber,
-            password: hashedPassword,
-            isActive,
-            role,
-            accessRights: {
-                billing: accessRights.billing || {}, // Default to empty object if not provided
-                tools: accessRights.tools || {},
-                wallet: accessRights.wallet || {},
-                accounts: accessRights.accounts || {},
-                settings: accessRights.settings || {},
-                courier: accessRights.courier || {},
-                orders: accessRights.orders || {},
-            },
-        });
-
-        await newRole.save();
-
-        return res.status(201).json({
-            message: "Role created successfully",
-            role: newRole,
-        });
-
-    } catch (error) {
-        console.error("Create Role Error:", error);
-        return res.status(500).json({
-            message: "Server Error",
-            error: error.message,
-        });
+    const existingUser = await Role.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email ID already exists",
+      });
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newRole = new Role({
+      fullName,
+      email,
+      contactNumber,
+      password: hashedPassword,
+      isActive,
+      isAdmin, // Explicitly set isAdmin
+      adminTab, // Explicitly set adminTab
+      role,
+      accessRights,
+    });
+
+    await newRole.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Employee registered successfully",
+      data: {
+        user: {
+          id: newRole._id,
+          email: newRole.email,
+          fullName: newRole.fullName,
+          role: newRole.role,
+          isAdmin: newRole.isAdmin,
+          adminTab: newRole.adminTab,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Create Role Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
 };
 
 
 
 
 
-exports.getAllRoles = async (req, res) => {
+
+const getAllRoles = async (req, res) => {
   try {
     const roles = await Role.find();
     return res.status(200).json(roles);
@@ -72,7 +81,7 @@ exports.getAllRoles = async (req, res) => {
   }
 };
 
-exports.getRoleById = async (req, res) => {
+const getRoleById = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     if (!role) return res.status(404).json({ message: "Role not found" });
@@ -82,7 +91,7 @@ exports.getRoleById = async (req, res) => {
   }
 };
 
-exports.updateRole = async (req, res) => {
+const updateRole = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -98,7 +107,7 @@ exports.updateRole = async (req, res) => {
   }
 };
 
-exports.deleteRole = async (req, res) => {
+  const deleteRole = async (req, res) => {
   try {
     await Role.findByIdAndDelete(req.params.id);
     return res.status(200).json({ message: "Role deleted successfully" });
@@ -107,34 +116,61 @@ exports.deleteRole = async (req, res) => {
   }
 };
 
-// Login function
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-
+const login = async (req, res) => {
   try {
-      // Check if the user exists
-      const role = await Role.findOne({ email });
-      if (!role) {
-          return res.status(404).json({ message: 'User not found' });
-      }
+    const { email, password } = req.body;
 
-      // Validate password
-      const isPasswordValid = await bcrypt.compare(password, role.password);
-      if (!isPasswordValid) {
-          return res.status(401).json({ message: 'Invalid credentials' });
-      }
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill all the fields",
+      });
+    }
 
-      // Create JWT token
-      const token = jwt.sign(
-          { userId: role._id, email: role.email },
-          process.env.JWT_SECRET,
-          { expiresIn: '1h' }
-      );
+    const employee = await Role.findOne({ email });
+    if (!employee) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee does not exist",
+      });
+    }
 
-      return res.status(200).json({ token });
+    const checkPassword = await bcrypt.compare(password, employee.password);
+    if (!checkPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is incorrect",
+      });
+    }
 
+    const token = jwt.sign(
+      {
+        employee: {
+          id: employee._id,
+          email: employee.email,
+          fullName: employee.fullName,
+          isAdmin: employee.isAdmin,
+          adminTab: employee.adminTab,
+          isEmployee: true
+        }
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee logged in successfully",
+      data: token,
+    });
   } catch (error) {
-      console.error('Login Error:', error);
-      return res.status(500).json({ message: 'Server Error' });
+    console.error("Login Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
+
+module.exports = { login, createRole, getAllRoles, getRoleById, updateRole, deleteRole };

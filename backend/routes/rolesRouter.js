@@ -1,15 +1,27 @@
-// routes/roleRoutes.js
 const express = require("express");
 const router = express.Router();
-const roleController = require("../staffRoles/rolesController");
+const {login, createRole, getAllRoles, getRoleById, updateRole, deleteRole} = require("../staffRoles/rolesController");
+const { isAuthorized } = require("../middleware/auth.middleware");
 
-router.post("/createRole", roleController.createRole);
-router.get("/", roleController.getAllRoles);
-router.get("/:id", roleController.getRoleById);
-router.put("/updateRole/:id", roleController.updateRole);
-router.delete("/deleteRole/:id", roleController.deleteRole);
 
-// Login route
-router.post("/e-login", roleController.login);
+router.get("/verify", isAuthorized, (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Token verified successfully",
+    user: req.user || null,
+    employee: req.employee || null,
+  });
+});
+  
+
+// Public routes
+router.post("/createRole", createRole);
+router.post("/e-login", login);
+
+// Protected routes (require token verification)
+router.get("/", isAuthorized, getAllRoles);
+router.get("/:id", isAuthorized, getRoleById);
+router.put("/updateRole/:id", isAuthorized, updateRole);
+router.delete("/deleteRole/:id", isAuthorized,deleteRole);
 
 module.exports = router;

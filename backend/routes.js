@@ -121,7 +121,7 @@ router.use("/getKyc",isAuthorized,getKyc)
 
 
 //this is staffRole route
-router.use("/staffRole", isAuthorized, staffRoleRoutes);
+router.use("/staffRole", staffRoleRoutes);
 
 
 //ticket
