@@ -3,6 +3,7 @@ if (process.env.NODE_ENV != "production") {
 }
 const { validateForm, validateEmail } = require("../utils/afv");
 const User = require("../models/User.model");
+const Role = require("../models/roles.modal");
 const RateCard=require("../models/rateCards")
 const Plan=require("../models/Plan.model")
 const bcrypt = require("bcryptjs");
@@ -204,6 +205,7 @@ const login = async (req, res) => {
         fullname: user.fullname,
         kyc: user.kycDone,
         isAdmin: user.isAdmin,
+        isEmployee: false,
       },
     };
 
@@ -320,28 +322,50 @@ const verifySession = async (req, res) => {
       });
     }
 
-    const user = await User.findById(decoded.user.id);
-
-    if (!user) {
+    // Check if this is a user or employee token
+    if (decoded.user && decoded.user.isEmployee === false) {
+      // User session
+      const user = await User.findById(decoded.user.id);
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+      // Check if user is admin
+      if (!user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "You do not have admin privileges",
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        kyc: user.kycDone,
+        message: "Token verified",
+        type: "user",
+      });
+    } else if (decoded.employee && decoded.employee.isEmployee === true) {
+      // Employee session
+      const employee = await Role.findById(decoded.employee.id);
+      if (!employee) {
+        return res.status(400).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+      // Optionally, check for adminTab or isAdmin if needed
+      return res.status(200).json({
+        success: true,
+        message: "Token verified",
+        type: "employee",
+      });
+    } else {
       return res.status(400).json({
         success: false,
-        message: "User not found",
+        message: "Invalid token payload",
       });
     }
-
-    // Check if user is admin
-    if (!user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have admin privileges",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      kyc: user.kycDone,
-      message: "Token verified",
-    });
   } catch (error) {
     console.log("error", error);
     return res.status(500).json({
@@ -353,7 +377,6 @@ const verifySession = async (req, res) => {
 
 const forgetPassword = async (req, res) => {
   const { email, newPassword } = req.body;
-  // console.log("hii")
 
   try {
     const user = await User.findOne({ email });
@@ -366,7 +389,6 @@ const forgetPassword = async (req, res) => {
 
     res.json({ message: "Password Reset successfully" });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Error updating password", error });
   }
 };
