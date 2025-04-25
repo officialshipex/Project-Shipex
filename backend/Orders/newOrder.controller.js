@@ -838,6 +838,12 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "Out for Delivery";
       }
       console.log("status",normalizedData.Status,normalizedData.Instructions)
+      
+      if (order.status === "RTO In-transit" && result.rto_awb) {
+        order.awb_number = result.rto_awb;
+      } else {
+        order.awb_number = result.data.awb_number;
+      }
       if (
         normalizedData.Status === "Returned" &&
         normalizedData.Instructions === "Undelivered"
@@ -846,12 +852,6 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO In-transit";
         order.ndrStatus = "RTO In-transit";
       }
-      if (order.status === "RTO In-transit" && result.rto_awb) {
-        order.awb_number = result.rto_awb;
-      } else {
-        order.awb_number = result.data.awb_number;
-      }
-
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         (instruction === "bagged" ||
