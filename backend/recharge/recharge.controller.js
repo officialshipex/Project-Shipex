@@ -93,7 +93,7 @@ const verifyPayment = async (req, res) => {
 const getWalletHistoryByUserId = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log("user",userId)
+    // console.log("user",userId)
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
