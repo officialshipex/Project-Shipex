@@ -1,61 +1,54 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
+const Role = require("../models/roles.modal");
 
 const isAuthorized = async (req, res, next) => {
-  // console.log("hi")
   const { authorization } = req.headers;
-  // console.log(authorization)
 
   if (!authorization) {
     return res.status(401).json({
       success: false,
-      message: "You must be logged in",
+      message: "Authorization header is missing",
     });
   }
-
 
   const [Bearer, token] = authorization.split(" ");
-
-// console.log("bearerer",Bearer,token)
-
   if (Bearer !== "Bearer" || !token) {
-  
     return res.status(401).json({
       success: false,
-      message: "You must be logged in",
-    });
-  }
-  // console.log(token)
-
-  const { user } = jwt.verify(token, process.env.JWT_SECRET);
-  // console.log(user)
-
-  // console.log("User : ", user);
-
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
+      message: "Invalid authorization format",
     });
   }
 
-  const userExists = await User.findOne({ _id: user.id });
-  // console.log("usererer",userExists)
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
- 
+    if (decoded.user && decoded.user.isEmployee === false) {
+      // It's a user
+      const user = await User.findById(decoded.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      req.user = user;
+      req.employee = null;
+      req.isEmployee = false; // <-- ADD THIS
+    } else if (decoded.employee && decoded.employee.isEmployee === true) {
+      // It's an employee
+      const employee = await Role.findById(decoded.employee.id);
+      if (!employee) {
+        return res.status(404).json({ success: false, message: "Employee not found" });
+      }
+      req.employee = employee;
+      req.user = null;
+      req.isEmployee = true; // <-- ADD THIS
+    } else {
+      return res.status(401).json({ success: false, message: "Invalid token payload" });
+    }
 
-  if (!userExists) {
-    return res.status(401).json({
-      success: false,
-      message: "You must be logged in",
-    });
+    next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
-//  console.log("hi")
-
-  req.user = userExists;
-
-  next();
 };
 
-module.exports = {isAuthorized};
-
+module.exports = { isAuthorized };
