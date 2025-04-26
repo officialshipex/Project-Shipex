@@ -1,31 +1,47 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const transactionSchema = new mongoose.Schema(
   {
-    channelOrderId:{type: String},
-    category: { type: String, enum: ['credit', 'debit'], required: true }, 
-    amount: { type: Number, required: true }, 
+    channelOrderId: { type: String },
+    category: { type: String, enum: ["credit", "debit"], required: true },
+    amount: { type: Number, required: true },
     balanceAfterTransaction: { type: Number, required: true },
-    date: { type: Date, default: Date.now },  
-    awb_number:{type:String},
-    description:{type:String}
+    date: { type: Date, default: Date.now },
+    awb_number: { type: String },
+    description: { type: String },
   },
   { timestamps: true }
 );
 
+// Wallet history schema (only payment details)
+const walletHistorySchema = new mongoose.Schema(
+  {
+    paymentDetails: {
+      paymentId: { type: String },
+      orderId: { type: String },
+      signature: { type: String },
+      walletId: { type: mongoose.Schema.Types.ObjectId, ref: "Wallet" }, // 👈 Added walletId properly
+      amount: { type: Number }, // 👈 Added amount properly
+    },
+    status: { type: String, enum: ["success", "failed"], default: "success" },
+    date: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
 
 const walletSchema = new mongoose.Schema(
   {
-    balance: { type: Number, default: 0 }, 
-    transactions: [transactionSchema], 
+    balance: { type: Number, default: 0 },
+    transactions: [transactionSchema],
+    walletHistory: [walletHistorySchema], // Only payment details
   },
   { timestamps: true }
 );
 
-walletSchema.virtual('currentBalance').get(function () {
+walletSchema.virtual("currentBalance").get(function () {
   return this.balance;
 });
 
-const Wallet = mongoose.model('Wallet', walletSchema);
+const Wallet = mongoose.model("Wallet", walletSchema);
 
 module.exports = Wallet;
