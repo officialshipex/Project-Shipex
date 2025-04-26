@@ -1,5 +1,6 @@
-const { phonePe, pay ,handlePaymentOrder,handlePaymentRequest,createOrder,verifyPayment} = require("./recharge.controller");
+const { createOrder,verifyPayment,getWalletHistoryByUserId} = require("./recharge.controller");
 const rechargeRouter = require("express").Router();
+const {isAuthorized}=require("../middleware/auth.middleware")
 
 // -----------PHONE PAY-------------------------------------------------------
 // rechargeRouter.post("/phonepe", phonePe);
@@ -19,6 +20,7 @@ const rechargeRouter = require("express").Router();
 //=============Razorpay============
 rechargeRouter.post("/create-order",createOrder)
 rechargeRouter.post("/verify-payment",verifyPayment)
+rechargeRouter.get("/transactionHistory",isAuthorized,getWalletHistoryByUserId)
 //==============Razorpay================
 // rechargeRouter.post('/recharge',handlePaymentOrder);
 // rechargeRouter.post('/createorder',RazorpayOrder);
