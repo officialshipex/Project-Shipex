@@ -46,6 +46,7 @@ const AllCourierRoutes = require("./routes/allCourierRoutes");
 const CourierServiceRoutes = require("./routes/courierServies.router");
 const dashboard=require("./dashboard/dashboard,router")
 const channel=require("./Channels/allChannel.routes")
+const staffRoleRoutes = require('./routes/rolesRouter')
 
 const adminOrderRoute=require("./routes/adminOrder.router")
 router.use("/admin",adminOrderRoute)
@@ -117,6 +118,10 @@ router.use("/B2Ccouries", couriersB2CRoutes);
 
 router.use("/getKyc",isAuthorized,getKyc)
 // app.use("/v1/courierServices", courierServicesRoutes);
+
+
+//this is staffRole route
+router.use("/staffRole", staffRoleRoutes);
 
 
 //ticket

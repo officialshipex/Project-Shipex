@@ -1042,7 +1042,7 @@ const remittanceTransactionData = async (req, res) => {
 
 const courierCodRemittance = async (req, res) => {
   try {
-    const user = req.user._id;
+    const user = req.isEmployee ? req.employee._id : req.user._id;
     let existingCourierCodRemittance;
     // Fetch all delivered COD orders
     const allDelhiveryOrders = await Order.find({ status: "Delivered" });
@@ -1135,11 +1135,17 @@ const courierCodRemittance = async (req, res) => {
 };
 const CodRemittanceOrder = async (req, res) => {
   try {
-    const existings = await CodRemittanceOrders.find({});
-    // Fetch all delivered COD orders directly from MongoDB
-    const codOrders = await Order.find({
-      status: "Delivered",
-      "paymentDetails.method": "COD",
+    
+    const user = req.isEmployee ? req.employee._id : req.user._id;
+
+    // Fetch all delivered COD orders
+    const allDelhiveryOrders = await Order.find({ status: "Delivered" });
+    const codFilterData = allDelhiveryOrders.filter(
+      (item) => item.paymentDetails?.method === "COD"
+    );
+
+    let existingCodRemittance = await CodRemittanceOrders.findOne({
+      userId: user,
     });
 
     // Process orders in parallel using Promise.all

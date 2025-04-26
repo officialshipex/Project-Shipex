@@ -54,7 +54,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
     } = req.body;
-    // console.log(req.body);
+    console.log(req.body);
 
     // Validate request data
     if (
@@ -863,16 +863,20 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO In-transit";
         order.ndrStatus = "RTO In-transit";
       }
-      if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
-        order.ndrStatus="Delivered";
+      if (
+        (order.ndrStatus === "Undelivered" ||
+          order.ndrStatus === "Out for Delivery") &&
+        normalizedData.Instructions === "Delivered"
+      ) {
+        order.ndrStatus = "Delivered";
       }
 
       if (
         normalizedData.Instructions === "Undelivered" &&
-        order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out for delivery"
+        order.ndrStatus !== "Action_Requested" &&
+        normalizedData.Instructions !== "Out for delivery"
       ) {
-        
-        order.status="Undelivered";
+        order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
           date: normalizedData.StatusDateTime,
@@ -894,7 +898,8 @@ const trackSingleOrder = async (order) => {
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Undelivered") {
-            console.log("ecom",normalizedData.ReasonCode)
+            // console.log("ecom", normalizedData.ReasonCode);
+            
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -904,13 +909,7 @@ const trackSingleOrder = async (order) => {
           }
         }
       }
-      // if (
-      //   (order.status === "RTO" || order.status === "RTO In-transit") &&
-      //   instruction === "out for delivery"
-      // ) {
-      //   order.status = "Out for Delivery";
-      //   order.ndrStatus = "Out for Delivery";
-      // }
+
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         instruction === "delivered"
@@ -929,7 +928,7 @@ const trackSingleOrder = async (order) => {
         "not picked": "Ready To Ship",
         "pickup reassigned": "Ready To Ship",
         "picked up": "In-transit",
-        "shipment under investigation":"In-transit",
+        "shipment under investigation": "In-transit",
         booked: "In-transit",
         "in transit": "In-transit",
         "reached at destination": "In-transit",
@@ -948,12 +947,12 @@ const trackSingleOrder = async (order) => {
         "otp based delivered": "Delivered",
         delivered: "Delivered",
         "not delivered": "Undelivered",
-        "set rto initiated":"Undelivered",
+        "set rto initiated": "Undelivered",
         "rto processed & forwarded": "RTO",
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
         "rto reached at destination": "RTO In-transit",
-        "rto out for delivery":"RTO In-transit",
+        "rto out for delivery": "RTO In-transit",
         "rto delivered": "RTO Delivered",
       };
 
@@ -970,22 +969,26 @@ const trackSingleOrder = async (order) => {
       if (DTDCStatusMapping[instruction] === "Out for Delivery") {
         order.ndrStatus = "Out for Delivery";
       }
-      if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
-        order.ndrStatus="Delivered";
+      if (
+        (order.ndrStatus === "Undelivered" ||
+          order.ndrStatus === "Out for Delivery") &&
+        normalizedData.Instructions === "Delivered"
+      ) {
+        order.ndrStatus = "Delivered";
       }
 
-      if(normalizedData.Status==="SETRTO"){
-        order.reattempt=true;
-      }
-      else{
-        order.reattempt=false;
+      if (normalizedData.Status === "SETRTO") {
+        order.reattempt = true;
+      } else {
+        order.reattempt = false;
       }
 
       if (
         normalizedData.Instructions === "Not Delivered" &&
-        order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="Out For Delivery"
+        order.ndrStatus !== "Action_Requested" &&
+        normalizedData.Instructions !== "Out For Delivery"
       ) {
-        
+
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -1002,19 +1005,24 @@ const trackSingleOrder = async (order) => {
           normalizedData.StatusDateTime
         ).toDateString();
 
+        console.log("curr",currentStatusDate)
+        console.log("last",lastEntryDate);
+
         if (
-          order.ndrHistory.length === 0 ||
-          lastEntryDate !== currentStatusDate
+          lastEntryDate !== currentStatusDate || order.ndrHistory.length === 0 
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Not Delivered") {
-            console.log("dtdc",normalizedData.StrRemarks)
+            console.log("dtdc", normalizedData.StrRemarks);
+            console.log("awb",order.awb_number)
+            // process.exit(1)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
               remark: normalizedData.StrRemarks,
               attempt: attemptCount + 1,
             });
+            // normalizedData.StrRemarks="";
           }
         }
       }
@@ -1050,15 +1058,20 @@ const trackSingleOrder = async (order) => {
           order.status = "Out for Delivery";
           order.ndrStatus = "Out for Delivery";
         }
-        if(normalizedData.Instructions==="Delivered"){
-          order.status="Delivered";
+        if (normalizedData.Instructions === "Delivered") {
+          order.status = "Delivered";
         }
-        if((order.ndrStatus==="Undelivered" || order.ndrStatus==="Out for Delivery") && normalizedData.Instructions==="Delivered"){
-          order.ndrStatus="Delivered";
+        if (
+          (order.ndrStatus === "Undelivered" ||
+            order.ndrStatus === "Out for Delivery") &&
+          normalizedData.Instructions === "Delivered"
+        ) {
+          order.ndrStatus = "Delivered";
         }
         if (
           normalizedData.Instructions === "DeliveryAttempted" &&
-          order.ndrStatus !== "Action_Requested" && normalizedData.Instructions!=="OutForDelivery"
+          order.ndrStatus !== "Action_Requested" &&
+          normalizedData.Instructions !== "OutForDelivery"
         ) {
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
@@ -1137,7 +1150,6 @@ const trackSingleOrder = async (order) => {
         "DL:Delivered": { status: "Delivered" },
       };
 
-    
       const key = `${normalizedData.StatusType}:${normalizedData.Status}`;
       const mapped = statusMap[key];
 
@@ -1152,8 +1164,12 @@ const trackSingleOrder = async (order) => {
         order.status = "RTO";
       }
 
-      if((order.ndrStatus==="Undelivered"||order.ndrStatus==="Out for Delivery")&&normalizedData.Status==="Delivered"){
-        order.ndrStatus="Delivered"
+      if (
+        (order.ndrStatus === "Undelivered" ||
+          order.ndrStatus === "Out for Delivery") &&
+        normalizedData.Status === "Delivered"
+      ) {
+        order.ndrStatus = "Delivered";
       }
 
       const eligibleNSLCodes = [
