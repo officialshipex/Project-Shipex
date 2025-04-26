@@ -54,7 +54,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
     } = req.body;
-    // console.log(req.body);
+    console.log(req.body);
 
     // Validate request data
     if (
@@ -901,7 +901,8 @@ const trackSingleOrder = async (order) => {
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Undelivered") {
-            console.log("ecom", normalizedData.ReasonCode);
+            // console.log("ecom", normalizedData.ReasonCode);
+            
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
@@ -990,6 +991,7 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus !== "Action_Requested" &&
         normalizedData.Instructions !== "Out For Delivery"
       ) {
+
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
         order.ndrReason = {
@@ -1006,19 +1008,24 @@ const trackSingleOrder = async (order) => {
           normalizedData.StatusDateTime
         ).toDateString();
 
+        console.log("curr",currentStatusDate)
+        console.log("last",lastEntryDate);
+
         if (
-          order.ndrHistory.length === 0 ||
-          lastEntryDate !== currentStatusDate
+          lastEntryDate !== currentStatusDate || order.ndrHistory.length === 0 
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
           if (normalizedData.Instructions === "Not Delivered") {
             console.log("dtdc", normalizedData.StrRemarks);
+            console.log("awb",order.awb_number)
+            // process.exit(1)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
               action: "Auto Reattempt",
               remark: normalizedData.StrRemarks,
               attempt: attemptCount + 1,
             });
+            // normalizedData.StrRemarks="";
           }
         }
       }
