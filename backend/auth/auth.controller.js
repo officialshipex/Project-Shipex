@@ -322,21 +322,13 @@ const verifySession = async (req, res) => {
       });
     }
 
-    // Check if this is a user or employee token
+    // User session
     if (decoded.user && decoded.user.isEmployee === false) {
-      // User session
       const user = await User.findById(decoded.user.id);
       if (!user) {
         return res.status(400).json({
           success: false,
           message: "User not found",
-        });
-      }
-      // Check if user is admin
-      if (!user.isAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have admin privileges",
         });
       }
       return res.status(200).json({
@@ -345,8 +337,9 @@ const verifySession = async (req, res) => {
         message: "Token verified",
         type: "user",
       });
-    } else if (decoded.employee && decoded.employee.isEmployee === true) {
-      // Employee session
+    }
+    // Employee session
+    else if (decoded.employee && decoded.employee.isEmployee === true) {
       const employee = await Role.findById(decoded.employee.id);
       if (!employee) {
         return res.status(400).json({
@@ -354,7 +347,6 @@ const verifySession = async (req, res) => {
           message: "Employee not found",
         });
       }
-      // Optionally, check for adminTab or isAdmin if needed
       return res.status(200).json({
         success: true,
         message: "Token verified",
