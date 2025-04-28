@@ -47,6 +47,7 @@ const CourierServiceRoutes = require("./routes/courierServies.router");
 const dashboard=require("./dashboard/dashboard,router")
 const channel=require("./Channels/allChannel.routes")
 const staffRoleRoutes = require('./routes/rolesRouter')
+const trackSingleOrder=require("./Orders/tracking.controller")
 
 const adminOrderRoute=require("./routes/adminOrder.router")
 router.use("/admin",adminOrderRoute)

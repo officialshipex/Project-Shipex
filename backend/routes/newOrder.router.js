@@ -17,7 +17,7 @@ const {
   updateOrder,
   passbook,
   getUser,
-  trackOrders,
+  // trackOrders,
   GetTrackingByAwb,
   // calculateRTOCharges
   
@@ -42,7 +42,7 @@ router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
 // router.post("/tracking",tracking)
 router.get("/passbook",passbook)
 router.get("/getUser",getUser)
-router.post("/webhookTracking",trackOrders)
+// router.post("/webhookTracking",trackOrders)
 router.get("/GetTrackingByAwb/:awb",GetTrackingByAwb)
 // router.post("/calculateRTOCharges",calculateRTOCharges)
 module.exports = router;
