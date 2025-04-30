@@ -51,108 +51,131 @@ const createClientWarehouse = async (payload) => {
       }
     );
 
-    // console.log("Warehouse created successfully:", response.data);
-
-    return {
-      success: true,
-      message: "Warehouse created successfully",
-      data: response.data,
-    };
-  } catch (error) {
-    if (
-      error.response &&
-      error.response.data?.data?.name === payload.contactName
-    ) {
+    if (response.data.success) {
       return {
         success: true,
-        message: "Warehouse already exists, proceeding to the next step",
-        data: error.response.data.data,
+        message: "Warehouse created successfully",
+        data: response.data,
       };
+    } else {
+      const errorMessage = response.data.error?.[0] || "";
+      if (errorMessage.includes("already exists")) {
+        // Warehouse already exists, we can continue
+        return {
+          success: true,
+          message: "Warehouse already exists, proceeding",
+          data: response.data.data,
+        };
+      } else {
+        console.error("Unknown error during warehouse creation:", response.data.error?.[0]);
+        throw new Error(response.data.error?.[0] || "Unknown error during warehouse creation.");
+      }
     }
+  } catch (error) {
+    const errorMessage = error.response?.data?.error?.[0] || "";
 
-    console.error(
-      "Error creating warehouse:",
-      error.response ? error.response.data : error.message
-    );
-    throw new Error("Failed to create warehouse. Please try again.");
+    if (errorMessage.includes("already exists")) {
+      return {
+        success: true,
+        message: "Warehouse already exists, proceeding",
+        data: error.response?.data?.data,
+      };
+    } else {
+      console.error("Error creating warehouse:", error.response?.data || error.message);
+      throw new Error(errorMessage || "Failed to create warehouse.");
+    }
   }
 };
 
 const createOrder = async (req, res) => {
-  const { id, provider, finalCharges, courierServiceName } = req.body;
-  const currentOrder = await Order.findById(id);
-  const users = await user.findById({ _id: currentOrder.userId });
-  const currentWallet = await Wallet.findById({ _id: users.Wallet });
-  const waybills = await fetchBulkWaybills(1);
-  const plans = await plan.findOne({ userId: currentOrder.userId });
-  const createClientWarehouses = await createClientWarehouse(
-    currentOrder.pickupAddress
-  );
-  const payment_type =
-    currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
-
-  const payloadData = {
-    pickup_location: {
-      name: currentOrder.pickupAddress.contactName || "Default Warehouse",
-    },
-    shipments: [
-      {
-        Waybill: waybills[0],
-        country: "India",
-        city: currentOrder.receiverAddress.city,
-        pin: currentOrder.receiverAddress.pinCode,
-        state: currentOrder.receiverAddress.state,
-        order: currentOrder.orderId,
-        add: currentOrder.receiverAddress.address || "Default Warehouse",
-        payment_mode: payment_type,
-        quantity: currentOrder.productDetails
-          .reduce((sum, product) => sum + product.quantity, 0)
-          .toString(), // Total quantity
-        phone: currentOrder.receiverAddress.phoneNumber,
-        products_desc: currentOrder.productDetails
-          .map((product) => product.name)
-          .join(", "), // Join product names
-        total_amount: currentOrder.paymentDetails.amount,
-        name: currentOrder.receiverAddress.contactName || "Default Warehouse",
-        weight: currentOrder.packageDetails.applicableWeight * 1000,
-        shipment_height: currentOrder.packageDetails.volumetricWeight.height,
-        shipment_width: currentOrder.packageDetails.volumetricWeight.width,
-        shipment_length: currentOrder.packageDetails.volumetricWeight.length,
-        cod_amount:
-          payment_type === "COD"
-            ? `${currentOrder.paymentDetails.amount}`
-            : "0",
-      },
-    ],
-  };
-
-  const payload = `format=json&data=${encodeURIComponent(
-    JSON.stringify(payloadData)
-  )}`;
-
   try {
-    let response;
-    if (currentWallet.balance >= finalCharges) {
-      response = await axios.post(`${url}/api/cmu/create.json`, payload, {
-        headers: {
-          Authorization: `Token ${API_TOKEN}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
-      console.log("fgddfdf", response);
-    } else {
-      return res.status(400).json({ success: false, message: "Low Balance" });
+    const { id, provider, finalCharges, courierServiceName } = req.body;
+    const currentOrder = await Order.findById(id);
+    const users = await user.findById({ _id: currentOrder.userId });
+    const currentWallet = await Wallet.findById({ _id: users.Wallet });
+    const waybills = await fetchBulkWaybills(1);
+    const plans = await plan.findOne({ userId: currentOrder.userId });
+
+    if (!waybills.length) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No Waybill Available" });
     }
-    // const response = await axios.post(`${url}/api/cmu/create.json`, payload, {
-    //   headers: {
-    //     Authorization: `Token ${API_TOKEN}`,
-    //     "Content-Type": "application/x-www-form-urlencoded",
-    //   },
-    // });
-    // console.log("dsssssssss2333333333", response.data);
-    // console.log("ddddddddd",response)
-    if (response.data.success) {
+    const warehouseCreationResult = await createClientWarehouse(currentOrder.pickupAddress);
+
+    if (!warehouseCreationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to create or fetch pickup warehouse",
+        details: warehouseCreationResult,
+      });
+    }
+    
+    const pickupWarehouseName = warehouseCreationResult.data?.name || currentOrder.pickupAddress.contactName;
+
+    const payment_type =
+      currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
+
+    const payloadData = {
+      pickup_location: {
+        name: pickupWarehouseName, // warehouse name MUST MATCH
+      },
+      shipments: [
+        {
+          Waybill: waybills[0],
+          country: "India",
+          city: currentOrder.receiverAddress.city,
+          pin: currentOrder.receiverAddress.pinCode,
+          state: currentOrder.receiverAddress.state,
+          order: currentOrder.orderId,
+          add: currentOrder.receiverAddress.address || "Default Warehouse",
+          payment_mode: payment_type,
+          quantity: currentOrder.productDetails
+            .reduce((sum, product) => sum + product.quantity, 0)
+            .toString(),
+          phone: currentOrder.receiverAddress.phoneNumber,
+          products_desc: currentOrder.productDetails
+            .map((product) => product.name)
+            .join(", "),
+          total_amount: currentOrder.paymentDetails.amount,
+          name: currentOrder.receiverAddress.contactName || "Default Warehouse",
+          weight: currentOrder.packageDetails.applicableWeight * 1000, // in grams
+          shipment_height: currentOrder.packageDetails.volumetricWeight.height,
+          shipment_width: currentOrder.packageDetails.volumetricWeight.width,
+          shipment_length: currentOrder.packageDetails.volumetricWeight.length,
+          cod_amount:
+            payment_type === "COD"
+              ? `${currentOrder.paymentDetails.amount}`
+              : "0",
+        },
+      ],
+    };
+
+    const payload = `format=json&data=${encodeURIComponent(
+      JSON.stringify(payloadData)
+    )}`;
+
+    let response;
+
+    // Check Wallet Balance
+    if (currentWallet.balance < finalCharges) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Insufficient Wallet Balance" });
+    }
+
+    // Create Shipment
+    response = await axios.post(`${url}/api/cmu/create.json`, payload, {
+      headers: {
+        Authorization: `Token ${API_TOKEN}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    if (response.data.success && response.data.packages.length) {
       const result = response.data.packages[0];
+
+      // Update Order
       currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.waybill;
@@ -161,43 +184,48 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
-
       currentOrder.shipmentCreatedAt = new Date();
-      let savedOrder = await currentOrder.save();
-      let balanceToBeDeducted =
+      await currentOrder.save();
+
+      const balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
-      // console.log("sjakjska",balanceToBeDeducted)
+
+      // Update Wallet
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
         $push: {
           transactions: {
-            channelOrderId: currentOrder.orderId || null, // Include if available
+            channelOrderId: currentOrder.orderId || null,
             category: "debit",
-            amount: balanceToBeDeducted, // Fixing incorrect reference
+            amount: balanceToBeDeducted,
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
             date: new Date().toISOString().slice(0, 16).replace("T", " "),
-            awb_number: result.waybill || "", // Ensuring it follows the schema
-            description: `Freight Chages Applied`,
+            awb_number: result.waybill || "",
+            description: `Freight Charges Applied`,
           },
         },
       });
 
       return res.status(201).json({
+        success: true,
         message: "Shipment Created Successfully",
         data: {
           orderId: currentOrder.orderId,
-          provider: provider,
+          provider,
           waybill: result.waybill,
         },
       });
     } else {
-      return res
-        .status(400)
-        .json({ error: "Error creating shipment", details: response.data });
+      console.log("response",response.data)
+      return res.status(400).json({
+        success: false,
+        message: "Failed to create shipment",
+        details: response.data,
+      });
     }
   } catch (error) {
-    // console.log(error);
+    console.error("Error in createOrder:", error.message);
     return res.status(500).json({
       success: false,
       message: "Failed to create order.",
