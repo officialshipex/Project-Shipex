@@ -119,6 +119,7 @@ const updateRole = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log(email,password)
 
     if (!email || !password) {
       return res.status(400).json({
@@ -136,6 +137,7 @@ const login = async (req, res) => {
     }
 
     const checkPassword = await bcrypt.compare(password, employee.password);
+    // console.log(checkPassword)
     if (!checkPassword) {
       return res.status(400).json({
         success: false,
