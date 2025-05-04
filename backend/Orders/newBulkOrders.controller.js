@@ -163,23 +163,13 @@ const shipBulkOrder = async (req, res) => {
       selectedOrders.map(async (item) => {
         const serviceable = await Promise.all(
           enabledServices.map(async (svc) => {
-            try {
-              const result = await checkServiceabilityAll(svc, item, pinCode);
-              // console.log(`Checking ${svc.name} for order ${item.orderId || item._id} => ${result.success}`);
-    
-              return result.success ? svc : null;
-            } catch (err) {
-              // console.error(`❌ Error checking ${svc.name}:`, err.message);
-              return null;
-            }
+            const result = await checkServiceabilityAll(svc, item, pinCode);
+            return result ? svc : null;
           })
         );
-        const filtered = serviceable.filter(Boolean);
-        // console.log("✅ Final Serviceable for order:", filtered.map((s) => s.name));
-        return filtered;
+        return serviceable.filter(Boolean);
       })
     );
-    
     // console.log("avail",availableServices)
     // console.log("enabled",enabledServices)
     const flattenedAvailableService = [...new Set(availableServices.flat())];
