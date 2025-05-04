@@ -507,9 +507,11 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-    await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
+    console.log("cancel",response.data)
+    
 
     if (response?.data?.status) {
+      await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
       return { data: response.data, code: 201 };
     } else {
       return {
@@ -527,6 +529,7 @@ const cancelOrderDelhivery = async (awb_number) => {
     };
   }
 };
+// cancelOrderDelhivery(35973710014626)
 
 
 module.exports = {
