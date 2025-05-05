@@ -14,8 +14,15 @@ const {
 const {
   createShipmentFunctionDelhivery,
 } = require("../AllCouriers/Delhivery/Courier/bulkShipment.controller");
-const {createShipmentFunctionEcomExpress} = require("../AllCouriers/EcomExpress/Couriers/bulkShipment.controller");
-const {createOrderDTDC}=require("../AllCouriers/DTDC/Courier/bulkShipment.controller")
+const {
+  createShipmentFunctionEcomExpress,
+} = require("../AllCouriers/EcomExpress/Couriers/bulkShipment.controller");
+const {
+  createOrderDTDC,
+} = require("../AllCouriers/DTDC/Courier/bulkShipment.controller");
+const {
+  createShipmentAmazon,
+} = require("../AllCouriers/Amazon/Courier/bulkShipment.controller");
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
@@ -54,8 +61,8 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "Shiprocket":
-        result = await createShipmentFunctionShipRocket(
+      case "Amazon":
+        result = await createShipmentAmazon(
           serviceDetails,
           order._id,
           wh,
@@ -63,15 +70,24 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "Xpressbees":
-        result = await createShipmentFunctionXpressBees(
-          serviceDetails,
-          order._id,
-          wh,
-          walletId,
-          charges
-        );
-        break;
+      // case "Shiprocket":
+      //   result = await createShipmentFunctionShipRocket(
+      //     serviceDetails,
+      //     order._id,
+      //     wh,
+      //     walletId,
+      //     charges
+      //   );
+      //   break;
+      // case "Xpressbees":
+      //   result = await createShipmentFunctionXpressBees(
+      //     serviceDetails,
+      //     order._id,
+      //     wh,
+      //     walletId,
+      //     charges
+      //   );
+      //   break;
       case "Delhivery":
         result = await createShipmentFunctionDelhivery(
           serviceDetails,
@@ -91,14 +107,14 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
         );
         break;
       case "DTDC":
-        result=await createOrderDTDC(
+        result = await createOrderDTDC(
           serviceDetails,
           order._id,
           wh,
           walletId,
           charges
         );
-        break;  
+        break;
       case "ShreeMaruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
@@ -114,7 +130,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
         );
         return false;
     }
-console.log("resuuuulllltttt",result)
+    console.log("resuuuulllltttt", result);
     return result?.status === 200 || result?.status === 201 || result?.success;
   } catch (error) {
     console.error(`Error creating shipment:`, error);
@@ -273,7 +289,7 @@ const createBulkOrder = async (req, res) => {
             walletId,
             charges
           );
-          console.log("resulttte",result)
+          console.log("resulttte", result);
           if (result) {
             successCount++;
             remainingOrders.splice(remainingOrders.indexOf(order), 1);
