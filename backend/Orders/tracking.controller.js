@@ -544,7 +544,11 @@ const limiter = new Bottleneck({
     }
   };
   
+<<<<<<< HEAD
 //   startTrackingLoop();
+=======
+  // startTrackingLoop();
+>>>>>>> origin/bijay
   
   const mapTrackingResponse = (data, provider) => {
     const providerMappings = {
