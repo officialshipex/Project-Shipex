@@ -249,8 +249,88 @@ const filterOrders = async (req, res) => {
   }
 };
 
+
+
+const filterNdrOrders = async (req, res) => {
+  try {
+    const {
+      orderId,
+      awbNumber,
+      ndrStatus,
+      status, // <-- add this
+      courier,
+      date,
+      name,
+      email,
+      contactNumber,
+      userId,
+      paymentType,
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const filter = {};
+
+    if (orderId) {
+      if (!isNaN(orderId)) {
+        filter.orderId = Number(orderId);
+      } else {
+        filter.orderId = { $regex: orderId, $options: "i" };
+      }
+    }
+    if (awbNumber) filter.awb_number = { $regex: awbNumber, $options: "i" };
+    if (paymentType) {
+      filter["paymentDetails.method"] = paymentType;
+    }
+    if (ndrStatus && ndrStatus !== "All") filter.ndrStatus = ndrStatus;
+    if (status && status !== "All") filter.status = status; // <-- add this line
+    if (courier) filter.courierServiceName = courier;
+    if (date) {
+      const start = new Date(date);
+      const end = new Date();
+      filter.createdAt = { $gte: start, $lte: end };
+    }
+    if (userId) {
+      filter.userId = new mongoose.Types.ObjectId(userId);
+    } else if (name || email || contactNumber) {
+      let userIds = [];
+      const userFilter = {};
+      if (name) userFilter.fullname = { $regex: name, $options: "i" };
+      if (email) userFilter.email = { $regex: email, $options: "i" };
+      if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
+      const users = await User.find(userFilter).select("_id");
+      userIds = users.map((u) => u._id);
+      if (userIds.length > 0) filter.userId = { $in: userIds };
+      else filter.userId = null;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const totalCount = await Order.countDocuments(filter);
+
+    let query = Order.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("userId", "fullname email phoneNumber company userId");
+
+    query = query.skip(skip).limit(parseInt(limit));
+
+    const orders = await query.lean();
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json({
+      orders,
+      totalPages,
+      totalCount,
+      currentPage: parseInt(page),
+    });
+  } catch (error) {
+    console.error("Error filtering NDR orders:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 module.exports = {
   filterOrders,
+  filterNdrOrders,
   getOrdersByStatus,
   searchUser,
   getAllOrdersByNdrStatus,
