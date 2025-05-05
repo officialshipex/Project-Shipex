@@ -190,11 +190,9 @@ const filterOrders = async (req, res) => {
     if (status && status !== "All") filter.status = status;
     if (awbNumber) filter.awb_number = { $regex: awbNumber, $options: "i" };
     if (date) {
-      // Assuming createdAt is a Date
       const start = new Date(date);
-      const end = new Date(date);
-      end.setDate(end.getDate() + 1);
-      filter.createdAt = { $gte: start, $lt: end };
+      const end = new Date(); // today's date and time
+      filter.createdAt = { $gte: start, $lte: end };
     }
     if (type) filter["paymentDetails.method"] = type;
     if (courier) filter.courierServiceName = courier;
