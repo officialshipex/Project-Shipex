@@ -2,13 +2,18 @@ const express = require("express");
 const PDFDocument = require("pdfkit");
 const bwipjs = require("bwip-js");
 const Order = require("../models/newOrder.model");
+const LabelSettings = require("./labelCustomize.model");
 
 const router = express.Router();
 
 router.get("/generate-pdf/:id", async (req, res) => {
   try {
     const orderData = await Order.findOne({ _id: req.params.id });
-    console.log(orderData);
+    const labelSettings = await LabelSettings.findOne({
+      userId: orderData.userId,
+    });
+
+    // console.log(orderData);
     if (!orderData) {
       return res.status(404).send("Order not found");
     }
@@ -64,9 +69,40 @@ router.get("/generate-pdf/:id", async (req, res) => {
       `${orderData.receiverAddress.city}, ${orderData.receiverAddress.state}, ${orderData.receiverAddress.pinCode}`,
       { align: "left" }
     );
-    doc.text(`MOBILE NO: ${orderData.receiverAddress.phoneNumber}`, {
-      align: "left",
-    });
+    if (!labelSettings?.hideCustomerMobile || labelSettings == null) {
+      doc.text(`MOBILE NO: ${orderData.receiverAddress.phoneNumber}`, {
+        align: "left",
+      });
+    }
+
+    // Draw the logo on the top-right corner if allowed in settings
+    if (
+      (labelSettings?.showLogoOnLabel && labelSettings?.logoUrl) ||
+      labelSettings == null
+    ) {
+      const imageX = doc.page.width - 200; // 150px from left
+      const imageY = 50; // top margin
+      const imageWidth = 100; // adjust width as needed
+
+      const https = require("https");
+      const getStreamBuffer = (url) =>
+        new Promise((resolve, reject) => {
+          https.get(url, (response) => {
+            const chunks = [];
+            response
+              .on("data", (chunk) => chunks.push(chunk))
+              .on("end", () => resolve(Buffer.concat(chunks)))
+              .on("error", reject);
+          });
+        });
+
+      try {
+        const logoBuffer = await getStreamBuffer(labelSettings.logoUrl);
+        doc.image(logoBuffer, imageX, imageY, { width: imageWidth });
+      } catch (err) {
+        console.error("Error loading logo image:", err.message);
+      }
+    }
 
     doc.moveDown();
     doc.rect(20, doc.y - 10, 555, 1).stroke();
@@ -82,7 +118,9 @@ router.get("/generate-pdf/:id", async (req, res) => {
 
     const barcodeX = 380;
     const barcodeY = doc.y - 40;
-    doc.image(barcodeBuffer1, barcodeX, barcodeY, { width: 120, height: 50 });
+    if (!labelSettings?.hideOrderBarcode) {
+      doc.image(barcodeBuffer1, barcodeX, barcodeY, { width: 120, height: 50 });
+    }
 
     doc.moveDown(2);
     doc.rect(20, doc.y - 10, 555, 1).stroke();
@@ -91,20 +129,25 @@ router.get("/generate-pdf/:id", async (req, res) => {
     const paymentText =
       orderData.paymentDetails.method === "COD" ? "COD" : "PREPAID";
 
-      doc
+    doc
       .fontSize(18)
       .font("Helvetica-Bold")
       .text("MODE: ", 30, doc.y, { continued: true }) // Keep on same line
       .font("Helvetica")
       .text(paymentText);
-    
-    doc
-      .fontSize(18)
-      .font("Helvetica-Bold")
-      .text("AMOUNT: ", 30, doc.y, { continued: true }) // Keep on same line
-      .font("Helvetica")
-      .text(`${orderData.paymentDetails.amount}`);
+
+    if (
+      !labelSettings?.productDetails.hideOrderAmount ||
+      labelSettings == null
+    ) {
+      doc
+        .fontSize(18)
+        .font("Helvetica-Bold")
+        .text("AMOUNT: ", 30, doc.y, { continued: true }) // Keep on same line
+        .font("Helvetica")
+        .text(`${orderData.paymentDetails.amount}`);
       doc.moveDown();
+    }
 
     doc
       .fontSize(12)
@@ -164,11 +207,27 @@ router.get("/generate-pdf/:id", async (req, res) => {
     // **Draw Table Header**
     doc.font("Helvetica-Bold").fontSize(12);
     drawTableBorders(tableLeft, tableTop, tableRight - tableLeft, rowHeight); // Header border
-    doc.text("SKU", tableLeft + 5, tableTop + 5);
-    doc.text("Item Name", tableLeft + 95, tableTop + 5);
-    doc.text("Qty.", tableLeft + 315, tableTop + 5);
-    doc.text("Unit Price", tableLeft + 355, tableTop + 5);
-    doc.text("Total Amount", tableLeft + 455, tableTop + 5);
+    if (!labelSettings?.productDetails.hideSKU || labelSettings == null) {
+      doc.text("SKU", tableLeft + 5, tableTop + 5);
+    }
+    if (!labelSettings?.productDetails.hideProduct || labelSettings == null) {
+      doc.text("Item Name", tableLeft + 95, tableTop + 5);
+    }
+    if (!labelSettings?.productDetails.hideQty || labelSettings == null) {
+      doc.text("Qty.", tableLeft + 315, tableTop + 5);
+    }
+    if (
+      !labelSettings?.productDetails.hideOrderAmount ||
+      labelSettings == null
+    ) {
+      doc.text("Unit Price", tableLeft + 355, tableTop + 5);
+    }
+    if (
+      !labelSettings?.productDetails.hideTotalAmount ||
+      labelSettings == null
+    ) {
+      doc.text("Total Amount", tableLeft + 455, tableTop + 5);
+    }
 
     // **Draw Vertical Column Borders**
     let xPos = tableLeft;
@@ -193,18 +252,34 @@ router.get("/generate-pdf/:id", async (req, res) => {
     orderData.productDetails.forEach((product, i) => {
       let yPosition = tableTop + i * rowHeight;
 
-      doc.text(product.sku, tableLeft + 5, yPosition + 5);
-      doc.text(product.name, tableLeft + 95, yPosition + 5, {
-        width: 240,
-        ellipsis: true,
-      });
-      doc.text(product.quantity.toString(), tableLeft + 315, yPosition + 5);
-      doc.text(product.unitPrice.toString(), tableLeft + 355, yPosition + 5);
-      doc.text(
-        (product.quantity * product.unitPrice).toString(),
-        tableLeft + 455,
-        yPosition + 5
-      );
+      if (!labelSettings?.productDetails.hideSKU || labelSettings == null) {
+        doc.text(product.sku, tableLeft + 5, yPosition + 5);
+      }
+      if (!labelSettings?.productDetails.hideProduct || labelSettings == null) {
+        doc.text(product.name, tableLeft + 95, yPosition + 5, {
+          width: 240,
+          ellipsis: true,
+        });
+      }
+      if (!labelSettings?.productDetails.hideQty || labelSettings == null) {
+        doc.text(product.quantity.toString(), tableLeft + 315, yPosition + 5);
+      }
+      if (
+        !labelSettings?.productDetails.hideOrderAmount ||
+        labelSettings == null
+      ) {
+        doc.text(product.unitPrice.toString(), tableLeft + 355, yPosition + 5);
+      }
+      if (
+        !labelSettings?.productDetails.hideTotalAmount ||
+        labelSettings == null
+      ) {
+        doc.text(
+          (product.quantity * product.unitPrice).toString(),
+          tableLeft + 455,
+          yPosition + 5
+        );
+      }
 
       // Draw row border
       // drawTableBorders(tableLeft, yPosition, tableRight - tableLeft, rowHeight);
@@ -223,37 +298,65 @@ router.get("/generate-pdf/:id", async (req, res) => {
     const leftMargin = 30;
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Pickup Address:`, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(`${orderData.pickupAddress.contactName}`, leftMargin, doc.y);
-    doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
-    doc.text(
-      `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
-      leftMargin,
-      doc.y
-    );
-    doc.text(
-      `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
-      leftMargin,
-      doc.y
-    );
+    if (
+      !labelSettings?.warehouseSettings.hidePickupName ||
+      labelSettings == null
+    ) {
+      doc
+        .font("Helvetica")
+        .text(`${orderData.pickupAddress.contactName}`, leftMargin, doc.y);
+    }
+    if (
+      !labelSettings?.warehouseSettings.hidePickupAddress ||
+      labelSettings == null
+    ) {
+      doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
+      doc.text(
+        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
+        leftMargin,
+        doc.y
+      );
+    }
+
+    if (
+      !labelSettings?.warehouseSettings.hidePickupMobile ||
+      labelSettings == null
+    ) {
+      doc.text(
+        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
+        leftMargin,
+        doc.y
+      );
+    }
 
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
-    doc
-      .font("Helvetica")
-      .text(orderData.pickupAddress.contactName, leftMargin, doc.y);
-    doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
-    doc.text(
-      `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
-      leftMargin,
-      doc.y
-    );
-    doc.text(
-      `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
-      leftMargin,
-      doc.y
-    );
+    if (!labelSettings?.warehouseSettings.hideRTOName || labelSettings == null) {
+      doc
+        .font("Helvetica")
+        .text(orderData.pickupAddress.contactName, leftMargin, doc.y);
+    }
+    if (
+      !labelSettings?.warehouseSettings.hideRTOAddress ||
+      labelSettings == null
+    ) {
+      doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
+      doc.text(
+        `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
+        leftMargin,
+        doc.y
+      );
+    }
+    if (
+      !labelSettings?.warehouseSettings.hideRTOMobile ||
+      labelSettings == null
+    ) {
+      doc.text(
+        `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
+        leftMargin,
+        doc.y
+      );
+    }
 
     doc.moveDown(2);
     doc.moveTo(20, doc.y).lineTo(575, doc.y).stroke();
