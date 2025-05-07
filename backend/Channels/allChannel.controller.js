@@ -466,6 +466,16 @@ const getOrders = async (storeURL) => {
 };
 
 // getOrders(SHOPIFY_STORE);
+const fetchOrder=async (shopifyStore,id,accessToken)=>{
+  const orderResponse = await axios.get(
+    `https://${shopifyStore}/admin/api/2024-04/orders/${id}.json`,
+    {
+      headers: { "X-Shopify-Access-Token": accessToken },
+    }
+  );
+  console.log("order",orderResponse)
+}
+
 
 const fulfillOrder = async (req, res) => {
   try {
@@ -579,16 +589,18 @@ const fulfillOrder = async (req, res) => {
       console.log("Order Fulfilled:", fulfillmentResponse.data);
 
       return res.status(200).json({
+        success:true,
         message: "Order fulfilled successfully",
         trackingInfo: {
           trackingNumber: awb_number,
           courier: provider,
-          trackingURL: `https://track.courier.com/${awb_number}`, // Adjust for your provider
+          trackingURL: `https://www.shipexindia.com/track/${awb_number}`, // Adjust for your provider
         },
       });
     } catch (error) {
       console.error("Error fulfilling order:", error.response?.data || error);
       return res.status(500).json({
+        success:false,
         message: "Error fulfilling order on Shopify",
         error: error.response?.data,
       });
