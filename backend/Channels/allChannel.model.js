@@ -60,6 +60,9 @@ const AllChannel = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  lastSync:{
+    type:Date
+  },
   webhookId:{
     type:Number
   }
