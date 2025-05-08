@@ -173,7 +173,7 @@ const cancelShipment = async (shipmentId) => {
   }
 
   const isCancelled = await Order.findOne({
-    awb_number: shipmentId,
+    shipment_id: shipmentId,
     status: "Cancelled",
   });
   if (isCancelled) {
