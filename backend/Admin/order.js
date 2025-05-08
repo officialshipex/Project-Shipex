@@ -197,7 +197,7 @@ const filterOrders = async (req, res) => {
     if (type) filter["paymentDetails.method"] = type;
     if (courier) filter.courierServiceName = courier;
     if (userId) {
-      filter.userId = mongoose.Types.ObjectId(userId);
+      filter.userId = new mongoose.Types.ObjectId(userId);
     } else if (name || email || contactNumber) {
       // Only run this if userId is NOT set
       let userIds = [];
