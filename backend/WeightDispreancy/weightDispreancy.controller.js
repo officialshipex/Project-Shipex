@@ -8,6 +8,7 @@ const User = require("../models/User.model");
 const cron = require("node-cron");
 const { uploadToS3 } = require("../config/s3");
 const { calculateRateForDispute } = require("../Rate/calculateRateController");
+const Plan =require("../models/Plan.model")
 const downloadExcel = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
@@ -102,6 +103,42 @@ const uploadDispreancy = async (req, res) => {
       // Extract userId from the order
       const userId = order.userId;
 
+      // ✅ Fetch user's plan
+      const userPlan = await Plan.findOne({ userId });
+
+      if (!userPlan || !Array.isArray(userPlan.rateCard)) {
+        console.log(`Skipping AWB ${awbNumber} - Plan or rateCard not found.`);
+        continue;
+      }
+
+      // ✅ Match rate card for courierServiceName
+      const matchedRateCard = userPlan.rateCard.find(
+        (rate) => rate.courierServiceName === order.courierServiceName
+      );
+
+      if (
+        !matchedRateCard ||
+        !Array.isArray(matchedRateCard.weightPriceBasic)
+      ) {
+        console.log(
+          `Skipping AWB ${awbNumber} - No matching rateCard or weightPriceBasic.`
+        );
+        continue;
+      }
+
+      const weightTier = matchedRateCard.weightPriceBasic[0];
+      const weightTierKg = weightTier.weight / 1000;
+
+      if (!weightTier || typeof weightTierKg !== "number") {
+        console.log(`Skipping AWB ${awbNumber} - Invalid weight tier.`);
+        continue;
+      }
+
+      if (chargeWeight < weightTierKg) {
+        console.log(`Skipping AWB ${awbNumber} - Charge weight ${chargeWeight} is less than tier ${weightTierKg}`);
+        continue;
+      }
+      
       // Handle LBH values (if missing, set to null)
       const length = row["Length"] ? parseFloat(row["Length"]) : null;
       const breadth = row["Breadth"] ? parseFloat(row["Breadth"]) : null;
@@ -125,9 +162,11 @@ const uploadDispreancy = async (req, res) => {
       };
       const additionalCharges = await calculateRateForDispute(payload);
       const excessCharges = parseFloat(
-        (additionalCharges[0].forward.finalCharges - order.totalFreightCharges).toFixed(2)
+        (
+          additionalCharges[0].forward.finalCharges - order.totalFreightCharges
+        ).toFixed(2)
       );
-      
+
       // const freightCharges = order.totalFreightCharges;
       // const extraWeight = Math.ceil(
       //   excessWeight / order.packageDetails.applicableWeight
@@ -302,7 +341,6 @@ const AcceptDiscrepancy = async (req, res) => {
   }
 };
 
-
 const AcceptAllDiscrepancies = async (req, res) => {
   try {
     console.log("User ID:", req.user._id);
@@ -405,7 +443,6 @@ const AcceptAllDiscrepancies = async (req, res) => {
     });
   }
 };
-
 
 const autoAcceptDiscrepancies = async () => {
   try {
