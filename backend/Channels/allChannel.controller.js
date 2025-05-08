@@ -8,10 +8,7 @@ app.use(express.json());
 const Order = require("../models/newOrder.model");
 const createWooCommerceWebhook = require("./WooCommerce/woocommerce.controller");
 
-// Shopify Credentials (Use Environment Variables Instead)
-const SHOPIFY_SECRET = "92700d39fe6b414bef9bcde36ec3051f";
-const SHOPIFY_STORE = "q22z1q-jn.myshopify.com";
-const ACCESS_TOKEN = "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";
+
 
 const createWebhook = async (storeURL, storeAccessToken) => {
   const webhookURL = "https://api.shipexindia.com/v1/channel/webhook/orders";
