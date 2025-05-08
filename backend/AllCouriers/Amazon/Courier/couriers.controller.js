@@ -149,9 +149,7 @@ const createOneClickShipment = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Shipment Created Successfully",
-      shipment: {
-        provider:"Amazon",awb_number:currentOrder.awb_number,id:currentOrder?.channelId
-      },
+      shipment: response.data,
     });
   } catch (error) {
     console.error(
@@ -175,7 +173,7 @@ const cancelShipment = async (shipmentId) => {
   }
 
   const isCancelled = await Order.findOne({
-    shipment_id: shipmentId,
+    awb_number: shipmentId,
     status: "Cancelled",
   });
   if (isCancelled) {

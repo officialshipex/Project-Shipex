@@ -48,8 +48,6 @@ const dashboard=require("./dashboard/dashboard,router")
 const channel=require("./Channels/allChannel.routes")
 const staffRoleRoutes = require('./routes/rolesRouter')
 const trackSingleOrder=require("./Orders/tracking.controller")
-const LabelSettings=require("./label/label.router")
-router.use("/label",LabelSettings)
 
 const adminOrderRoute=require("./routes/adminOrder.router")
 router.use("/admin",adminOrderRoute)

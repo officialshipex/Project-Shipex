@@ -1,14 +1,8 @@
 const router = require('express').Router();
-const {getLabelSettings,saveLabelSettings,uploadLabelLogo}=require("./labelCustomize.controller")
-const {isAuthorized}=require("../middleware/auth.middleware")
-const multer = require("multer");
-const upload = multer({ storage: multer.memoryStorage() });
+const { setting, newLable,labelData } = require('./label.controller');
 
-
-router.post("/uploadLogo", isAuthorized, upload.single("logo"), uploadLabelLogo);
-router.get("/getLabel", isAuthorized, getLabelSettings);
-router.post("/saveLabel", isAuthorized, saveLabelSettings);
-
-
+router.post("/new", newLable);
+router.put("/setting", setting);
+router.get('/all',labelData)
 
 module.exports = router;
