@@ -8,10 +8,6 @@ app.use(express.json());
 const Order = require("../models/newOrder.model");
 const createWooCommerceWebhook = require("./WooCommerce/woocommerce.controller");
 
-// Shopify Credentials (Use Environment Variables Instead)
-const SHOPIFY_SECRET = "92700d39fe6b414bef9bcde36ec3051f";
-const SHOPIFY_STORE = "q22z1q-jn.myshopify.com";
-const ACCESS_TOKEN = "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";
 
 const createWebhook = async (storeURL, storeAccessToken) => {
   const webhookURL = "https://api.shipexindia.com/v1/channel/webhook/orders";
@@ -79,14 +75,14 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
       }
     );
 
-    console.log("Product Response:", response.data);
+    // console.log("Product Response:", response.data);
 
     const product = response.data.product;
 
     // Extract weight from the first variant (assuming single variant per product)
     const weight = product.variants?.[0]?.weight || 1; // Default 0 if not found
 
-    console.log("variants", product.variants);
+    // console.log("variants", product.variants);
 
     return { length: 10, width: 10, height: 10, weight };
   } catch (error) {
@@ -95,12 +91,144 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
   }
 };
 
-// getProductDetails("6125184188649","q22z1q-jn.myshopify.com","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")
+const fetchExistingOrders = async (req, res) => {
+  try {
+    const id = req.user._id;
+    // console.log("idi", id);
+    const channel = await AllChannel.findOne({
+      userId: id,
+      channel: "Shopify",
+    });
+    // console.log("chan", channel);
+    const accessToken = channel.storeAccessToken;
+    const storeURL = channel.storeURL;
+    const response = await axios.get(
+      `https://${storeURL}/admin/api/2024-01/orders.json?status=any`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const orders = response.data.orders;
+    // console.log("order",orders)
+    console.log("Fetched existing orders:", orders[0].customer.default_address);
+
+    // Find the associated user from the storeURL
+    const user = await AllChannel.findOne({ storeURL });
+    if (!user) {
+      console.error("Store not found in AllChannel");
+      return;
+    }
+
+    for (const order of orders) {
+      const existingOrder = await Order.findOne({
+        orderId: order.order_number,
+        userId: user.userId,
+      });
+
+      if (existingOrder) {
+        console.log(`Order ${order.id} already exists, skipping...`);
+        continue;
+      }
+
+      // Extract product details
+      const productDetails = order.line_items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        name: item.name,
+        sku: item.sku,
+        unitPrice: item.price,
+      }));
+
+      // Default values for package dimensions
+      let totalWeight = 0;
+      let totalLength = 10,
+        totalWidth = 10,
+        totalHeight = 10;
+
+      for (const item of order.line_items) {
+        const productInfo = await getProductDetails(
+          item.product_id,
+          storeURL,
+          accessToken
+        );
+
+        totalWeight += productInfo.weight;
+        totalLength = Math.max(totalLength, productInfo.length);
+        totalWidth = Math.max(totalWidth, productInfo.width);
+        totalHeight = Math.max(totalHeight, productInfo.height);
+      }
+
+      // Create and save the new order
+      const newOrder = new Order({
+        userId: user.userId,
+        orderId: order.order_number,
+        channelId:order.id,
+        pickupAddress: {
+          contactName: order.billing_address?.name || "N/A",
+          email: order.email || "abc@gmail.com",
+          phoneNumber: order.billing_address?.phone || "0000000000",
+          address: `${order.billing_address?.address1 || ""},${
+            order.billing_address?.address2 || ""
+          }`,
+          pinCode: order.billing_address?.zip || "000000",
+          city: order.billing_address?.city || "abc",
+          state: order.billing_address?.province || "abc",
+        },
+        receiverAddress: {
+          contactName: order.shipping_address?.name || "N/A",
+          email: order.email,
+          phoneNumber: order.shipping_address?.phone || "0000000000",
+          address: order.shipping_address?.address1 || "abc,abc,abc",
+          pinCode: order.shipping_address?.zip || "000000",
+          city: order.shipping_address?.city || "abc",
+          state: order.shipping_address?.province || "abc",
+        },
+        productDetails,
+        packageDetails: {
+          deadWeight: totalWeight,
+          applicableWeight: totalWeight,
+          volumetricWeight: {
+            length: totalLength,
+            width: totalWidth,
+            height: totalHeight,
+          },
+        },
+        paymentDetails: {
+          method: order.financial_status === "paid" ? "Prepaid" : "COD",
+          amount: order.financial_status === "paid" ? 0 : order.total_price,
+        },
+        status: "new",
+      });
+
+      await newOrder.save();
+      console.log(`Saved order ${order.id} to DB`);
+    }
+    // Update last sync time
+    channel.lastSync = new Date();
+    await channel.save();
+    res.status(200).json({ success: true, message: "Order sync successfully" });
+  } catch (error) {
+    console.error(
+      "Error fetching existing orders:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({ success: false, message: "Error in order sync" });
+  }
+};
+
+// Call it directly
+
 
 const webhookhandler = async (req, res) => {
   try {
     const storeURL = req.headers["x-shopify-shop-domain"];
+    console.log("storeURL", storeURL);
     const user = await AllChannel.findOne({ storeURL: storeURL });
+    console.log("user", user);
 
     // Fetch store location details
     const location = await axios.get(
@@ -148,7 +276,8 @@ const webhookhandler = async (req, res) => {
     // Create a new order in your database
     const newOrder = new Order({
       userId: user.userId,
-      orderId: shopifyOrder.id,
+      orderId: shopifyOrder?.order_number || Number("0000"),
+      channelId:shopifyOrder.id,
       pickupAddress: {
         contactName: shopifyOrder.billing_address?.name,
         email: shopifyOrder.email,
@@ -248,8 +377,12 @@ const storeAllChannelDetails = async (req, res) => {
         });
       }
     }
-    if(channel==="WooCommerce"){
-      webHook=await createWooCommerceWebhook(storeURL,storeClientId,storeClientSecret)
+    if (channel === "WooCommerce") {
+      webHook = await createWooCommerceWebhook(
+        storeURL,
+        storeClientId,
+        storeClientSecret
+      );
     }
     // console.log("wekdfn", webHook);
     const newChannel = new AllChannel({
@@ -336,18 +469,27 @@ const getOrders = async (storeURL) => {
 
 const fulfillOrder = async (req, res) => {
   try {
-    const { orderId, provider, waybill } = req.body;
-    console.log("Received fulfillment request:", { orderId, provider, waybill });
+    console.log("body",req.body)
+    const { id, provider, awb_number } = req.body;
+    console.log("Received fulfillment request:", {
+      id,
+      provider,
+      awb_number,
+    });
 
-    if (!orderId || !provider || !waybill) {
-      return res.status(400).json({ message: "Missing required fields: orderId, provider, waybill" });
+    if (!id || !provider || !awb_number) {
+      return res.status(400).json({
+        message: "Missing required fields: orderId, provider, waybill",
+      });
     }
 
     const userId = req.user._id;
-    const channel = await AllChannel.findOne({ userId });
+    const channel = await AllChannel.findOne({ userId:userId,channel:"Shopify" });
 
     if (!channel) {
-      return res.status(404).json({ message: "Shopify channel not found for this user" });
+      return res
+        .status(404)
+        .json({ message: "Shopify channel not found for this user" });
     }
 
     const shopifyStore = channel.storeURL;
@@ -356,16 +498,19 @@ const fulfillOrder = async (req, res) => {
     // Fetch order details
     let orderDetails;
     try {
-      const orderResponse = await axios.get(`https://${shopifyStore}/admin/api/2024-04/orders/${orderId}.json`, {
-        headers: { "X-Shopify-Access-Token": accessToken },
-      });
+      const orderResponse = await axios.get(
+        `https://${shopifyStore}/admin/api/2024-04/orders/${id}.json`,
+        {
+          headers: { "X-Shopify-Access-Token": accessToken },
+        }
+      );
       orderDetails = orderResponse.data.order;
     } catch (error) {
-      // console.error("Error fetching order details:", error.response?.data || error);
+      console.error("Error fetching order details:", error.response?.data || error);
       return res.status(404).json({ message: "Order not found on Shopify" });
     }
 
-    // console.log("Order details:", orderDetails);
+    console.log("Order details:", orderDetails);
 
     // Check if the order is already fulfilled
     if (orderDetails.fulfillment_status === "fulfilled") {
@@ -373,41 +518,53 @@ const fulfillOrder = async (req, res) => {
     }
 
     // Check if the order is a COD order
-    const isCOD = orderDetails.payment_gateway_names.includes("cash_on_delivery");
+    const isCOD =
+      orderDetails.payment_gateway_names.includes("cash_on_delivery");
 
     // If the order is not COD and payment is still pending, do not fulfill
     if (!isCOD && orderDetails.financial_status === "pending") {
-      return res.status(400).json({ message: "Order cannot be fulfilled as payment is still pending." });
+      console.log("not fulfilled")
+      return res.status(400).json({
+        message: "Order cannot be fulfilled as payment is still pending.",
+      });
     }
 
     // Fetch store locations
     let locationId;
     try {
-      const shopData = await axios.get(`https://${shopifyStore}/admin/api/2024-04/locations.json`, {
-        headers: { "X-Shopify-Access-Token": accessToken },
-      });
+      const shopData = await axios.get(
+        `https://${shopifyStore}/admin/api/2024-04/locations.json`,
+        {
+          headers: { "X-Shopify-Access-Token": accessToken },
+        }
+      );
       locationId = shopData.data.locations?.[0]?.id;
+      console.log("location",locationId)
     } catch (error) {
       console.error("Error fetching locations:", error.response?.data || error);
-      return res.status(500).json({ message: "Error fetching locations from Shopify" });
+      return res
+        .status(500)
+        .json({ message: "Error fetching locations from Shopify" });
     }
 
     if (!locationId) {
-      return res.status(400).json({ message: "No location ID found for the store" });
+      return res
+        .status(400)
+        .json({ message: "No location ID found for the store" });
     }
 
     // Fulfill the order
     try {
       const fulfillmentResponse = await axios.post(
-        `https://${shopifyStore}/admin/api/2024-04/orders/${orderId}/fulfillments.json`,
+        `https://${shopifyStore}/admin/api/2024-04/orders/${id}/fulfillments.json`,
         {
           fulfillment: {
             notify_customer: true, // Notify customer via email
             location_id: locationId,
             tracking_info: {
-              number: waybill,
+              number: awb_number,
               company: provider,
-              url: `https://track.courier.com/${waybill}`, // Adjust based on courier tracking link
+              url: `https://www.shipexindia.com/track/${awb_number}`, // Adjust based on courier tracking link
             },
           },
         },
@@ -421,27 +578,26 @@ const fulfillOrder = async (req, res) => {
 
       console.log("Order Fulfilled:", fulfillmentResponse.data);
 
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: "Order fulfilled successfully",
         trackingInfo: {
-          trackingNumber: waybill,
+          trackingNumber: awb_number,
           courier: provider,
-          trackingURL: `https://track.courier.com/${waybill}`, // Adjust for your provider
+          trackingURL: `https://www.shipexindia.com/track/${awb_number}`, // Adjust for your provider
         },
       });
-
     } catch (error) {
       console.error("Error fulfilling order:", error.response?.data || error);
-      return res.status(500).json({ message: "Error fulfilling order on Shopify", error: error.response?.data });
+      return res.status(500).json({
+        message: "Error fulfilling order on Shopify",
+        error: error.response?.data,
+      });
     }
   } catch (error) {
     console.error("Unexpected error in fulfillOrder:", error);
     return res.status(500).json({ message: "Internal server error", error });
   }
 };
-
-
-
 
 // Example Usage
 // fulfillOrder("1234567890", "TRK123456", "Ecom Express");
@@ -535,4 +691,5 @@ module.exports = {
   updateChannel,
   deleteChannel,
   fulfillOrder,
+  fetchExistingOrders,
 };
