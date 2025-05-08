@@ -205,10 +205,12 @@ const limiter = new Bottleneck({
           "not delivered": "Undelivered",
           "set rto initiated": "Undelivered",
           "rto processed & forwarded": "RTO",
+          "return as per client instruction.":"RTO",
           "rto booked": "RTO",
           "rto in transit": "RTO In-transit",
           "rto reached at destination": "RTO In-transit",
           "rto out for delivery": "RTO In-transit",
+          "rto mis route":"RTO In-transit",
           "rto delivered": "RTO Delivered",
         };
   
@@ -544,7 +546,7 @@ const limiter = new Bottleneck({
     }
   };
   
-  startTrackingLoop();
+  // startTrackingLoop();
   
   const mapTrackingResponse = (data, provider) => {
     const providerMappings = {
