@@ -1424,7 +1424,6 @@ const uploadCourierCodRemittance = async (req, res) => {
   }
 };
 
-
 module.exports = {
   codPlanUpdate,
   codToBeRemitted,
