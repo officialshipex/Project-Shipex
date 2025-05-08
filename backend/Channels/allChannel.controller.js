@@ -241,7 +241,7 @@ const storeAllChannelDetails = async (req, res) => {
     let webHook;
     if (channel === "Shopify") {
       webHook = await createWebhook(storeURL, storeAccessToken);
-      // console.log("✅ Webhook created successfully:", webHook);
+      console.log("✅ Webhook created successfully:", webHook);
       if (webHook.error === "socket hang up") {
         return res.status(400).json({
           message: "URL or Token or Secret key or Client ID are not matching",
