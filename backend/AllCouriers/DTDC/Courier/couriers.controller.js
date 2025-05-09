@@ -4,7 +4,7 @@ const User = require("../../../models/User.model");
 require("dotenv").config();
 const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
-const {getDTDCAuthToken}=require("../Authorize/saveCourierContoller")
+const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
 
 // const router = express.Router();
 
@@ -22,9 +22,14 @@ const createOrder = async (req, res) => {
     const { id, provider, finalCharges, courierServiceName, courier } =
       req.body;
     console.log(id, provider, finalCharges, courierServiceName, courier);
-if(!courier){
-  return res.status(400).json({success:false,message:"service_type_id missing please refresh your page"})
-}
+    if (!courier) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "service_type_id missing please refresh your page",
+        });
+    }
     // Fetch order, user, and wallet details
     const currentOrder = await Order.findById(id);
     if (!currentOrder) {
@@ -99,11 +104,16 @@ if(!courier){
           cod_collection_mode: codCollectionMode,
           cod_amount: codAmount,
 
-          commodity_id: "7",
+          // commodity_id: "7",
           reference_number: "",
         },
       ],
     };
+
+    console.log(
+      "orgin,destination",
+      shipmentData.consignments[0].origin_details,shipmentData.consignments[0].destination_details
+    );
 
     // API call to DTDC
     let response;
@@ -152,25 +162,20 @@ if(!courier){
           },
         },
       });
-    }else{
-      console.log("ererer",response.data)
-      return res.status(400).json({message:response.data.data[0].message})
+    } else {
+      console.log("ererer", response.data);
+      return res.status(400).json({ message: response.data.data[0].message });
     }
 
     console.log(response.data.data);
 
-    return res
-      .status(200)
-      .json({
-        message: "Shipment Created Successfully",
-        success: true,
-        data: response.data,
-      });
+    return res.status(200).json({
+      message: "Shipment Created Successfully",
+      success: true,
+      data: response.data,
+    });
   } catch (error) {
-    console.error(
-      "Error creating shipment:",
-      error.response
-    );
+    console.error("Error creating shipment:", error.response);
     return res.status(500).json({
       success: false,
       message: "Failed to create shipment",
@@ -193,18 +198,18 @@ const cancelOrderDTDC = async (AWBNo) => {
       };
     }
 
-      const isCancelled = await Order.findOne({
-        awb_number: AWBNo,
-        status: "Cancelled",
-      });
-    
-      if (isCancelled) {
-        console.log("Order is already cancelled");
-        return {
-          error: "Order is already cancelled",
-          code: 400,
-        };
-      }
+    const isCancelled = await Order.findOne({
+      awb_number: AWBNo,
+      status: "Cancelled",
+    });
+
+    if (isCancelled) {
+      console.log("Order is already cancelled");
+      return {
+        error: "Order is already cancelled",
+        code: 400,
+      };
+    }
 
     const customerCode = "GL9711"; // Hardcoded customer code
 
@@ -219,23 +224,24 @@ const cancelOrderDTDC = async (AWBNo) => {
       },
     });
 
-    await Order.updateOne({awb_number:AWBNo},{$set:{status:"Cancelled"}});
+    await Order.updateOne(
+      { awb_number: AWBNo },
+      { $set: { status: "Cancelled" } }
+    );
 
     console.log("DTDC Cancel Response:", response.data);
-    if(response?.data?.success){
+    if (response?.data?.success) {
       return {
-        data:response.data,code:201
-      }
+        data: response.data,
+        code: 201,
+      };
+    } else {
+      return {
+        error: "Error in shipment cancellation",
+        details: response.data,
+        code: 400,
+      };
     }
-    else{
-      return{
-        error:"Error in shipment cancellation",
-        details:response.data,
-        code:400
-      }
-    }
-
-    
   } catch (error) {
     console.error(
       "Error canceling shipment:",
@@ -249,24 +255,20 @@ const cancelOrderDTDC = async (AWBNo) => {
   }
 };
 
-
 // DTDC Tracking API Config
-const DTDC_TRACKING_API_URL = `https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails`; 
+const DTDC_TRACKING_API_URL = `https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails`;
 
 // Track Order Controller
 const trackOrderDTDC = async (AWBNo) => {
-  const access_key=await getDTDCAuthToken()
+  const access_key = await getDTDCAuthToken();
   // console.log(access_key)
   try {
-    
-
     const requestData = {
-      trkType:"cnno",
-      strcnno:AWBNo,
-      addtnlDtl: "Y"
+      trkType: "cnno",
+      strcnno: AWBNo,
+      addtnlDtl: "Y",
     };
 
-    
     const response = await axios.post(DTDC_TRACKING_API_URL, requestData, {
       headers: {
         "Content-Type": "application/json",
@@ -274,21 +276,19 @@ const trackOrderDTDC = async (AWBNo) => {
       },
     });
     // console.log(response.data)
-    return {success:true,data:response.data}
-
-    
+    return { success: true, data: response.data };
   } catch (error) {
     // console.error(
     //   "Error tracking shipment:",
     //   error.response?.data || error.message
     // );
     return {
-      success:false,error:error.response.message,status:500
-    }
-    
+      success: false,
+      error: error.response.message,
+      status: 500,
+    };
   }
 };
-
 
 const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
   try {
