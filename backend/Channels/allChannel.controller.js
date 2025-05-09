@@ -262,6 +262,7 @@ const webhookhandler = async (req, res) => {
 
     const shopifyOrder = req.body;
     const compositeOrderId = `${storeURL}-${shopifyOrder.id}`;
+    const firstLineItemId = shopifyOrder.line_items?.[0]?.id;
 
     // Check for existing order using compositeOrderId
     const existingOrder = await Order.findOne({ compositeOrderId });
@@ -302,7 +303,7 @@ const webhookhandler = async (req, res) => {
       userId: user.userId,
       orderId: shopifyOrder.order_number || "0000",
       compositeOrderId, // Ensure uniqueness
-      channelId: shopifyOrder.id,
+      channelId: firstLineItemId,
       pickupAddress: {
         contactName: shopifyOrder.billing_address?.name || "N/A",
         email: shopifyOrder.email || "abc@gmail.com",
