@@ -50,7 +50,7 @@ const orderSchema = new mongoose.Schema(
     },
     compositeOrderId: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
     },
 
