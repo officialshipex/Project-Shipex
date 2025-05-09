@@ -62,6 +62,9 @@ const AllChannel = new mongoose.Schema({
   },
   webhookId:{
     type:Number
+  },
+  lastSync:{
+    type:Date
   }
 });
 

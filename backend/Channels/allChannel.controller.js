@@ -8,7 +8,6 @@ app.use(express.json());
 const Order = require("../models/newOrder.model");
 const createWooCommerceWebhook = require("./WooCommerce/woocommerce.controller");
 
-
 const createWebhook = async (storeURL, storeAccessToken) => {
   const webhookURL = "https://api.shipexindia.com/v1/channel/webhook/orders";
   const webhookTopic = "orders/create";
@@ -93,44 +92,56 @@ const getProductDetails = async (productId, storeURL, accessToken) => {
 
 const fetchExistingOrders = async (req, res) => {
   try {
-    const id = req.user._id;
-    // console.log("idi", id);
+    const userId = req.user._id;
+
     const channel = await AllChannel.findOne({
-      userId: id,
+      userId,
       channel: "Shopify",
     });
-    // console.log("chan", channel);
-    const accessToken = channel.storeAccessToken;
-    const storeURL = channel.storeURL;
-    const response = await axios.get(
-      `https://${storeURL}/admin/api/2024-01/orders.json?status=any`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": accessToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
 
-    const orders = response.data.orders;
-    // console.log("order",orders)
-    console.log("Fetched existing orders:", orders[0].customer.default_address);
-
-    // Find the associated user from the storeURL
-    const user = await AllChannel.findOne({ storeURL });
-    if (!user) {
-      console.error("Store not found in AllChannel");
-      return;
+    if (!channel) {
+      return res.status(404).json({ success: false, message: "Shopify channel not connected." });
     }
 
-    for (const order of orders) {
-      const existingOrder = await Order.findOne({
-        orderId: order.order_number,
-        userId: user.userId,
-      });
+    const accessToken = channel.storeAccessToken;
+    const storeURL = channel.storeURL;
 
+    let allOrders = [];
+    let pageInfo = null;
+
+    do {
+      const response = await axios.get(
+        `https://${storeURL}/admin/api/2024-01/orders.json`,
+        {
+          headers: {
+            "X-Shopify-Access-Token": accessToken,
+            "Content-Type": "application/json",
+          },
+          params: {
+            status: "any",
+            limit: 250,
+            ...(pageInfo && { page_info: pageInfo }),
+          },
+        }
+      );
+
+      allOrders.push(...response.data.orders);
+
+      const linkHeader = response.headers["link"];
+      if (linkHeader && linkHeader.includes('rel="next"')) {
+        const match = linkHeader.match(/page_info=([^&>]+)/);
+        pageInfo = match ? match[1] : null;
+      } else {
+        pageInfo = null;
+      }
+    } while (pageInfo);
+
+    for (const order of allOrders) {
+      const compositeOrderId = `${storeURL}-${order.id}`;
+
+      const existingOrder = await Order.findOne({ compositeOrderId });
       if (existingOrder) {
-        console.log(`Order ${order.id} already exists, skipping...`);
+        console.log(`Order ${order.id} already exists. Skipping...`);
         continue;
       }
 
@@ -143,49 +154,49 @@ const fetchExistingOrders = async (req, res) => {
         unitPrice: item.price,
       }));
 
-      // Default values for package dimensions
+      // Default package dimensions
       let totalWeight = 0;
-      let totalLength = 10,
-        totalWidth = 10,
-        totalHeight = 10;
+      let totalLength = 10, totalWidth = 10, totalHeight = 10;
 
       for (const item of order.line_items) {
-        const productInfo = await getProductDetails(
-          item.product_id,
-          storeURL,
-          accessToken
-        );
+        try {
+          const productInfo = await getProductDetails(
+            item.product_id,
+            storeURL,
+            accessToken
+          );
 
-        totalWeight += productInfo.weight;
-        totalLength = Math.max(totalLength, productInfo.length);
-        totalWidth = Math.max(totalWidth, productInfo.width);
-        totalHeight = Math.max(totalHeight, productInfo.height);
+          totalWeight += productInfo.weight || 0;
+          totalLength = Math.max(totalLength, productInfo.length || 0);
+          totalWidth = Math.max(totalWidth, productInfo.width || 0);
+          totalHeight = Math.max(totalHeight, productInfo.height || 0);
+        } catch (err) {
+          console.warn(`Failed to fetch details for product ${item.product_id}`);
+        }
       }
 
-      // Create and save the new order
       const newOrder = new Order({
-        userId: user.userId,
+        userId: channel.userId,
         orderId: order.order_number,
-        channelId:order.id,
+        channelId: order.id,
+        compositeOrderId,
         pickupAddress: {
           contactName: order.billing_address?.name || "N/A",
-          email: order.email || "abc@gmail.com",
+          email: order.email || "unknown@example.com",
           phoneNumber: order.billing_address?.phone || "0000000000",
-          address: `${order.billing_address?.address1 || ""},${
-            order.billing_address?.address2 || ""
-          }`,
+          address: `${order.billing_address?.address1 || ""}, ${order.billing_address?.address2 || ""}`.trim(),
           pinCode: order.billing_address?.zip || "000000",
-          city: order.billing_address?.city || "abc",
-          state: order.billing_address?.province || "abc",
+          city: order.billing_address?.city || "Unknown",
+          state: order.billing_address?.province || "Unknown",
         },
         receiverAddress: {
           contactName: order.shipping_address?.name || "N/A",
-          email: order.email,
+          email: order.email || "unknown@example.com",
           phoneNumber: order.shipping_address?.phone || "0000000000",
-          address: order.shipping_address?.address1 || "abc,abc,abc",
+          address: order.shipping_address?.address1 || "Not Provided",
           pinCode: order.shipping_address?.zip || "000000",
-          city: order.shipping_address?.city || "abc",
-          state: order.shipping_address?.province || "abc",
+          city: order.shipping_address?.city || "Unknown",
+          state: order.shipping_address?.province || "Unknown",
         },
         productDetails,
         packageDetails: {
@@ -199,36 +210,43 @@ const fetchExistingOrders = async (req, res) => {
         },
         paymentDetails: {
           method: order.financial_status === "paid" ? "Prepaid" : "COD",
-          amount: order.financial_status === "paid" ? 0 : order.total_price,
+          amount: order.financial_status === "paid" ? 0 : parseFloat(order.total_price || 0),
         },
         status: "new",
       });
 
       await newOrder.save();
-      console.log(`Saved order ${order.id} to DB`);
+      console.log(`Saved new order ${order.order_number} (${order.id})`);
     }
-    // Update last sync time
+
     channel.lastSync = new Date();
     await channel.save();
-    res.status(200).json({ success: true, message: "Order sync successfully" });
+
+    res.status(200).json({
+      success: true,
+      message: "All orders synced successfully.",
+    });
   } catch (error) {
-    console.error(
-      "Error fetching existing orders:",
-      error.response?.data || error.message
-    );
-    res.status(500).json({ success: false, message: "Error in order sync" });
+    console.error("Error fetching existing orders:", error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error in syncing orders.",
+    });
   }
 };
 
 // Call it directly
 
-
 const webhookhandler = async (req, res) => {
   try {
     const storeURL = req.headers["x-shopify-shop-domain"];
     console.log("storeURL", storeURL);
+
     const user = await AllChannel.findOne({ storeURL: storeURL });
-    console.log("user", user);
+    if (!user) {
+      console.error("Store not found in AllChannel");
+      return res.status(404).json({ error: "Store not found" });
+    }
 
     // Fetch store location details
     const location = await axios.get(
@@ -242,10 +260,17 @@ const webhookhandler = async (req, res) => {
     );
     const locations = location.data.locations[0];
 
-    const shopifyOrder = req.body; // Incoming order data from Shopify
-    console.log("reererer", req.body);
+    const shopifyOrder = req.body;
+    const compositeOrderId = `${storeURL}-${shopifyOrder.id}`;
 
-    // Extract product details (without weight & dimensions)
+    // Check for existing order using compositeOrderId
+    const existingOrder = await Order.findOne({ compositeOrderId });
+    if (existingOrder) {
+      console.log(`Order ${compositeOrderId} already exists, skipping...`);
+      return res.status(200).json({ message: "Duplicate order ignored" });
+    }
+
+    // Extract product details
     const productDetails = shopifyOrder.line_items.map((item) => ({
       id: item.id,
       quantity: item.quantity,
@@ -254,7 +279,7 @@ const webhookhandler = async (req, res) => {
       unitPrice: item.price,
     }));
 
-    // Fetch package weight & dimensions separately
+    // Fetch package weight & dimensions
     let totalWeight = 0;
     let totalLength = 10,
       totalWidth = 10,
@@ -273,33 +298,35 @@ const webhookhandler = async (req, res) => {
       totalHeight = Math.max(totalHeight, productInfo.height);
     }
 
-    // Create a new order in your database
     const newOrder = new Order({
       userId: user.userId,
-      orderId: shopifyOrder?.order_number || Number("0000"),
-      channelId:shopifyOrder.id,
+      orderId: shopifyOrder.order_number || "0000",
+      compositeOrderId, // Ensure uniqueness
+      channelId: shopifyOrder.id,
       pickupAddress: {
-        contactName: shopifyOrder.billing_address?.name,
-        email: shopifyOrder.email,
-        phoneNumber: shopifyOrder.billing_address?.phone,
-        address: `${shopifyOrder.billing_address?.address1},${shopifyOrder.billing_address?.address2}`,
-        pinCode: shopifyOrder.billing_address?.zip,
-        city: shopifyOrder.billing_address?.city,
-        state: locations?.localized_province_name,
+        contactName: shopifyOrder.billing_address?.name || "N/A",
+        email: shopifyOrder.email || "abc@gmail.com",
+        phoneNumber: shopifyOrder.billing_address?.phone || "0000000000",
+        address: `${shopifyOrder.billing_address?.address1 || ""},${
+          shopifyOrder.billing_address?.address2 || ""
+        }`,
+        pinCode: shopifyOrder.billing_address?.zip || "000000",
+        city: shopifyOrder.billing_address?.city || "abc",
+        state: locations?.localized_province_name || "N/A",
       },
       receiverAddress: {
         contactName: shopifyOrder.shipping_address?.name || "N/A",
-        email: shopifyOrder?.email,
+        email: shopifyOrder.email|| "abc@gmail.com",
         phoneNumber: shopifyOrder.shipping_address?.phone || "0000000000",
         address: shopifyOrder.shipping_address?.address1 || "abc,abc,abc",
         pinCode: shopifyOrder.shipping_address?.zip || "000000",
         city: shopifyOrder.shipping_address?.city || "abc",
         state: shopifyOrder.shipping_address?.province || "abc",
       },
-      productDetails, // Now only contains product-related info, no weight or dimensions
+      productDetails,
       packageDetails: {
-        deadWeight: totalWeight, // Total weight of all products
-        applicableWeight: totalWeight, // Can be adjusted later if needed
+        deadWeight: totalWeight,
+        applicableWeight: totalWeight,
         volumetricWeight: {
           length: totalLength,
           width: totalWidth,
@@ -469,7 +496,7 @@ const getOrders = async (storeURL) => {
 
 const fulfillOrder = async (req, res) => {
   try {
-    console.log("body",req.body)
+    console.log("body", req.body);
     const { id, provider, awb_number } = req.body;
     console.log("Received fulfillment request:", {
       id,
@@ -484,7 +511,10 @@ const fulfillOrder = async (req, res) => {
     }
 
     const userId = req.user._id;
-    const channel = await AllChannel.findOne({ userId:userId,channel:"Shopify" });
+    const channel = await AllChannel.findOne({
+      userId: userId,
+      channel: "Shopify",
+    });
 
     if (!channel) {
       return res
@@ -506,7 +536,10 @@ const fulfillOrder = async (req, res) => {
       );
       orderDetails = orderResponse.data.order;
     } catch (error) {
-      console.error("Error fetching order details:", error.response?.data || error);
+      console.error(
+        "Error fetching order details:",
+        error.response?.data || error
+      );
       return res.status(404).json({ message: "Order not found on Shopify" });
     }
 
@@ -523,7 +556,7 @@ const fulfillOrder = async (req, res) => {
 
     // If the order is not COD and payment is still pending, do not fulfill
     if (!isCOD && orderDetails.financial_status === "pending") {
-      console.log("not fulfilled")
+      console.log("not fulfilled");
       return res.status(400).json({
         message: "Order cannot be fulfilled as payment is still pending.",
       });
@@ -539,7 +572,7 @@ const fulfillOrder = async (req, res) => {
         }
       );
       locationId = shopData.data.locations?.[0]?.id;
-      console.log("location",locationId)
+      console.log("location", locationId);
     } catch (error) {
       console.error("Error fetching locations:", error.response?.data || error);
       return res
