@@ -17,6 +17,7 @@ const razorpay = new Razorpay({
 const createOrder = async (req, res) => {
   try {
     const { amount, walletId } = req.body;
+    console.log("walletId",walletId)
 
     const options = {
       amount: amount * 100, // in paisa
@@ -68,6 +69,7 @@ const razorpayWebhook = async (req, res) => {
     .digest("hex");
 
   if (razorpaySignature !== expectedSignature) {
+    console.log("validation failed")
     return res
       .status(400)
       .json({ success: false, message: "Invalid signature" });
@@ -78,13 +80,17 @@ const razorpayWebhook = async (req, res) => {
 
   try {
     const payment = event.payload.payment.entity;
-    const walletId = payment.notes?.walletId;
+    console.log("payment",payment)
+
+    // Fetch full payment details to get the original order notes (like walletId)
+    const fullPayment = await razorpay.payments.fetch(payment.id);
+    console.log("fullPayment",fullPayment)
+    const walletId = fullPayment.notes?.walletId;
+    console.log("walletId",walletId)
 
     if (!walletId) {
-      console.log("wallet", walletId);
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing walletId" });
+      console.log("Missing walletId in payment notes:", fullPayment.notes);
+      return res.status(400).json({ success: false, message: "Missing walletId" });
     }
 
     let wallet = await Wallet.findById(walletId);
