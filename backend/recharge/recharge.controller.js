@@ -1,5 +1,5 @@
 const Wallet = require("../models/wallet");
-const User=require("../models/User.model")
+const User = require("../models/User.model");
 
 require("dotenv").config();
 const express = require("express");
@@ -16,14 +16,18 @@ const razorpay = new Razorpay({
 // Create an order
 const createOrder = async (req, res) => {
   try {
+    const { amount, walletId } = req.body;
+
     const options = {
-      amount: req.body.amount * 100, // Amount in paisa
+      amount: amount * 100, // in paisa
       currency: "INR",
       receipt: `order_rcptid_${Math.floor(Math.random() * 10000)}`,
+      notes: {
+        walletId, // 👈 This will come back in webhook
+      },
     };
 
     const order = await razorpay.orders.create(options);
-    // console.log("12345676",order)
     res.json({ success: true, order });
   } catch (error) {
     res
@@ -32,63 +36,223 @@ const createOrder = async (req, res) => {
   }
 };
 
+// Razorpay webhook handler
+const razorpayWebhook = async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
+  // Validate Razorpay signature
+  const razorpaySignature = req.headers["x-razorpay-signature"];
+  const body = JSON.stringify(req.body);
 
-const verifyPayment = async (req, res) => {
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-    walletId,
-    amount,
-    
-  } = req.body;
-
-  const generated_signature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(razorpay_order_id + "|" + razorpay_payment_id)
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(body)
     .digest("hex");
 
-  if (generated_signature === razorpay_signature) {
-    console.log("Payment verified successfully");
+  if (razorpaySignature !== expectedSignature) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid signature" });
+  }
 
-    try {
-      const currentWallet = await Wallet.findById(walletId);
+  const event = req.body;
 
-      if (!currentWallet) {
-        return res.status(404).json({ success: false, message: "Wallet not found" });
+  try {
+    if (event.event === "payment.captured") {
+      const payment = event.payload.payment.entity;
+      const walletId = payment.notes?.walletId;
+
+      if (!walletId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing walletId" });
       }
 
-      // Update balance
-      currentWallet.balance += amount;
+      const wallet = await Wallet.findById(walletId);
+      if (!wallet) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Wallet not found" });
+      }
 
-      // Save detailed walletHistory (only payment info)
-      currentWallet.walletHistory.push({
+      const alreadyExists = wallet.walletHistory.some(
+        (txn) => txn.paymentDetails?.paymentId === payment.id
+      );
+      if (alreadyExists) {
+        return res
+          .status(200)
+          .json({ success: true, message: "Already processed" });
+      }
+
+      // Generate unique transactionId
+      let transactionId;
+      let exists = true;
+      while (exists) {
+        transactionId =
+          Date.now().toString().slice(-6) +
+          Math.floor(1000 + Math.random() * 9000);
+        exists = await Wallet.exists({
+          "walletHistory.paymentDetails.transactionId": transactionId,
+        });
+      }
+
+      // Update wallet balance and history
+      wallet.balance += payment.amount / 100;
+
+      wallet.walletHistory.push({
         status: "success",
         paymentDetails: {
-          paymentId: razorpay_payment_id,
-          orderId: razorpay_order_id,
-          signature: razorpay_signature,
-          walletId:walletId,
-          amount:amount,
-
-        }
+          paymentId: payment.id,
+          orderId: payment.order_id,
+          signature: event.payload.payment.entity?.signature || "", // fallback
+          walletId: walletId,
+          amount: payment.amount / 100,
+          transactionId: transactionId,
+        },
       });
 
-      await currentWallet.save();
+      await wallet.save();
+      return res
+        .status(200)
+        .json({ success: true, message: "Payment captured & wallet updated" });
+    } else if (event.event === "payment.failed") {
+      const payment = event.payload.payment.entity;
+      const walletId = payment.notes?.walletId;
 
-      console.log("Wallet updated with payment details");
+      if (!walletId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing walletId" });
+      }
 
-      res.json({ success: true, message: "Payment successful" });
-      
-    } catch (err) {
-      console.error("Error processing payment:", err);
-      res.status(500).json({ success: false, message: "Server error during payment processing" });
+      const wallet = await Wallet.findById(walletId);
+      if (!wallet) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Wallet not found" });
+      }
+
+      const alreadyExists = wallet.walletHistory.some(
+        (txn) => txn.paymentDetails?.paymentId === payment.id
+      );
+      if (alreadyExists) {
+        return res
+          .status(200)
+          .json({ success: true, message: "Failed payment already logged" });
+      }
+      let transactionId;
+      let exists = true;
+      while (exists) {
+        transactionId =
+          Date.now().toString().slice(-6) +
+          Math.floor(1000 + Math.random() * 9000);
+        exists = await Wallet.exists({
+          "walletHistory.paymentDetails.transactionId": transactionId,
+        });
+      }
+
+      wallet.walletHistory.push({
+        status: "failed",
+        paymentDetails: {
+          paymentId: payment.id,
+          orderId: payment.order_id,
+          // reason: payment.error_reason || "Unknown",
+          description: payment.error_description || "",
+          walletId: walletId,
+          amount: payment.amount / 100,
+          transactionId: transactionId,
+        },
+      });
+
+      await wallet.save();
+      return res
+        .status(200)
+        .json({ success: true, message: "Failed payment logged" });
     }
-  } else {
-    res.status(400).json({ success: false, message: "Payment verification failed" });
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Unhandled event type" });
+  } catch (err) {
+    console.error("Webhook processing error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
+
+// const verifyPayment = async (req, res) => {
+//   const {
+//     razorpay_order_id,
+//     razorpay_payment_id,
+//     razorpay_signature,
+//     walletId,
+//     amount,
+//   } = req.body;
+
+//   const generated_signature = crypto
+//     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+//     .update(razorpay_order_id + "|" + razorpay_payment_id)
+//     .digest("hex");
+
+//   if (generated_signature === razorpay_signature) {
+//     console.log("Payment verified successfully");
+
+//     try {
+//       const currentWallet = await Wallet.findById(walletId);
+
+//       if (!currentWallet) {
+//         return res
+//           .status(404)
+//           .json({ success: false, message: "Wallet not found" });
+//       }
+
+//       // Update balance
+//       currentWallet.balance += amount;
+//       // Generate unique 10-digit transactionId
+//       let transactionId;
+//       let exists = true;
+
+//       while (exists) {
+//         transactionId =
+//           Date.now().toString().slice(-6) +
+//           Math.floor(1000 + Math.random() * 9000);
+//         exists = await Wallet.exists({
+//           "walletHistory.paymentDetails.transactionId": transactionId,
+//         });
+//       }
+
+//       // Save detailed walletHistory (only payment info)
+//       currentWallet.walletHistory.push({
+//         status: "success",
+//         paymentDetails: {
+//           paymentId: razorpay_payment_id,
+//           orderId: razorpay_order_id,
+//           signature: razorpay_signature,
+//           walletId: walletId,
+//           amount: amount,
+//           transactionId: transactionId,
+//         },
+//       });
+
+//       await currentWallet.save();
+
+//       console.log("Wallet updated with payment details");
+
+//       res.json({ success: true, message: "Payment successful" });
+//     } catch (err) {
+//       console.error("Error processing payment:", err);
+//       res.status(500).json({
+//         success: false,
+//         message: "Server error during payment processing",
+//       });
+//     }
+//   } else {
+//     res
+//       .status(400)
+//       .json({ success: false, message: "Payment verification failed" });
+//   }
+// };
 
 const getWalletHistoryByUserId = async (req, res) => {
   try {
@@ -107,12 +271,15 @@ const getWalletHistoryByUserId = async (req, res) => {
     }
 
     if (!user.Wallet) {
-      return res.status(404).json({ message: "Wallet not found for this user." });
+      return res
+        .status(404)
+        .json({ message: "Wallet not found for this user." });
     }
 
     // Step 2: Find wallet history using Wallet ID
-    const history = await Wallet.find({ _id: user.Wallet })
-      .sort({ createdAt: -1 }); // latest first
+    const history = await Wallet.find({ _id: user.Wallet }).sort({
+      createdAt: -1,
+    }); // latest first
 
     res.status(200).json({
       success: true,
@@ -127,5 +294,4 @@ const getWalletHistoryByUserId = async (req, res) => {
   }
 };
 
-
-module.exports = { createOrder, verifyPayment,getWalletHistoryByUserId };
+module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId };

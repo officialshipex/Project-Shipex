@@ -1,6 +1,8 @@
-const { createOrder,verifyPayment,getWalletHistoryByUserId} = require("./recharge.controller");
-const rechargeRouter = require("express").Router();
+const { createOrder,razorpayWebhook,getWalletHistoryByUserId} = require("./recharge.controller");
+const express = require("express");
+const rechargeRouter = express.Router();
 const {isAuthorized}=require("../middleware/auth.middleware")
+const {getAllTransactionHistory}=require("../Admin/Billings/walletHistory")
 
 // -----------PHONE PAY-------------------------------------------------------
 // rechargeRouter.post("/phonepe", phonePe);
@@ -19,11 +21,12 @@ const {isAuthorized}=require("../middleware/auth.middleware")
 
 //=============Razorpay============
 rechargeRouter.post("/create-order",createOrder)
-rechargeRouter.post("/verify-payment",verifyPayment)
-rechargeRouter.get("/transactionHistory",isAuthorized,getWalletHistoryByUserId)
+rechargeRouter.post("/razorpay-webhook", express.json({ verify: (req, res, buf) => { req.rawBody = buf } }), razorpayWebhook);
+rechargeRouter.get("/transactionHistory",isAuthorized,getWalletHistoryByUserId);
+rechargeRouter.get("/allTransactionHistory",isAuthorized,getAllTransactionHistory);
 //==============Razorpay================
 // rechargeRouter.post('/recharge',handlePaymentOrder);
 // rechargeRouter.post('/createorder',RazorpayOrder);
-// rechargeRouter.get('/payment/:orderId/:walletId',handlePaymentRequest);
+// rechargeRouter.get('/p*ayment/:orderId/:walletId',handlePaymentRequest);
 
 module.exports = rechargeRouter;
