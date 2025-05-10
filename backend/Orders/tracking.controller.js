@@ -209,6 +209,7 @@ const trackSingleOrder = async (order) => {
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
         "rto reached at destination": "RTO In-transit",
+        "rto not delivered":"RTO In-transit",
         "rto out for delivery": "RTO In-transit",
         "rto mis route": "RTO In-transit",
         "rto delivered": "RTO Delivered",
@@ -242,9 +243,7 @@ const trackSingleOrder = async (order) => {
       }
 
       if (
-        normalizedData.Instructions === "Not Delivered" &&
-        order.ndrStatus !== "Action_Requested" &&
-        normalizedData.Instructions !== "Out For Delivery"
+        normalizedData.Instructions === "Not Delivered" || normalizedData.Instructions==="RTO Not Delivered"
       ) {
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
