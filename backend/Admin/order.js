@@ -47,7 +47,7 @@ const getOrdersByStatus = async (req, res) => {
 
 const searchUser = async (req, res) => {
   const { query } = req.query;
-  console.log("Search query:", query);
+  // console.log("Search query:", query);
 
   if (!query || query.trim() === "") {
     return res.status(400).json({ message: "Query parameter is required." });
@@ -70,7 +70,7 @@ const searchUser = async (req, res) => {
       "fullname email phoneNumber _id userId"
     );
 
-    console.log("Matched users:", users);
+    // console.log("Matched users:", users);
     res.json({ users });
   } catch (err) {
     console.error("Error while searching users:", err);
