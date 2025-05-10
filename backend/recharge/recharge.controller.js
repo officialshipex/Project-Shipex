@@ -36,18 +36,25 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Helper to generate a unique transaction ID
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;
   do {
     transactionId =
       Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+
+    // Check if any wallet has at least one walletHistory entry with this transactionId
     exists = await Wallet.exists({
-      "walletHistory.paymentDetails.transactionId": transactionId,
+      walletHistory: {
+        $elemMatch: {
+          "paymentDetails.transactionId": transactionId,
+        },
+      },
     });
   } while (exists);
+  console.log("trans",transactionId)
   return transactionId;
 };
+
 // Razorpay webhook handler
 const razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -67,22 +74,30 @@ const razorpayWebhook = async (req, res) => {
   }
 
   const event = req.body;
+  console.log("event", event);
 
   try {
     const payment = event.payload.payment.entity;
     const walletId = payment.notes?.walletId;
 
     if (!walletId) {
+      console.log("wallet", walletId);
       return res
         .status(400)
         .json({ success: false, message: "Missing walletId" });
     }
 
-    const wallet = await Wallet.findById(walletId);
+    let wallet = await Wallet.findById(walletId);
     if (!wallet) {
+      console.log("wallet not found");
       return res
         .status(404)
         .json({ success: false, message: "Wallet not found" });
+    }
+
+    // If walletHistory does not exist, initialize it as an empty array
+    if (!wallet.walletHistory) {
+      wallet.walletHistory = [];
     }
 
     const alreadyExists = wallet.walletHistory.some(
@@ -108,8 +123,10 @@ const razorpayWebhook = async (req, res) => {
       amount,
       transactionId,
     };
+    console.log("transaction id")
 
     if (event.event === "payment.captured") {
+      console.log("payment captured")
       wallet.balance += amount;
 
       wallet.walletHistory.push({
@@ -128,6 +145,7 @@ const razorpayWebhook = async (req, res) => {
     }
 
     if (event.event === "payment.failed") {
+      console.log("payment failed")
       wallet.walletHistory.push({
         status: "failed",
         paymentDetails: {
@@ -153,6 +171,7 @@ const razorpayWebhook = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
 
 // const verifyPayment = async (req, res) => {
 //   const {
