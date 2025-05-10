@@ -36,11 +36,22 @@ const createOrder = async (req, res) => {
   }
 };
 
+// Helper to generate a unique transaction ID
+const generateUniqueTransactionId = async () => {
+  let transactionId, exists;
+  do {
+    transactionId =
+      Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+    exists = await Wallet.exists({
+      "walletHistory.paymentDetails.transactionId": transactionId,
+    });
+  } while (exists);
+  return transactionId;
+};
 // Razorpay webhook handler
 const razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  // Validate Razorpay signature
   const razorpaySignature = req.headers["x-razorpay-signature"];
   const body = JSON.stringify(req.body);
 
@@ -58,109 +69,70 @@ const razorpayWebhook = async (req, res) => {
   const event = req.body;
 
   try {
+    const payment = event.payload.payment.entity;
+    const walletId = payment.notes?.walletId;
+
+    if (!walletId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing walletId" });
+    }
+
+    const wallet = await Wallet.findById(walletId);
+    if (!wallet) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Wallet not found" });
+    }
+
+    const alreadyExists = wallet.walletHistory.some(
+      (txn) => txn.paymentDetails?.paymentId === payment.id
+    );
+    if (alreadyExists) {
+      return res.status(200).json({
+        success: true,
+        message:
+          event.event === "payment.failed"
+            ? "Failed payment already logged"
+            : "Payment already processed",
+      });
+    }
+
+    const transactionId = await generateUniqueTransactionId();
+    const amount = payment.amount / 100;
+
+    const paymentDetails = {
+      paymentId: payment.id,
+      orderId: payment.order_id,
+      walletId,
+      amount,
+      transactionId,
+    };
+
     if (event.event === "payment.captured") {
-      const payment = event.payload.payment.entity;
-      const walletId = payment.notes?.walletId;
-
-      if (!walletId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Missing walletId" });
-      }
-
-      const wallet = await Wallet.findById(walletId);
-      if (!wallet) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Wallet not found" });
-      }
-
-      const alreadyExists = wallet.walletHistory.some(
-        (txn) => txn.paymentDetails?.paymentId === payment.id
-      );
-      if (alreadyExists) {
-        return res
-          .status(200)
-          .json({ success: true, message: "Already processed" });
-      }
-
-      // Generate unique transactionId
-      let transactionId;
-      let exists = true;
-      while (exists) {
-        transactionId =
-          Date.now().toString().slice(-6) +
-          Math.floor(1000 + Math.random() * 9000);
-        exists = await Wallet.exists({
-          "walletHistory.paymentDetails.transactionId": transactionId,
-        });
-      }
-
-      // Update wallet balance and history
-      wallet.balance += payment.amount / 100;
+      wallet.balance += amount;
 
       wallet.walletHistory.push({
         status: "success",
         paymentDetails: {
-          paymentId: payment.id,
-          orderId: payment.order_id,
-          signature: event.payload.payment.entity?.signature || "", // fallback
-          walletId: walletId,
-          amount: payment.amount / 100,
-          transactionId: transactionId,
+          ...paymentDetails,
+          signature: payment.signature || "",
         },
       });
 
       await wallet.save();
-      return res
-        .status(200)
-        .json({ success: true, message: "Payment captured & wallet updated" });
-    } else if (event.event === "payment.failed") {
-      const payment = event.payload.payment.entity;
-      const walletId = payment.notes?.walletId;
+      return res.status(200).json({
+        success: true,
+        message: "Payment captured & wallet updated",
+      });
+    }
 
-      if (!walletId) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Missing walletId" });
-      }
-
-      const wallet = await Wallet.findById(walletId);
-      if (!wallet) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Wallet not found" });
-      }
-
-      const alreadyExists = wallet.walletHistory.some(
-        (txn) => txn.paymentDetails?.paymentId === payment.id
-      );
-      if (alreadyExists) {
-        return res
-          .status(200)
-          .json({ success: true, message: "Failed payment already logged" });
-      }
-      let transactionId;
-      let exists = true;
-      while (exists) {
-        transactionId =
-          Date.now().toString().slice(-6) +
-          Math.floor(1000 + Math.random() * 9000);
-        exists = await Wallet.exists({
-          "walletHistory.paymentDetails.transactionId": transactionId,
-        });
-      }
-
+    if (event.event === "payment.failed") {
       wallet.walletHistory.push({
         status: "failed",
         paymentDetails: {
-          paymentId: payment.id,
-          orderId: payment.order_id,
-          // reason: payment.error_reason || "Unknown",
-          description: payment.error_description || "",
-          walletId: walletId,
-          amount: payment.amount / 100,
-          transactionId: transactionId,
+          ...paymentDetails,
+          description: payment.error_description || "No description provided",
         },
       });
 
@@ -170,6 +142,7 @@ const razorpayWebhook = async (req, res) => {
         .json({ success: true, message: "Failed payment logged" });
     }
 
+    console.log("Unhandled Razorpay webhook event:", event.event);
     return res
       .status(200)
       .json({ success: true, message: "Unhandled event type" });
