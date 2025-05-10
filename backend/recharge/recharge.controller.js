@@ -127,7 +127,7 @@ const razorpayWebhook = async (req, res) => {
       orderId: payment.order_id,
       walletId,
       amount,
-      transactionId,
+      transactionId:payment.acquirer_data.bank_transaction_id,
     };
     console.log("transaction id")
 
