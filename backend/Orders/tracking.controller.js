@@ -579,7 +579,7 @@ const mapTrackingResponse = (data, provider) => {
       StrRemarks:
         data.eventHistory?.length &&
         data.eventHistory[data.eventHistory.length - 1]?.shipmentType ===
-          "forward"
+          "FORWARD"
           ? data.summary?.trackingDetailCodes?.forward?.[1]
           : data.summary?.trackingDetailCodes?.reverse?.[1],
       StatusLocation: data.eventHistory?.length
