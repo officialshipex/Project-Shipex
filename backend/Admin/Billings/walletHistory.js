@@ -13,7 +13,7 @@ const getAllTransactionHistory = async (req, res) => {
       paymentId,
       transactionId
     } = req.query;
-    // console.log("re", req.query);
+    console.log("re", req.query);
     const userMatchStage = {};
     const transactionMatchStage = {};
 

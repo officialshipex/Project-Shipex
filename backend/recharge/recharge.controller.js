@@ -84,11 +84,11 @@ const razorpayWebhook = async (req, res) => {
 
     // Fetch full payment details to get the original order notes (like walletId)
     const fullPayment = await razorpay.payments.fetch(payment.id);
-    console.log("fullpayment",fullPayment)
+    console.log("fullpayment", fullPayment);
     const order = await razorpay.orders.fetch(payment.order_id);
-    console.log("order",order)
+    console.log("order", order);
     const walletId = order.notes?.walletId || fullPayment.notes?.walletId;
-    console.log("walletId",walletId)
+    console.log("walletId", walletId);
 
     if (!walletId) {
       console.log("Missing walletId in payment notes:", fullPayment.notes);
@@ -258,33 +258,44 @@ const razorpayWebhook = async (req, res) => {
 const getWalletHistoryByUserId = async (req, res) => {
   try {
     const userId = req.user._id;
-    // console.log("user",userId)
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
     }
 
-    // Step 1: Find the user first
-    const user = await User.findById(userId);
+    const {
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
+    // Step 1: Get user wallet ID
+    const user = await User.findById(userId).select("Wallet").lean();
+    if (!user?.Wallet) {
+      return res.status(404).json({ message: "Wallet not found for user." });
     }
 
-    if (!user.Wallet) {
-      return res
-        .status(404)
-        .json({ message: "Wallet not found for this user." });
+    // Step 2: Get wallet and walletHistory
+    const wallet = await Wallet.findById(user.Wallet).select("walletHistory").lean();
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet data not found." });
     }
 
-    // Step 2: Find wallet history using Wallet ID
-    const history = await Wallet.find({ _id: user.Wallet }).sort({
-      createdAt: -1,
-    }); // latest first
+    let history = wallet.walletHistory || [];
 
-    res.status(200).json({
+    // Step 4: Sort and Paginate
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const totalCount = history.length;
+    const start = (page - 1) * limit;
+    const end = start + parseInt(limit);
+    const paginated = history.slice(start, end);
+
+    // Step 5: Respond
+    return res.status(200).json({
       success: true,
-      history,
+      data: paginated,
+      totalCount,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalCount / limit),
     });
   } catch (error) {
     console.error("Error fetching wallet history:", error);
@@ -294,5 +305,7 @@ const getWalletHistoryByUserId = async (req, res) => {
     });
   }
 };
+
+
 
 module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId };
