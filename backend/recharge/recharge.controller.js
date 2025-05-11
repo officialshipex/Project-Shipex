@@ -79,7 +79,16 @@ const razorpayWebhook = async (req, res) => {
   console.log("event", event);
 
   try {
+    if (
+      event.event !== "payment.captured" &&
+      event.event !== "payment.failed"
+    ) {
+      console.log("Unhandled Razorpay webhook event:", event.event);
+      return res.status(200).json({ success: true, message: "Event ignored" });
+    }
+
     const payment = event.payload.payment.entity;
+
     console.log("payment", payment);
 
     // Fetch full payment details to get the original order notes (like walletId)
@@ -263,10 +272,7 @@ const getWalletHistoryByUserId = async (req, res) => {
       return res.status(400).json({ message: "User ID is required." });
     }
 
-    const {
-      page = 1,
-      limit = 10,
-    } = req.query;
+    const { page = 1, limit = 10 } = req.query;
 
     // Step 1: Get user wallet ID
     const user = await User.findById(userId).select("Wallet").lean();
@@ -275,7 +281,9 @@ const getWalletHistoryByUserId = async (req, res) => {
     }
 
     // Step 2: Get wallet and walletHistory
-    const wallet = await Wallet.findById(user.Wallet).select("walletHistory").lean();
+    const wallet = await Wallet.findById(user.Wallet)
+      .select("walletHistory")
+      .lean();
     if (!wallet) {
       return res.status(404).json({ message: "Wallet data not found." });
     }
@@ -305,7 +313,5 @@ const getWalletHistoryByUserId = async (req, res) => {
     });
   }
 };
-
-
 
 module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId };
