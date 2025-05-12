@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const {login, createRole, getAllRoles, getRoleById, updateRole, deleteRole, getSalesExecutives, allocateRole, getAllAllocations, deleteAllocation} = require("../staffRoles/rolesController");
+const {login, createRole, getAllRoles, getRoleById, updateRole, deleteRole, getSalesExecutives, allocateRole, getAllAllocations, deleteAllocation, getMyAllocations} = require("../staffRoles/rolesController");
 const { isAuthorized } = require("../middleware/auth.middleware");
+
 
 
 router.get("/verify", isAuthorized, (req, res) => {
@@ -23,8 +24,10 @@ router.get("/allAllocations", isAuthorized, getAllAllocations);
 router.delete("/deleteAllocation/:id", isAuthorized, deleteAllocation);
 // Protected routes (require token verification)
 router.get("/", isAuthorized, getAllRoles);
+router.get("/myAllocations", isAuthorized, getMyAllocations);
 router.get("/:id", isAuthorized, getRoleById);
 router.put("/updateRole/:id", isAuthorized, updateRole);
 router.delete("/deleteRole/:id", isAuthorized,deleteRole);
+
 
 module.exports = router;

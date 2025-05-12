@@ -29,6 +29,7 @@ const isAuthorized = async (req, res, next) => {
       if (!user) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
+      // console.log("user", user);
       req.user = user;
       req.employee = null;
       req.isEmployee = false; // <-- ADD THIS
@@ -38,8 +39,9 @@ const isAuthorized = async (req, res, next) => {
       if (!employee) {
         return res.status(404).json({ success: false, message: "Employee not found" });
       }
+      // console.log("employee", employee);
       req.employee = employee;
-      req.user = null;
+      
       req.isEmployee = true; // <-- ADD THIS
     } else {
       return res.status(401).json({ success: false, message: "Invalid token payload" });

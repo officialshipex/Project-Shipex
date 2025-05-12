@@ -156,7 +156,10 @@ const getUserDetails = async (req, res) => {
 const changeUser = async (req, res) => {
   try {
     console.log("hi");
-    const userId = req.user.id; // Assumes you're using JWT auth middleware that sets req.user
+    const userId = req.user ? req.user.id : req.employee ? req.employee.id : null;
+if (!userId) {
+  return res.status(401).json({ message: "Unauthorized: user not found in token" });
+}
     const { adminTab } = req.body;
     console.log("ad",adminTab)
 

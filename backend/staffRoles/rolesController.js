@@ -158,6 +158,7 @@ const login = async (req, res) => {
       {
         employee: {
           id: employee._id,
+          employeeId: employee.employeeId,
           email: employee.email,
           fullName: employee.fullName,
           isAdmin: employee.isAdmin,
@@ -250,7 +251,26 @@ const deleteAllocation = async (req, res) => {
   }
 };
 
+const getMyAllocations = async (req, res) => {
+  // console.log("getMyAllocations called");
+  try {
+    // console.log("req.employee:", req.employee);
+    if (!req.employee || !req.employee.employeeId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const employeeId = req.employee.employeeId;
+    const allocations = await AllocateRole.find({ employeeId }).sort({ allocatedAt: -1 });
+    return res.status(200).json({ success: true, allocations });
+  } catch (error) {
+    console.error("getMyAllocations error:", error);
+    return res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
+
+
 module.exports = {
+  getMyAllocations,
   login,
   createRole,
   getAllRoles,
