@@ -99,6 +99,7 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     RTOCharges: { type: String },
+    COD:{type: String},
     reattempt: { type: Boolean },
     tracking: [
       {

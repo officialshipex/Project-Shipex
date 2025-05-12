@@ -502,9 +502,9 @@ const trackSingleOrder = async (order) => {
 
     await order.save();
   } catch (error) {
-    console.error(
-      `Error tracking order ID: ${order._id}, AWB: ${order.awb_number} ${error}`
-    );
+    // console.error(
+    //   `Error tracking order ID: ${order._id}, AWB: ${order.awb_number} ${error}`
+    // );
   }
 };
 
@@ -546,7 +546,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-startTrackingLoop();
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {

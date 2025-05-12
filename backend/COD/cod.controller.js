@@ -16,7 +16,7 @@ const File = require("../model/bulkOrderFiles.model.js");
 // const { date } = require("joi");
 const CourierCodRemittance = require("./CourierCodRemittance.js");
 const CodRemittanceOrders = require("./CodRemittanceOrder.model.js");
-
+const SameDateDelivered = require("./samedateDelivery.model.js");
 const codPlanUpdate = async (req, res) => {
   try {
     const userID = req.user?._id; // Ensure req.user exists
@@ -80,109 +80,128 @@ const codPlanUpdate = async (req, res) => {
   }
 };
 
-const codToBeRemitted = async () => {
+const codToBeRemitteds = async () => {
   try {
-    const deliveredCodOrders = await Order.find({
-      status: "Delivered",
-      "paymentDetails.method": "COD",
-    });
-    
+    const deliveredCodOrders = await Order.aggregate([
+      {
+        $match: {
+          status: "Delivered",
+          "paymentDetails.method": "COD",
+        },
+      },
+    ]);
+
     for (const order of deliveredCodOrders) {
       const latestTracking = order.tracking?.[order.tracking.length - 1];
       const deliveryDate = latestTracking?.StatusDateTime;
 
       if (!deliveryDate) {
-        console.log(`Skipping order ${order._id} - No delivery date found`);
-        continue; // Skip processing this order
+        console.log(`⚠️ Skipping order ${order._id} - No delivery date`);
+        continue;
       }
 
-      const formattedDeliveryDate = new Date(deliveryDate)
-        .toISOString()
-        .split("T")[0];
-      // Check if remittance already exists for this user
-      const existingRemittance = await codRemittance.findOne({
+      const formattedDate = new Date(deliveryDate).toISOString().split("T")[0];
+      const startOfDay = new Date(`${formattedDate}T00:00:00.000Z`);
+      const endOfDay = new Date(`${formattedDate}T23:59:59.999Z`);
+
+      const codAmount = order.paymentDetails.amount || 0;
+      const customOrderId = order.orderId || "";
+
+      // 🔍 Find SameDateDelivered for user and deliveryDate
+      let sameDateEntry = await SameDateDelivered.findOne({
         userId: order.userId,
+        deliveryDate: { $gte: startOfDay, $lte: endOfDay },
       });
 
-      if (existingRemittance) {
-        let dateEntry = existingRemittance.sameDayDelhiveryOrders?.find(
-          (entry) =>
-            new Date(entry.date).toISOString().split("T")[0] ===
-            formattedDeliveryDate
+      if (sameDateEntry) {
+        // ✅ Check if order already exists
+        const isDuplicate = sameDateEntry.orderDetails.some((id) =>
+          Number(id.customOrderId)===order.orderId
         );
-        if (dateEntry) {
-          if (!dateEntry.orders.includes(order._id)) {
-            dateEntry.orders.push(order._id);
-            dateEntry.codcal += order.paymentDetails.amount;
-            existingRemittance.CODToBeRemitted += order.paymentDetails.amount;
+
+        if (!isDuplicate) {
+          // ✅ Add to existing entry
+          sameDateEntry.orderDetails.push({
+            orderId: order._id,
+            codAmount,
+            customOrderId,
+          });
+          sameDateEntry.orderIds.push(order._id);
+          sameDateEntry.totalCod += codAmount;
+          await sameDateEntry.save();
+
+          // ✅ Update or create remittance
+          let remittance = await codRemittance.findOne({
+            userId: order.userId,
+          });
+          if (!remittance) {
+            remittance = new codRemittance({
+              userId: order.userId,
+              CODToBeRemitted: codAmount,
+              rechargeAmount: 0,
+            });
+          } else {
+            remittance.CODToBeRemitted += codAmount;
           }
-        } else {
-          dateEntry = {
-            date: new Date(deliveryDate),
-            codcal: order.paymentDetails.amount,
-            orders: [order._id],
-          };
-          existingRemittance.sameDayDelhiveryOrders.push(dateEntry);
-          existingRemittance.CODToBeRemitted += order.paymentDetails.amount;
+          await remittance.save();
         }
-        await existingRemittance.save();
       } else {
-        const newRemittance = new codRemittance({
+        // ✅ Create new SameDateDelivered entry
+        await SameDateDelivered.create({
           userId: order.userId,
-          CODToBeRemitted: order.paymentDetails.amount,
-          rechargeAmount: 0,
-          sameDayDelhiveryOrders: [
+          deliveryDate: new Date(deliveryDate),
+          orderDetails: [
             {
-              date: new Date(deliveryDate),
-              codcal: order.paymentDetails.amount,
-              orders: [order._id],
+              orderId: order._id,
+              codAmount,
+              customOrderId,
             },
           ],
+          orderIds: [order._id],
+          totalCod: codAmount,
+          status: "Pending",
         });
-        await newRemittance.save();
+
+        // ✅ Create or update remittance
+        let remittance = await codRemittance.findOne({ userId: order.userId });
+        if (!remittance) {
+          remittance = new codRemittance({
+            userId: order.userId,
+            CODToBeRemitted: codAmount,
+            rechargeAmount: 0,
+          });
+        } else {
+          remittance.CODToBeRemitted += codAmount;
+        }
+        await remittance.save();
       }
     }
-    // console.log("000000000")
-    return { success: true, message: "COD updated successfully" };
   } catch (error) {
-    console.error("Error updating COD:", error);
-    return {
-      success: false,
-      message: "An error occurred while updating the COD Plan",
-      error: error.message,
-    };
+    console.error("❌ Error in COD to be remitted:", error);
   }
 };
 cron.schedule("1 1 * * *", () => {
   console.log("Running scheduled task at 1:01 AM: Fetching orders...");
-  codToBeRemitted();
+  codToBeRemitteds();
 });
-// cron.schedule("*/1 * * * *", () => {
-//   console.log("Running scheduled task at 1 AM: Fetching orders...");
-//   codToBeRemitted();
-// });
-// const data = async () => {
-//   try {
-//     await adminCodRemittance.deleteMany({ status: "Pending" });
-//     console.log("Pending remittances deleted successfully.");
-//   } catch (error) {
-//     console.error("Error deleting pending remittances:", error);
-//   }
-// };
-// data()
+
 const remittanceScheduleData = async () => {
   try {
-    const remittanceData = await codRemittance.find();
+    const existingSameDateDelivered = await SameDateDelivered.find({
+      status: "Pending",
+    });
+
     const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
     const isNotSunday = today.getDay() !== 0;
     const isTodayMWF = [1, 3, 5].includes(today.getDay());
     const isTodayTF = [2, 5].includes(today.getDay());
 
-    for (const remittance of remittanceData) {
-      const [codPlan, user, wallet] = await Promise.all([
+    for (const remittance of existingSameDateDelivered) {
+      const [codPlan, user] = await Promise.all([
         CodPlan.findOne({ user: remittance.userId }),
         User.findById(remittance.userId),
-        Wallet.findOne({ _id: remittance.userId.Wallet }),
       ]);
 
       if (!codPlan || !codPlan.planName) {
@@ -191,118 +210,110 @@ const remittanceScheduleData = async () => {
         continue;
       }
 
-      if (
-        !remittance.sameDayDelhiveryOrders ||
-        remittance.sameDayDelhiveryOrders.length === 0
-      ) {
-        console.log(`No delivery orders for user ${remittance.userId}`);
-        continue;
-      }
-
-      if (!user) {
-        console.log(`User not found: ${remittance.userId}`);
-        continue;
-      }
-
-      if (!wallet) {
-        console.log(`Wallet not found for user: ${remittance.userId}`);
-        continue;
-      }
-
       const planDays = parseInt(codPlan.planName.replace(/\D/g, ""), 10);
       const planCharges = codPlan.planCharges || 0;
 
-      for (const order of remittance.sameDayDelhiveryOrders) {
-        const deliveryDate = new Date(order.date);
-        if (isNaN(deliveryDate)) {
-          console.log(`Invalid delivery date:`, order);
+      const dayDiff = Math.floor(
+        (today - new Date(remittance.deliveryDate)) / (1000 * 60 * 60 * 24)
+      );
+
+      if (dayDiff === 8) {
+        if (!user) {
+          console.log(`User not found: ${remittance.userId}`);
           continue;
         }
 
-        const dayDifference = Math.floor((today - deliveryDate) / (1000 * 60 * 60 * 24));
-        if (dayDifference !== planDays) {
-          console.log(`Day difference not matching plan for user ${remittance.userId}`);
+        const wallet = await Wallet.findById(user.Wallet);
+        if (!wallet) {
+          console.log(`Wallet not found for user: ${remittance.userId}`);
           continue;
         }
 
-        // Duplicate check for afterPlan
-        if (!isTodayMWF) {
-          const duplicateExists = await afterPlan.exists({
-            userId: remittance.userId,
-            "orderDetails.date": today,
-            "orderDetails.orders": { $all: order.orders },
-          });
-          if (duplicateExists) {
-            console.log(`Duplicate afterPlan entry for user: ${remittance.userId}`);
-            continue;
-          }
+        const orders = remittance.orderIds || [];
+        if (orders.length === 0) {
+          console.log(`No delivery orders for user ${remittance.userId}`);
+          continue;
         }
 
-        // Recharge logic
+        const remittanceData = await codRemittance.findOne({
+          userId: remittance.userId,
+        });
+
+        if (!remittanceData) {
+          console.log(`No remittance record found for user ${remittance.userId}`);
+          continue;
+        }
+
+        const deliveryStr = remittance.deliveryDate.toISOString().split("T")[0];
+
         let rechargeAmount = remittance.rechargeAmount || 0;
-        let remainingRecharge = 0;
         let extraAmount = 0;
+        let remainingRecharge = 0;
 
-        if (rechargeAmount <= order.codcal) {
-          remainingRecharge = order.codcal - rechargeAmount;
+        if (rechargeAmount <= remittance.totalCod) {
+          remainingRecharge = remittance.totalCod - rechargeAmount;
           extraAmount = rechargeAmount;
           rechargeAmount = 0;
         } else {
-          rechargeAmount -= order.codcal;
+          rechargeAmount -= remittance.totalCod;
+          extraAmount = remittance.totalCod;
           remainingRecharge = 0;
-          extraAmount = order.codcal;
         }
-
-        const codToBeDeducted = Math.min(remittance.CODToBeRemitted, remainingRecharge);
-        if (codToBeDeducted <= 0 || remittance.CODToBeRemitted - codToBeDeducted < 0) {
-          console.log(`Skipping to avoid negative COD for ${remittance._id}`);
+   console.log("------>",remittanceData.CODToBeRemitted)
+        // Validate remittance.CODToBeRemitted
+        if (
+          typeof remittanceData.CODToBeRemitted !== "number" ||
+          isNaN(remittanceData.CODToBeRemitted)
+        ) {
+          console.log(
+            `❌ CODToBeRemitted is invalid for remittance ${remittance._id}:`,
+            remittanceData.CODToBeRemitted
+          );
           continue;
         }
 
-        // Update remittance entry
-        const updateResult = await codRemittance.updateOne(
+        const codToBeRemitted = Number(remittanceData.CODToBeRemitted);
+        const recharge = Number(remainingRecharge);
+        const codToBeDeducted = Math.min(remittanceData, recharge);
+
+        if (isNaN(codToBeDeducted) || codToBeDeducted <= 0) {
+          console.log(`Skipping due to invalid or zero codToBeDeducted for ${remittance._id}`);
+          continue;
+        }
+
+        const updateRes = await codRemittance.updateOne(
           {
-            _id: remittance._id,
+            _id: remittanceData._id,
             CODToBeRemitted: { $gte: codToBeDeducted },
-            "sameDayDelhiveryOrders.date": deliveryDate.toISOString(),
+            "sameDayDelhiveryOrders.date": deliveryStr,
           },
           {
             $inc: {
               CODToBeRemitted: -codToBeDeducted,
-              RemittanceInitiated: order.codcal,
+              RemittanceInitiated: extraAmount,
             },
             $set: { rechargeAmount },
-            $pull: {
-              sameDayDelhiveryOrders: { date: deliveryDate.toISOString() },
-            },
           }
         );
 
-        if (updateResult.modifiedCount === 0) {
-          console.log(`Concurrent update or already processed: ${remittance._id}`);
+        if (updateRes.modifiedCount === 0) {
+          console.log(`Already processed or concurrent update for ${remittance._id}`);
           continue;
         }
 
-        // Wallet update
-        let afterWallet = wallet.balance;
         let creditedAmount = 0;
+        let afterWallet = wallet.balance;
         let remainingExtraCodcal = remainingRecharge;
 
         if (wallet.balance < 0) {
-          if (remainingRecharge >= Math.abs(wallet.balance)) {
-            creditedAmount = Math.abs(wallet.balance);
-            remainingExtraCodcal = remainingRecharge - creditedAmount;
-            afterWallet = 0;
-          } else {
-            creditedAmount = remainingRecharge;
-            remainingExtraCodcal = 0;
-            afterWallet += remainingRecharge;
-          }
+          const adjustAmount = Math.min(remainingRecharge, Math.abs(wallet.balance));
+          creditedAmount = adjustAmount;
+          remainingExtraCodcal = remainingRecharge - adjustAmount;
+          afterWallet += adjustAmount;
         }
 
         await Wallet.updateOne({ _id: wallet._id }, { $set: { balance: afterWallet } });
 
-        // Prepare remittance entry
         const charges = (remainingExtraCodcal * planCharges) / 100;
         const totalCod = remainingExtraCodcal - charges;
         const remitanceId = Math.floor(10000 + Math.random() * 90000);
@@ -320,46 +331,254 @@ const remittanceScheduleData = async () => {
           orderDetails: {
             date: today,
             codcal: remainingExtraCodcal,
-            orders: order.orders,
+            orders: [...remittance.orderIds],
           },
         };
 
-        let newRemittance;
-        if (isNotSunday) {
-          if ([1, 4, 7].includes(planDays)) {
-            newRemittance = new adminCodRemittance(remittanceEntry);
-          } else if (planDays === 2 && isTodayMWF) {
-            newRemittance = new adminCodRemittance(remittanceEntry);
-          } else if (planDays === 3 && isTodayTF) {
-            newRemittance = new adminCodRemittance(remittanceEntry);
-          } else {
-            newRemittance = new afterPlan(remittanceEntry);
-          }
-        } else {
-          newRemittance = new afterPlan(remittanceEntry);
-        }
+        // console.log("----->", remittanceEntry);
 
-        await newRemittance.save();
-        console.log(`Remittance created for user ${remittance.userId}, ID: ${remitanceId}`);
+        try {
+          // Uncomment and use the logic you need
+          if (isNotSunday) {
+            if ([1, 4, 7].includes(planDays)) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else if (planDays === 2 && isTodayMWF) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else if (planDays === 3 && isTodayTF) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else {
+              await new afterPlan(remittanceEntry).save();
+            }
+          } else {
+            await new afterPlan(remittanceEntry).save();
+          }
+
+          await SameDateDelivered.updateOne(
+            { _id: remittance._id },
+            { $set: { status: "Completed" } }
+          );
+
+          console.log(`✅ Remittance processed for ${remittance.userId}`);
+        } catch (err) {
+          console.error("❌ Failed to save remittance entry:", err.message);
+          console.error("Entry Data:", remittanceEntry);
+        }
       }
     }
-
-    console.log("✅ Remittance schedule processing completed.");
   } catch (error) {
     console.error("❌ Error in remittance schedule:", error);
-    throw new Error("Failed to process remittance schedule.");
   }
 };
 
+
+// remittanceScheduleData();
+//  cron.schedule("*/1 * * * *", () => {
+//   console.log("Running scheduled task at 5 AM: Fetching orders...");
+//   remittanceScheduleData();
+// });
+// const remittanceScheduleData = async () => {
+//   try {
+//     // const remittanceData = await codRemittance.find();
+
+//     const existingSameDateDelivered = await SameDateDelivered.find({status:"Pending"});
+//     const today = new Date();
+//     const todayStr = today.toISOString().split("T")[0]; // format: YYYY-MM-DD
+
+//     const isNotSunday = today.getDay() !== 0;
+//     const isTodayMWF = [1, 3, 5].includes(today.getDay());
+//     const isTodayTF = [2, 5].includes(today.getDay());
+
+//     for (const remittance of existingSameDateDelivered) {
+//       const [codPlan, user] = await Promise.all([
+//         CodPlan.findOne({ user: remittance.userId }),
+//         User.findById(remittance.userId),
+//       ]);
+
+//       if (!user) {
+//         console.log(`User not found: ${remittance.userId}`);
+//         continue;
+//       }
+
+//       const wallet = await Wallet.findOne({ _id: user.Wallet });
+//       if (!wallet) {
+//         console.log(`Wallet not found for user: ${remittance.userId}`);
+//         continue;
+//       }
+
+//       if (!codPlan || !codPlan.planName) {
+//         console.log(
+//           `No plan for user ${remittance.userId}. Assigning default D+7 plan.`
+//         );
+//         await new CodPlan({ user: remittance.userId, planName: "D+7" }).save();
+//         continue;
+//       }
+
+//       const planDays = parseInt(codPlan.planName.replace(/\D/g, ""), 10);
+//       const planCharges = codPlan.planCharges || 0;
+
+//       const orders = remittance.orderDetails|| [];
+//       if (orders.length === 0) {
+//         console.log(`No delivery orders for user ${remittance.userId}`);
+//         continue;
+//       }
+
+//       for (const order of orders) {
+//         const deliveryDate = new Date(order.date);
+//         const deliveryStr = deliveryDate.toISOString().split("T")[0];
+
+//         if (isNaN(deliveryDate)) {
+//           console.log(`Invalid delivery date:`, order);
+//           continue;
+//         }
+
+//         const dayDiff = Math.floor(
+//           (today - deliveryDate) / (1000 * 60 * 60 * 24)
+//         );
+//         if (dayDiff !== planDays) {
+//           continue;
+//         }
+
+//         // Check for duplicate entry
+//         if (!isTodayMWF) {
+//           const duplicate = await afterPlan.exists({
+//             userId: remittance.userId,
+//             "orderDetails.date": todayStr,
+//             "orderDetails.orders": { $all: order.orders },
+//           });
+//           if (duplicate) {
+//             console.log(`Duplicate afterPlan entry for ${remittance.userId}`);
+//             continue;
+//           }
+//         }
+
+//         // Recharge adjustment
+//         let rechargeAmount = remittance.rechargeAmount || 0;
+//         let extraAmount = 0;
+//         let remainingRecharge = 0;
+
+//         if (rechargeAmount <= order.codcal) {
+//           remainingRecharge = order.codcal - rechargeAmount;
+//           extraAmount = rechargeAmount;
+//           rechargeAmount = 0;
+//         } else {
+//           rechargeAmount -= order.codcal;
+//           extraAmount = order.codcal;
+//           remainingRecharge = 0;
+//         }
+
+//         const codToBeDeducted = Math.min(
+//           remittance.CODToBeRemitted,
+//           remainingRecharge
+//         );
+//         if (codToBeDeducted <= 0) {
+//           console.log(`Skipping negative COD for ${remittance._id}`);
+//           continue;
+//         }
+
+//         // Update remittance doc
+//         const updateRes = await codRemittance.updateOne(
+//           {
+//             _id: remittance._id,
+//             CODToBeRemitted: { $gte: codToBeDeducted },
+//             "sameDayDelhiveryOrders.date": deliveryStr,
+//           },
+//           {
+//             $inc: {
+//               CODToBeRemitted: -codToBeDeducted,
+//               RemittanceInitiated: extraAmount,
+//             },
+//             $set: { rechargeAmount },
+//             $pull: {
+//               sameDayDelhiveryOrders: { date: deliveryStr },
+//             },
+//           }
+//         );
+
+//         if (updateRes.modifiedCount === 0) {
+//           console.log(
+//             `Already processed or concurrent update for ${remittance._id}`
+//           );
+//           continue;
+//         }
+
+//         // Update wallet balance
+//         let creditedAmount = 0;
+//         let afterWallet = wallet.balance;
+//         let remainingExtraCodcal = remainingRecharge;
+
+//         if (wallet.balance < 0) {
+//           const adjustAmount = Math.min(
+//             remainingRecharge,
+//             Math.abs(wallet.balance)
+//           );
+//           creditedAmount = adjustAmount;
+//           remainingExtraCodcal = remainingRecharge - adjustAmount;
+//           afterWallet += adjustAmount;
+//         }
+
+//         await Wallet.updateOne(
+//           { _id: wallet._id },
+//           { $set: { balance: afterWallet } }
+//         );
+
+//         const charges = (remainingExtraCodcal * planCharges) / 100;
+//         const totalCod = remainingExtraCodcal - charges;
+//         const remitanceId = Math.floor(10000 + Math.random() * 90000);
+
+//         const remittanceEntry = {
+//           date: today,
+//           userId: remittance.userId,
+//           userName: user.fullname,
+//           remitanceId,
+//           totalCod: Number(totalCod.toFixed(2)),
+//           amountCreditedToWallet: extraAmount,
+//           adjustedAmount: creditedAmount,
+//           earlyCodCharges: Number(charges.toFixed(2)),
+//           status: totalCod === 0 ? "Paid" : "Pending",
+//           orderDetails: {
+//             date: today,
+//             codcal: remainingExtraCodcal,
+//             orders: order.orders,
+//           },
+//         };
+
+//         let newRemittance;
+//         if (isNotSunday) {
+//           if ([1, 4, 7].includes(planDays)) {
+//             newRemittance = new adminCodRemittance(remittanceEntry);
+//           } else if (planDays === 2 && isTodayMWF) {
+//             newRemittance = new adminCodRemittance(remittanceEntry);
+//           } else if (planDays === 3 && isTodayTF) {
+//             newRemittance = new adminCodRemittance(remittanceEntry);
+//           } else {
+//             newRemittance = new afterPlan(remittanceEntry);
+//           }
+//         } else {
+//           newRemittance = new afterPlan(remittanceEntry);
+//         }
+
+//         // await newRemittance.save();
+//         console.log(
+//           `✅ Remittance created for ${remittance.userId}, ID: ${remitanceId}`
+//         );
+//       }
+//     }
+
+//     console.log("✅ Remittance schedule processing completed.");
+//   } catch (err) {
+//     console.error("❌ Error in remittance schedule:", err);
+//     throw new Error("Failed to process remittance schedule.");
+//   }
+// };
 
 // cron.schedule("*/1 * * * *", () => {
 //   console.log("Running scheduled task at 5 AM: Fetching orders...");
 //   remittanceScheduleData();
 // });
-cron.schedule("20 1 * * *", () => {
-  console.log("Running scheduled task at 4 AM: Fetching orders...");
-  remittanceScheduleData();
-});
+// cron.schedule("20 1 * * *", () => {
+//   console.log("Running scheduled task at 1.20 AM: Fetching orders...");
+//   remittanceScheduleData();
+// });
 
 // cron.schedule("*/1 * * * *", () => {
 //   console.log("Running scheduled task at 4 AM: Fetching orders...");
@@ -371,14 +590,14 @@ const fetchExtraData = async () => {
     const day = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     const isNotSunday = day !== 0;
     const isTodayMWF = [1, 3, 5].includes(day); // Monday, Wednesday, Friday
-    const isTodayTF = [2, 5].includes(day);     // Tuesday, Friday
+    const isTodayTF = [2, 5].includes(day); // Tuesday, Friday
 
     const afterCodPlans = await afterPlan.find();
 
     for (const plan of afterCodPlans) {
       const codPlan = await CodPlan.findOne({ user: plan.userId });
       if (!codPlan || !codPlan.planName) {
-        console.log(`Skipping: No COD plan for user ${plan.userId}`);
+        console.log(`⛔ Skipping: No COD plan for user ${plan.userId}`);
         continue;
       }
 
@@ -396,6 +615,7 @@ const fetchExtraData = async () => {
       }
 
       if (shouldMoveToAdmin) {
+        const orderDetails = plan.orderDetails || {};
         const newRemittance = new adminCodRemittance({
           date: today,
           userId: plan.userId,
@@ -407,24 +627,24 @@ const fetchExtraData = async () => {
           earlyCodCharges: plan.earlyCodCharges,
           status: plan.totalCod === 0 ? "Paid" : "Pending",
           orderDetails: {
-            date: today,
-            codcal: plan.orderDetails?.codcal || [],
-            orders: plan.orderDetails?.orders || [],
+            date: orderDetails.date || today,
+            codcal: orderDetails.codcal || 0,
+            orders: orderDetails.orders || [],
           },
         });
 
         await newRemittance.save();
         await afterPlan.findByIdAndDelete(plan._id);
 
-        console.log(`Moved to adminCodRemittance & deleted: ${plan.userId}`);
+        console.log(`✅ Moved to adminCodRemittance & deleted: ${plan.userId}`);
       } else {
         console.log(
-          `Skipping user ${plan.userId}: today not valid for plan D+${planDays}`
+          `⏭️ Skipping user ${plan.userId}: today not valid for plan D+${planDays}`
         );
       }
     }
   } catch (error) {
-    console.error("Error in fetchExtraData:", error.message);
+    console.error("❌ Error in fetchExtraData:", error.message);
   }
 };
 
@@ -433,7 +653,7 @@ const fetchExtraData = async () => {
 //     fetchExtraData();
 //   });
 cron.schedule("30 1 * * *", () => {
-  console.log("Running scheduled task at 4.30 AM: Fetching orders...");
+  console.log("Running scheduled task at 1.30 AM: Fetching orders...");
   fetchExtraData();
 });
 
@@ -672,157 +892,6 @@ function parseExcel(filePath) {
   const data = xlsx.utils.sheet_to_json(sheet);
   return data;
 }
-
-// const uploadCodRemittance = async (req, res) => {
-//   try {
-//     const userID = req.user._id;
-
-//     if (!req.file) {
-//       return res.status(400).json({ error: "No file uploaded" });
-//     }
-
-//     // Save file metadata
-//     const fileData = new File({
-//       filename: req.file.filename,
-//       date: new Date(),
-//       status: "Processing",
-//     });
-//     await fileData.save();
-
-//     // Determine file extension
-//     const fileExtension = path.extname(req.file.originalname).toLowerCase();
-//     let codRemittances = [];
-//     // Parse file based on extension
-//     if (fileExtension === ".csv") {
-//       codRemittances = await parseCSV(req.file.path, fileData);
-//     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
-//       codRemittances = await parseExcel(req.file.path);
-//     } else {
-//       return res.status(400).json({ error: "Unsupported file format" });
-//     }
-
-//     if (!codRemittances || codRemittances.length === 0) {
-//       return res.status(400).json({
-//         error: "The uploaded file is empty or contains invalid data",
-//       });
-//     }
-
-//     for (const row of codRemittances) {
-//       const remittance = await adminCodRemittance.findOne({
-//         remitanceId: row["*RemittanceID"],
-//       });
-
-//       if (!remittance) {
-//         return res.status(400).json({
-//           error: `Remittance ID ${row["*RemittanceID"]} not found.`,
-//         });
-//       }
-
-//       let userRemittance = await codRemittance.findOne({
-//         userId: remittance.userId,
-//       });
-
-//       if (!userRemittance) {
-//         console.log(
-//           `No COD Remittance found for user ${userID}, creating a new one.`
-//         );
-
-//         userRemittance = new codRemittance({
-//           userId: userID,
-//           TotalCODRemitted: 0,
-//           TotalDeductionfromCOD: 0,
-//           RemittanceInitiated: 0,
-//           remittanceData: [],
-//         });
-
-//         await userRemittance.save();
-//       }
-
-//       for (const item of remittance.orderDetails.orders) {
-//         const order = await Order.findOne({ _id: item });
-
-//         if (!order) {
-//           console.log(`Order with ID ${item} not found.`);
-//           continue;
-//         }
-
-//         const paymentAmount = Number(order?.paymentDetails?.amount || 0);
-
-//         await CodRemittanceOrders.findOneAndUpdate(
-//           { orderID: order.orderId },
-//           { $set: { status: "Paid" } },
-//         );
-
-//         // Safely subtract from RemittanceInitiated
-//         if (userRemittance.RemittanceInitiated >= paymentAmount) {
-//           userRemittance.RemittanceInitiated -= paymentAmount;
-//         } else {
-//           console.warn(
-//             `RemittanceInitiated (${userRemittance.RemittanceInitiated}) is less than paymentAmount (${paymentAmount}). Skipping deduction to avoid negative value.`
-//           );
-//         }
-//       }
-
-//       // Add to totals
-//       userRemittance.TotalCODRemitted += Number(remittance.totalCod || 0);
-
-//       userRemittance.TotalDeductionfromCOD +=
-//         Number(remittance.amountCreditedToWallet || 0) +
-//         Number(remittance.earlyCodCharges || 0) +
-//         Number(remittance.adjustedAmount || 0);
-
-//         const remitted = Number(userRemittance.TotalCODRemitted);
-//         const deducted = Number(userRemittance.TotalDeductionfromCOD);
-
-//         if (isNaN(remitted) || isNaN(deducted)) {
-//           console.error("Invalid values detected:", {
-//             TotalCODRemitted: userRemittance.TotalCODRemitted,
-//             TotalDeductionfromCOD: userRemittance.TotalDeductionfromCOD,
-//           });
-//           return res.status(500).json({ error: "Invalid remittance values" });
-//         }
-//       userRemittance.remittanceData.push({
-//         date: remittance.date,
-//         remittanceId: remittance.remitanceId,
-//         utr: row["*UTR"] || "N/A",
-//         codAvailable: remittance.totalCod || 0,
-//         amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
-//         earlyCodCharges: remittance.earlyCodCharges || 0,
-//         adjustedAmount: remittance.adjustedAmount || 0,
-//         remittanceMethod: "Bank Transaction",
-//         status: "Paid",
-//         orderDetails: {
-//           date: remittance.orderDetails.date,
-//           codcal: remittance.orderDetails.codcal,
-//           orders: [...remittance.orderDetails.orders],
-//         },
-//       });
-
-//       await userRemittance.save();
-
-//       remittance.status = "Paid";
-//       await remittance.save();
-//     }
-
-//     fs.unlink(req.file.path, (err) => {
-//       if (err) {
-//         console.error("Error deleting file:", err);
-//       } else {
-//         console.log("File deleted successfully:", req.file.path);
-//       }
-//     });
-
-//     return res.status(200).json({
-//       message: "COD Remittance uploaded successfully",
-//       file: fileData,
-//     });
-//   } catch (error) {
-//     console.error("Error in uploadCodRemittance:", error);
-//     res
-//       .status(500)
-//       .json({ error: "An error occurred while processing the file" });
-//   }
-// };
 const uploadCodRemittance = async (req, res) => {
   try {
     const userID = req.user._id;
@@ -1426,7 +1495,7 @@ const uploadCourierCodRemittance = async (req, res) => {
 
 module.exports = {
   codPlanUpdate,
-  codToBeRemitted,
+  codToBeRemitteds,
   codRemittanceData,
   getCodRemitance,
   codRemittanceRecharge,
