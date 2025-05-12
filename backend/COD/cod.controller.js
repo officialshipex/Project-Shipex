@@ -217,7 +217,7 @@ const remittanceScheduleData = async () => {
         (today - new Date(remittance.deliveryDate)) / (1000 * 60 * 60 * 24)
       );
 
-      if (dayDiff === 8) {
+      if (dayDiff ===planDays ) {
         if (!user) {
           console.log(`User not found: ${remittance.userId}`);
           continue;
