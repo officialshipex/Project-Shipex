@@ -4,6 +4,7 @@ const Role = require("../models/roles.modal");
 
 const isAuthorized = async (req, res, next) => {
   const { authorization } = req.headers;
+  // console.log("aut",authorization)
 
   if (!authorization) {
     return res.status(401).json({

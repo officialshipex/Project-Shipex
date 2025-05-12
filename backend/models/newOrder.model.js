@@ -11,6 +11,9 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    channelId:{
+      type:Number,
+    },
     pickupAddress: {
       contactName: { type: String, required: true },
       email: { type: String },
@@ -48,6 +51,12 @@ const orderSchema = new mongoose.Schema(
         calculatedWeight: { type: Number }, // Will store the calculated value
       },
     },
+    compositeOrderId: {
+      type: String,
+      // required: true,
+      unique: true,
+    },
+
     paymentDetails: {
       method: { type: String, enum: ["COD", "Prepaid"], required: true },
       amount: {
