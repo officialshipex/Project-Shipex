@@ -2,7 +2,7 @@ const { createOrder,razorpayWebhook,getWalletHistoryByUserId} = require("./recha
 const express = require("express");
 const rechargeRouter = express.Router();
 const {isAuthorized}=require("../middleware/auth.middleware")
-const {getAllTransactionHistory}=require("../Admin/Billings/walletHistory")
+const {getAllTransactionHistory,addWalletHistory}=require("../Admin/Billings/walletHistory")
 
 // -----------PHONE PAY-------------------------------------------------------
 // rechargeRouter.post("/phonepe", phonePe);
@@ -20,10 +20,11 @@ const {getAllTransactionHistory}=require("../Admin/Billings/walletHistory")
 // ---------------CASHFREE----------------------------------------------
 
 //=============Razorpay============
-rechargeRouter.post("/create-order",createOrder)
+rechargeRouter.post("/create-order",isAuthorized,createOrder)
 rechargeRouter.post("/razorpay-webhook", express.json({ verify: (req, res, buf) => { req.rawBody = buf } }), razorpayWebhook);
 rechargeRouter.get("/transactionHistory",isAuthorized,getWalletHistoryByUserId);
-rechargeRouter.get("/allTransactionHistory",isAuthorized,getAllTransactionHistory);
+rechargeRouter.get("/allTransactionHistory",getAllTransactionHistory);
+rechargeRouter.post("/add-history",addWalletHistory)
 //==============Razorpay================
 // rechargeRouter.post('/recharge',handlePaymentOrder);
 // rechargeRouter.post('/createorder',RazorpayOrder);

@@ -16,7 +16,23 @@ const razorpay = new Razorpay({
 // Create an order
 const createOrder = async (req, res) => {
   try {
-    const { amount, walletId } = req.body;
+    const id = req.user.id;
+    const { amount, walletId: walletIdFromBody } = req.body;
+
+    const user = await User.findById(id);
+
+    // Use walletId from body if present, otherwise fallback to user's wallet
+    const walletId = walletIdFromBody || user?.Wallet;
+
+    console.log("walet",walletId)
+
+    if (!walletId) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet ID is required and not found in user profile.",
+      });
+    }
+
     console.log("walletId", walletId);
 
     const options = {
@@ -24,18 +40,22 @@ const createOrder = async (req, res) => {
       currency: "INR",
       receipt: `order_rcptid_${Math.floor(Math.random() * 10000)}`,
       notes: {
-        walletId, // 👈 This will come back in webhook
+        walletId: walletId.toString(), // Razorpay needs string values in notes
       },
     };
 
     const order = await razorpay.orders.create(options);
     res.json({ success: true, order });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Order creation failed", error });
+    console.error("Error in createOrder:", error);
+    res.status(500).json({
+      success: false,
+      message: "Order creation failed",
+      error: error.message,
+    });
   }
 };
+
 
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;
