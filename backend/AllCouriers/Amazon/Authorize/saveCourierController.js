@@ -60,7 +60,7 @@ const getAmazonAccessToken = async () => {
     // console.log("✅ Amazon SP-API Access Token:", response.data.access_token);
     return response.data.access_token;
   } catch (error) {
-    console.error("🚨 Error fetching Amazon Access Token:", error.response?.data || error.message);
+  
     
     if (error.response?.data?.error === "invalid_grant") {
       console.error("❌ Your refresh token is invalid or expired. Please regenerate it.");

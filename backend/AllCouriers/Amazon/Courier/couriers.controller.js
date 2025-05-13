@@ -168,7 +168,7 @@ const cancelShipment = async (shipmentId) => {
   const accessToken = await getAmazonAccessToken();
   // console.log("accessToken",accessToken)
   if (!accessToken) {
-    console.error("Failed to get access token");
+    // console.error("Failed to get access token");
     return;
   }
 
@@ -236,7 +236,7 @@ const cancelShipment = async (shipmentId) => {
 const getShipmentTracking = async (trackingId) => {
   const accessToken = await getAmazonAccessToken();
   if (!accessToken) {
-    console.error("Failed to get access token");
+    // console.error("Failed to get access token");
     return;
   }
 
