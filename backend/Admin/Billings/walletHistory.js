@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const User = require("../../models/User.model");
-const Wallet=require("../../models/wallet")
+const Wallet = require("../../models/wallet");
 
 const getAllTransactionHistory = async (req, res) => {
   try {
@@ -12,7 +12,7 @@ const getAllTransactionHistory = async (req, res) => {
       page = 1,
       limit = 20,
       paymentId,
-      transactionId
+      transactionId,
     } = req.query;
     console.log("re", req.query);
     const userMatchStage = {};
@@ -53,9 +53,10 @@ const getAllTransactionHistory = async (req, res) => {
         paymentId;
     }
 
-     if (transactionId) {
-      transactionMatchStage["wallet.walletHistory.paymentDetails.transactionId"] =
-        transactionId;
+    if (transactionId) {
+      transactionMatchStage[
+        "wallet.walletHistory.paymentDetails.transactionId"
+      ] = transactionId;
     }
 
     const parsedLimit = limit === "all" ? 0 : Number(limit);
@@ -82,7 +83,7 @@ const getAllTransactionHistory = async (req, res) => {
             name: "$fullname",
             email: "$email",
             userId: "$userId",
-            phoneNumber:"$phoneNumber"
+            phoneNumber: "$phoneNumber",
           },
           amount: "$wallet.walletHistory.paymentDetails.amount",
           //   status: "$wallet.walletHistory.paymentDetails.status",
@@ -91,7 +92,7 @@ const getAllTransactionHistory = async (req, res) => {
           //   remark: "$wallet.walletHistory.remark",
           paymentId: "$wallet.walletHistory.paymentDetails.paymentId",
           orderId: "$wallet.walletHistory.paymentDetails.orderId",
-            transactionId: "$wallet.walletHistory.paymentDetails.transactionId",
+          transactionId: "$wallet.walletHistory.paymentDetails.transactionId",
           status: "$wallet.walletHistory.status",
         },
       },
@@ -144,23 +145,23 @@ const generateUniqueTransactionId = async () => {
   return transactionId;
 };
 
-
 const addWalletHistory = async (req, res) => {
   try {
     const { userId, status, paymentId, orderId, amount } = req.body;
+    console.log("re",req.body)
 
     // 1. Validate required fields
     if (!userId || !paymentId || !orderId || amount == null) {
       return res.status(400).json({ message: "Missing required fields" });
     }
-const userID=Number(userId)
+    const userID = Number(userId);
     const numericAmount = Number(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ message: "Invalid amount value" });
     }
 
     // 2. Find user
-    const user = await User.findOne({userId:userID});
+    const user = await User.findOne({ userId: userID });
     if (!user || !user.Wallet) {
       return res.status(404).json({ message: "User or Wallet not found" });
     }
@@ -188,7 +189,7 @@ const userID=Number(userId)
         paymentId,
         orderId,
         walletId: wallet._id,
-        amount:numericAmount,
+        amount: numericAmount,
         transactionId,
       },
       status,
@@ -223,5 +224,4 @@ const userID=Number(userId)
   }
 };
 
-
-module.exports = { getAllTransactionHistory,addWalletHistory };
+module.exports = { getAllTransactionHistory, addWalletHistory };
