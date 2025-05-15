@@ -80,11 +80,11 @@ const getAllTickets = async (req, res) => {
 // Get tickets for a specific user
 const getUserTickets = async (req, res) => {
   try {
-    const userId = req.user?.userId || req.employee?._id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: User not found" });
-    }
-    const tickets = await Ticket.find({ userId });
+    const userId = req.user?._id || req.employee?._id;
+if (!userId) {
+  return res.status(401).json({ message: "Unauthorized: User not found" });
+}
+const tickets = await Ticket.find({ userId });
 
     res.status(200).json(tickets);
   } catch (error) {

@@ -6,6 +6,7 @@ const Aadhar = require("../models/Aadhaar.model");
 const Pan = require("../models/Pan.model");
 const Gst = require("../models/Gstin.model");
 const CodPlans = require("../COD/codPan.model");
+const AllocateRole = require("../models/allocateRoleSchema");
 const { generateKeySync } = require("crypto");
 
 // const getUsers = async (req, res) => {
@@ -28,20 +29,36 @@ const { generateKeySync } = require("crypto");
 // In user controller
 const getUsers = async (req, res) => {
   try {
-      const allUsers = await User.find({ kycDone: true }); 
-      const isSeller = allUsers.some(user => user._id.toString() === req.user.id);
+    let allUsers = [];
+    // If employee, filter users by allocations
+    if (req.employee && req.employee.employeeId) {
+      // Get allocations for this employee
+      const allocations = await AllocateRole.find({ employeeId: req.employee.employeeId });
+      const sellerMongoIds = allocations.map(a => a.sellerMongoId);
+      // Fetch only users whose _id is in sellerMongoIds
+      allUsers = await User.find({ _id: { $in: sellerMongoIds }, kycDone: true });
+    } else {
+      // Admin: get all users as before
+      allUsers = await User.find({ kycDone: true });
+    }
 
+    const isSeller = allUsers.some(user => user._id.toString() === req.user?.id);
 
-      res.status(201).json({
-          success: true,
-          sellers: allUsers.map(user => ({
-              userId: user.userId,
-              id:user._id,
-              name: `${user.fullname}`,
-              
-          })),
-          isSeller, // Add this field to check if the user is a seller
-      });
+    res.status(201).json({
+      success: true,
+      sellers: allUsers.map(user => ({
+        userId: user.userId,
+        id: user._id,
+        name: `${user.fullname}`,
+        fullname: user.fullname,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        company: user.company,
+        kycStatus: user.kycDone,
+        // Add any other fields you want to keep for the frontend
+      })),
+      isSeller,
+    });
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({
@@ -54,18 +71,28 @@ const getUsers = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const allUsers = await User.find().populate("Wallet"); // Populate wallet details
+    let allUsers = [];
+    // If employee, filter users by allocations
+    if (req.employee && req.employee.employeeId) {
+      // Get allocations for this employee
+      const allocations = await AllocateRole.find({ employeeId: req.employee.employeeId });
+      const sellerMongoIds = allocations.map(a => a.sellerMongoId);
+      // Fetch only users whose _id is in sellerMongoIds
+      allUsers = await User.find({ _id: { $in: sellerMongoIds }, kycDone: true }).populate("Wallet");
+    } else {
+      // Admin: get all users as before
+      allUsers = await User.find({ kycDone: true }).populate("Wallet");
+    }
 
-    // Fetch user details
+    // Fetch user details (as before)
     const userDetails = await Promise.all(
       allUsers.map(async (user) => {
-        // Fetch additional details for each user
         const account = await Account.findOne({ user: user._id });
         const aadhar = await Aadhar.findOne({ user: user._id });
         const pan = await Pan.findOne({ user: user._id });
         const gst = await Gst.findOne({ user: user._id });
-        const codPlan=await CodPlans.findOne({user:user._id})
-        const rateCard=await Plan.findOne({userId:user._id})
+        const codPlan = await CodPlans.findOne({ user: user._id });
+        const rateCard = await Plan.findOne({ userId: user._id });
         return {
           userId: user?.userId || "N/A",
           fullname: user.fullname,
@@ -79,7 +106,6 @@ const getAllUsers = async (req, res) => {
           rateCard: rateCard?.planName || 0,
           codPlan: codPlan ? codPlan.planName : "N/A",
           createdAt: user.createdAt,
-          // Account Details
           accountDetails: account
             ? {
                 beneficiaryName: account.nameAtBank,
@@ -89,7 +115,6 @@ const getAllUsers = async (req, res) => {
                 branchName: account.branch,
               }
             : null,
-          // Aadhar Details
           aadharDetails: aadhar
             ? {
                 aadharNumber: aadhar.aadhaarNumber,
@@ -98,7 +123,6 @@ const getAllUsers = async (req, res) => {
                 address: aadhar.address,
               }
             : null,
-          // PAN Details
           panDetails: pan
             ? {
                 panNumber: pan.panNumber,
@@ -107,7 +131,6 @@ const getAllUsers = async (req, res) => {
                 referenceId: pan.panRefId,
               }
             : null,
-          // GST Details
           gstDetails: gst
             ? {
                 gstNumber: gst.gstin,
@@ -156,7 +179,10 @@ const getUserDetails = async (req, res) => {
 const changeUser = async (req, res) => {
   try {
     console.log("hi");
-    const userId = req.user.id; // Assumes you're using JWT auth middleware that sets req.user
+    const userId = req.user ? req.user.id : req.employee ? req.employee.id : null;
+if (!userId) {
+  return res.status(401).json({ message: "Unauthorized: user not found in token" });
+}
     const { adminTab } = req.body;
     console.log("ad",adminTab)
 
