@@ -23,12 +23,10 @@ const createOrder = async (req, res) => {
       req.body;
     console.log(id, provider, finalCharges, courierServiceName, courier);
     if (!courier) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "service_type_id missing please refresh your page",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "service_type_id missing please refresh your page",
+      });
     }
     // Fetch order, user, and wallet details
     const currentOrder = await Order.findById(id);
@@ -104,7 +102,9 @@ const createOrder = async (req, res) => {
           cod_collection_mode: codCollectionMode,
           cod_amount: codAmount,
 
-          // commodity_id: "7",
+          ...(courierServiceName === "Dtdc Air" && {
+            commodity_id: currentOrder.commodityId || "Others",
+          }),
           reference_number: "",
         },
       ],
@@ -112,7 +112,8 @@ const createOrder = async (req, res) => {
 
     console.log(
       "orgin,destination",
-      shipmentData.consignments[0].origin_details,shipmentData.consignments[0].destination_details
+      shipmentData.consignments[0].origin_details,
+      shipmentData.consignments[0].destination_details
     );
 
     // API call to DTDC

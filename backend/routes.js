@@ -52,7 +52,9 @@ const LabelSettings=require("./label/label.router")
 router.use("/label",LabelSettings)
 
 const adminOrderRoute=require("./routes/adminOrder.router")
+const adminBilling=require("./Admin/adminRouter")
 router.use("/admin",adminOrderRoute)
+router.use("/adminBilling",adminBilling);
 
 router.use("/channel",channel)
 const ndrRoutes=require("./routes/ndr.router")

@@ -53,6 +53,7 @@ const newOrder = async (req, res) => {
       productDetails,
       packageDetails,
       paymentDetails,
+      commodityId
     } = req.body;
     console.log(req.body);
 
@@ -62,7 +63,8 @@ const newOrder = async (req, res) => {
       !receiverAddress ||
       !productDetails ||
       !packageDetails ||
-      !paymentDetails
+      !paymentDetails||
+!commodityId
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -83,18 +85,6 @@ const newOrder = async (req, res) => {
       }
     }
 
-    const pickup = new pickAddress({
-      userId: req.user._id,
-      pickupAddress,
-    });
-    // await pickup.save();
-
-    const receiver = new receiveAddress({
-      userId: req.user._id,
-      receiverAddress,
-    });
-    // await receiver.save();
-
     // Create a new shipment
     const shipment = new Order({
       userId: req.user._id,
@@ -105,6 +95,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
+      commodityId:commodityId,
       tracking: [
         {
           title: "Created",

@@ -20,8 +20,10 @@ const walletHistorySchema = new mongoose.Schema(
       paymentId: { type: String },
       orderId: { type: String },
       signature: { type: String },
+      description:{type:String},
       walletId: { type: mongoose.Schema.Types.ObjectId, ref: "Wallet" }, // 👈 Added walletId properly
       amount: { type: Number }, // 👈 Added amount properly
+      transactionId: { type: String },
     },
     status: { type: String, enum: ["success", "failed"], default: "success" },
     date: { type: Date, default: Date.now },

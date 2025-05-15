@@ -99,7 +99,7 @@ const uploadDispreancy = async (req, res) => {
         console.log(`Skipping order - AWB not found: ${awbNumber}`);
         continue; // Skip this AWB completely
       }
-      console.log("ordfdf", order);
+      // console.log("ordfdf", order);
       // Extract userId from the order
       const userId = order.userId;
 
@@ -134,7 +134,7 @@ const uploadDispreancy = async (req, res) => {
         continue;
       }
 
-      if (chargeWeight < weightTierKg) {
+      if (chargeWeight <= weightTierKg) {
         console.log(`Skipping AWB ${awbNumber} - Charge weight ${chargeWeight} is less than tier ${weightTierKg}`);
         continue;
       }

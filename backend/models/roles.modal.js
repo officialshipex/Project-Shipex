@@ -15,6 +15,7 @@ const roleSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   contactNumber: { type: String, required: true },
   password: { type: String, required: true },
+  employeeId: { type: String, unique: true, required: true },
   isEmpActive: { type: Boolean, default: true },
   isAdmin: { type: Boolean, default: true },
   adminTab:{ type: Boolean, default: true },
