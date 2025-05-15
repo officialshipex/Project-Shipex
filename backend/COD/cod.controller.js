@@ -184,6 +184,7 @@ cron.schedule("1 1 * * *", () => {
   console.log("Running scheduled task at 1:01 AM: Fetching orders...");
   codToBeRemitteds();
 });
+ 
 
 const remittanceScheduleData = async () => {
   try {
