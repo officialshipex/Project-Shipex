@@ -8,7 +8,7 @@ const User = require("../models/User.model");
 const cron = require("node-cron");
 const { uploadToS3 } = require("../config/s3");
 const { calculateRateForDispute } = require("../Rate/calculateRateController");
-const Plan =require("../models/Plan.model")
+const Plan = require("../models/Plan.model");
 const downloadExcel = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
@@ -66,114 +66,119 @@ const uploadDispreancy = async (req, res) => {
         .json({ success: false, error: "No file uploaded" });
     }
 
-    const filePath = req.file.path; // Path of the uploaded file
-
-    // Read Excel File
+    const filePath = req.file.path;
     const workbook = xlsx.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
+    const discrepancies = [];
+
+    const awbNumbers = sheetData
+      .map((row) => row["*AWB Number"]?.toString().trim())
+      .filter(Boolean);
+    const chargeWeightMap = {};
     for (const row of sheetData) {
-      const awbNumber = row["*AWB Number"]?.toString().trim(); // Ensure AWB Number is a string
+      const awbNumber = row["*AWB Number"]?.toString().trim();
       const chargeWeight = parseFloat(row["*Charge Weight"]);
-
-      // Ensure AWB Number and Charge Weight are mandatory
-      if (!awbNumber || isNaN(chargeWeight)) {
-        console.log(`Skipping row due to missing mandatory fields:`, row);
-        continue; // Skip this row
+      if (awbNumber && !isNaN(chargeWeight)) {
+        chargeWeightMap[awbNumber] = {
+          chargeWeight,
+          length: row["Length"] ? parseFloat(row["Length"]) : null,
+          breadth: row["Breadth"] ? parseFloat(row["Breadth"]) : null,
+          height: row["Height"] ? parseFloat(row["Height"]) : null,
+        };
       }
+    }
 
-      // **Check if discrepancy already exists**
-      const existingDiscrepancy = await WeightDiscrepancy.findOne({
-        awbNumber,
-      });
-      if (existingDiscrepancy) {
-        console.log(`Skipping AWB ${awbNumber} - Discrepancy already exists.`);
-        continue; // Skip this AWB number
-      }
+    const existingDiscrepancies = await WeightDiscrepancy.find({
+      awbNumber: { $in: awbNumbers },
+    }).select("awbNumber");
+    const existingAwbSet = new Set(
+      existingDiscrepancies.map((d) => d.awbNumber)
+    );
 
-      // Fetch order data from DB using awbNumber
-      const order = await Order.findOne({ awb_number: awbNumber });
+    const orders = await Order.find({ awb_number: { $in: awbNumbers } });
+    const orderMap = new Map(orders.map((order) => [order.awb_number, order]));
 
-      if (!order) {
-        console.log(`Skipping order - AWB not found: ${awbNumber}`);
-        continue; // Skip this AWB completely
-      }
-      // console.log("ordfdf", order);
-      // Extract userId from the order
-      const userId = order.userId;
+    const planCache = new Map();
 
-      // ✅ Fetch user's plan
-      const userPlan = await Plan.findOne({ userId });
-
-      if (!userPlan || !Array.isArray(userPlan.rateCard)) {
-        console.log(`Skipping AWB ${awbNumber} - Plan or rateCard not found.`);
+    for (const awbNumber of awbNumbers) {
+      const chargeData = chargeWeightMap[awbNumber];
+      if (!chargeData || existingAwbSet.has(awbNumber)) {
         continue;
       }
 
-      // ✅ Match rate card for courierServiceName
+      const order = orderMap.get(awbNumber);
+      if (!order) {
+        console.log(`Order not found for AWB: ${awbNumber}`);
+        continue;
+      }
+
+      const userId = order.userId.toString();
+      let userPlan = planCache.get(userId);
+      if (!userPlan) {
+        userPlan = await Plan.findOne({ userId });
+        if (!userPlan || !Array.isArray(userPlan.rateCard)) {
+          console.log(`Plan not found for userId: ${userId}`);
+          continue;
+        }
+        planCache.set(userId, userPlan);
+      }
+
       const matchedRateCard = userPlan.rateCard.find(
         (rate) => rate.courierServiceName === order.courierServiceName
       );
-
       if (
         !matchedRateCard ||
         !Array.isArray(matchedRateCard.weightPriceBasic)
       ) {
-        console.log(
-          `Skipping AWB ${awbNumber} - No matching rateCard or weightPriceBasic.`
-        );
+        console.log(`Rate card not matched for AWB: ${awbNumber}`);
         continue;
       }
 
       const weightTier = matchedRateCard.weightPriceBasic[0];
       const weightTierKg = weightTier.weight / 1000;
-
-      if (!weightTier || typeof weightTierKg !== "number") {
-        console.log(`Skipping AWB ${awbNumber} - Invalid weight tier.`);
+      if (
+        !weightTier ||
+        typeof weightTierKg !== "number" ||
+        chargeData.chargeWeight <= weightTierKg
+      ) {
         continue;
       }
 
-      if (chargeWeight <= weightTierKg) {
-        console.log(`Skipping AWB ${awbNumber} - Charge weight ${chargeWeight} is less than tier ${weightTierKg}`);
-        continue;
-      }
-      
-      // Handle LBH values (if missing, set to null)
-      const length = row["Length"] ? parseFloat(row["Length"]) : null;
-      const breadth = row["Breadth"] ? parseFloat(row["Breadth"]) : null;
-      const height = row["Height"] ? parseFloat(row["Height"]) : null;
-
-      // Calculate excess weight and charges
       const excessWeight = parseFloat(
-        (chargeWeight - order.packageDetails.applicableWeight).toFixed(2)
+        (
+          chargeData.chargeWeight - order.packageDetails.applicableWeight
+        ).toFixed(2)
       );
+
+      // Skip if excessWeight is 0 or less
+      if (excessWeight <= 0) {
+        console.log(
+          `Skipping AWB ${awbNumber} - Excess weight is ${excessWeight}`
+        );
+        continue;
+      }
+
       const payload = {
         pickupPincode: order.pickupAddress.pinCode,
         deliveryPincode: order.receiverAddress.pinCode,
         length: order.packageDetails.volumetricWeight.length,
         breadth: order.packageDetails.volumetricWeight.width,
         height: order.packageDetails.volumetricWeight.height,
-        weight: chargeWeight,
+        weight: excessWeight,
         cod: order.paymentDetails.method === "COD" ? "Yes" : "No",
         valueInINR: order.paymentDetails.amount,
         userID: order.userId,
         filteredServices: order.courierServiceName,
       };
+
       const additionalCharges = await calculateRateForDispute(payload);
-      const excessCharges = parseFloat(
-        (
-          additionalCharges[0].forward.finalCharges - order.totalFreightCharges
-        ).toFixed(2)
-      );
+      if (!additionalCharges || !additionalCharges[0]) {
+        console.log(`Rate calculation failed for AWB: ${awbNumber}`);
+        continue;
+      }
 
-      // const freightCharges = order.totalFreightCharges;
-      // const extraWeight = Math.ceil(
-      //   excessWeight / order.packageDetails.applicableWeight
-      // );
-      // const excessCharges = freightCharges * extraWeight;
-
-      // **Create new discrepancy entry**
       const discrepancyEntry = new WeightDiscrepancy({
         userId,
         awbNumber: order.awb_number,
@@ -186,30 +191,35 @@ const uploadDispreancy = async (req, res) => {
           deadWeight: order.packageDetails.deadWeight,
         },
         chargedWeight: {
-          applicableWeight: chargeWeight,
-          deadWeight: chargeWeight,
+          applicableWeight: chargeData.chargeWeight,
+          deadWeight: chargeData.chargeWeight,
         },
-        chargeDimension: { length, breadth, height },
+        chargeDimension: {
+          length: chargeData.length,
+          breadth: chargeData.breadth,
+          height: chargeData.height,
+        },
         excessWeightCharges: {
           excessWeight,
-          excessCharges,
-          pendingAmount: excessCharges,
+          excessCharges: additionalCharges[0].forward.finalCharges,
+          pendingAmount: additionalCharges[0].forward.finalCharges,
         },
         status: "new",
         adminStatus: "pending",
       });
 
-      await discrepancyEntry.save();
-      console.log(`Added new discrepancy for AWB: ${awbNumber}`);
+      discrepancies.push(discrepancyEntry);
     }
 
-    // Delete the uploaded file after processing
-    fs.unlink(filePath, (err) => {
-      if (err) {
-        console.error("Error deleting file:", err);
-      } else {
-        console.log("File deleted successfully:", filePath);
-      }
+    // Bulk save all discrepancy entries
+    if (discrepancies.length > 0) {
+      await WeightDiscrepancy.insertMany(discrepancies);
+      console.log(`${discrepancies.length} discrepancies saved.`);
+    }
+
+    // Async delete the uploaded file
+    fs.promises.unlink(filePath).catch((err) => {
+      console.error("Error deleting uploaded file:", err);
     });
 
     res.status(200).json({
