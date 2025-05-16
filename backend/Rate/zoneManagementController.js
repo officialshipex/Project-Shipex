@@ -59,8 +59,8 @@ const getpinCodeData = async () => {
 };
 
 const getPinCodeDetails = async (pincode) => {
-    // console.log("sdssd",pincode)
-//   console.log("Fetching PinCode data...");
+  // console.log("sdssd",pincode)
+  //   console.log("Fetching PinCode data...");
   await getpinCodeData();
 
   pincode = pincode.trim();
@@ -100,6 +100,15 @@ const getPinCodeDetails = async (pincode) => {
   }
 };
 
+const pinCodeCache = new Map(); // In-memory cache
+
+const getPinCodeDetailsCached = async (pinCode) => {
+  if (pinCodeCache.has(pinCode)) return pinCodeCache.get(pinCode);
+  const details = await getPinCodeDetails(pinCode);
+  if (details) pinCodeCache.set(pinCode, details);
+  return details;
+};
+
 const getZone = async (fromPinCode, toPinCode, res) => {
   if (fromPinCode?.length !== 6 || toPinCode?.length !== 6) {
     return res
@@ -107,8 +116,9 @@ const getZone = async (fromPinCode, toPinCode, res) => {
       : { error: "Please Enter valid Pincode" };
   }
 
-  const fromPinCodeDetails = await getPinCodeDetails(fromPinCode);
-  const toPinCodeDetails = await getPinCodeDetails(toPinCode);
+  // ✅ Use cached version
+  const fromPinCodeDetails = await getPinCodeDetailsCached(fromPinCode);
+  const toPinCodeDetails = await getPinCodeDetailsCached(toPinCode);
 
   if (!fromPinCodeDetails || !toPinCodeDetails) {
     return res
@@ -122,47 +132,31 @@ const getZone = async (fromPinCode, toPinCode, res) => {
         };
   }
 
-  // Normalize city names to avoid case mismatch
-  let fromCity = fromPinCodeDetails.city.toLowerCase();
-  let toCity = toPinCodeDetails.city.toLowerCase();
+  let fromCity = fromPinCodeDetails.city?.toLowerCase() || "";
+  let toCity = toPinCodeDetails.city?.toLowerCase() || "";
   if (fromCity.includes("delhi")) fromCity = "delhi";
   if (toCity.includes("delhi")) toCity = "delhi";
 
-  let fromState = fromPinCodeDetails.state.toLowerCase();
-  let toState = toPinCodeDetails.state.toLowerCase();
+  let fromState = fromPinCodeDetails.state?.toLowerCase() || "";
+  let toState = toPinCodeDetails.state?.toLowerCase() || "";
 
   if (fromCity === toCity) {
-    return {
-      zone: "zoneA",
-      details: { fromPinCodeDetails, toPinCodeDetails },
-    };
+    return { zone: "zoneA", details: { fromPinCodeDetails, toPinCodeDetails } };
   }
 
   if (fromState === toState) {
-    return {
-      zone: "zoneB",
-      details: { fromPinCodeDetails, toPinCodeDetails },
-    };
+    return { zone: "zoneB", details: { fromPinCodeDetails, toPinCodeDetails } };
   }
 
   if (METRO_CITIES.includes(fromCity) && METRO_CITIES.includes(toCity)) {
-    return {
-      zone: "zoneC",
-      details: { fromPinCodeDetails, toPinCodeDetails },
-    };
+    return { zone: "zoneC", details: { fromPinCodeDetails, toPinCodeDetails } };
   }
 
   if (ZONE_E_STATES.includes(toState) || ZONE_E_STATES.includes(fromState)) {
-    return {
-      zone: "zoneE",
-      details: { fromPinCodeDetails, toPinCodeDetails },
-    };
+    return { zone: "zoneE", details: { fromPinCodeDetails, toPinCodeDetails } };
   }
 
-  return {
-    zone: "zoneD",
-    details: { fromPinCodeDetails, toPinCodeDetails },
-  };
+  return { zone: "zoneD", details: { fromPinCodeDetails, toPinCodeDetails } };
 };
 
 module.exports = { getZone };
