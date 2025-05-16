@@ -17,7 +17,7 @@ const {
   updateOrder,
   passbook,
   getUser,
-  // trackOrders,
+  updatePackageDetails,
   GetTrackingByAwb,
   // calculateRTOCharges
   
@@ -39,7 +39,8 @@ router.get("/ship/:id", ShipeNowOrder);
 router.get("/pincode/:pincode", getPinCodeDetails);
 router.post("/cancelOrdersAtNotShipped",cancelOrdersAtNotShipped)
 router.post("/cancelOrdersAtBooked",cancelOrdersAtBooked)
-// router.post("/tracking",tracking)
+
+router.post("/updatePackageDetails",updatePackageDetails)
 router.get("/passbook",passbook)
 router.get("/getUser",getUser)
 // router.post("/webhookTracking",trackOrders)

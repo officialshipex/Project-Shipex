@@ -15,12 +15,9 @@ const getAllCodRemittance = async (req, res) => {
       utr,
     } = req.query;
 
-    console.log(req.query);
-
     const userMatchStage = {};
     const remittanceMatchStage = {};
 
-    // Filter by user (ID, email, or name)
     if (userSearch) {
       const regex = new RegExp(userSearch, "i");
       if (mongoose.Types.ObjectId.isValid(userSearch)) {
@@ -37,7 +34,6 @@ const getAllCodRemittance = async (req, res) => {
       }
     }
 
-    // Date filtering
     if (fromDate && toDate) {
       const startDate = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
       const endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
@@ -75,6 +71,10 @@ const getAllCodRemittance = async (req, res) => {
       { $match: userMatchStage },
       { $unwind: "$remittanceData" },
       { $match: remittanceMatchStage },
+    ];
+
+    const dataPipeline = [
+      ...basePipeline,
       {
         $project: {
           _id: 0,
@@ -100,28 +100,50 @@ const getAllCodRemittance = async (req, res) => {
       { $sort: { date: -1 } },
     ];
 
-    const [results, totalResult] = await Promise.all([
+    const summaryPipeline = [
+      ...basePipeline,
+      {
+        $group: {
+          _id: null,
+          totalCodRemitted: { $sum: "$TotalCODRemitted" },
+          totalDeductions: { $sum: "$TotalDeductionfromCOD" },
+          totalRemittanceInitiated: { $sum: "$RemittanceInitiated" },
+          CODToBeRemitted: { $max: "$CODToBeRemitted" },
+        },
+      },
+    ];
+
+    const [results, totalResult, summaryData] = await Promise.all([
       parsedLimit === 0
-        ? CodRemittance.aggregate(basePipeline)
+        ? CodRemittance.aggregate(dataPipeline)
         : CodRemittance.aggregate([
-            ...basePipeline,
+            ...dataPipeline,
             { $skip: skip },
             { $limit: parsedLimit },
           ]),
 
-      CodRemittance.aggregate([...basePipeline, { $count: "total" }]),
+      CodRemittance.aggregate([...dataPipeline, { $count: "total" }]),
+
+      CodRemittance.aggregate(summaryPipeline),
     ]);
 
     const total = totalResult[0]?.total || 0;
+    const summary = summaryData[0] || {};
 
     return res.json({
       total,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
       results,
+      summary: {
+        totalCodRemitted: summary.totalCodRemitted || 0,
+        totalDeductions: summary.totalDeductions || 0,
+        totalRemittanceInitiated: summary.totalRemittanceInitiated || 0,
+        CODToBeRemitted: summary.CODToBeRemitted || null,
+      },
     });
   } catch (error) {
-    console.error("Error in getAllCodRemittanceTransactions:", error);
+    console.error("Error in getAllCodRemittance:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
