@@ -12,6 +12,7 @@ const getOrdersByStatus = async (req, res) => {
 
     const status = req.query.status;
     const userId = req.query.userId; // ✅ Accept userId from query
+    console.log(userId)
 
     const filter = {};
     if (status && status !== "All") {
@@ -19,7 +20,7 @@ const getOrdersByStatus = async (req, res) => {
     }
 
     if (userId) {
-      filter.userId = userId; // ✅ Filter by userId if provided
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
 
     const totalCount = await Order.countDocuments(filter);
