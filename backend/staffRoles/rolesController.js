@@ -3,6 +3,7 @@ const Role = require("../models/roles.modal");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const AllocateRole = require("../models/allocateRoleSchema");
+const User = require("../models/User.model");
 
 function generateEmployeeId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -160,6 +161,7 @@ const login = async (req, res) => {
       {
         employee: {
           id: employee._id,
+          employeeId: employee.employeeId,
           email: employee.email,
           fullName: employee.fullName,
           isAdmin: employee.isAdmin,
@@ -200,33 +202,32 @@ const getSalesExecutives = async (req, res) => {
   }
 };
 
-// Save a new allocation
 const allocateRole = async (req, res) => {
   try {
     const { sellerId, sellerName, employeeId, employeeName } = req.body;
     if (!sellerId || !sellerName || !employeeId || !employeeName) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+    // Find the seller's MongoDB _id
+    const seller = await User.findOne({ userId: sellerId });
+    if (!seller) {
+      return res.status(404).json({ success: false, message: "Seller not found" });
     }
     const allocation = new AllocateRole({
       sellerId,
+      sellerMongoId: seller._id,
       sellerName,
       employeeId,
       employeeName,
     });
     await allocation.save();
-    return res
-      .status(201)
-      .json({
-        success: true,
-        message: "Role allocated successfully",
-        allocation,
-      });
+    return res.status(201).json({
+      success: true,
+      message: "Role allocated successfully",
+      allocation,
+    });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
@@ -252,7 +253,26 @@ const deleteAllocation = async (req, res) => {
   }
 };
 
+const getMyAllocations = async (req, res) => {
+  // console.log("getMyAllocations called");
+  try {
+    // console.log("req.employee:", req.employee);
+    if (!req.employee || !req.employee.employeeId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const employeeId = req.employee.employeeId;
+    const allocations = await AllocateRole.find({ employeeId }).sort({ allocatedAt: -1 });
+    return res.status(200).json({ success: true, allocations });
+  } catch (error) {
+    console.error("getMyAllocations error:", error);
+    return res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
+
+
 module.exports = {
+  getMyAllocations,
   login,
   createRole,
   getAllRoles,
