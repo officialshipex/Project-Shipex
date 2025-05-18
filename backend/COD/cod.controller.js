@@ -194,9 +194,9 @@ const remittanceScheduleData = async () => {
     const today = new Date();
     // const todayStr = today.toISOString().split("T")[0];
 
-    // const isNotSunday = today.getDay() !== 0;
-    // const isTodayMWF = [1, 3, 5].includes(today.getDay());
-    // const isTodayTF = [2, 5].includes(today.getDay());
+    const isNotSunday = today.getDay() !== 0;
+    const isTodayMWF = [1, 3, 5].includes(today.getDay());
+    const isTodayTF = [2, 5].includes(today.getDay());
 
     for (const remittance of existingSameDateDelivered) {
       const [codPlan, user] = await Promise.all([
@@ -218,9 +218,8 @@ const remittanceScheduleData = async () => {
       const dayDiff = Math.floor(
         (today - new Date(remittance.deliveryDate)) / (1000 * 60 * 60 * 24)
       );
-       console.log("---------->",dayDiff,planDays,remittance._id)
+
       if (dayDiff === planDays) {
- 
         if (!user) {
           console.log(`User not found: ${remittance.userId}`);
           continue;
@@ -264,115 +263,116 @@ const remittanceScheduleData = async () => {
           extraAmount = remittance.totalCod;
           remainingRecharge = 0;
         }
-        if (extraAmount === 0) {
-         
-        } else {
-          if (
-            typeof remittanceData.CODToBeRemitted !== "number" ||
-            isNaN(remittanceData.CODToBeRemitted)
-          ) {
-            console.log(
-              `❌ CODToBeRemitted is invalid for remittance ${remittance._id}:`,
-              remittanceData.CODToBeRemitted
-            );
-            continue;
-          }
-          const codToBeRemitted = Number(remittanceData.CODToBeRemitted);
-          const recharge = Number(remainingRecharge);
-          console.log("-------->", codToBeRemitted, recharge);
-
-          const codToBeDeducted = Math.min(
-            Number(codToBeRemitted) || 0,
-            Number(recharge) || 0
+        if (
+          typeof remittanceData.CODToBeRemitted !== "number" ||
+          isNaN(remittanceData.CODToBeRemitted)
+        ) {
+          console.log(
+            `❌ CODToBeRemitted is invalid for remittance ${remittance._id}:`,
+            remittanceData.CODToBeRemitted
           );
+          continue;
         }
-        // const updateRes = await codRemittance.updateOne(
-        //   {
-        //     _id: remittanceData._id,
-        //     CODToBeRemitted: { $gte: codToBeDeducted },
-        //     "sameDayDelhiveryOrders.date": deliveryStr,
-        //   },
-        //   {
-        //     $inc: {
-        //       CODToBeRemitted: -codToBeDeducted,
-        //       RemittanceInitiated: extraAmount,
-        //     },
-        //     $set: { remainingRecharge },
-        //   }
-        // );
+        const codToBeRemitted = Number(remittanceData.CODToBeRemitted);
+        const recharge = Number(remainingRecharge);
+        const codToBeDeducted = Math.min(
+          Number(codToBeRemitted) || 0,
+          Number(recharge) || 0
+        );
+        let creditedAmount = 0;
+        let afterWallet = wallet.balance;
+        let remainingExtraCodcal = remainingRecharge;
 
-        // if (updateRes.modifiedCount === 0) {
-        //   console.log(
-        //     `Already processed or concurrent update for ${remittance._id}`
-        //   );
-        //   continue;
-        // }
+        if (wallet.balance < 0) {
+          const adjustAmount = Math.min(
+            remainingRecharge,
+            Math.abs(wallet.balance)
+          );
+          creditedAmount = adjustAmount;
+          remainingExtraCodcal = remainingRecharge - adjustAmount;
+          afterWallet += adjustAmount;
+        }
+        console.log("-------->",creditedAmount,afterWallet,remainingExtraCodcal)
 
-        // let creditedAmount = 0;
-        // let afterWallet = wallet.balance;
-        // let remainingExtraCodcal = remainingRecharge;
+        await Wallet.updateOne(
+          { _id: wallet._id },
+          { $set: { balance: afterWallet } }
+        );
 
-        // if (wallet.balance < 0) {
-        //   const adjustAmount = Math.min(
-        //     remainingRecharge,
-        //     Math.abs(wallet.balance)
-        //   );
-        //   creditedAmount = adjustAmount;
-        //   remainingExtraCodcal = remainingRecharge - adjustAmount;
-        //   afterWallet += adjustAmount;
-        // }
+        const charges = Number(
+          ((remainingExtraCodcal * planCharges) / 100).toFixed(2)
+        );
+        const TotalDeduction = Number(
+          (charges + creditedAmount + extraAmount).toFixed(2)
+        );
+        // console.log("---------->",TotalDeduction)
+        const totalCod = Number((remainingExtraCodcal - charges).toFixed(2));
+        const updateRes = await codRemittance.updateOne(
+          {
+            userId: remittance.userId,
+          },
+          {
+            $inc: {
+              CODToBeRemitted: -codToBeDeducted,
+              RemittanceInitiated: remittance.totalCod,
+              TotalDeductionfromCOD: TotalDeduction,
+            },
+            $set: {
+              rechargeAmount: rechargeAmount, // or just `rechargeAmount` if same name
+            },
+          }
+        );
 
-        // await Wallet.updateOne(
-        //   { _id: wallet._id },
-        //   { $set: { balance: afterWallet } }
-        // );
+        if (updateRes.modifiedCount === 0) {
+          console.log(
+            `Already processed or concurrent update for ${remittance._id}`
+          );
+          continue;
+        }
+        const remitanceId = Math.floor(10000 + Math.random() * 90000);
 
-        // const charges = (remainingExtraCodcal * planCharges) / 100;
-        // const totalCod = remainingExtraCodcal - charges;
-        // const remitanceId = Math.floor(10000 + Math.random() * 90000);
+        const remittanceEntry = {
+          date: today,
+          userId: remittance.userId,
+          userName: user.fullname,
+          remitanceId,
+          totalCod: Number(totalCod.toFixed(2)),
+          amountCreditedToWallet: extraAmount,
+          adjustedAmount: creditedAmount,
+          earlyCodCharges: Number(charges.toFixed(2)),
+          status: totalCod === 0 ? "Paid" : "Pending",
+          orderDetails: {
+            date: today,
+            codcal: remittance.totalCod,
+            orders: [...remittance.orderIds],
+          },
+        };
+        try {
+          // Uncomment and use the logic you need
+          if (isNotSunday) {
+            if ([1, 4, 7].includes(planDays)) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else if (planDays === 2 && isTodayMWF) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else if (planDays === 3 && isTodayTF) {
+              await new adminCodRemittance(remittanceEntry).save();
+            } else {
+              await new afterPlan(remittanceEntry).save();
+            }
+          } else {
+            await new afterPlan(remittanceEntry).save();
+          }
+         
+          await SameDateDelivered.updateOne(
+            { _id: remittance._id },
+            { $set: { status: "Completed" } }
+          );
 
-        // const remittanceEntry = {
-        //   date: today,
-        //   userId: remittance.userId,
-        //   userName: user.fullname,
-        //   remitanceId,
-        //   totalCod: Number(totalCod.toFixed(2)),
-        //   amountCreditedToWallet: extraAmount,
-        //   adjustedAmount: creditedAmount,
-        //   earlyCodCharges: Number(charges.toFixed(2)),
-        //   status: totalCod === 0 ? "Paid" : "Pending",
-        //   orderDetails: {
-        //     date: today,
-        //     codcal: remainingExtraCodcal,
-        //     orders: [...remittance.orderIds],
-        //   },
-        // };
-        // try {
-        //   // Uncomment and use the logic you need
-        //   if (isNotSunday) {
-        //     if ([1, 4, 7].includes(planDays)) {
-        //       await new adminCodRemittance(remittanceEntry).save();
-        //     } else if (planDays === 2 && isTodayMWF) {
-        //       await new adminCodRemittance(remittanceEntry).save();
-        //     } else if (planDays === 3 && isTodayTF) {
-        //       await new adminCodRemittance(remittanceEntry).save();
-        //     } else {
-        //       await new afterPlan(remittanceEntry).save();
-        //     }
-        //   } else {
-        //     await new afterPlan(remittanceEntry).save();
-        //   }
-
-        //   await SameDateDelivered.updateOne(
-        //     { _id: remittance._id },
-        //     { $set: { status: "Completed" } }
-        //   );
-
-        //   console.log(`✅ Remittance processed for ${remittance.userId}`);
-        // } catch (err) {
-        //   console.error("❌ Failed to save remittance entry:", err.message);
-        //   console.error("Entry Data:", remittanceEntry);
-        // }
+          console.log(`✅ Remittance processed for ${remittance.userId}`);
+        } catch (err) {
+          console.error("❌ Failed to save remittance entry:", err.message);
+          console.error("Entry Data:", remittanceEntry);
+        }
       }
     }
   } catch (error) {
@@ -380,7 +380,7 @@ const remittanceScheduleData = async () => {
   }
 };
 
-// remittanceScheduleData();
+remittanceScheduleData();
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
