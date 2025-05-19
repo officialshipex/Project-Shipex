@@ -96,7 +96,7 @@ const getAllOrdersByNdrStatus = async (req, res) => {
     }
 
     if (userId) {
-      filter.userId = userId; // ✅ Optional userId filter
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -139,7 +139,7 @@ const getAllOrdersByManualRtoStatus = async (req, res) => {
     }
 
     if (userId) {
-      filter.userId = userId; // ✅ Optional userId filter
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -170,7 +170,8 @@ const filterOrders = async (req, res) => {
       orderId,
       status,
       awbNumber,
-      date,
+      startDate,
+      endDate,
       name,
       email,
       contactNumber,
@@ -180,6 +181,7 @@ const filterOrders = async (req, res) => {
       page = 1,
       limit = 20,
     } = req.query;
+    console.log(startDate, endDate);
 
     const filter = {};
 
@@ -190,11 +192,18 @@ const filterOrders = async (req, res) => {
     }
     if (status && status !== "All") filter.status = status;
     if (awbNumber) filter.awb_number = { $regex: awbNumber, $options: "i" };
-    if (date) {
-      const start = new Date(date);
-      const end = new Date(); // today's date and time
-      filter.createdAt = { $gte: start, $lte: end };
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include full end day
+    
+      filter.createdAt = {
+        $gte: start,
+        $lte: end,
+      };
     }
+    
+    
     if (type) filter["paymentDetails.method"] = type;
     if (courier) filter.courierServiceName = courier;
     if (userId) {
@@ -258,9 +267,10 @@ const filterNdrOrders = async (req, res) => {
       orderId,
       awbNumber,
       ndrStatus,
-      status, // <-- add this
+      status,
       courier,
-      date,
+      startDate,
+      endDate,
       name,
       email,
       contactNumber,
@@ -269,6 +279,8 @@ const filterNdrOrders = async (req, res) => {
       page = 1,
       limit = 20,
     } = req.query;
+
+    console.log(startDate, endDate);
 
     const filter = {};
 
@@ -286,11 +298,17 @@ const filterNdrOrders = async (req, res) => {
     if (ndrStatus && ndrStatus !== "All") filter.ndrStatus = ndrStatus;
     if (status && status !== "All") filter.status = status; // <-- add this line
     if (courier) filter.courierServiceName = courier;
-    if (date) {
-      const start = new Date(date);
-      const end = new Date();
-      filter.createdAt = { $gte: start, $lte: end };
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include full end day
+    
+      filter.createdAt = {
+        $gte: start,
+        $lte: end,
+      };
     }
+    
     if (userId) {
       filter.userId = new mongoose.Types.ObjectId(userId);
     } else if (name || email || contactNumber) {
