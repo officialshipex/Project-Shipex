@@ -74,8 +74,9 @@ const createOneClickShipment = async (req, res) => {
 
     // console.log("shipment data", shipmentData);
     let response;
-
-    if (currentWallet.balance >= finalCharges) {
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
+    if (effectiveBalance >= finalCharges) {
       response = await axios.post(
         "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
         shipmentData,
@@ -255,7 +256,9 @@ const getShipmentTracking = async (trackingId) => {
 
     console.log(
       "Tracking Information:",
-      response.data.payload.eventHistory[response.data.payload.eventHistory.length-1].eventCode
+      response.data.payload.eventHistory[
+        response.data.payload.eventHistory.length - 1
+      ].eventCode
     );
     return { success: true, data: response.data.payload };
   } catch (error) {

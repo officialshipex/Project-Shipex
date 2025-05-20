@@ -334,4 +334,43 @@ const getWalletHistoryByUserId = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId };
+const getWalletBalanceAndHoldAmount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    // Step 1: Get the user's wallet ID
+    const user = await User.findById(userId).select("Wallet").lean();
+    if (!user?.Wallet) {
+      return res.status(404).json({ message: "Wallet not found for user." });
+    }
+
+    // Step 2: Fetch balance and holdAmount from wallet
+    const wallet = await Wallet.findById(user.Wallet)
+      .select("balance holdAmount")
+      .lean();
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet data not found." });
+    }
+
+    // Step 3: Return the data
+    return res.status(200).json({
+      success: true,
+      balance: wallet.balance || 0,
+      holdAmount: wallet.holdAmount || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching wallet balance and holdAmount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching wallet balance and hold amount",
+    });
+  }
+};
+
+
+module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId,getWalletBalanceAndHoldAmount };

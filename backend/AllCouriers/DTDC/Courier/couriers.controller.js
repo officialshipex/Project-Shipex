@@ -103,7 +103,7 @@ const createOrder = async (req, res) => {
           cod_amount: codAmount,
 
           ...(courierServiceName === "Dtdc Air" && {
-            commodity_id: currentOrder.commodityId || "Others",
+            commodity_id: currentOrder?.commodityId || "Others",
           }),
           reference_number: "",
         },
@@ -118,7 +118,9 @@ const createOrder = async (req, res) => {
 
     // API call to DTDC
     let response;
-    if (currentWallet.balance >= finalCharges) {
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
+    if (effectiveBalance >= finalCharges) {
       response = await axios.post(
         `${DTDC_API_URL}/customer/integration/consignment/softdata`,
         shipmentData,

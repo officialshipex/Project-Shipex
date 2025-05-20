@@ -31,14 +31,13 @@ const createOrderDTDC = async (
       return { success: false, message: "Order not found" };
     }
 
-
-
     const currentWallet = await Wallet.findById(walletId);
     if (!currentWallet) {
       return { success: false, message: "Wallet not found" };
     }
-
-    if (currentWallet.balance < charges) {
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
+    if (effectiveBalance < charges) {
       return { success: false, message: "Insufficient wallet balance" };
     }
 
@@ -94,7 +93,9 @@ const createOrderDTDC = async (
           cod_collection_mode: codCollectionMode,
           cod_amount: codAmount,
 
-          commodity_id: "7",
+          ...(serviceDetails.name === "Dtdc Air" && {
+            commodity_id: currentOrder?.commodityId || "Others",
+          }),
           reference_number: "",
         },
       ],
@@ -103,19 +104,19 @@ const createOrderDTDC = async (
     // API call to DTDC
     let response;
     // if (currentWallet.balance >= finalCharges) {
-      response = await axios.post(
-        `${DTDC_API_URL}/customer/integration/consignment/softdata`,
-        shipmentData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "api-key": API_KEY,
-            Authorization: `Bearer ${X_ACCESS_TOKEN}`,
-          },
-        }
-      );
+    response = await axios.post(
+      `${DTDC_API_URL}/customer/integration/consignment/softdata`,
+      shipmentData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": API_KEY,
+          Authorization: `Bearer ${X_ACCESS_TOKEN}`,
+        },
+      }
+    );
     // } else {
-      // return res.status(400).json({ success: false, message: "Low Balance" });
+    // return res.status(400).json({ success: false, message: "Low Balance" });
     // }
     if (response?.data?.data[0]?.success) {
       const result = response.data.data[0];
@@ -124,11 +125,11 @@ const createOrderDTDC = async (
       currentOrder.awb_number = result.reference_number;
       currentOrder.shipment_id = `${result.customer_reference_number}`;
       currentOrder.provider = serviceDetails.provider;
-      currentOrder.totalFreightCharges =charges;
-      currentOrder.courierServiceName =serviceDetails.name;
+      currentOrder.totalFreightCharges = charges;
+      currentOrder.courierServiceName = serviceDetails.name;
       currentOrder.shipmentCreatedAt = new Date();
       let savedOrder = await currentOrder.save();
-  
+
       // console.log("sjakjska",balanceToBeDeducted)
       // Deduct wallet balance using atomic operation and update transaction
       const updatedWallet = await Wallet.findOneAndUpdate(
@@ -173,8 +174,8 @@ const createOrderDTDC = async (
     return {
       message: "Shipment Created Successfully",
       success: true,
-      orderId:currentOrder.orderId,
-      waybill:response.data.data[0].reference_number
+      orderId: currentOrder.orderId,
+      waybill: response.data.data[0].reference_number,
     };
   } catch (error) {
     console.error(
