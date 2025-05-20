@@ -22,6 +22,11 @@ const weightDiscrepancySchema = new mongoose.Schema(
     enteredWeight: {
       applicableWeight: { type: String, required: true },
       deadWeight: { type: String, required: true },
+      volumetricWeight:{
+        length:{type:String},
+        breadth:{type:String},
+        height:{type:String}
+      }
     }, // Weight from Order Data
     chargedWeight: {
       applicableWeight: { type: String, required: true },

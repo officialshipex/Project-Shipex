@@ -1,4 +1,4 @@
-const { createOrder,razorpayWebhook,getWalletHistoryByUserId} = require("./recharge.controller");
+const { createOrder,razorpayWebhook,getWalletHistoryByUserId,getWalletBalanceAndHoldAmount} = require("./recharge.controller");
 const express = require("express");
 const rechargeRouter = express.Router();
 const {isAuthorized}=require("../middleware/auth.middleware")
@@ -23,6 +23,7 @@ const {isAuthorized}=require("../middleware/auth.middleware")
 rechargeRouter.post("/create-order",isAuthorized,createOrder)
 rechargeRouter.post("/razorpay-webhook", express.json({ verify: (req, res, buf) => { req.rawBody = buf } }), razorpayWebhook);
 rechargeRouter.get("/transactionHistory",isAuthorized,getWalletHistoryByUserId);
+rechargeRouter.get("/getWalletBalanceAndHoldAmount",isAuthorized,getWalletBalanceAndHoldAmount)
 
 //==============Razorpay================
 // rechargeRouter.post('/recharge',handlePaymentOrder);
