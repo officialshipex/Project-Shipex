@@ -1039,7 +1039,7 @@ const CodRemittanceOrder = async (req, res) => {
 
     // Process orders in parallel using Promise.all
     const insertedOrders = await Promise.all(
-      codOrders.map(async (order) => {
+      codFilterData.map(async (order) => {
         try {
           // Find user info
           const userInfo = await users.findById(order.userId);
@@ -1047,6 +1047,7 @@ const CodRemittanceOrder = async (req, res) => {
             console.warn(`User not found for order ID: ${order.orderId}`);
             return null;
           }
+
 
           // Check if already inserted
           const existing = await CodRemittanceOrders.findOne({
@@ -1090,7 +1091,7 @@ const CodRemittanceOrder = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `${successfulInsertions.length} COD remittance orders processed successfully.`,
-      data: existings,
+      data: existingCodRemittance,
     });
   } catch (error) {
     console.error("Error processing COD remittance orders:", error);
@@ -1101,6 +1102,10 @@ const CodRemittanceOrder = async (req, res) => {
     });
   }
 };
+ 
+// CodRemittanceOrder
+
+
 
 const sellerremittanceTransactionData = async (req, res) => {
   try {
@@ -1295,6 +1300,77 @@ const uploadCourierCodRemittance = async (req, res) => {
   }
 };
 
+const exportOrderInRemittance = async (req, res) => {
+  try {
+    const userID = req.user._id;
+    const ids = req.query.ids; // should be an array: ['REMID123', 'REMID456']
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Remittance IDs must be an array.' });
+    }
+
+    // Fetch remittance records
+    const remittances = await adminCodRemittance.find({
+      remitanceId: { $in: ids },
+    }).populate('orderDetails');
+
+    // Flatten all order ObjectIds from each remittance's `orders` array
+    const allOrders = remittances.flatMap(remit => remit.orderDetails);
+    const orderIds=allOrders.flatMap(i=>i.orders)
+    // Optional: Populate actual order data
+   const rawOrders = await Order.find(
+  { _id: { $in: orderIds } },
+  {
+    orderId: 1,
+    courierServiceName: 1,
+    awb_number: 1,
+    'paymentDetails.method': 1,
+    'paymentDetails.amount': 1,
+    tracking: 1, // Include tracking to extract delivery date
+  }
+);
+
+// Extract only needed info and delivery date from tracking
+const orderDetails = rawOrders.map(order => {
+  const deliveryEvent = order.tracking.find(event =>
+    event.status?.toLowerCase() === 'delivered'
+  );
+
+  return {
+    orderId: order.orderId,
+    courierServiceName: order.courierServiceName,
+    awb_number: order.awb_number,
+    paymentMethod: order.paymentDetails?.method,
+    paymentAmount: order.paymentDetails?.amount,
+    deliveryDate: deliveryEvent?.StatusDateTime
+      ? new Date(deliveryEvent.StatusDateTime).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null,
+  };
+});
+
+ console.log("--------->",orderDetails)
+res.json({
+  success: true,
+  totalOrders: orderDetails.length,
+  orders: orderDetails,
+});
+
+
+  } catch (error) {
+    console.error('Error exporting remittance orders:', error);
+    res.status(500).json({ message: 'Server error while exporting remittance orders' });
+  }
+};
+
+
+
+
+
 module.exports = {
   codPlanUpdate,
   codToBeRemitteds,
@@ -1311,4 +1387,5 @@ module.exports = {
   sellerremittanceTransactionData,
   CourierdownloadSampleExcel,
   uploadCourierCodRemittance,
+  exportOrderInRemittance
 };
