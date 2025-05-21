@@ -8,13 +8,7 @@ const codRemittanceSchema = new mongoose.Schema({
   TotalDeductionfromCOD: { type: Number },
   RemittanceInitiated: { type: Number,defult:0 },
   rechargeAmount:{type:Number},
-  sameDayDelhiveryOrders: [
-    {
-      date: { type: Date, required: true },
-      codcal:{type:Number},
-      orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
-    },
-  ],
+
   remittanceData: [
     {
       date: { type: Date },
@@ -33,7 +27,7 @@ const codRemittanceSchema = new mongoose.Schema({
         default: "Pending",
       },
       orderDetails: {
-            date: { type: Date, required: true },
+            date: { type: Date},
             codcal: { type: Number },
             orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
           },

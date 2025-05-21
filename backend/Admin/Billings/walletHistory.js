@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const User = require("../../models/User.model");
+const Wallet = require("../../models/wallet");
 
 const getAllTransactionHistory = async (req, res) => {
   try {
@@ -11,9 +12,9 @@ const getAllTransactionHistory = async (req, res) => {
       page = 1,
       limit = 20,
       paymentId,
-      transactionId
+      transactionId,
     } = req.query;
-    // console.log("re", req.query);
+    console.log("re", req.query);
     const userMatchStage = {};
     const transactionMatchStage = {};
 
@@ -52,9 +53,10 @@ const getAllTransactionHistory = async (req, res) => {
         paymentId;
     }
 
-     if (transactionId) {
-      transactionMatchStage["wallet.walletHistory.paymentDetails.transactionId"] =
-        transactionId;
+    if (transactionId) {
+      transactionMatchStage[
+        "wallet.walletHistory.paymentDetails.transactionId"
+      ] = transactionId;
     }
 
     const parsedLimit = limit === "all" ? 0 : Number(limit);
@@ -81,7 +83,7 @@ const getAllTransactionHistory = async (req, res) => {
             name: "$fullname",
             email: "$email",
             userId: "$userId",
-            phoneNumber:"$phoneNumber"
+            phoneNumber: "$phoneNumber",
           },
           amount: "$wallet.walletHistory.paymentDetails.amount",
           //   status: "$wallet.walletHistory.paymentDetails.status",
@@ -90,7 +92,7 @@ const getAllTransactionHistory = async (req, res) => {
           //   remark: "$wallet.walletHistory.remark",
           paymentId: "$wallet.walletHistory.paymentDetails.paymentId",
           orderId: "$wallet.walletHistory.paymentDetails.orderId",
-            transactionId: "$wallet.walletHistory.paymentDetails.transactionId",
+          transactionId: "$wallet.walletHistory.paymentDetails.transactionId",
           status: "$wallet.walletHistory.status",
         },
       },
@@ -124,4 +126,102 @@ const getAllTransactionHistory = async (req, res) => {
   }
 };
 
-module.exports = { getAllTransactionHistory };
+const generateUniqueTransactionId = async () => {
+  let transactionId, exists;
+  do {
+    transactionId =
+      Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+
+    // Check if any wallet has at least one walletHistory entry with this transactionId
+    exists = await Wallet.exists({
+      walletHistory: {
+        $elemMatch: {
+          "paymentDetails.transactionId": transactionId,
+        },
+      },
+    });
+  } while (exists);
+  console.log("trans", transactionId);
+  return transactionId;
+};
+
+const addWalletHistory = async (req, res) => {
+  try {
+    const { userId, status, paymentId, orderId, amount } = req.body;
+    console.log("re",req.body)
+
+    // 1. Validate required fields
+    if (!userId || !paymentId || !orderId || amount == null) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    const userID = Number(userId);
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ message: "Invalid amount value" });
+    }
+
+    // 2. Find user
+    const user = await User.findOne({ userId: userID });
+    if (!user || !user.Wallet) {
+      return res.status(404).json({ message: "User or Wallet not found" });
+    }
+
+    // 3. Fetch wallet
+    const wallet = await Wallet.findById(user.Wallet);
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    // 4. Check if paymentId already exists
+    const existingEntry = wallet.walletHistory.find(
+      (entry) => entry.paymentDetails.paymentId === paymentId
+    );
+    if (existingEntry) {
+      return res.status(409).json({ message: "Payment ID already exists" });
+    }
+
+    // 5. Generate unique 10-digit transactionId
+    const transactionId = await generateUniqueTransactionId();
+
+    // 6. Create wallet history entry
+    const historyEntry = {
+      paymentDetails: {
+        paymentId,
+        orderId,
+        walletId: wallet._id,
+        amount: numericAmount,
+        transactionId,
+      },
+      status,
+    };
+
+    // 7. Push history
+    wallet.walletHistory.push(historyEntry);
+
+    // 8. If successful, update balance and add transaction
+    if (status === "success") {
+      wallet.balance += numericAmount;
+
+      // wallet.transactions.push({
+      //   category: "credit",
+      //   amount: Number(amount),
+      //   balanceAfterTransaction: wallet.balance,
+      //   description: `Credited via Payment ID ${paymentId}`,
+      //   channelOrderId: orderId,
+      // });
+    }
+
+    await wallet.save();
+
+    res.status(200).json({
+      message: "Wallet history added successfully",
+      transactionId,
+      updatedBalance: wallet.balance,
+    });
+  } catch (err) {
+    console.error("Error adding wallet history:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+module.exports = { getAllTransactionHistory, addWalletHistory };

@@ -156,9 +156,10 @@ const createOrder = async (req, res) => {
     )}`;
 
     let response;
-
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
     // Check Wallet Balance
-    if (currentWallet.balance < finalCharges) {
+    if (effectiveBalance < finalCharges) {
       return res
         .status(400)
         .json({ success: false, message: "Insufficient Wallet Balance" });

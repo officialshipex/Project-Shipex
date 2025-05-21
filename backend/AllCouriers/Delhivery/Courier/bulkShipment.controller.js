@@ -72,8 +72,9 @@ const createShipmentFunctionDelhivery = async (
 
     // Fetch the latest wallet details before proceeding
     let currentWallet = await Wallet.findById(walletId);
-
-    if (currentWallet.balance >= finalCharges) {
+  const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
+    if (effectiveBalance >= finalCharges) {
       const response = await axios.post(delUrl, payload, {
         headers: {
           Authorization: `Token ${API_TOKEN}`,

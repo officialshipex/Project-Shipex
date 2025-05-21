@@ -195,10 +195,12 @@ const trackSingleOrder = async (order) => {
         "non serviceable location": "In-transit",
         "disturbed/ prohibited area": "In-transit",
         "e-waybill dispute": "In-transit",
+        "booking not updated": "In-transit",
         "shipment received after cut-off time at destination": "In-transit",
         "off-loaded by airlines (central team access)": "In-transit",
         "weekly off": "In-transit",
         "stock scan": "In-transit",
+        "offload at origin": "In-transit",
         "out for delivery": "Out for Delivery",
         "otp based delivered": "Delivered",
         delivered: "Delivered",
@@ -209,6 +211,7 @@ const trackSingleOrder = async (order) => {
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
         "rto reached at destination": "RTO In-transit",
+        "rto not delivered": "RTO In-transit",
         "rto out for delivery": "RTO In-transit",
         "rto mis route": "RTO In-transit",
         "rto delivered": "RTO Delivered",
@@ -242,9 +245,8 @@ const trackSingleOrder = async (order) => {
       }
 
       if (
-        normalizedData.Instructions === "Not Delivered" &&
-        order.ndrStatus !== "Action_Requested" &&
-        normalizedData.Instructions !== "Out For Delivery"
+        normalizedData.Instructions === "Not Delivered" ||
+        normalizedData.Instructions === "RTO Not Delivered"
       ) {
         order.status = "Undelivered";
         order.ndrStatus = "Undelivered";
@@ -305,6 +307,7 @@ const trackSingleOrder = async (order) => {
         if (normalizedData.Instructions === "ReadyForReceive") {
           order.status = "Ready To Ship";
         }
+        console.log("Instructions", normalizedData.Instructions);
         if (
           normalizedData.Instructions === "PickupDone" ||
           normalizedData.Instructions === "ArrivedAtCarrierFacility" ||
@@ -327,10 +330,11 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "Delivered";
         }
         if (
-          normalizedData.Instructions === "DeliveryAttempted" &&
-          order.ndrStatus !== "Action_Requested" &&
-          normalizedData.Instructions !== "OutForDelivery"
+          normalizedData.Instructions === "DeliveryAttempted" ||
+          order.tracking[order.tracking.length - 2].Instructions ===
+            "DeliveryAttempted"
         ) {
+          console.log("awb", order.awb_number);
           order.status = "Undelivered";
           order.ndrStatus = "Undelivered";
           order.ndrReason = {
@@ -352,7 +356,11 @@ const trackSingleOrder = async (order) => {
             lastEntryDate !== currentStatusDate
           ) {
             const attemptCount = order.ndrHistory?.length || 0;
-            if (normalizedData.Instructions === "DeliveryAttempted") {
+            if (
+              normalizedData.Instructions === "DeliveryAttempted" ||
+              order.tracking[order.tracking.length - 2].Instructions ===
+                "DeliveryAttempted"
+            ) {
               order.ndrHistory.push({
                 date: normalizedData.StatusDateTime,
                 action: "Auto Reattempt",
@@ -487,9 +495,10 @@ const trackSingleOrder = async (order) => {
       // Just update the last entry if the checkpoint is the same
       lastTrackingEntry.status = normalizedData.Status;
       lastTrackingEntry.Instructions = normalizedData.Instructions;
+      await order.save();
     } else if (
       !lastTrackingEntry ||
-      lastTrackingEntry.Instructions !== normalizedData.Instructions
+      lastTrackingEntry?.Instructions !== normalizedData.Instructions
     ) {
       // It's a new checkpoint, so push it
       order.tracking.push({
@@ -498,9 +507,9 @@ const trackSingleOrder = async (order) => {
         StatusDateTime: normalizedData.StatusDateTime,
         Instructions: normalizedData.Instructions,
       });
+      await order.save();
+      console.log("saved")
     }
-
-    await order.save();
   } catch (error) {
     console.error(
       `Error tracking order ID: ${order._id}, AWB: ${order.awb_number} ${error}`
@@ -546,7 +555,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop();
+startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -580,8 +589,8 @@ const mapTrackingResponse = (data, provider) => {
       StrRemarks:
         data.eventHistory?.length &&
         data.eventHistory[data.eventHistory.length - 1]?.shipmentType ===
-          "forward"
-          ? data.summary?.trackingDetailCodes?.forward?.[1]
+          "FORWARD"
+          ? data.summary?.trackingDetailCodes?.forward?.[0]
           : data.summary?.trackingDetailCodes?.reverse?.[1],
       StatusLocation: data.eventHistory?.length
         ? data.eventHistory[data.eventHistory.length - 1]?.location?.city

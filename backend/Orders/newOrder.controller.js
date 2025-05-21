@@ -53,6 +53,7 @@ const newOrder = async (req, res) => {
       productDetails,
       packageDetails,
       paymentDetails,
+      commodityId,
     } = req.body;
     console.log(req.body);
 
@@ -62,7 +63,8 @@ const newOrder = async (req, res) => {
       !receiverAddress ||
       !productDetails ||
       !packageDetails ||
-      !paymentDetails
+      !paymentDetails ||
+      !commodityId
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -83,18 +85,6 @@ const newOrder = async (req, res) => {
       }
     }
 
-    const pickup = new pickAddress({
-      userId: req.user._id,
-      pickupAddress,
-    });
-    // await pickup.save();
-
-    const receiver = new receiveAddress({
-      userId: req.user._id,
-      receiverAddress,
-    });
-    // await receiver.save();
-
     // Create a new shipment
     const shipment = new Order({
       userId: req.user._id,
@@ -105,6 +95,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
+      commodityId: commodityId,
       tracking: [
         {
           title: "Created",
@@ -126,6 +117,67 @@ const newOrder = async (req, res) => {
   }
 };
 // new pick up address
+
+const updatePackageDetails = async (req, res) => {
+  try {
+    const { length, width, height, weight } = req.body.details;
+    const selectedOrders = req.body.selectedOrders;
+    console.log("re", req.body);
+
+    if (
+      length == null ||
+      width == null ||
+      height == null ||
+      weight == null ||
+      !Array.isArray(selectedOrders)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Missing or invalid required fields." });
+    }
+
+    const validOrderIds = selectedOrders.filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+
+    if (validOrderIds.length === 0) {
+      return res.status(400).json({ message: "No valid order IDs provided." });
+    }
+
+    const parsedLength = parseFloat(length);
+    const parsedWidth = parseFloat(width);
+    const parsedHeight = parseFloat(height);
+    const parsedWeight = parseFloat(weight);
+
+    const volumetricWeight = (parsedLength * parsedWidth * parsedHeight) / 5000;
+    const applicableWeight = Math.max(parsedWeight, volumetricWeight);
+
+    await Order.updateMany(
+      { _id: { $in: validOrderIds } },
+      {
+        $set: {
+          packageDetails: {
+            deadWeight: parsedWeight,
+            applicableWeight: parseFloat(applicableWeight.toFixed(2)),
+            volumetricWeight: {
+              length: parsedLength,
+              width: parsedWidth,
+              height: parsedHeight,
+              calculatedWeight: parseFloat(volumetricWeight.toFixed(2)),
+            },
+          },
+        },
+      }
+    );
+
+    return res
+      .status(200)
+      .json({ message: "Package details updated successfully." });
+  } catch (error) {
+    console.error("Error updating package details:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
 
 const newPickupAddress = async (req, res) => {
   try {
@@ -763,8 +815,6 @@ const cancelOrdersAtBooked = async (req, res) => {
   }
 };
 
-
-
 // setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
   try {
@@ -856,8 +906,6 @@ const GetTrackingByAwb = async (req, res) => {
   }
 };
 
-
-
 module.exports = {
   newOrder,
   getOrders,
@@ -876,6 +924,6 @@ module.exports = {
   updateOrder,
   passbook,
   getUser,
-  // trackOrders,
+  updatePackageDetails,
   GetTrackingByAwb,
 };

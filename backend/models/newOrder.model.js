@@ -99,7 +99,9 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     RTOCharges: { type: String },
+    COD:{type: String},
     reattempt: { type: Boolean },
+    commodityId:{type:Number},
     tracking: [
       {
         status: { type: String },
