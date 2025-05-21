@@ -292,7 +292,7 @@ const remittanceScheduleData = async () => {
           remainingExtraCodcal = remainingRecharge - adjustAmount;
           afterWallet += adjustAmount;
         }
-        console.log("-------->",creditedAmount,afterWallet,remainingExtraCodcal)
+        // console.log("-------->",creditedAmount,afterWallet,remainingExtraCodcal)
 
         await Wallet.updateOne(
           { _id: wallet._id },
@@ -380,7 +380,7 @@ const remittanceScheduleData = async () => {
   }
 };
 
-remittanceScheduleData();
+
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
@@ -458,7 +458,6 @@ cron.schedule("25 2 * * *", () => {
   console.log("Running scheduled task at 1.30 AM: Fetching orders...");
   fetchExtraData();
 });
-
 const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
