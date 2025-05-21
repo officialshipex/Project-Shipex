@@ -9,15 +9,31 @@ const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
 const BASE_URL = process.env.XpreesbeesUrl;
 const plan=require("../../../models/Plan.model")
+
+
 const createShipment = async (req, res) => {
   const url = `${BASE_URL}/api/shipments2`;
   const { courierServiceName, id, provider, finalCharges } = req.body;
   const currentOrder = await Order.findById(id);
   const users = await user.findById({ _id: currentOrder.userId });
- const plans=await plan.findOne({ userId: currentOrder.userId });
+  const plans = await plan.findOne({ userId: currentOrder.userId });
 
+  const services = await courierService.findOne({ name: courierServiceName });
 
- 
+  console.log("services", services.courier);
+
+  const courierServices = [
+    { id: "6", name: "Air Xpressbees 0.5 K.G" },
+    { id: "8", name: "Express Reverse" },
+    { id: "1", name: "Surface Xpressbees 0.5 K.G" },
+    { id: "12298", name: "Xpressbees 1 K.G" },
+    { id: "4", name: "Xpressbees 10 K.G" },
+    { id: "2", name: "Xpressbees 2 K.G" },
+    { id: "3", name: "Xpressbees 5 K.G" },
+    { id: "12939", name: "Xpressbees Next Day Delivery" },
+    { id: "12938", name: "Xpressbees Same Day Delivery" },
+  ];
+
   const currentWallet = await Wallet.findById({ _id: users.Wallet });
   const order_items = new Array(currentOrder.productDetails.length);
 
@@ -31,10 +47,22 @@ const createShipment = async (req, res) => {
   });
   let payment_type =
     currentOrder.paymentDetails.method === "COD" ? "cod" : "prepaid";
+
+  // find the courier id
+  const selectedCourier = courierServices.find(
+    (service) => service.name === services.courier
+  );
+  const courierId = selectedCourier ? selectedCourier.id : null;
+
   const shipmentData = {
     order_number: `${currentOrder.orderId}`,
     payment_type,
+    package_weight: currentOrder.packageDetails.applicableWeight * 1000,
+    package_length: currentOrder.packageDetails.volumetricWeight.length,
+    package_breadth: currentOrder.packageDetails.volumetricWeight.width,
+    package_height: currentOrder.packageDetails.volumetricWeight.height,
     order_amount: currentOrder.paymentDetails.amount,
+    request_auto_pickup: "yes",
     consignee: {
       name: `${currentOrder.receiverAddress.contactName}`,
       address: `${currentOrder.receiverAddress.address}`,
@@ -57,31 +85,35 @@ const createShipment = async (req, res) => {
       currentOrder.paymentDetails.method === "Prepaid"
         ? 0
         : currentOrder.paymentDetails.amount,
-    courier_id: currentOrder.orderId,
+    courier_id: courierId,
   };
-
+  console.log("shipmentData", shipmentData);
 
   try {
     const token = await getToken();
     // console.log("sadasd",shipmentData)
-    let  response;
-if(currentWallet.balance>=finalCharges){
-  response = await axios.post(url, shipmentData, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-}else{
-  return res.status(401).json({success:false,message:"Low Balance"})
-}
+    let response;
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const effectiveBalance = currentWallet.balance - walletHoldAmount;
+    if (effectiveBalance >= finalCharges) {
+      response = await axios.post(url, shipmentData, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("res", response.data);
+    } else {
+      return res.status(401).json({ success: false, message: "Low Balance" });
+    }
     if (response.data.status) {
       const result = response.data.data;
       currentOrder.status = "Ready To Ship";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awb_number;
       currentOrder.label = result.label;
-      currentOrder.provider = provider; 
+      currentOrder.provider = provider;
       currentOrder.shipment_id = `${result.awb_number}`;
       currentOrder.totalFreightCharges = finalCharges;
       currentOrder.shipmentCreatedAt = new Date();
@@ -90,11 +122,12 @@ if(currentWallet.balance>=finalCharges){
       // currentOrder.freightCharges =
       // req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
       // currentOrder.tracking = [];
-     
+
       // console.log("sahkdjhsakdsa",currentOrder)
       await currentOrder.save();
-   
-      let balanceToBeDeducted = finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+
+      let balanceToBeDeducted =
+        finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)
       await currentWallet.updateOne({
         $inc: { balance: -balanceToBeDeducted },
@@ -120,10 +153,11 @@ if(currentWallet.balance>=finalCharges){
     }
   } catch (error) {
     // console.log(error);
-    console.error("Error in creating shipment:", error.response.data);
-    return res
-      .status(500)
-      .json({ error: "Internal Server Error", message: error.response.data.message });
+    console.error("Error in creating shipment:", error.response);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: error.response.data.message,
+    });
   }
 };
 
