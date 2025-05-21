@@ -523,9 +523,9 @@ const submitNdrToDtdc = async (
         details: failedConsignmentList,
       });
     }
-
+console.log("successConsignmentList", successConsignmentList);
     // Handle success consignments
-    if (successConsignmentList.some(item => item === awb_number)) {
+    if (successConsignmentList.some(item => item.consgNumber === awb_number)) {
       const orderInDb = await Order.findOne({ awb_number });
 
       if (!orderInDb) {
@@ -553,13 +553,14 @@ const submitNdrToDtdc = async (
       orderInDb.status = "Undelivered";
       orderInDb.ndrHistory.push(ndrHistoryEntry);
       await orderInDb.save();
+      console.log("Order updated:", orderInDb);
 
       return {
         status: 200,
         success: true,
         message: "DTDC NDR submission successful",
         failedOrders,
-        dtdcResponse: result,
+        dtdcResponse: result, 
       };
     }
 
