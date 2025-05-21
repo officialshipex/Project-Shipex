@@ -292,7 +292,7 @@ const remittanceScheduleData = async () => {
           remainingExtraCodcal = remainingRecharge - adjustAmount;
           afterWallet += adjustAmount;
         }
-        console.log("-------->",creditedAmount,afterWallet,remainingExtraCodcal)
+        // console.log("-------->",creditedAmount,afterWallet,remainingExtraCodcal)
 
         await Wallet.updateOne(
           { _id: wallet._id },
@@ -380,7 +380,7 @@ const remittanceScheduleData = async () => {
   }
 };
 
-remittanceScheduleData();
+
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
@@ -458,16 +458,14 @@ cron.schedule("25 2 * * *", () => {
   console.log("Running scheduled task at 1.30 AM: Fetching orders...");
   fetchExtraData();
 });
-
 const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
     const existingRemittance = await codRemittance.findOne({ userId: userId });
-    // console.log("mcmmcmc",existingRemittance)
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
-      data: existingRemittance, // Uncomment this when you fetch actual data
+      data: existingRemittance,
     });
   } catch (error) {
     console.error("Error fetching COD remittance data:", error.message);
