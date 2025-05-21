@@ -462,11 +462,10 @@ const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
     const existingRemittance = await codRemittance.findOne({ userId: userId });
-    // console.log("mcmmcmc",existingRemittance)
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
-      data: existingRemittance, // Uncomment this when you fetch actual data
+      data: existingRemittance,
     });
   } catch (error) {
     console.error("Error fetching COD remittance data:", error.message);
