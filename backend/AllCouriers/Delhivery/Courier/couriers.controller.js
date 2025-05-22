@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
 const user = require("../../../models/User.model");
 const plan = require("../../../models/Plan.model");
+const { getZone } = require("../../../Rate/zoneManagementController");
 // HELPER FUNCTIONS
 const getCurrentDateTime = () => {
   const now = new Date();
@@ -67,8 +68,13 @@ const createClientWarehouse = async (payload) => {
           data: response.data.data,
         };
       } else {
-        console.error("Unknown error during warehouse creation:", response.data.error?.[0]);
-        throw new Error(response.data.error?.[0] || "Unknown error during warehouse creation.");
+        console.error(
+          "Unknown error during warehouse creation:",
+          response.data.error?.[0]
+        );
+        throw new Error(
+          response.data.error?.[0] || "Unknown error during warehouse creation."
+        );
       }
     }
   } catch (error) {
@@ -81,7 +87,10 @@ const createClientWarehouse = async (payload) => {
         data: error.response?.data?.data,
       };
     } else {
-      console.error("Error creating warehouse:", error.response?.data || error.message);
+      console.error(
+        "Error creating warehouse:",
+        error.response?.data || error.message
+      );
       throw new Error(errorMessage || "Failed to create warehouse.");
     }
   }
@@ -101,7 +110,9 @@ const createOrder = async (req, res) => {
         .status(400)
         .json({ success: false, message: "No Waybill Available" });
     }
-    const warehouseCreationResult = await createClientWarehouse(currentOrder.pickupAddress);
+    const warehouseCreationResult = await createClientWarehouse(
+      currentOrder.pickupAddress
+    );
 
     if (!warehouseCreationResult.success) {
       return res.status(400).json({
@@ -110,8 +121,19 @@ const createOrder = async (req, res) => {
         details: warehouseCreationResult,
       });
     }
-    
-    const pickupWarehouseName = warehouseCreationResult.data?.name || currentOrder.pickupAddress.contactName;
+
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
+      // res
+    );
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
+    }
+
+    const pickupWarehouseName =
+      warehouseCreationResult.data?.name ||
+      currentOrder.pickupAddress.contactName;
 
     const payment_type =
       currentOrder.paymentDetails.method === "COD" ? "COD" : "Pre-paid";
@@ -186,6 +208,7 @@ const createOrder = async (req, res) => {
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.zone=zone.zone;
       await currentOrder.save();
 
       const balanceToBeDeducted =
@@ -218,7 +241,7 @@ const createOrder = async (req, res) => {
         },
       });
     } else {
-      console.log("response",response.data)
+      console.log("response", response.data);
       return res.status(400).json({
         success: false,
         message: "Failed to create shipment",
@@ -252,13 +275,13 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
     });
     let result = response.data.delivery_codes;
 
-    console.log("serv",result)
-    
+    console.log("serv", result);
+
     let finalResult = false;
 
     if (result.length > 0) {
       let data = result[0].postal_code;
-     
+
       let { pre_paid, cash, pickup, remarks } = data;
 
       finalResult =
@@ -266,7 +289,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
-    
+
     return { success: finalResult };
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
@@ -306,9 +329,9 @@ const trackShipmentDelhivery = async (waybill) => {
       status === "In Transit" ||
       status === "Delivered" ||
       status === "Pending" ||
-      status==="Dispatched" ||
-      status ==="RTO" ||
-      status ==="Not Picked"
+      status === "Dispatched" ||
+      status === "RTO" ||
+      status === "Not Picked"
     ) {
       return {
         success: true,
@@ -316,7 +339,6 @@ const trackShipmentDelhivery = async (waybill) => {
         data: response.data.ShipmentData[0].Shipment.Status,
       };
     } else {
-
       return {
         success: false,
         data: "Error in tracking",
@@ -508,11 +530,13 @@ const cancelOrderDelhivery = async (awb_number) => {
         Authorization: `Token ${API_TOKEN}`,
       },
     });
-    console.log("cancel",response.data)
-    
+    console.log("cancel", response.data);
 
     if (response?.data?.status) {
-      await Order.updateOne({ awb_number: awb_number }, { $set: { status: "Cancelled" } });
+      await Order.updateOne(
+        { awb_number: awb_number },
+        { $set: { status: "Cancelled" } }
+      );
       return { data: response.data, code: 201 };
     } else {
       return {
@@ -531,7 +555,6 @@ const cancelOrderDelhivery = async (awb_number) => {
   }
 };
 // cancelOrderDelhivery(35973710014626)
-
 
 module.exports = {
   createOrder,

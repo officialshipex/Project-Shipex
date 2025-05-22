@@ -17,6 +17,7 @@ const File = require("../model/bulkOrderFiles.model.js");
 const CourierCodRemittance = require("./CourierCodRemittance.js");
 const CodRemittanceOrders = require("./CodRemittanceOrder.model.js");
 const SameDateDelivered = require("./samedateDelivery.model.js");
+const BankAccountDetails = require("../models/BankAccount.model.js");
 const codPlanUpdate = async (req, res) => {
   try {
     const userID = req.user?._id; // Ensure req.user exists
@@ -1100,63 +1101,64 @@ const CodRemittanceOrder = async (req, res) => {
 };
 
 // CodRemittanceOrder
-const BankAccountDetails = require("../models/BankAccount.model.js");
+
 const sellerremittanceTransactionData = async (req, res) => {
   try {
-    const { id } = req.params; // Remittance ID
-    const userID = req.user?._id; // Ensure userID is available
+    const { id } = req.params;
+    const userID = req.user?._id;
 
     if (!userID) {
-      return res.status(400).json({ error: "User ID is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "User ID is required." });
     }
 
     if (!id) {
-      return res.status(400).json({ error: "Remittance ID is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Remittance ID is required." });
     }
 
-    // Fetch remittance data for the specific Remittance ID
-    const remittanceData = await adminCodRemittance.findOne({
-      remitanceId: id,
-    });
-    // console.log("klklkllk", remittanceData);
-
-    const bankDetails = await BankAccountDetails.findOne({
-      user: remittanceData.userId,
-    });
-    console.log("bankDetails", bankDetails);
-
-    const user=await users.findOne({_id:remittanceData.userId})
-    const walletId=user.Wallet;
-    const wallet = await Wallet.findById(walletId);
-    console.log("wallet", wallet.balance);
+    // Fetch remittance data first
+    const remittanceData = await adminCodRemittance
+      .findOne({ remitanceId: id })
+      .lean();
 
     if (!remittanceData) {
-      return res.status(404).json({ error: "Remittance data not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Remittance data not found." });
     }
 
-    // Ensure `orderDetails` exists before accessing `orders`
+    const userId = remittanceData.userId;
+
+    // Parallel fetch: Bank details, User (to get Wallet ID), and Orders
+    const [bankDetails, user] = await Promise.all([
+      BankAccountDetails.findOne({ user: userId }).lean(),
+      users.findById(userId).lean(),
+    ]);
+
+    const wallet = user?.Wallet
+      ? await Wallet.findById(user.Wallet).lean()
+      : null;
+
     const orderIds = remittanceData.orderDetails?.orders || [];
 
-    // Fetch all orders concurrently using Promise.all()
-    const orderdata = await Promise.all(
-      orderIds.map(async (orderId) => {
-        return orderId ? await Order.findById(orderId) : null;
-      })
+    const orderData = await Promise.all(
+      orderIds.map((orderId) => Order.findById(orderId).lean())
     );
 
-    // Remove null values if any orders were not found
-    const filteredOrders = orderdata.filter((order) => order !== null);
+    const filteredOrders = orderData.filter(Boolean); // Remove nulls
 
-    // Construct the response object
     const transactions = {
       remitanceId: id,
-      date: remittanceData.date || "N/A", // Ensure `date` exists
+      date: remittanceData.date || "N/A",
       totalOrder: filteredOrders.length,
-      totalCOD: remittanceData.orderDetails.codcal,
+      totalCOD: remittanceData.orderDetails?.codcal || 0,
       remitanceAmount: remittanceData.codAvailable || 0,
-      deliveryDate: remittanceData.orderDetails?.date || "N/A", // Ensure `orderDetails` exists
-      orderDataInArray: filteredOrders,
+      deliveryDate: remittanceData.orderDetails?.date || "N/A",
       status: remittanceData.status,
+      orderDataInArray: filteredOrders,
       bankDetails: {
         accountHolderName: bankDetails?.nameAtBank || "N/A",
         accountNumber: bankDetails?.accountNumber || "N/A",
@@ -1165,18 +1167,18 @@ const sellerremittanceTransactionData = async (req, res) => {
         branchName: bankDetails?.branch || "N/A",
         balance: wallet?.balance || 0,
       },
-
     };
+
     return res.status(200).json({
       success: true,
       message: "Remittance transaction data retrieved successfully.",
       data: transactions,
     });
   } catch (error) {
-    console.error("Error fetching remittance transactions:", error);
+    console.error("Error fetching remittance transaction data:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving transaction data.",
+      message: "Internal server error while retrieving transaction data.",
       error: error.message,
     });
   }
