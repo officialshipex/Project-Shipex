@@ -19,6 +19,9 @@ const {
   getUser,
   updatePackageDetails,
   GetTrackingByAwb,
+  updatePickupAddress,
+  setPrimaryPickupAddress,
+  deletePickupAddress
   // calculateRTOCharges
   
 } = require("../Orders/newOrder.controller"); // Adjust path to your controller
@@ -45,5 +48,8 @@ router.get("/passbook",passbook)
 router.get("/getUser",getUser)
 // router.post("/webhookTracking",trackOrders)
 router.get("/GetTrackingByAwb/:awb",GetTrackingByAwb)
+router.put("/updatePickupAddress/:id",updatePickupAddress)
+router.patch("/pickupAddress/setPrimary/:id",setPrimaryPickupAddress)
+router.delete("/pickupAddress/:id",deletePickupAddress)
 // router.post("/calculateRTOCharges",calculateRTOCharges)
 module.exports = router;

@@ -181,7 +181,7 @@ const updatePackageDetails = async (req, res) => {
 
 const newPickupAddress = async (req, res) => {
   try {
-    // console.log(req.body); // To log the incoming request body
+    console.log(req.body); // To log the incoming request body
 
     // Create a new shipment instance, where pickupAddress is a sub-document
     const shipment = new pickAddress({
@@ -248,6 +248,28 @@ const newReciveAddress = async (req, res) => {
       success: false,
       message: "Server error while saving receiver address",
     });
+  }
+};
+
+const deletePickupAddress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Find the pickup address and ensure it belongs to the user
+    const pickupAddress = await pickAddress.findOne({ _id: id, userId });
+
+    if (!pickupAddress) {
+      return res.status(404).json({ message: "Pickup address not found or unauthorized." });
+    }
+
+    // Delete the address
+    await pickAddress.deleteOne({ _id: id });
+
+    res.status(200).json({ message: "Pickup address deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting pickup address:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
@@ -327,9 +349,76 @@ const getOrdersByNdrStatus = async (req, res) => {
   }
 };
 
+const setPrimaryPickupAddress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // 1. Check if the pickup address exists and belongs to the user
+    const pickupAddress = await pickAddress.findOne({ _id: id, userId });
+    if (!pickupAddress) {
+      return res.status(404).json({ message: "Pickup address not found or unauthorized." });
+    }
+
+    // 2. Set all other pickup addresses' isPrimary to false
+    await pickAddress.updateMany({ userId }, { $set: { isPrimary: false } });
+
+    // 3. Set the selected address as primary
+    pickupAddress.isPrimary = true;
+    await pickupAddress.save();
+
+    res.status(200).json({
+      message: "Primary pickup address updated successfully.",
+      pickupAddress,
+    });
+  } catch (error) {
+    console.error("Error setting primary pickup address:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+const updatePickupAddress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id; // Ensure you have authentication middleware that sets req.user
+
+    console.log("Updating pickup address ID:", id);
+
+    const { contactName, email, phoneNumber, address, pinCode, city, state } =
+      req.body;
+
+    const pickupAddress = await pickAddress.findOne({ _id: id, userId });
+
+    if (!pickupAddress) {
+      return res
+        .status(404)
+        .json({ message: "Pickup address not found or unauthorized." });
+    }
+
+    // Update fields
+    pickupAddress.pickupAddress.contactName = contactName;
+    pickupAddress.pickupAddress.email = email;
+    pickupAddress.pickupAddress.phoneNumber = phoneNumber;
+    pickupAddress.pickupAddress.address = address;
+    pickupAddress.pickupAddress.pinCode = pinCode;
+    pickupAddress.pickupAddress.city = city;
+    pickupAddress.pickupAddress.state = state;
+
+    await pickupAddress.save();
+
+    res.status(200).json({
+      message: "Pickup address updated successfully.",
+      pickupAddress,
+    });
+  } catch (error) {
+    console.error("Error updating pickup address:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
 const updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
+    console.log("orderId", orderId);
     const { pickupAddress, receiverAddress, paymentDetails, packageDetails } =
       req.body;
 
@@ -926,4 +1015,7 @@ module.exports = {
   getUser,
   updatePackageDetails,
   GetTrackingByAwb,
+  updatePickupAddress,
+  setPrimaryPickupAddress,
+  deletePickupAddress
 };
