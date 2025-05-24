@@ -211,6 +211,7 @@ const trackSingleOrder = async (order) => {
         "rto booked": "RTO",
         "rto in transit": "RTO In-transit",
         "rto reached at destination": "RTO In-transit",
+        "rto fdm prepared": "RTO In-transit",
         "rto not delivered": "RTO In-transit",
         "rto out for delivery": "RTO In-transit",
         "rto mis route": "RTO In-transit",
@@ -303,6 +304,7 @@ const trackSingleOrder = async (order) => {
       }
     }
     if (provider === "Amazon") {
+      // console.log("Amazon", normalizedData);
       if (normalizedData.ShipmentType === "FORWARD") {
         if (normalizedData.Instructions === "ReadyForReceive") {
           order.status = "Ready To Ship";
@@ -329,10 +331,15 @@ const trackSingleOrder = async (order) => {
         ) {
           order.ndrStatus = "Delivered";
         }
+        const secondLastTracking =
+          Array.isArray(order.tracking) && order.tracking.length >= 2
+            ? order.tracking[order.tracking.length - 2]
+            : null;
+        const wasPreviousDeliveryAttempted =
+          secondLastTracking?.Instructions === "DeliveryAttempted";
         if (
           normalizedData.Instructions === "DeliveryAttempted" ||
-          order.tracking[order.tracking.length - 2].Instructions ===
-            "DeliveryAttempted"
+          wasPreviousDeliveryAttempted
         ) {
           console.log("awb", order.awb_number);
           order.status = "Undelivered";
@@ -508,7 +515,7 @@ const trackSingleOrder = async (order) => {
         Instructions: normalizedData.Instructions,
       });
       await order.save();
-      console.log("saved")
+      console.log("saved");
     }
   } catch (error) {
     console.error(
@@ -555,7 +562,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop();
+startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
