@@ -24,7 +24,7 @@ router.get("/user", isAuthorized, getUserTickets);
 router.get("/:id", getTicketById);
 
 // Update ticket status
-router.put("/:id/status", updateTicketStatus);
+router.put("/:id/status", isAuthorized, updateTicketStatus);
 
 // Delete a ticket by ID
 router.delete("/:id", deleteTicket);

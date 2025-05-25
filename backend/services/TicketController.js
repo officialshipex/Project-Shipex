@@ -77,21 +77,23 @@ const getAllTickets = async (req, res) => {
   }
 };
 
-// Get tickets for a specific user
 const getUserTickets = async (req, res) => {
   try {
-    const userId = req.user?._id || req.employee?._id;
-if (!userId) {
-  return res.status(401).json({ message: "Unauthorized: User not found" });
-}
-const tickets = await Ticket.find({ userId });
+    const userId =req.user?.userId || req.employee?.employeeId;
 
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+
+    const tickets = await Ticket.find({ userId })
+    // console.log("Tickets found for user:", tickets);
     res.status(200).json(tickets);
   } catch (error) {
     console.error("Error fetching user tickets:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Get a single ticket by ID
 const getTicketById = async (req, res) => {
@@ -110,6 +112,11 @@ const getTicketById = async (req, res) => {
 // Update ticket status
 const updateTicketStatus = async (req, res) => {
   try {
+    console.log("🔧 PUT /support/:id/status called");
+    console.log("Params:", req.params);
+    console.log("Body:", req.body);
+    console.log("User from auth middleware:", req.user || req.employee);
+
     const { status } = req.body;
     const validStatuses = ["active", "resolved", "deleted"];
 
@@ -129,10 +136,11 @@ const updateTicketStatus = async (req, res) => {
 
     res.status(200).json({ message: "Status updated successfully", ticket: updatedTicket });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error in updateTicketStatus:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Delete a ticket
 const deleteTicket = async (req, res) => {
