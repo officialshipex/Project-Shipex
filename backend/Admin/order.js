@@ -57,85 +57,15 @@ const filterOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [], // Include couriers in the response
         });
       }
 
-      // Apply userId or name/email/phone filters for employees
-      if (userId) {
-        const userObjId = new mongoose.Types.ObjectId(userId);
-        if (allocatedUserIds.includes(userObjId.toString())) {
-          filter.userId = userObjId;
-        } else {
-          return res.json({
-            orders: [],
-            totalPages: 0,
-            totalCount: 0,
-            currentPage: parseInt(page),
-          });
-        }
-      } else if (name || email || contactNumber) {
-        const userFilter = {};
-        if (name) {
-          if (!isNaN(name)) {
-            userFilter.$or = [
-              { fullname: { $regex: name, $options: "i" } },
-              { phoneNumber: { $regex: name, $options: "i" } },
-            ];
-          } else {
-            userFilter.fullname = { $regex: name, $options: "i" };
-          }
-        }
-        if (email) userFilter.email = { $regex: email, $options: "i" };
-        if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
-
-        const matchedUsers = await User.find(userFilter).select("_id");
-        const matchedIds = matchedUsers.map((u) => u._id.toString());
-
-        const validUserIds = matchedIds.filter((id) =>
-          allocatedUserIds.includes(id)
-        );
-
-        if (validUserIds.length > 0) {
-          filter.userId = {
-            $in: validUserIds.map((id) => new mongoose.Types.ObjectId(id)),
-          };
-        } else {
-          return res.json({
-            orders: [],
-            totalPages: 0,
-            totalCount: 0,
-            currentPage: parseInt(page),
-          });
-        }
-      } else {
-        // Default to all allocated users
-        filter.userId = {
-          $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
-        };
-      }
-    } else {
-      // If not employee, apply filters without user allocation restriction
-      if (userId) {
-        filter.userId = new mongoose.Types.ObjectId(userId);
-      } else if (name || email || contactNumber) {
-        const userFilter = {};
-        if (name) {
-          if (!isNaN(name)) {
-            userFilter.$or = [
-              { fullname: { $regex: name, $options: "i" } },
-              { phoneNumber: { $regex: name, $options: "i" } },
-            ];
-          } else {
-            userFilter.fullname = { $regex: name, $options: "i" };
-          }
-        }
-        if (email) userFilter.email = { $regex: email, $options: "i" };
-        if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
-
-        const matchedUsers = await User.find(userFilter).select("_id");
-        const matchedIds = matchedUsers.map((u) => u._id);
-        filter.userId = { $in: matchedIds };
-      }
+      filter.userId = {
+        $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    } else if (userId) {
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -150,11 +80,15 @@ const filterOrdersForEmployee = async (req, res) => {
 
     const totalPages = Math.ceil(totalCount / limit);
 
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
+
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: parseInt(page),
+      couriers, // Include couriers in the response
     });
   } catch (error) {
     console.error("Error filtering orders:", error);
@@ -221,6 +155,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [],
         });
       }
     }
@@ -236,6 +171,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [],
         });
       }
       filter.userId = userObjId;
@@ -283,12 +219,15 @@ const filterNdrOrdersForEmployee = async (req, res) => {
       .lean();
 
     const totalPages = Math.ceil(totalCount / limit);
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: parseInt(page),
+      couriers,
     });
   } catch (error) {
     console.error("Error filtering employee NDR orders:", error);
@@ -328,6 +267,7 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: page,
+          couriers: [], // Include couriers in the response
         });
       }
     }
@@ -343,6 +283,7 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: page,
+          couriers: [], // Include couriers in the response
         });
       }
       filter.userId = userObjId;
@@ -363,12 +304,15 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
 
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      couriers, // Include couriers in the response
     });
   } catch (error) {
     console.error("Error fetching Manual RTO orders (Employee):", error);
