@@ -220,6 +220,7 @@ const remittanceScheduleData = async () => {
       );
 
       if (dayDiff === planDays) {
+        console.log("000000")
         if (!user) {
           console.log(`User not found: ${remittance.userId}`);
           continue;
@@ -362,7 +363,7 @@ const remittanceScheduleData = async () => {
           } else {
             await new afterPlan(remittanceEntry).save();
           }
-         
+
           await SameDateDelivered.updateOne(
             { _id: remittance._id },
             { $set: { status: "Completed" } }
@@ -379,8 +380,7 @@ const remittanceScheduleData = async () => {
     console.error("❌ Error in remittance schedule:", error);
   }
 };
-
-
+remittanceScheduleData();
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
@@ -927,100 +927,47 @@ const remittanceTransactionData = async (req, res) => {
     });
   }
 };
-
+ 
 const courierCodRemittance = async (req, res) => {
   try {
-    const user = req.isEmployee ? req.employee._id : req.user._id;
-    let existingCourierCodRemittance;
-    // Fetch all delivered COD orders
-    const allDelhiveryOrders = await Order.find({ status: "Delivered" });
-    const codFilterData = allDelhiveryOrders.filter(
-      (item) => item.paymentDetails.method === "COD"
-    );
+    // Extract page and limit from query, with default values
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    for (const e of codFilterData) {
-      // Fetch the user's full name
-      const userNames = await users.findOne({ _id: e.userId });
+    // Aggregation pipeline with pagination
+    const CourierCodRemittanceData = await CourierCodRemittance.aggregate([
+      { $sort: { date: -1 } }, // Optional: sort by most recent first
+      { $skip: skip },
+      { $limit: limit },
+    ]);
 
-      if (!userNames) {
-        console.log(`User not found for order ${e.orderId}`);
-        continue; // Skip this order if the user is not found
-      }
-      existingCourierCodRemittance = await CourierCodRemittance.findOne({
-        userId: user,
-      });
+    // Get total count (for frontend pagination controls)
+    const totalCount = await CourierCodRemittance.countDocuments();
 
-      const lastTrackingUpdate =
-        e.tracking?.length > 0
-          ? e.tracking[e.tracking.length - 1]?.StatusDateTime
-          : "N/A";
-
-      if (existingCourierCodRemittance) {
-        // Check if the order already exists
-        const orderExists =
-          existingCourierCodRemittance.CourierCodRemittanceData.some(
-            (order) => String(order.orderID).trim() === String(e.orderId).trim()
-          );
-
-        if (!orderExists) {
-          // Update remittance only if order is new
-          existingCourierCodRemittance.TotalRemittance +=
-            e.paymentDetails.amount;
-          existingCourierCodRemittance.TotalRemittanceDue +=
-            e.paymentDetails.amount;
-
-          // Push new order data
-          existingCourierCodRemittance.CourierCodRemittanceData.push({
-            date: lastTrackingUpdate,
-            orderID: e.orderId,
-            userName: userNames.fullname,
-            PhoneNumber: userNames.phoneNumber,
-            Email: userNames.email,
-            courierProvider: e.courierServiceName,
-            AwbNumber: e.awb_number || "N/A",
-            CODAmount: e.paymentDetails.amount,
-            status: "Pending",
-          });
-
-          await existingCourierCodRemittance.save();
-        }
-      } else {
-        // If no remittance exists, create a new one
-        const newRemittance = new CourierCodRemittance({
-          userId: user,
-          TotalRemittance: e.paymentDetails.amount,
-          TransferredRemittance: 0,
-          TotalRemittanceDue: e.paymentDetails.amount,
-          CourierCodRemittanceData: [
-            {
-              date: lastTrackingUpdate,
-              orderID: e.orderId,
-              userName: userNames.fullname,
-              PhoneNumber: userNames.phoneNumber,
-              Email: userNames.email,
-              CODAmount: e.paymentDetails.amount,
-              courierProvider: e.courierServiceName, // Now `userNames` is always defined
-              AwbNumber: e.awb_number || "N/A",
-              CODAmount: e.paymentDetails.amount,
-              status: "Pending",
-            },
-          ],
-        });
-
-        await newRemittance.save();
-      }
-    }
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Courier COD remittance processed successfully.",
-      data: existingCourierCodRemittance,
+      data: {
+        CourierCodRemittanceData,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      },
     });
+
   } catch (error) {
-    console.error("Error processing COD remittance:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while retrieving transaction data.",
+      error: error.message,
+    });
   }
 };
+
+
 const CodRemittanceOrder = async (req, res) => {
   try {
     const user = req.isEmployee ? req.employee._id : req.user._id;
@@ -1045,7 +992,6 @@ const CodRemittanceOrder = async (req, res) => {
             console.warn(`User not found for order ID: ${order.orderId}`);
             return null;
           }
-
 
           // Check if already inserted
           const existing = await CodRemittanceOrders.findOne({
@@ -1100,10 +1046,8 @@ const CodRemittanceOrder = async (req, res) => {
     });
   }
 };
- 
+
 // CodRemittanceOrder
-
-
 
 const sellerremittanceTransactionData = async (req, res) => {
   try {
@@ -1304,70 +1248,70 @@ const exportOrderInRemittance = async (req, res) => {
     const ids = req.query.ids; // should be an array: ['REMID123', 'REMID456']
 
     if (!ids || !Array.isArray(ids)) {
-      return res.status(400).json({ message: 'Remittance IDs must be an array.' });
+      return res
+        .status(400)
+        .json({ message: "Remittance IDs must be an array." });
     }
 
     // Fetch remittance records
-    const remittances = await adminCodRemittance.find({
-      remitanceId: { $in: ids },
-    }).populate('orderDetails');
+    const remittances = await adminCodRemittance
+      .find({
+        remitanceId: { $in: ids },
+      })
+      .populate("orderDetails");
 
     // Flatten all order ObjectIds from each remittance's `orders` array
-    const allOrders = remittances.flatMap(remit => remit.orderDetails);
-    const orderIds=allOrders.flatMap(i=>i.orders)
+    const allOrders = remittances.flatMap((remit) => remit.orderDetails);
+    const orderIds = allOrders.flatMap((i) => i.orders);
     // Optional: Populate actual order data
-   const rawOrders = await Order.find(
-  { _id: { $in: orderIds } },
-  {
-    orderId: 1,
-    courierServiceName: 1,
-    awb_number: 1,
-    'paymentDetails.method': 1,
-    'paymentDetails.amount': 1,
-    tracking: 1, // Include tracking to extract delivery date
-  }
-);
+    const rawOrders = await Order.find(
+      { _id: { $in: orderIds } },
+      {
+        orderId: 1,
+        courierServiceName: 1,
+        awb_number: 1,
+        "paymentDetails.method": 1,
+        "paymentDetails.amount": 1,
+        tracking: 1, // Include tracking to extract delivery date
+      }
+    );
 
-// Extract only needed info and delivery date from tracking
-const orderDetails = rawOrders.map(order => {
-  const deliveryEvent = order.tracking.find(event =>
-    event.status?.toLowerCase() === 'delivered'
-  );
+    // Extract only needed info and delivery date from tracking
+    const orderDetails = rawOrders.map((order) => {
+      const deliveryEvent = order.tracking.find(
+        (event) => event.status?.toLowerCase() === "delivered"
+      );
 
-  return {
-    orderId: order.orderId,
-    courierServiceName: order.courierServiceName,
-    awb_number: order.awb_number,
-    paymentMethod: order.paymentDetails?.method,
-    paymentAmount: order.paymentDetails?.amount,
-    deliveryDate: deliveryEvent?.StatusDateTime
-      ? new Date(deliveryEvent.StatusDateTime).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-      : null,
-  };
-});
+      return {
+        orderId: order.orderId,
+        courierServiceName: order.courierServiceName,
+        awb_number: order.awb_number,
+        paymentMethod: order.paymentDetails?.method,
+        paymentAmount: order.paymentDetails?.amount,
+        deliveryDate: deliveryEvent?.StatusDateTime
+          ? new Date(deliveryEvent.StatusDateTime).toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+          : null,
+      };
+    });
 
- console.log("--------->",orderDetails)
-res.json({
-  success: true,
-  totalOrders: orderDetails.length,
-  orders: orderDetails,
-});
-
-
+    console.log("--------->", orderDetails);
+    res.json({
+      success: true,
+      totalOrders: orderDetails.length,
+      orders: orderDetails,
+    });
   } catch (error) {
-    console.error('Error exporting remittance orders:', error);
-    res.status(500).json({ message: 'Server error while exporting remittance orders' });
+    console.error("Error exporting remittance orders:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while exporting remittance orders" });
   }
 };
-
-
-
-
 
 module.exports = {
   codPlanUpdate,
@@ -1385,5 +1329,5 @@ module.exports = {
   sellerremittanceTransactionData,
   CourierdownloadSampleExcel,
   uploadCourierCodRemittance,
-  exportOrderInRemittance
+  exportOrderInRemittance,
 };
