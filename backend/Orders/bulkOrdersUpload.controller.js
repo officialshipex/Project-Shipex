@@ -7,67 +7,7 @@ const xlsx = require("xlsx");
 const File = require("../model/bulkOrderFiles.model.js");
 const bulkOrdersExcel = require("../model/bulkOrdersExcel.model.js");
 const bulkOrdersCSV = require("../model/bulkOrderCSV.model.js");
-
-// const requiredHeaders = [
-//     'orderId', 'paymentType', 'shippingCustomerFirstName', 'shippingCustomerLastName',
-//     'shippingAddress', 'landmark', 'customerPhoneNumber', 'city', 'state', 'pincode',
-//     'weightInGrams', 'length', 'height', 'breadth',
-//     'shippingCharges', 'codCharges', 'taxAmount', 'discount', 'sku',
-//     'productDetails', 'quantity', 'price'
-// ];
-
-// const bulkOrderUpload = async (req, res) => {
-//     const filePath = req.file.path;
-
-//     const orders = [];
-
-//     try {
-//         fs.createReadStream(filePath)
-//             .pipe(csvParser())
-//             .on('headers', (headers) => {
-//                 const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-//                 if (missingHeaders.length > 0) {
-//                     return res.status(400).json({ error: `Missing headers: ${missingHeaders.join(', ')}` });
-//                 }
-//             })
-//             .on('data', (row) => {
-//                 // Map dimensions into a nested object
-//                 const { length, height, breadth, ...rest } = row;
-//                 orders.push({
-//                     ...rest,
-//                     dimensions: {
-//                         length: parseFloat(length),
-//                         height: parseFloat(height),
-//                         breadth: parseFloat(breadth),
-//                     },
-//                     weightInGrams: parseFloat(row.weightInGrams),
-//                     shippingCharges: parseFloat(row.shippingCharges),
-//                     codCharges: parseFloat(row.codCharges),
-//                     taxAmount: parseFloat(row.taxAmount),
-//                     discount: parseFloat(row.discount),
-//                     quantity: parseInt(row.quantity),
-//                     price: parseFloat(row.price),
-//                 });
-//             })
-//             .on('end', async () => {
-//                 try {
-//                     await Order.insertMany(orders);
-//                     res.status(200).json({ message: 'Orders uploaded successfully!' });
-//                 } catch (err) {
-//                     res.status(500).json({ error: 'Failed to insert orders into the database', details: err.message });
-//                 } finally {
-//                     fs.unlinkSync(filePath); // Delete the uploaded file
-//                 }
-//             });
-//     } catch (err) {
-//         res.status(500).json({ error: 'Error processing the file', details: err.message });
-//     }
-// };
-
-
-
-
-
+const PickupAddress = require("../models/pickupAddress.model.js");
 
 
 const downloadSampleExcel = async (req, res) => {
@@ -89,7 +29,7 @@ const downloadSampleExcel = async (req, res) => {
       { header: "*Length (cm)", key: "length", width: 20 },
       { header: "*Width (cm)", key: "width", width: 20 },
       { header: "*Height (cm)", key: "height", width: 20 },
-      
+
       // Mandatory Product 1
       { header: "*Product 1 Name", key: "product1_name", width: 30 },
       { header: "*Product 1 SKU", key: "product1_sku", width: 30 },
@@ -99,14 +39,30 @@ const downloadSampleExcel = async (req, res) => {
       // Optional Product 2
       { header: "Product 2 Name (Optional)", key: "product2_name", width: 30 },
       { header: "Product 2 SKU (Optional)", key: "product2_sku", width: 30 },
-      { header: "Product 2 Quantity (Optional)", key: "product2_quantity", width: 30 },
-      { header: "Product 2 Unit Price (Optional)", key: "product2_price", width: 30 },
+      {
+        header: "Product 2 Quantity (Optional)",
+        key: "product2_quantity",
+        width: 30,
+      },
+      {
+        header: "Product 2 Unit Price (Optional)",
+        key: "product2_price",
+        width: 30,
+      },
 
       // Optional Product 3
       { header: "Product 3 Name (Optional)", key: "product3_name", width: 30 },
       { header: "Product 3 SKU (Optional)", key: "product3_sku", width: 30 },
-      { header: "Product 3 Quantity (Optional)", key: "product3_quantity", width: 30 },
-      { header: "Product 3 Unit Price (Optional)", key: "product3_price", width: 30 },
+      {
+        header: "Product 3 Quantity (Optional)",
+        key: "product3_quantity",
+        width: 30,
+      },
+      {
+        header: "Product 3 Unit Price (Optional)",
+        key: "product3_price",
+        width: 30,
+      },
 
       { header: "*Method (COD/Prepaid)", key: "method", width: 20 },
     ];
@@ -165,15 +121,11 @@ const downloadSampleExcel = async (req, res) => {
     res.end();
   } catch (error) {
     console.error("Error generating Excel file:", error);
-    res.status(500).json({ error: "Error generating Excel file", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Error generating Excel file", details: error.message });
   }
 };
-
-
-
-
-
-
 
 // Helper function to read CSV file and store in database
 function parseCSV(filePath, fileData) {
@@ -277,132 +229,10 @@ function parseExcel(filePath) {
   return data;
 }
 
-// Controller function to handle file upload and order processing
-// const bulkOrder = async (req, res) => {
-//   const userID=req.user._id
-//   try {
-//     if (!req.file) {
-//       return res.status(400).json({ error: "No file uploaded" });
-//     }
 
-//     // Save file metadata
-//     const fileData = new File({
-//       filename: req.file.filename,
-//       date: new Date(),
-//       status: "Processing",
-//     });
-//     await fileData.save();
-
-//     // Determine the file extension
-//     const fileExtension = path.extname(req.file.originalname).toLowerCase();
-//     let orders = [];
-
-//     // Parse the file based on its extension
-//     if (fileExtension === ".csv") {
-//       orders = await parseCSV(req.file.path, fileData);
-//     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
-//       orders = parseExcel(req.file.path);
-//     } else {
-//       return res.status(400).json({ error: "Unsupported file format" });
-//     }
-  
-//      // **Validation: Check if file contains data**
-//      if (!orders || orders.length === 0) {
-//       return res.status(400).json({ error: "The uploaded file is empty or contains invalid data" });
-//     }
-//     // Map parsed data to Order model format
-//     const defaultPickupAddress = {
-//       contactName: "Default Name",
-//       email: "default@example.com",
-//       phoneNumber: "0000000000",
-//       address: "Default Address",
-//       pinCode: "000000",
-//       city: "Default City",
-//       state: "Default State"
-//     };
-    
-//     const orderDocs = await Promise.all(orders.map(async (row) => {
-      
-//       const deadWeights = parseFloat(row["*deadWeight(kg)"] || 0); // Keep in kg
-
-// const volumetricWeights = (
-//   (parseFloat(row["*length(cm)"] || 0) *
-//   parseFloat(row["*width(cm)"] || 0) *
-//   parseFloat(row["*height(cm)"] || 0)) / 5000 // Keep in kg
-// );
-
-// const applicableWeights = Math.max(deadWeights, volumetricWeights); // Keep in kg
-//       let orderId;
-//       let isUnique = false;
-    
-//       while (!isUnique) {
-//         orderId = Math.floor(100000 + Math.random() * 900000); // Generates a random six-digit number
-//         const existingOrder = await Order.findOne({ orderId });
-//         if (!existingOrder) {
-//           isUnique = true;
-//         }
-//       }
-    
-//       return {
-//         userId: userID,
-//         orderId: orderId,
-//         pickupAddress: defaultPickupAddress, // Setting default pickup details
-//         receiverAddress: {
-//           contactName: row["*Reciver contactName"] || "Unknown",
-//           email: row["*Reciver email"] || "unknown@example.com",
-//           phoneNumber: row["*Reciver phoneNumber"] || "0000000000",
-//           address: row["*Reciver address"] || "No Address",
-//           pinCode: row["*Reciver pinCode"] || "000000",
-//           city: row["*Reciver city"] || "Unknown City",
-//           state: row["*Reciver state"] || "Unknown State"
-//         },
-//         paymentDetails: {
-//           method: row["*method(COD/Prepaid)"] || "Prepaid",
-//           amount: parseFloat(row["*unitPrice"] || 0)
-//         },
-//         productDetails: [{
-//           id: 1,
-//           quantity: parseInt(row["*quantity"] || 1),
-//           name: row["*Productname"] || "Unknown Product",
-//           sku: row["*sku"] || "UNKNOWN_SKU",
-//           unitPrice: parseFloat(row["*unitPrice"] || 0)
-//         }],
-//         packageDetails: {
-//           deadWeight: parseFloat(row["*deadWeight(kg)"] || 0),
-//           applicableWeight: applicableWeights,
-//           volumetricWeight: {
-//             length: parseFloat(row["*length(cm)"] || 0),
-//             width: parseFloat(row["*width(cm)"] || 0),
-//             height: parseFloat(row["*height(cm)"] || 0)
-//           }
-//         },
-//         status: "new"
-//       };
-//     }));
-//     console.log("-------->",orderDocs)
-//     // Insert all orders in bulk
-//     await Order.insertMany(orderDocs);
-   
-//     // Update file metadata
-//     fileData.status = "Completed";
-//     fileData.noOfOrders = orderDocs.length;
-//     fileData.successfullyUploaded = orderDocs.length; // Assuming all are successful initially
-//     await fileData.save();
-
-//     return res.status(200).json({
-//       message: "bulk order upload  successfully",
-//       file: fileData,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res
-//       .status(500)
-//       .json({ error: "An error occurred while processing the file" });
-//   }
-// };
 const bulkOrder = async (req, res) => {
   try {
-    const userID=req.user._id
+    const userID = req.user._id;
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -430,18 +260,36 @@ const bulkOrder = async (req, res) => {
 
     // Validation: Check if file contains data
     if (!orders || orders.length === 0) {
-      return res.status(400).json({ error: "The uploaded file is empty or contains invalid data" });
+      return res
+        .status(400)
+        .json({ error: "The uploaded file is empty or contains invalid data" });
     }
 
-    const defaultPickupAddress = {
-      contactName: "Default Name",
-      email: "default@example.com",
-      phoneNumber: "0000000000",
-      address: "Default Address",
-      pinCode: "000000",
-      city: "Default City",
-      state: "Default State",
-    };
+    // Find user's default pickup address from the DB
+    const defaultAddress = await PickupAddress.findOne({
+      userId: userID,
+      isPrimary: true,
+    });
+
+    const defaultPickupAddress = defaultAddress
+      ? {
+          contactName: defaultAddress.pickupAddress.contactName,
+          email: defaultAddress.pickupAddress.email,
+          phoneNumber: defaultAddress.pickupAddress.phoneNumber,
+          address: defaultAddress.pickupAddress.address,
+          pinCode: defaultAddress.pickupAddress.pinCode,
+          city: defaultAddress.pickupAddress.city,
+          state: defaultAddress.pickupAddress.state,
+        }
+      : {
+          contactName: "Default Name",
+          email: "default@example.com",
+          phoneNumber: "0000000000",
+          address: "Default Address",
+          pinCode: "000000",
+          city: "Default City",
+          state: "Default State",
+        };
 
     const orderDocs = await Promise.all(
       orders.map(async (row, index) => {
@@ -455,7 +303,7 @@ const bulkOrder = async (req, res) => {
 
         let orderId;
         let isUnique = false;
-      
+
         while (!isUnique) {
           orderId = Math.floor(100000 + Math.random() * 900000); // Generates a random six-digit number
           const existingOrder = await Order.findOne({ orderId });
@@ -465,8 +313,8 @@ const bulkOrder = async (req, res) => {
         }
 
         return {
-        userId: userID,
-        orderId: orderId,
+          userId: userID,
+          orderId: orderId,
           pickupAddress: defaultPickupAddress,
           receiverAddress: {
             contactName: row["*Receiver Contact Name"] || "Unknown",
@@ -498,8 +346,12 @@ const bulkOrder = async (req, res) => {
                     id: 2,
                     name: row["Product 2 Name (Optional)"],
                     sku: row["Product 2 SKU (Optional)"] || "UNKNOWN_SKU",
-                    quantity: parseInt(row["Product 2 Quantity (Optional)"] || 1),
-                    unitPrice: parseFloat(row["Product 2 Unit Price (Optional)"] || 0),
+                    quantity: parseInt(
+                      row["Product 2 Quantity (Optional)"] || 1
+                    ),
+                    unitPrice: parseFloat(
+                      row["Product 2 Unit Price (Optional)"] || 0
+                    ),
                   },
                 ]
               : []),
@@ -509,8 +361,12 @@ const bulkOrder = async (req, res) => {
                     id: 3,
                     name: row["Product 3 Name (Optional)"],
                     sku: row["Product 3 SKU (Optional)"] || "UNKNOWN_SKU",
-                    quantity: parseInt(row["Product 3 Quantity (Optional)"] || 1),
-                    unitPrice: parseFloat(row["Product 3 Unit Price (Optional)"] || 0),
+                    quantity: parseInt(
+                      row["Product 3 Quantity (Optional)"] || 1
+                    ),
+                    unitPrice: parseFloat(
+                      row["Product 3 Unit Price (Optional)"] || 0
+                    ),
                   },
                 ]
               : []),
@@ -544,11 +400,12 @@ const bulkOrder = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An error occurred while processing the file" });
+    res
+      .status(500)
+      .json({ error: "An error occurred while processing the file" });
   }
 };
 
 // module.exports = { bulkOrder };
-
 
 module.exports = { bulkOrder, downloadSampleExcel };

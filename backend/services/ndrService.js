@@ -261,7 +261,7 @@ const submitNdrToAmazon = async (
     // Send request
     const response = await axios.post(url, payload, { headers });
 
-    console.log("response",response)
+    console.log("response", response);
     console.log("Amazon NDR Response:", {
       status: response.status,
       headers: response.headers,
@@ -449,114 +449,155 @@ const submitNdrToDtdc = async (
   remarks
 ) => {
   const failedOrders = [];
-  const payload = [];
-  console.log("asd", awb_number, customer_code, rtoAction, remarks);
 
+  // Validation
   if (!awb_number || !customer_code || !rtoAction) {
-    failedOrders.push({ awb_number, error: "Missing required fields" });
-  } else if (rtoAction === "1" && (!remarks || remarks.trim() === "")) {
-    failedOrders.push({
-      awb_number,
-      error: "Remarks required for Re-attempt (rtoAction 1)",
-    });
-  } else {
-    const rtoActionValue =
-      rtoAction === "RE-ATTEMPT" ? "1" : rtoAction === "RTO" ? "2" : rtoAction;
-    payload.push({
+    return {
+      status: 400,
+      error: "Missing required fields",
+      failedOrders: [{ awb_number, error: "Required fields are missing" }],
+    };
+  }
+
+  const rtoActionValue =
+    rtoAction === "RE-ATTEMPT" ? "1" : rtoAction === "RTO" ? "2" : rtoAction;
+
+  if (rtoActionValue === "1" && (!remarks || remarks.trim() === "")) {
+    return {
+      status: 400,
+      error: "Remarks required for Re-attempt",
+      failedOrders: [{ awb_number, error: "Remarks required for Re-attempt" }],
+    };
+  }
+
+  const payload = [
+    {
       consgNumber: awb_number,
       custCode: process.env.DTDC_USERNAME,
       rtoAction: rtoActionValue,
       remarks: remarks || "",
-    });
-  }
-
-  if (payload.length === 0) {
-    return {
-      status: 400,
-      error: "No valid orders to submit",
-      failedOrders,
-    };
-  }
+    },
+  ];
 
   const url = "http://bodb.dtdc.com/ctbs-sraa-api/sraa/validateAndSave";
-  const auth = {
-    username: process.env.DTDC_USERNAME,
-    password: process.env.DTDC_PASSWORD,
-  };
 
   try {
     const response = await axios.post(url, payload, {
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Basic R0w5NzExOkdMOTcxMUAyMDI1",
+        Authorization: `Basic R0w5NzExOkdMOTcxMUAyMDI1`,
       },
     });
 
-    const result = response.data; // single object since only 1 order
-    console.log(
-      "re",
-      response.data.result.invalidConsignmentResponse
-        .consignmentsNotFoundResponse
-    );
+    const result = response.data;
+    console.log("DTDC Response:", result);
 
-    const originalOrder = payload[0];
+    const {
+      validConsignmentResponse,
+      invalidConsignmentResponse,
+    } = result?.result || {};
 
-    const isConsignmentValid =
-      result?.result?.validConsignmentResponse?.consignments &&
-      result.result.validConsignmentResponse.consignments.length > 0;
+    const {
+      successConsignmentList = [],
+      failedConsignmentList = [],
+      pendingApprovalConsignmentList = [],
+    } = validConsignmentResponse || {};
 
-    if (result.status === "OK" && isConsignmentValid) {
-      const orderInDb = await Order.findOne({
-        awb_number: originalOrder.consgNumber,
+    const notFound =
+      invalidConsignmentResponse?.consignmentsNotFoundResponse || [];
+
+    // Handle invalid or not found AWB
+    if (notFound.length > 0) {
+      failedOrders.push({
+        awb_number,
+        error: "Invalid consignment: Not found in DTDC records",
+        details: notFound,
       });
+    }
 
-      if (orderInDb) {
-        if (!Array.isArray(orderInDb.ndrHistory)) {
-          orderInDb.ndrHistory = [];
-        }
+    // Handle failed consignments
+    if (failedConsignmentList.length > 0) {
+      failedOrders.push({
+        awb_number,
+        error: "DTDC marked consignment as failed",
+        details: failedConsignmentList,
+      });
+    }
+console.log("successConsignmentList", successConsignmentList);
+    // Handle success consignments
+    if (successConsignmentList.some(item => item.consgNumber === awb_number)) {
+      const orderInDb = await Order.findOne({ awb_number });
 
-        const latestInstruction =
-          orderInDb.tracking?.[orderInDb.tracking.length - 1]?.Instructions ||
-          originalOrder.remarks;
-
-        const ndrHistoryEntry = {
-          date: new Date(),
-          action: originalOrder.rtoAction === "1" ? "RE-ATTEMPT" : "RTO",
-          remark: latestInstruction,
-          attempt: orderInDb.ndrHistory.length + 1,
-        };
-
-        orderInDb.ndrStatus = "Action_Requested";
-        orderInDb.status = "Undelivered";
-        orderInDb.ndrHistory.push(ndrHistoryEntry);
-        await orderInDb.save();
-
+      if (!orderInDb) {
         return {
-          status: 200,
-          error: "DTDC NDR submission completed",
-          success: result.status === "OK",
+          status: 404,
+          error: "Order not found in DB",
           failedOrders,
-          dtdcResponse: result,
         };
       }
-    }
-    if (!isConsignmentValid) {
+
+      if (!Array.isArray(orderInDb.ndrHistory)) {
+        orderInDb.ndrHistory = [];
+      }
+
+      const latestInstruction =remarks;
+
+      const ndrHistoryEntry = {
+        date: new Date(),
+        action: rtoActionValue === "1" ? "RE-ATTEMPT" : "RTO",
+        remark: latestInstruction,
+        attempt: orderInDb.ndrHistory.length + 1,
+      };
+
+      orderInDb.ndrStatus = "Action_Requested";
+      orderInDb.status = "Undelivered";
+      orderInDb.ndrHistory.push(ndrHistoryEntry);
+      await orderInDb.save();
+      console.log("Order updated:", orderInDb);
+
       return {
-        status: 401,
-        error: "Invalid consignment",
-        success: false,
+        status: 200,
+        success: true,
+        message: "DTDC NDR submission successful",
+        failedOrders,
+        dtdcResponse: result, 
       };
     }
-  } catch (error) {
-    console.error("DTDC Submission Error:", error?.response || error.message);
+
+    // Handle pending approval case
+    if (pendingApprovalConsignmentList.length > 0) {
+      return {
+        status: 202,
+        success: true,
+        message: "NDR submitted and is pending DTDC approval",
+        pendingApproval: pendingApprovalConsignmentList,
+        failedOrders,
+        dtdcResponse: result,
+      };
+    }
+
+    // If nothing was successful or pending
     return {
+      status: 422,
       success: false,
+      error: "Consignment validation failed or not processed",
+      failedOrders,
+      dtdcResponse: result,
+    };
+  } catch (error) {
+    console.error(
+      "DTDC Submission Error:",
+      error?.response?.data || error.message
+    );
+    return {
       status: 500,
+      success: false,
       error: "Error occurred while submitting NDR to DTDC",
       details: error?.response?.data || error.message,
     };
   }
 };
+
 
 module.exports = {
   getOrderDetails,

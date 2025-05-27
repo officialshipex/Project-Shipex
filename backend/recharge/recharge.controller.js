@@ -24,7 +24,7 @@ const createOrder = async (req, res) => {
     // Use walletId from body if present, otherwise fallback to user's wallet
     const walletId = walletIdFromBody || user?.Wallet;
 
-    console.log("walet",walletId)
+    console.log("walet", walletId);
 
     if (!walletId) {
       return res.status(400).json({
@@ -55,7 +55,6 @@ const createOrder = async (req, res) => {
     });
   }
 };
-
 
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;
@@ -152,7 +151,17 @@ const razorpayWebhook = async (req, res) => {
       });
     }
 
-    const transactionId = await generateUniqueTransactionId();
+    const rrn = fullPayment.acquirer_data?.rrn;
+    if (rrn && typeof rrn === "string" && rrn.trim() !== "") {
+      console.log("✅ Using Razorpay RRN as transaction ID:", rrn);
+    } else {
+      console.log(
+        "⚠️ RRN missing or invalid, generating fallback transaction ID"
+      );
+    }
+    const transactionId =
+      rrn && rrn.trim() !== "" ? rrn : await generateUniqueTransactionId();
+
     const amount = payment.amount / 100;
 
     const paymentDetails = {
@@ -334,4 +343,47 @@ const getWalletHistoryByUserId = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId };
+const getWalletBalanceAndHoldAmount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    // Step 1: Get the user's wallet ID
+    const user = await User.findById(userId).select("Wallet").lean();
+    if (!user?.Wallet) {
+      return res.status(404).json({ message: "Wallet not found for user." });
+    }
+
+    // Step 2: Fetch balance and holdAmount from wallet
+    const wallet = await Wallet.findById(user.Wallet)
+      .select("balance holdAmount")
+      .lean();
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet data not found." });
+    }
+
+    // Step 3: Return the data
+    return res.status(200).json({
+      success: true,
+      balance: wallet.balance || 0,
+      holdAmount: wallet.holdAmount || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching wallet balance and holdAmount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching wallet balance and hold amount",
+    });
+  }
+};
+
+module.exports = {
+  createOrder,
+  razorpayWebhook,
+  getWalletHistoryByUserId,
+  getWalletBalanceAndHoldAmount,
+};
