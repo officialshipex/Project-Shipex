@@ -24,7 +24,7 @@ const createOrder = async (req, res) => {
     // Use walletId from body if present, otherwise fallback to user's wallet
     const walletId = walletIdFromBody || user?.Wallet;
 
-    console.log("walet",walletId)
+    console.log("walet", walletId);
 
     if (!walletId) {
       return res.status(400).json({
@@ -55,7 +55,6 @@ const createOrder = async (req, res) => {
     });
   }
 };
-
 
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;
@@ -152,7 +151,17 @@ const razorpayWebhook = async (req, res) => {
       });
     }
 
-    const transactionId = await generateUniqueTransactionId();
+    const rrn = fullPayment.acquirer_data?.rrn;
+    if (rrn && typeof rrn === "string" && rrn.trim() !== "") {
+      console.log("✅ Using Razorpay RRN as transaction ID:", rrn);
+    } else {
+      console.log(
+        "⚠️ RRN missing or invalid, generating fallback transaction ID"
+      );
+    }
+    const transactionId =
+      rrn && rrn.trim() !== "" ? rrn : await generateUniqueTransactionId();
+
     const amount = payment.amount / 100;
 
     const paymentDetails = {
@@ -372,5 +381,9 @@ const getWalletBalanceAndHoldAmount = async (req, res) => {
   }
 };
 
-
-module.exports = { createOrder, razorpayWebhook, getWalletHistoryByUserId,getWalletBalanceAndHoldAmount };
+module.exports = {
+  createOrder,
+  razorpayWebhook,
+  getWalletHistoryByUserId,
+  getWalletBalanceAndHoldAmount,
+};

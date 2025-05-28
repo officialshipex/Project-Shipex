@@ -11,8 +11,8 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    channelId:{
-      type:Number,
+    channelId: {
+      type: Number,
     },
     pickupAddress: {
       contactName: { type: String, required: true },
@@ -56,6 +56,7 @@ const orderSchema = new mongoose.Schema(
       // required: true,
       unique: true,
     },
+    zone: { type: String },
 
     paymentDetails: {
       method: { type: String, enum: ["COD", "Prepaid"], required: true },
@@ -99,9 +100,9 @@ const orderSchema = new mongoose.Schema(
       type: String,
     },
     RTOCharges: { type: String },
-    COD:{type: String},
+    COD: { type: String },
     reattempt: { type: Boolean },
-    commodityId:{type:Number},
+    commodityId: { type: Number },
     tracking: [
       {
         status: { type: String },

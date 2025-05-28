@@ -6,6 +6,7 @@ const User = require("../../../models/User.model");
 const { s3 } = require("../../../config/s3");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { checkAmazonServiceability } = require("./couriers.controller");
+const { getZone } = require("../../../Rate/zoneManagementController");
 
 const createShipmentAmazon = async (
   serviceDetails,
@@ -23,6 +24,14 @@ const createShipmentAmazon = async (
     const currentOrder = await Order.findById(orderId);
     if (!currentOrder) {
       return { success: false, message: "Order not found" };
+    }
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
+      // res
+    );
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
     }
 
     const currentWallet = await Wallet.findById(walletId);
@@ -126,6 +135,7 @@ const createShipmentAmazon = async (
     currentOrder.courierServiceName = serviceDetails.courierServiceName;
     currentOrder.shipmentCreatedAt = new Date();
     currentOrder.label = labelUrl;
+    currentOrder.zone=zone.zone;
 
     await currentOrder.save();
 

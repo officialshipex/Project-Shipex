@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 
 const pickupAddress = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  isPrimary: { type: Boolean, default: false },
   pickupAddress: {
     contactName: { type: String, required: true },
     email: { type: String, required: true },

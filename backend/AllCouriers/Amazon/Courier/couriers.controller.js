@@ -4,6 +4,7 @@ const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const User = require("../../../models/User.model");
 const { s3 } = require("../../../config/s3");
+const { getZone } = require("../../../Rate/zoneManagementController");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const createOneClickShipment = async (req, res) => {
@@ -17,6 +18,14 @@ const createOneClickShipment = async (req, res) => {
     const currentOrder = await Order.findById(id);
     if (!currentOrder) {
       return res.status(404).json({ message: "Order not found" });
+    }
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode,
+      // res
+    );
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
     }
     const user = await User.findById(currentOrder.userId);
     if (!user) {
@@ -123,6 +132,7 @@ const createOneClickShipment = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.label = labelUrl;
+      currentOrder.zone=zone.zone;
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
@@ -253,7 +263,7 @@ const getShipmentTracking = async (trackingId) => {
         },
       }
     );
-
+// console.log("response", response.data.payload);
     console.log(
       "Tracking Information:",
       response.data.payload.eventHistory[

@@ -5,6 +5,7 @@ require("dotenv").config();
 const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
+const { getZone } = require("../../../Rate/zoneManagementController");
 
 // const router = express.Router();
 
@@ -35,7 +36,15 @@ const createOrder = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Order not found" });
     }
-
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
+      // res
+    );
+    console.log("zone", zone);
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
+    }
     const user = await User.findById(currentOrder.userId);
     if (!user) {
       return res
@@ -146,6 +155,7 @@ const createOrder = async (req, res) => {
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.zone = zone.zone;
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);

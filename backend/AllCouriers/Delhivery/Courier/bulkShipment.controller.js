@@ -9,6 +9,7 @@ const Order = require("../../../models/newOrder.model");
 const crypto = require("crypto");
 const Wallet = require("../../../models/wallet");
 const { createClientWarehouse } = require("./couriers.controller");
+const { getZone } = require("../../../Rate/zoneManagementController");
 
 const createShipmentFunctionDelhivery = async (
   selectedServiceDetails,
@@ -24,7 +25,14 @@ const createShipmentFunctionDelhivery = async (
     const createClientWarehouses = await createClientWarehouse(
       currentOrder.pickupAddress
     );
-
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
+      // res
+    );
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
+    }
     const waybills = await fetchBulkWaybills(1);
 
     const payment_type =
@@ -72,7 +80,7 @@ const createShipmentFunctionDelhivery = async (
 
     // Fetch the latest wallet details before proceeding
     let currentWallet = await Wallet.findById(walletId);
-  const walletHoldAmount = currentWallet?.holdAmount || 0;
+    const walletHoldAmount = currentWallet?.holdAmount || 0;
     const effectiveBalance = currentWallet.balance - walletHoldAmount;
     if (effectiveBalance >= finalCharges) {
       const response = await axios.post(delUrl, payload, {
@@ -95,6 +103,7 @@ const createShipmentFunctionDelhivery = async (
           finalCharges === "N/A" ? 0 : parseInt(finalCharges);
         currentOrder.courierServiceName = selectedServiceDetails.name;
         currentOrder.shipmentCreatedAt = new Date();
+        currentOrder.zone=zone.zone;
 
         await currentOrder.save(); // Save the updated order
 
@@ -110,7 +119,8 @@ const createShipmentFunctionDelhivery = async (
               channelOrderId: currentOrder.orderId || null,
               category: "debit",
               amount: balanceToBeDeducted,
-              balanceAfterTransaction: updatedWallet.balance - balanceToBeDeducted,
+              balanceAfterTransaction:
+                updatedWallet.balance - balanceToBeDeducted,
               date: new Date().toISOString().slice(0, 16).replace("T", " "),
               awb_number: result.waybill || "",
               description: `Freight Charges Applied`,
@@ -142,6 +152,5 @@ const createShipmentFunctionDelhivery = async (
     };
   }
 };
-
 
 module.exports = { createShipmentFunctionDelhivery };
