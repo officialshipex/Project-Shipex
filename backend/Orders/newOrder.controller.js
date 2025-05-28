@@ -256,24 +256,73 @@ const getOrders = async (req, res) => {
     const userId = req.user?._id || req.employee?._id;
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit =
-      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-    const status = req.query.status;
-    // console.log(status)
 
-    const filter = { userId };
+    const {
+      status,
+      searchQuery,  // single unified search input
+      orderId,
+      paymentType,
+      startDate,
+      endDate,
+    } = req.query;
+
+    // Start filter with userId only
+    const andConditions = [{ userId }];
+
+    // Filter by status if provided and not 'All'
     if (status && status !== "All") {
-      filter.status = status;
+      andConditions.push({ status });
     }
 
+    // Unified search on Name OR Email OR PhoneNumber
+    if (searchQuery) {
+      andConditions.push({
+        $or: [
+          { "receiverAddress.contactName": { $regex: searchQuery, $options: "i" } },
+          { "receiverAddress.email": { $regex: searchQuery, $options: "i" } },
+          { "receiverAddress.phoneNumber": { $regex: searchQuery, $options: "i" } },
+        ],
+      });
+    }
+    console.log(searchQuery)
+
+    // Filter by Order ID if valid
+    if (orderId) {
+      const orderIdNum = parseInt(orderId);
+      if (!isNaN(orderIdNum)) {
+        andConditions.push({ orderId: orderIdNum });
+      }
+    }
+
+    // Filter by payment type if provided
+    if (paymentType) {
+      andConditions.push({ "paymentDetails.method": paymentType });
+    }
+
+    // Filter by date range if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // End of day
+      andConditions.push({ createdAt: { $gte: start, $lte: end } });
+    }
+
+    // Final Mongo filter
+    const filter = andConditions.length > 0 ? { $and: andConditions } : {};
+
+    // Count total docs matching filter
     const totalCount = await Order.countDocuments(filter);
 
+    // Query with pagination and sort by newest first
     let query = Order.find(filter).sort({ createdAt: -1 });
     if (limit) query = query.skip(skip).limit(limit);
 
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+    // console.log(orders)
+    
 
     res.json({
       orders,
@@ -286,6 +335,8 @@ const getOrders = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
 
 const getOrdersByNdrStatus = async (req, res) => {
   try {
