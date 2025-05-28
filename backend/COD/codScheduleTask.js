@@ -16,8 +16,8 @@ const CourierCodRemittance = require("./CourierCodRemittance.js");
 const CodRemittanceOrders = require("./CodRemittanceOrder.model.js");
 const SameDateDelivered = require("./samedateDelivery.model.js");
 // Core function: process remittances (no req/res here)
-const processCourierCodRemittance=async()=> {
-    // console.log("----------->")
+const processCourierCodRemittance = async () => {
+  // console.log("----------->")
   // Step 1: Get all Delivered COD Orders
   const codDeliveredOrders = await Order.aggregate([
     {
@@ -83,8 +83,83 @@ const processCourierCodRemittance=async()=> {
     success: true,
     message: "Courier COD remittance processed successfully.",
   };
-}
-cron.schedule("* */12 * * *", () => {
-  console.log("Running scheduled task at 1:45 AM: Fetching orders...");
-  processCourierCodRemittance();
-});
+};
+
+cron.schedule(
+  "0 0,12 * * *",
+  () => {
+    console.log("Running scheduled task every 12 hours (IST)");
+    processCourierCodRemittance();
+  },
+  {
+    timezone: "Asia/Kolkata",
+  }
+);
+
+const processCodRemittanceOrder = async () => {
+  const codDeliveredOrders = await Order.aggregate([
+    {
+      $match: {
+        status: "Delivered",
+        "paymentDetails.method": "COD",
+      },
+    },
+  ]);
+  const remittedOrders = await CodRemittanceOrders.aggregate([
+    {
+      $project: {
+        _id: 0,
+        orderID: 1,
+      },
+    },
+  ]);
+  // Extract orderIDs already remitted
+  const remittedOrderIds = remittedOrders.map((entry) => Number(entry.orderID));
+  //Filter unremitted COD Delivered orders
+  const newCodDeliveredOrders = codDeliveredOrders.filter(
+    (order) => !remittedOrderIds.includes(order.orderId)
+  );
+  const ordersToProcess =
+    remittedOrderIds.length === 0 ? codDeliveredOrders : newCodDeliveredOrders;
+
+  for (const order of ordersToProcess) {
+    const userData = await users.findOne({ _id: order.userId });
+    if (!userData) {
+      console.log(`User not found for order ${order.orderId}`);
+      continue;
+    }
+
+    const lastTrackingUpdate =
+      order.tracking?.length > 0
+        ? order.tracking[order.tracking.length - 1]?.StatusDateTime
+        : null;
+
+    const newRemittanceOrder = new CodRemittanceOrders({
+      Date: lastTrackingUpdate,
+      orderID: order.orderId,
+      userName: userData.fullname,
+      PhoneNumber: userData.phoneNumber,
+      Email: userData.email,
+      courierProvider: order.courierServiceName || "N/A",
+      AWB_Number: order.awb_number || "N/A",
+      CODAmount: String(order.paymentDetails.amount || "0"),
+      status: "Pending",
+    });
+    await newRemittanceOrder.save();
+  }
+  return {
+    success: true,
+    message: "Courier COD remittance processed successfully.",
+  };
+};
+
+cron.schedule(
+  "0 0,12 * * *",
+  () => {
+    console.log("Running scheduled task every 12 hours (IST)");
+    processCodRemittanceOrder();
+  },
+  {
+    timezone: "Asia/Kolkata",
+  }
+);
