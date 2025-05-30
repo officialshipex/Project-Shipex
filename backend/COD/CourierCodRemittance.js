@@ -2,51 +2,35 @@ const mongoose = require("mongoose");
 
 const CourierCodRemittanceSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  TotalRemittance: {
-    type: Number,
-    default: 0,
+  date: {
+    type: Date,
   },
-  TransferredRemittance: {
-    type: Number,
-    default: 0,
+  orderID: {
+    type:Number ,
   },
-  TotalRemittanceDue: {
-    type: Number,
-    default: 0,
+  userName: {
+    type: String,
   },
-  CourierCodRemittanceData: [
-    {
-      date: {
-        type: Date,
-      },
-      orderID: {
-        type: String,
-      },
-      userName: {
-        type: String,
-      },
-      PhoneNumber: {
-        type: String,
-      },
-      Email: {
-        type: String,
-      },
-      courierProvider: {
-        type: String,
-      },
-      AwbNumber: {
-        type: String,
-      },
-      CODAmount: {
-        type: Number,
-      },
-      status: {
-        type: String,
-        enum: ["Pending", "Paid"],
-        default: "Pending",
-      },
-    },
-  ],
+  PhoneNumber: {
+    type: String,
+  },
+  Email: {
+    type: String,
+  },
+  courierServiceName: {
+    type: String,
+  },
+  AwbNumber: {
+    type: String,
+  },
+  CODAmount: {
+    type: Number,
+  },
+  status: {
+    type: String,
+    enum: ["Pending", "Paid"],
+    default: "Pending",
+  },
 });
 
 const CourierCodRemittance = mongoose.model(

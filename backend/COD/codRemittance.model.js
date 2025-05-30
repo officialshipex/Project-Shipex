@@ -20,7 +20,7 @@ const codRemittanceSchema = new mongoose.Schema({
       adjustedAmount: { type: Number },
       remittanceMethod: {
         type: String,
-      }, // Payment method
+      },
       status: {
         type: String,
         enum: ["Pending", "Paid"],
