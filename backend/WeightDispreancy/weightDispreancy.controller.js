@@ -539,8 +539,8 @@ const AllDiscrepancyBasedId = async (req, res) => {
       discrepancyMatchStage["orderId"] = Number(orderId);
     }
 
-    const parsedLimit = limit === "all" ? 0 : Number(limit);
-    const skip = (Number(page) - 1) * parsedLimit;
+    const parsedLimit = limit.toLowerCase() === "all" ? null : Number(limit);
+    const skip = parsedLimit ? (Number(page) - 1) * parsedLimit : 0;
 
     const basePipeline = [
       { $match: discrepancyMatchStage },
@@ -570,7 +570,7 @@ const AllDiscrepancyBasedId = async (req, res) => {
     ];
 
     const [results, totalResult] = await Promise.all([
-      parsedLimit === 0
+      parsedLimit === null
         ? WeightDiscrepancy.aggregate(basePipeline)
         : WeightDiscrepancy.aggregate([
             ...basePipeline,
@@ -581,11 +581,14 @@ const AllDiscrepancyBasedId = async (req, res) => {
     ]);
 
     const total = totalResult[0]?.total || 0;
+    const totalPages = parsedLimit ? Math.ceil(total / parsedLimit) : 1;
 
     return res.json({
       total,
       page: Number(page),
-      limit: parsedLimit === 0 ? "all" : parsedLimit,
+      limit: parsedLimit ?? "all",
+      page:totalPages,
+      currentPage: Number(page),
       results,
     });
   } catch (error) {
@@ -593,6 +596,7 @@ const AllDiscrepancyBasedId = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
+
 
 const AcceptDiscrepancy = async (req, res) => {
   try {
