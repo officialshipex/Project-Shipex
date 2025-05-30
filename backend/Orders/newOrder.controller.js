@@ -283,22 +283,23 @@ const getOrders = async (req, res) => {
 
     const {
       status,
-      searchQuery,  // single unified search input
+      searchQuery,
       orderId,
+      awbNumber,      
+      trackingId,     
       paymentType,
       startDate,
       endDate,
+      pickupCity,
+      pickupState,
     } = req.query;
 
-    // Start filter with userId only
     const andConditions = [{ userId }];
 
-    // Filter by status if provided and not 'All'
     if (status && status !== "All") {
       andConditions.push({ status });
     }
 
-    // Unified search on Name OR Email OR PhoneNumber
     if (searchQuery) {
       andConditions.push({
         $or: [
@@ -308,55 +309,102 @@ const getOrders = async (req, res) => {
         ],
       });
     }
-    console.log(searchQuery)
 
-    // Filter by Order ID if valid
     if (orderId) {
       const orderIdNum = parseInt(orderId);
       if (!isNaN(orderIdNum)) {
         andConditions.push({ orderId: orderIdNum });
       }
     }
+    if (awbNumber) {
+      andConditions.push({ awb_number: { $regex: awbNumber, $options: "i" } });
+    }
+    if (trackingId) {
+      andConditions.push({ trackingId: { $regex: trackingId, $options: "i" } });
+    }
+    if (req.query.courierServiceName) {
+      andConditions.push({ courierServiceName: req.query.courierServiceName });
+    }
 
-    // Filter by payment type if provided
     if (paymentType) {
       andConditions.push({ "paymentDetails.method": paymentType });
     }
 
-    // Filter by date range if provided
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // End of day
+      end.setHours(23, 59, 59, 999);
       andConditions.push({ createdAt: { $gte: start, $lte: end } });
     }
 
-    // Final Mongo filter
-    const filter = andConditions.length > 0 ? { $and: andConditions } : {};
+    if (pickupCity) {
+      andConditions.push({ "pickupAddress.city": pickupCity });
+    }
+    if (pickupState) {
+      andConditions.push({ "pickupAddress.state": pickupState });
+    }
 
-    // Count total docs matching filter
+    const filter = { $and: andConditions };
+
     const totalCount = await Order.countDocuments(filter);
 
-    // Query with pagination and sort by newest first
     let query = Order.find(filter).sort({ createdAt: -1 });
     if (limit) query = query.skip(skip).limit(limit);
 
     const orders = await query.lean();
-    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     // console.log(orders)
-    
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+
+    const allCourierServices = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: "$courierServiceName",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          courierServiceName: "$_id",
+        },
+      },
+    ]);
+
+    // Fetch all unique pickup locations for the user (not filtered)
+    const allPickupLocations = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: {
+            city: "$pickupAddress.city",
+            state: "$pickupAddress.state",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          city: "$_id.city",
+          state: "$_id.state",
+        },
+      },
+    ]);
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      pickupLocations: allPickupLocations,
+      courierServices: allCourierServices.map(c => c.courierServiceName),
     });
   } catch (error) {
     console.error("Error fetching paginated orders:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
 
 
 
