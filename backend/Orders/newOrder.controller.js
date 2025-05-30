@@ -296,7 +296,7 @@ const getOrders = async (req, res) => {
 
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
-
+   
     res.json({
       orders,
       totalPages,

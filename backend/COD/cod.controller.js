@@ -505,10 +505,10 @@ cron.schedule("25 2 * * *", () => {
 const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
+
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit =
-      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
 
     const remittanceDoc = await codRemittance.findOne({ userId });
@@ -520,20 +520,20 @@ const codRemittanceData = async (req, res) => {
       });
     }
 
-    // Reverse to show latest entries first
-    const reversedRemittanceData = [...remittanceDoc.remittanceData].reverse();
+    // Reverse the array to get latest entries first
+    const reversedData = [...remittanceDoc.remittanceData].reverse();
 
-    const totalRemittanceCount = reversedRemittanceData.length;
-    const paginatedRemittanceData = limit
-      ? reversedRemittanceData.slice(skip, skip + limit)
-      : reversedRemittanceData;
+    const totalCount = reversedData.length;
+    const paginatedData = limit ? reversedData.slice(skip, skip + limit) : reversedData;
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
 
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
-      total: totalRemittanceCount,
+      total: totalCount,
       page,
       limit: limit || "All",
+      totalPages,
       data: {
         CODToBeRemitted: remittanceDoc.CODToBeRemitted,
         LastCODRemitted: remittanceDoc.LastCODRemitted,
@@ -541,7 +541,7 @@ const codRemittanceData = async (req, res) => {
         TotalDeductionfromCOD: remittanceDoc.TotalDeductionfromCOD,
         RemittanceInitiated: remittanceDoc.RemittanceInitiated,
         rechargeAmount: remittanceDoc.rechargeAmount,
-        remittanceData: paginatedRemittanceData,
+        remittanceData: paginatedData,
       },
     });
   } catch (error) {
@@ -553,6 +553,9 @@ const codRemittanceData = async (req, res) => {
     });
   }
 };
+
+
+
 
 const getCodRemitance = async (req, res) => {
   try {
@@ -1115,7 +1118,34 @@ const courierCodRemittance = async (req, res) => {
 
 const CodRemittanceOrder = async (req, res) => {
   try {
-    const CodRemittanceOrderss = await CodRemittanceOrders.aggregate([
+    const page = parseInt(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit = limitQuery === "All" ? null : parseInt(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
+
+    // Fetch all orders, convert CODAmount, and sort by _id (insertion order)
+    const allOrders = await CodRemittanceOrders.aggregate([
+      {
+        $addFields: {
+          codAmountNum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
+        },
+      },
+      {
+        $sort: {
+          _id: -1, // Sort by insertion order: latest first
+        },
+      },
+    ]);
+
+    if (!allOrders || allOrders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No COD remittance orders found",
+      });
+    }
+
+    // Calculate totals
+    const totals = await CodRemittanceOrders.aggregate([
       {
         $addFields: {
           codAmountNum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
@@ -1147,45 +1177,36 @@ const CodRemittanceOrder = async (req, res) => {
       },
     ]);
 
-    // Extract page and limit from query, with default values
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    // Aggregation pipeline with pagination
-    const existingCodRemittance = await CodRemittanceOrders.aggregate([
-      { $sort: { date: -1 } }, // Sort all records by date in descending order
-    ]);
-
-    // Get total count (for frontend pagination controls)
-    const totalCount = await CodRemittanceOrders.countDocuments();
+    // Pagination
+    const totalCount = allOrders.length;
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+    const paginatedData = limit ? allOrders.slice(skip, skip + limit) : allOrders;
 
     return res.status(200).json({
       success: true,
+      message: "COD remittance orders retrieved successfully",
+      total: totalCount,
+      page,
+      limit: limit || "All",
+      totalPages,
       data: {
-        existingCodRemittance,
-        Amount: {
-          paidCODAmount: CodRemittanceOrderss[0].paidCODAmount,
-          totalCODAmount: CodRemittanceOrderss[0].totalCODAmount,
-          pendingCODAmount: CodRemittanceOrderss[0].pendingCODAmount,
-        },
-
-        pagination: {
-          total: totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit),
-        },
+        totalCODAmount: totals[0]?.totalCODAmount || 0,
+        paidCODAmount: totals[0]?.paidCODAmount || 0,
+        pendingCODAmount: totals[0]?.pendingCODAmount || 0,
+        orders: paginatedData,
       },
     });
   } catch (error) {
+    console.error("Error fetching COD remittance orders:", error.message);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while retrieving transaction data.",
+      message: "An error occurred while retrieving COD remittance orders",
       error: error.message,
     });
   }
 };
+
+
 // const CodRemittanceOrder = async (req, res) => {
 //   try {
 //     const user = req.isEmployee ? req.employee._id : req.user._id;
