@@ -246,7 +246,7 @@ const trackSingleOrder = async (order) => {
       }
 
       if (
-        normalizedData.Instructions === "Not Delivered" ||
+        DTDCStatusMapping[instruction] === "Undelivered" ||
         normalizedData.Instructions === "RTO Not Delivered"
       ) {
         order.status = "Undelivered";
@@ -265,17 +265,12 @@ const trackSingleOrder = async (order) => {
           normalizedData.StatusDateTime
         ).toDateString();
 
-        console.log("curr", currentStatusDate);
-        console.log("last", lastEntryDate);
-
         if (
           lastEntryDate !== currentStatusDate ||
           order.ndrHistory.length === 0
         ) {
           const attemptCount = order.ndrHistory?.length || 0;
-          if (normalizedData.Instructions === "Not Delivered") {
-            console.log("dtdc", normalizedData.StrRemarks);
-            console.log("awb", order.awb_number);
+          if (DTDCStatusMapping[instruction] === "Undelivered") {
             // process.exit(1)
             order.ndrHistory.push({
               date: normalizedData.StatusDateTime,
@@ -331,6 +326,12 @@ const trackSingleOrder = async (order) => {
         ) {
           order.ndrStatus = "Delivered";
         }
+        console.log(
+          "awb",
+          order.awb_number,
+          "time",
+          normalizedData.StatusDateTime
+        );
         const secondLastTracking =
           Array.isArray(order.tracking) && order.tracking.length >= 2
             ? order.tracking[order.tracking.length - 2]
@@ -417,6 +418,7 @@ const trackSingleOrder = async (order) => {
         },
         "RT:In Transit": {
           status: "RTO In-transit",
+          
           ndrStatus: "RTO In-transit",
         },
         "DL:RTO": { status: "RTO Delivered", ndrStatus: "RTO Delivered" },
@@ -603,7 +605,9 @@ const mapTrackingResponse = (data, provider) => {
         ? data.eventHistory[data.eventHistory.length - 1]?.location?.city
         : "N/A",
       StatusDateTime: data.eventHistory?.length
-        ? data.eventHistory[data.eventHistory.length - 1]?.eventTime
+        ? formatAmazonDate(
+            data.eventHistory[data.eventHistory.length - 1]?.eventTime
+          )
         : "N/A",
       Instructions: data.eventHistory?.length
         ? data.eventHistory[data.eventHistory.length - 1]?.eventCode
@@ -654,22 +658,37 @@ const mapTrackingResponse = (data, provider) => {
 };
 
 const formatDTDCDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return null; // Return null if no valid date/time
+  if (!dateStr || !timeStr || dateStr.length !== 8 || timeStr.length !== 4) {
+    return null; // Handle invalid inputs
+  }
 
   try {
-    // Convert date from 'DDMMYYYY' to 'YYYY-MM-DD'
-    const formattedDate = `${dateStr.slice(4, 8)}-${dateStr.slice(
-      2,
-      4
-    )}-${dateStr.slice(0, 2)}`;
+    // Extract date components
+    const day = parseInt(dateStr.slice(0, 2));
+    const month = parseInt(dateStr.slice(2, 4)) - 1; // JavaScript months are 0-based
+    const year = parseInt(dateStr.slice(4, 8));
 
-    // Convert time from 'HHMM' to 'HH:MM:SS'
-    const formattedTime = `${timeStr.slice(0, 2)}:${timeStr.slice(2, 4)}:00`;
+    // Extract time components
+    const hours = parseInt(timeStr.slice(0, 2));
+    const minutes = parseInt(timeStr.slice(2, 4));
 
-    return new Date(`${formattedDate}T${formattedTime}Z`);
-  } catch (error) {
+    // Construct local (IST) date
+    const date = new Date(year, month, day, hours, minutes);
+
+    return date; // This will be in local system time (typically IST on Indian servers)
+  } catch (err) {
     console.warn(`Invalid DTDC date/time format: ${dateStr} ${timeStr}`);
-    return null; // Return null instead of an invalid string
+    return null;
+  }
+};
+
+const formatAmazonDate = (isoDateStr) => {
+  try {
+    const d = new Date(isoDateStr);
+    return d.toISOString(); // already UTC, just standardize
+  } catch (err) {
+    console.warn("Invalid Amazon date:", isoDateStr);
+    return null;
   }
 };
 

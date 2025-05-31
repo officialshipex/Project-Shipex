@@ -260,7 +260,9 @@ const deletePickupAddress = async (req, res) => {
     const pickupAddress = await pickAddress.findOne({ _id: id, userId });
 
     if (!pickupAddress) {
-      return res.status(404).json({ message: "Pickup address not found or unauthorized." });
+      return res
+        .status(404)
+        .json({ message: "Pickup address not found or unauthorized." });
     }
 
     // Delete the address
@@ -456,7 +458,9 @@ const setPrimaryPickupAddress = async (req, res) => {
     // 1. Check if the pickup address exists and belongs to the user
     const pickupAddress = await pickAddress.findOne({ _id: id, userId });
     if (!pickupAddress) {
-      return res.status(404).json({ message: "Pickup address not found or unauthorized." });
+      return res
+        .status(404)
+        .json({ message: "Pickup address not found or unauthorized." });
     }
 
     // 2. Set all other pickup addresses' isPrimary to false
@@ -1007,28 +1011,126 @@ const cancelOrdersAtBooked = async (req, res) => {
 const passbook = async (req, res) => {
   try {
     const userId = req.user._id;
-    const users = await user.findOne({ _id: userId });
+
+    const {
+      fromDate,
+      toDate,
+      category,
+      awbNumber,
+      orderId,
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    // console.log("re",req.query)
+
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const wallet = await Wallet.findOne({ _id: users.Wallet });
+    const currentUser = await user.findById(userId);
 
-    if (!wallet) {
+    if (!currentUser || !currentUser.Wallet) {
       return res.status(404).json({ message: "Wallet not found" });
     }
 
+    const transactionMatchStage = {};
+
+    // Date filter
+    if (fromDate && toDate) {
+      const start = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
+      const end = new Date(new Date(toDate).setHours(23, 59, 59, 999));
+      transactionMatchStage["wallet.transactions.date"] = {
+        $gte: start,
+        $lte: end,
+      };
+    }
+
+    // Other filters
+    if (category) {
+      transactionMatchStage["wallet.transactions.category"] = category;
+    }
+
+    if (awbNumber) {
+      transactionMatchStage["wallet.transactions.awb_number"] = awbNumber;
+    }
+
+    if (orderId) {
+      transactionMatchStage["wallet.transactions.channelOrderId"] = orderId;
+    }
+
+    // Normalize and parse limit
+    const parsedLimit =
+      typeof limit === "string" && limit.toLowerCase() === "all"
+        ? null
+        : Number(limit);
+
+    const finalLimit =
+      parsedLimit === null || isNaN(parsedLimit) ? null : parsedLimit;
+
+    const skip = finalLimit ? (Number(page) - 1) * finalLimit : 0;
+
+    const basePipeline = [
+      { $match: { _id: currentUser._id } },
+      {
+        $lookup: {
+          from: "wallets",
+          localField: "Wallet",
+          foreignField: "_id",
+          as: "wallet",
+        },
+      },
+      { $unwind: "$wallet" },
+      { $unwind: "$wallet.transactions" },
+      { $match: transactionMatchStage },
+      {
+        $project: {
+          _id: 0,
+          category: "$wallet.transactions.category",
+          amount: "$wallet.transactions.amount",
+          balanceAfterTransaction:
+            "$wallet.transactions.balanceAfterTransaction",
+          date: "$wallet.transactions.date",
+          awb_number: "$wallet.transactions.awb_number",
+          orderId: "$wallet.transactions.channelOrderId",
+          description: "$wallet.transactions.description",
+        },
+      },
+      { $sort: { date: -1 } },
+    ];
+
+    const [transactions, totalCountResult] = await Promise.all([
+      finalLimit === null
+        ? user.aggregate(basePipeline)
+        : user.aggregate([
+            ...basePipeline,
+            { $skip: skip },
+            { $limit: finalLimit },
+          ]),
+      user.aggregate([...basePipeline, { $count: "total" }]),
+    ]);
+
+    const totalCount = totalCountResult[0]?.total || 0;
+    const totalPages = finalLimit ? Math.ceil(totalCount / finalLimit) : 1;
+
     return res.status(200).json({
       message: "Passbook fetched successfully",
-      transactions: wallet.transactions,
+      results: transactions,
+      totalCount,
+      page:totalPages,
+      currentPage: Number(page),
+      limit: finalLimit ?? "All",
     });
   } catch (error) {
     console.error("Error fetching passbook:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
+
+
 
 const getUser = async (req, res) => {
   try {
@@ -1116,5 +1218,5 @@ module.exports = {
   GetTrackingByAwb,
   updatePickupAddress,
   setPrimaryPickupAddress,
-  deletePickupAddress
+  deletePickupAddress,
 };

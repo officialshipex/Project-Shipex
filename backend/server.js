@@ -15,7 +15,7 @@ const ShreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
 const nimbuspostRoutes = require("./AllCouriersRoutes/nimbuspost.router");
 const delhiveryRouter = require("./AllCouriersRoutes/delhivery.router");
 const compression = require("compression");
-
+const courierCodRemittanceSchedule=require("./COD/codScheduleTask")
 const otpRouter = require("./auth/auth.otp");
 const emailOtpRouter = require("./notification/emailOtpVerification");
 
