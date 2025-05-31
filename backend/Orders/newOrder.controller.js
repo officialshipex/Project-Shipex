@@ -339,11 +339,8 @@ const getOrders = async (req, res) => {
       andConditions.push({ createdAt: { $gte: start, $lte: end } });
     }
 
-    if (pickupCity) {
-      andConditions.push({ "pickupAddress.city": pickupCity });
-    }
-    if (pickupState) {
-      andConditions.push({ "pickupAddress.state": pickupState });
+    if (req.query.pickupContactName) {
+      andConditions.push({ "pickupAddress.contactName": req.query.pickupContactName });
     }
 
     const filter = { $and: andConditions };
@@ -378,16 +375,27 @@ const getOrders = async (req, res) => {
       {
         $group: {
           _id: {
-            city: "$pickupAddress.city",
-            state: "$pickupAddress.state",
+            contactName: "$pickupAddress.contactName",
+            // Optionally, you can add _id: "$pickupAddress._id" if needed
           },
+          address: { $first: "$pickupAddress.address" },
+          phoneNumber: { $first: "$pickupAddress.phoneNumber" },
+          email: { $first: "$pickupAddress.email" },
+          pinCode: { $first: "$pickupAddress.pinCode" },
+          city: { $first: "$pickupAddress.city" },
+          state: { $first: "$pickupAddress.state" },
         },
       },
       {
         $project: {
           _id: 0,
-          city: "$_id.city",
-          state: "$_id.state",
+          contactName: "$_id.contactName",
+          address: 1,
+          phoneNumber: 1,
+          email: 1,
+          pinCode: 1,
+          city: 1,
+          state: 1,
         },
       },
     ]);
