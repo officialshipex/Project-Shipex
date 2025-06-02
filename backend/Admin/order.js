@@ -438,7 +438,7 @@ const searchUser = async (req, res) => {
       { fullname: regex },
       { email: regex },
       { phoneNumber: regex },
-    ];
+    ]
 
     // If the query is a number, also search in userId
     if (!isNaN(query)) {

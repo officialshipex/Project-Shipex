@@ -505,6 +505,8 @@ cron.schedule("25 2 * * *", () => {
 const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { fromDate, toDate } = req.query;
+    console.log("-------------->",fromDate,toDate)
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const remittanceIdFilter = req.query.remittanceIdFilter;
@@ -551,7 +553,19 @@ const codRemittanceData = async (req, res) => {
         (entry) => entry.status === statusFilter.trim()
       );
     }
+if (fromDate && toDate) {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
 
+      // Normalize to 00:00:00 and 23:59:59
+      from.setHours(0, 0, 0, 0);
+      to.setHours(23, 59, 59, 999);
+
+      filteredData = filteredData.filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= from && entryDate <= to;
+      });
+    }
     const totalCount = filteredData.length;
     const paginatedData = limit
       ? filteredData.slice(skip, skip + limit)
@@ -589,7 +603,6 @@ const getCodRemitance = async (req, res) => {
   try {
     const user = req.user._id;
     const remittanceRecord = await codRemittance.findOne({ userId: user });
-
     if (!remittanceRecord) {
       return res
         .status(404)
@@ -1065,7 +1078,9 @@ const courierCodRemittance = async (req, res) => {
     const limitQuery = req.query.limit;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-
+ const searchFilter = req.query.searchFilter || "";
+   const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
+    const statusFilter = req.query.statusFilter || "";
     const allOrders = await CourierCodRemittance.aggregate([
       {
         $addFields: {
@@ -1116,12 +1131,54 @@ const courierCodRemittance = async (req, res) => {
         },
       },
     ]);
+   // 2. Apply JavaScript filter
+let filteredOrders = allOrders;
+// filter by username or phone number or email
+if (searchFilter) {
+  const lowerCaseFilter = searchFilter.toLowerCase();
 
-    const totalCount = allOrders.length;
+  filteredOrders = allOrders.filter((order) => {
+    const name = order.userName?.toLowerCase() || "";
+    const phone = order.PhoneNumber?.toLowerCase() || "";
+    const email = order.Email?.toLowerCase() || "";
+
+    return (
+      name.includes(lowerCaseFilter) ||
+      phone.includes(lowerCaseFilter) ||
+      email.includes(lowerCaseFilter)
+    );
+  });
+}
+// filter by orderId and awb number 
+if (orderIdAwbNumberFilter) {
+  const filterValues = orderIdAwbNumberFilter
+    .split(",")
+    .map((val) => val.trim()); // Convert to array and trim spaces
+
+  filteredOrders = allOrders.filter((order) => {
+    const orderIdStr = order.userId?.toString() || "";
+    const awbStr = order.AwbNumber?.toString() || "";
+
+    // Check if any of the filter values match orderID or AWB_Number
+    return filterValues.some((filter) =>
+      orderIdStr.includes(filter) || awbStr.includes(filter)
+    );
+  });
+}
+// filter by status
+if (statusFilter){
+  filteredOrders = allOrders.filter(order =>
+    order.status?.toString().includes(statusFilter)
+  );
+}
+
+
+
+    const totalCount = filteredOrders.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     const paginatedData = limit
-      ? allOrders.slice(skip, skip + limit)
-      : allOrders;
+      ? filteredOrders.slice(skip, skip + limit)
+      : filteredOrders;
     return res.status(200).json({
       success: true,
       message: "COD remittance orders retrieved successfully",
@@ -1260,21 +1317,12 @@ const CodRemittanceOrder = async (req, res) => {
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const searchFilter = req.query.searchFilter || "";
+   const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
+    const statusFilter = req.query.statusFilter || "";
 
-    // Match stage for filtering by userName, phoneNumber, or email
-    const matchStage = searchFilter
-      ? {
-          $or: [
-            { userName: { $regex: searchFilter, $options: "i" } },
-            { PhoneNumber: { $regex: searchFilter, $options: "i" } },
-            { Email: { $regex: searchFilter, $options: "i" } },
-          ],
-        }
-      : {};
-
-    // Fetch all orders with filter, convert CODAmount, and sort
+    // Fetch all orders with filter, convert CODAmount, and sort statusFilter
     const allOrders = await CodRemittanceOrders.aggregate([
-      { $match: matchStage },
+      { $match: {} },
       {
         $addFields: {
           codAmountNum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
@@ -1327,13 +1375,55 @@ const CodRemittanceOrder = async (req, res) => {
         },
       },
     ]);
+     // 2. Apply JavaScript filter
+let filteredOrders = allOrders;
+// filter by username or phone number or email
+if (searchFilter) {
+  const lowerCaseFilter = searchFilter.toLowerCase();
+
+  filteredOrders = allOrders.filter((order) => {
+    const name = order.userName?.toLowerCase() || "";
+    const phone = order.PhoneNumber?.toLowerCase() || "";
+    const email = order.Email?.toLowerCase() || "";
+
+    return (
+      name.includes(lowerCaseFilter) ||
+      phone.includes(lowerCaseFilter) ||
+      email.includes(lowerCaseFilter)
+    );
+  });
+}
+// filter by orderId and awb number 
+if (orderIdAwbNumberFilter) {
+  const filterValues = orderIdAwbNumberFilter
+    .split(",")
+    .map((val) => val.trim()); // Convert to array and trim spaces
+
+  filteredOrders = allOrders.filter((order) => {
+    const orderIdStr = order.orderID?.toString() || "";
+    const awbStr = order.AWB_Number?.toString() || "";
+
+    // Check if any of the filter values match orderID or AWB_Number
+    return filterValues.some((filter) =>
+      orderIdStr.includes(filter) || awbStr.includes(filter)
+    );
+  });
+}
+// filter by status
+if (statusFilter){
+  filteredOrders = allOrders.filter(order =>
+    order.status?.toString().includes(statusFilter)
+  );
+}
+
+
 
     // Pagination
-    const totalCount = allOrders.length;
+    const totalCount = filteredOrders.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     const paginatedData = limit
-      ? allOrders.slice(skip, skip + limit)
-      : allOrders;
+      ? filteredOrders.slice(skip, skip + limit)
+      : filteredOrders;
 
     return res.status(200).json({
       success: true,
