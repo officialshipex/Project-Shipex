@@ -280,16 +280,69 @@ const getOrders = async (req, res) => {
     const userId = req.user?._id || req.employee?._id;
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit =
-      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-    const status = req.query.status;
-    // console.log(status)
 
-    const filter = { userId };
+    const {
+      status,
+      searchQuery,
+      orderId,
+      awbNumber,      
+      trackingId,     
+      paymentType,
+      startDate,
+      endDate,
+     
+    } = req.query;
+
+    const andConditions = [{ userId }];
+
     if (status && status !== "All") {
-      filter.status = status;
+      andConditions.push({ status });
     }
+
+    if (searchQuery) {
+      andConditions.push({
+        $or: [
+          { "receiverAddress.contactName": { $regex: searchQuery, $options: "i" } },
+          { "receiverAddress.email": { $regex: searchQuery, $options: "i" } },
+          { "receiverAddress.phoneNumber": { $regex: searchQuery, $options: "i" } },
+        ],
+      });
+    }
+
+    if (orderId) {
+      const orderIdNum = parseInt(orderId);
+      if (!isNaN(orderIdNum)) {
+        andConditions.push({ orderId: orderIdNum });
+      }
+    }
+    if (awbNumber) {
+      andConditions.push({ awb_number: { $regex: awbNumber, $options: "i" } });
+    }
+    if (trackingId) {
+      andConditions.push({ trackingId: { $regex: trackingId, $options: "i" } });
+    }
+    if (req.query.courierServiceName) {
+      andConditions.push({ courierServiceName: req.query.courierServiceName });
+    }
+
+    if (paymentType) {
+      andConditions.push({ "paymentDetails.method": paymentType });
+    }
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      andConditions.push({ createdAt: { $gte: start, $lte: end } });
+    }
+
+    if (req.query.pickupContactName) {
+      andConditions.push({ "pickupAddress.contactName": req.query.pickupContactName });
+    }
+
+    const filter = { $and: andConditions };
 
     const totalCount = await Order.countDocuments(filter);
 
@@ -297,13 +350,62 @@ const getOrders = async (req, res) => {
     if (limit) query = query.skip(skip).limit(limit);
 
     const orders = await query.lean();
+    // console.log(orders)
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+
+    const allCourierServices = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: "$courierServiceName",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          courierServiceName: "$_id",
+        },
+      },
+    ]);
+
+    // Fetch all unique pickup locations for the user (not filtered)
+    const allPickupLocations = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: {
+            contactName: "$pickupAddress.contactName",
+            // Optionally, you can add _id: "$pickupAddress._id" if needed
+          },
+          address: { $first: "$pickupAddress.address" },
+          phoneNumber: { $first: "$pickupAddress.phoneNumber" },
+          email: { $first: "$pickupAddress.email" },
+          pinCode: { $first: "$pickupAddress.pinCode" },
+          city: { $first: "$pickupAddress.city" },
+          state: { $first: "$pickupAddress.state" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          contactName: "$_id.contactName",
+          address: 1,
+          phoneNumber: 1,
+          email: 1,
+          pinCode: 1,
+          city: 1,
+          state: 1,
+        },
+      },
+    ]);
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      pickupLocations: allPickupLocations,
+      courierServices: allCourierServices.map(c => c.courierServiceName),
     });
   } catch (error) {
     console.error("Error fetching paginated orders:", error);
@@ -311,21 +413,63 @@ const getOrders = async (req, res) => {
   }
 };
 
+
+
+
+
 const getOrdersByNdrStatus = async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit =
-      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const status = req.query.status;
-    // console.log(status)
 
-    const filter = { userId };
+    const andConditions = [{ userId }];
     if (status && status !== "All") {
-      filter.ndrStatus = status;
+      andConditions.push({ ndrStatus: status });
     }
+
+    // Add filters like in getOrders
+    if (req.query.searchQuery) {
+      andConditions.push({
+        $or: [
+          { "receiverAddress.contactName": { $regex: req.query.searchQuery, $options: "i" } },
+          { "receiverAddress.email": { $regex: req.query.searchQuery, $options: "i" } },
+          { "receiverAddress.phoneNumber": { $regex: req.query.searchQuery, $options: "i" } },
+        ],
+      });
+    }
+    if (req.query.orderId) {
+      const orderIdNum = parseInt(req.query.orderId);
+      if (!isNaN(orderIdNum)) {
+        andConditions.push({ orderId: orderIdNum });
+      }
+    }
+    if (req.query.awbNumber) {
+      andConditions.push({ awb_number: { $regex: req.query.awbNumber, $options: "i" } });
+    }
+    if (req.query.trackingId) {
+      andConditions.push({ trackingId: { $regex: req.query.trackingId, $options: "i" } });
+    }
+    if (req.query.courierServiceName) {
+      andConditions.push({ courierServiceName: req.query.courierServiceName });
+    }
+    if (req.query.paymentType) {
+      andConditions.push({ "paymentDetails.method": req.query.paymentType });
+    }
+    if (req.query.startDate && req.query.endDate) {
+      const start = new Date(req.query.startDate);
+      const end = new Date(req.query.endDate);
+      end.setHours(23, 59, 59, 999);
+      andConditions.push({ createdAt: { $gte: start, $lte: end } });
+    }
+    if (req.query.pickupContactName) {
+      andConditions.push({ "pickupAddress.contactName": req.query.pickupContactName });
+    }
+
+    const filter = { $and: andConditions };
 
     const totalCount = await Order.countDocuments(filter);
 
@@ -339,11 +483,46 @@ const getOrdersByNdrStatus = async (req, res) => {
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
 
+    // Add these two aggregations:
+    const allCourierServices = await Order.aggregate([
+      { $match: { userId } },
+      { $group: { _id: "$courierServiceName" } },
+      { $project: { _id: 0, courierServiceName: "$_id" } },
+    ]);
+    const allPickupLocations = await Order.aggregate([
+      { $match: { userId } },
+      {
+        $group: {
+          _id: { contactName: "$pickupAddress.contactName" },
+          address: { $first: "$pickupAddress.address" },
+          phoneNumber: { $first: "$pickupAddress.phoneNumber" },
+          email: { $first: "$pickupAddress.email" },
+          pinCode: { $first: "$pickupAddress.pinCode" },
+          city: { $first: "$pickupAddress.city" },
+          state: { $first: "$pickupAddress.state" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          contactName: "$_id.contactName",
+          address: 1,
+          phoneNumber: 1,
+          email: 1,
+          pinCode: 1,
+          city: 1,
+          state: 1,
+        },
+      },
+    ]);
+
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      pickupLocations: allPickupLocations,
+      courierServices: allCourierServices.map(c => c.courierServiceName),
     });
   } catch (error) {
     console.error("Error fetching paginated orders:", error);
