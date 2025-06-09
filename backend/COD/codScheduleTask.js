@@ -70,7 +70,7 @@ const processCourierCodRemittance = async () => {
       userName: userData.fullname || "",
       PhoneNumber: userData.phoneNumber || "",
       Email: userData.email || "",
-      courierProvider: order.courierServiceName || "",
+      courierServiceName: order.courierServiceName || "",
       AwbNumber: order.awb_number || "",
       CODAmount: order.paymentDetails?.amount || 0,
       status: "Pending",
@@ -84,7 +84,7 @@ const processCourierCodRemittance = async () => {
     message: "Courier COD remittance processed successfully.",
   };
 };
-
+processCourierCodRemittance();
 cron.schedule(
   "0 0,12 * * *",
   () => {

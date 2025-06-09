@@ -221,7 +221,8 @@ const uploadDispreancy = async (req, res) => {
           excessCharges:
             additionalCharges[0].forward.charges +
             additionalCharges[0].forward.gst,
-          pendingAmount: additionalCharges[0].forward.charges +
+          pendingAmount:
+            additionalCharges[0].forward.charges +
             additionalCharges[0].forward.gst,
         },
         status: "new",
@@ -229,9 +230,8 @@ const uploadDispreancy = async (req, res) => {
       });
 
       discrepancies.push(discrepancy);
-      console.log("final data",discrepancy)
+      console.log("final data", discrepancy);
     }
-    
 
     if (discrepancies.length > 0) {
       // Step 1: Accumulate pending amounts per walletId
@@ -244,7 +244,11 @@ const uploadDispreancy = async (req, res) => {
         if (!userDetails || !userDetails.Wallet) continue;
 
         const walletId = userDetails.Wallet.toString();
-        const amountToHold = discrepancy.excessWeightCharges.pendingAmount || 0;
+        const amountToHold = Number(
+          discrepancy.excessWeightCharges?.pendingAmount || 0
+        ).toFixed(2);
+
+        console.log("amoutn", amountToHold);
 
         if (isNaN(amountToHold)) {
           console.warn(
