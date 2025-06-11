@@ -221,6 +221,7 @@ const remittanceScheduleData = async () => {
       );
 
       if (dayDiff === planDays) {
+      // if(true){
         if (!user) {
           console.log(`User not found: ${remittance.userId}`);
           continue;
@@ -401,7 +402,7 @@ const remittanceScheduleData = async () => {
     console.error("❌ Error in remittance schedule:", error);
   }
 };
-remittanceScheduleData();
+// remittanceScheduleData();
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
@@ -506,7 +507,6 @@ const codRemittanceData = async (req, res) => {
   try {
     const userId = req.user._id;
     const { fromDate, toDate } = req.query;
-    console.log("-------------->",fromDate,toDate)
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const remittanceIdFilter = req.query.remittanceIdFilter;
