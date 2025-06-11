@@ -277,23 +277,29 @@ const deletePickupAddress = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    const userId = req.user?._id || req.employee?._id;
-    const page = parseInt(req.query.page) || 1;
-    const limitQuery = req.query.limit;
-    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
-    const skip = limit ? (page - 1) * limit : 0;
-
     const {
+      id,
       status,
       searchQuery,
       orderId,
-      awbNumber,      
-      trackingId,     
+      awbNumber,
+      trackingId,
       paymentType,
       startDate,
       endDate,
-     
     } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user?._id || req.employee?._id;
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
 
     const andConditions = [{ userId }];
 
@@ -304,9 +310,19 @@ const getOrders = async (req, res) => {
     if (searchQuery) {
       andConditions.push({
         $or: [
-          { "receiverAddress.contactName": { $regex: searchQuery, $options: "i" } },
+          {
+            "receiverAddress.contactName": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
           { "receiverAddress.email": { $regex: searchQuery, $options: "i" } },
-          { "receiverAddress.phoneNumber": { $regex: searchQuery, $options: "i" } },
+          {
+            "receiverAddress.phoneNumber": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
         ],
       });
     }
@@ -339,7 +355,9 @@ const getOrders = async (req, res) => {
     }
 
     if (req.query.pickupContactName) {
-      andConditions.push({ "pickupAddress.contactName": req.query.pickupContactName });
+      andConditions.push({
+        "pickupAddress.contactName": req.query.pickupContactName,
+      });
     }
 
     const filter = { $and: andConditions };
@@ -405,7 +423,7 @@ const getOrders = async (req, res) => {
       totalCount,
       currentPage: page,
       pickupLocations: allPickupLocations,
-      courierServices: allCourierServices.map(c => c.courierServiceName),
+      courierServices: allCourierServices.map((c) => c.courierServiceName),
     });
   } catch (error) {
     console.error("Error fetching paginated orders:", error);
@@ -413,16 +431,20 @@ const getOrders = async (req, res) => {
   }
 };
 
-
-
-
-
 const getOrdersByNdrStatus = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user._id;
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
-    const limit = limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
+    const limit =
+      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const status = req.query.status;
 
@@ -435,9 +457,24 @@ const getOrdersByNdrStatus = async (req, res) => {
     if (req.query.searchQuery) {
       andConditions.push({
         $or: [
-          { "receiverAddress.contactName": { $regex: req.query.searchQuery, $options: "i" } },
-          { "receiverAddress.email": { $regex: req.query.searchQuery, $options: "i" } },
-          { "receiverAddress.phoneNumber": { $regex: req.query.searchQuery, $options: "i" } },
+          {
+            "receiverAddress.contactName": {
+              $regex: req.query.searchQuery,
+              $options: "i",
+            },
+          },
+          {
+            "receiverAddress.email": {
+              $regex: req.query.searchQuery,
+              $options: "i",
+            },
+          },
+          {
+            "receiverAddress.phoneNumber": {
+              $regex: req.query.searchQuery,
+              $options: "i",
+            },
+          },
         ],
       });
     }
@@ -448,10 +485,14 @@ const getOrdersByNdrStatus = async (req, res) => {
       }
     }
     if (req.query.awbNumber) {
-      andConditions.push({ awb_number: { $regex: req.query.awbNumber, $options: "i" } });
+      andConditions.push({
+        awb_number: { $regex: req.query.awbNumber, $options: "i" },
+      });
     }
     if (req.query.trackingId) {
-      andConditions.push({ trackingId: { $regex: req.query.trackingId, $options: "i" } });
+      andConditions.push({
+        trackingId: { $regex: req.query.trackingId, $options: "i" },
+      });
     }
     if (req.query.courierServiceName) {
       andConditions.push({ courierServiceName: req.query.courierServiceName });
@@ -466,7 +507,9 @@ const getOrdersByNdrStatus = async (req, res) => {
       andConditions.push({ createdAt: { $gte: start, $lte: end } });
     }
     if (req.query.pickupContactName) {
-      andConditions.push({ "pickupAddress.contactName": req.query.pickupContactName });
+      andConditions.push({
+        "pickupAddress.contactName": req.query.pickupContactName,
+      });
     }
 
     const filter = { $and: andConditions };
@@ -522,7 +565,7 @@ const getOrdersByNdrStatus = async (req, res) => {
       totalCount,
       currentPage: page,
       pickupLocations: allPickupLocations,
-      courierServices: allCourierServices.map(c => c.courierServiceName),
+      courierServices: allCourierServices.map((c) => c.courierServiceName),
     });
   } catch (error) {
     console.error("Error fetching paginated orders:", error);
@@ -1197,7 +1240,7 @@ const passbook = async (req, res) => {
       message: "Passbook fetched successfully",
       results: transactions,
       totalCount,
-      page:totalPages,
+      page: totalPages,
       currentPage: Number(page),
       limit: finalLimit ?? "All",
     });
@@ -1209,8 +1252,6 @@ const passbook = async (req, res) => {
     });
   }
 };
-
-
 
 const getUser = async (req, res) => {
   try {

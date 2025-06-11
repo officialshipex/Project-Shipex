@@ -1,4 +1,6 @@
 const Order = require("../models/newOrder.model");
+const Wallet = require("../models/wallet");
+const User = require("../models/User.model");
 const {
   shipmentTrackingforward,
 } = require("../AllCouriers/EcomExpress/Couriers/couriers.controllers");
@@ -18,6 +20,7 @@ const {
   trackOrderDTDC,
 } = require("../AllCouriers/DTDC/Courier/couriers.controller");
 const Bottleneck = require("bottleneck");
+const orderSchemaModel = require("../models/orderSchema.model");
 
 const limiter = new Bottleneck({
   minTime: 1000, // 10 requests per second (1000ms delay between each)
@@ -32,6 +35,12 @@ const trackSingleOrder = async (order) => {
     // console.log("Tracking order:", order.orderId);
     const { provider, awb_number } = order;
     if (!provider || !awb_number) return;
+
+    const currentWallet = await Wallet.findById(
+      (
+        await User.findById((await Order.findOne({ awb_number })).userId)
+      ).Wallet
+    );
 
     const trackingFunctions = {
       Xpressbees: trackShipment,
@@ -55,6 +64,8 @@ const trackSingleOrder = async (order) => {
       console.warn(`Failed to map tracking data for AWB: ${awb_number}`);
       return;
     }
+    let shouldUpdateWallet = false;
+    let balanceTobeAdded = 0;
 
     if (provider === "EcomExpress") {
       const ecomExpressStatusMapping = {
@@ -238,6 +249,25 @@ const trackSingleOrder = async (order) => {
       ) {
         order.ndrStatus = "Delivered";
       }
+      const trackingLength = order.tracking?.length || 0;
+      const previousStatus =
+        trackingLength >= 2 ? order.tracking[trackingLength - 2]?.status : null;
+      if (
+        normalizedData.Instructions === "Return as per client instruction." &&
+        (trackingLength === 0 ||
+          (previousStatus !== "NONDLV" &&
+            previousStatus !== "Not Delivered" &&
+            previousStatus !== "SETRTO"))
+      ) {
+        console.log("awb with number", awb_number);
+        order.status = "Cancelled";
+        order.ndrStatus = "Cancelled";
+        balanceTobeAdded =
+          order.totalFreightCharges === "N/A"
+            ? 0
+            : parseInt(order.totalFreightCharges);
+        shouldUpdateWallet = true;
+      }
 
       if (normalizedData.Status === "SETRTO") {
         order.reattempt = true;
@@ -326,12 +356,12 @@ const trackSingleOrder = async (order) => {
         ) {
           order.ndrStatus = "Delivered";
         }
-        console.log(
-          "awb",
-          order.awb_number,
-          "time",
-          normalizedData.StatusDateTime
-        );
+        // console.log(
+        //   "awb",
+        //   order.awb_number,
+        //   "time",
+        //   normalizedData.StatusDateTime
+        // );
         const secondLastTracking =
           Array.isArray(order.tracking) && order.tracking.length >= 2
             ? order.tracking[order.tracking.length - 2]
@@ -418,7 +448,7 @@ const trackSingleOrder = async (order) => {
         },
         "RT:In Transit": {
           status: "RTO In-transit",
-          
+
           ndrStatus: "RTO In-transit",
         },
         "DL:RTO": { status: "RTO Delivered", ndrStatus: "RTO Delivered" },
@@ -518,6 +548,58 @@ const trackSingleOrder = async (order) => {
       });
       await order.save();
       console.log("saved");
+      if (shouldUpdateWallet && balanceTobeAdded > 0) {
+        // Step 0: Check if same awb_number already exists twice
+        const awbCount = await Wallet.aggregate([
+          { $match: { _id: currentWallet._id } },
+          { $unwind: "$transactions" },
+          { $match: { "transactions.awb_number": order.awb_number || "" } },
+          { $count: "count" },
+        ]);
+
+        const existingCount = awbCount[0]?.count || 0;
+
+        if (existingCount >= 2) {
+          console.log(
+            `Skipping wallet update for AWB: ${order.awb_number}, already logged twice.`
+          );
+          return; // Exit if already present twice
+        }
+
+        // Step 1: Update balance
+        await Wallet.updateOne(
+          { _id: currentWallet._id },
+          { $inc: { balance: balanceTobeAdded } }
+        );
+
+        // Step 2: Get updated wallet balance
+        const updatedWallet = await Wallet.findById(currentWallet._id);
+
+        // Step 3: Push the transaction with correct balance
+        await Wallet.updateOne(
+          { _id: currentWallet._id },
+          {
+            $push: {
+              transactions: {
+                channelOrderId: order.orderId || null,
+                category: "credit",
+                amount: balanceTobeAdded,
+                balanceAfterTransaction: updatedWallet.balance,
+                date: new Date().toISOString().slice(0, 16).replace("T", " "),
+                awb_number: order.awb_number || "",
+                description: "Freight Charges Received",
+              },
+            },
+          }
+        );
+
+        console.log(
+          "Wallet updated for AWB:",
+          order.awb_number,
+          "Amount:",
+          balanceTobeAdded
+        );
+      }
     }
   } catch (error) {
     console.error(
