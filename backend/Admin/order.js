@@ -57,85 +57,15 @@ const filterOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [], // Include couriers in the response
         });
       }
 
-      // Apply userId or name/email/phone filters for employees
-      if (userId) {
-        const userObjId = new mongoose.Types.ObjectId(userId);
-        if (allocatedUserIds.includes(userObjId.toString())) {
-          filter.userId = userObjId;
-        } else {
-          return res.json({
-            orders: [],
-            totalPages: 0,
-            totalCount: 0,
-            currentPage: parseInt(page),
-          });
-        }
-      } else if (name || email || contactNumber) {
-        const userFilter = {};
-        if (name) {
-          if (!isNaN(name)) {
-            userFilter.$or = [
-              { fullname: { $regex: name, $options: "i" } },
-              { phoneNumber: { $regex: name, $options: "i" } },
-            ];
-          } else {
-            userFilter.fullname = { $regex: name, $options: "i" };
-          }
-        }
-        if (email) userFilter.email = { $regex: email, $options: "i" };
-        if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
-
-        const matchedUsers = await User.find(userFilter).select("_id");
-        const matchedIds = matchedUsers.map((u) => u._id.toString());
-
-        const validUserIds = matchedIds.filter((id) =>
-          allocatedUserIds.includes(id)
-        );
-
-        if (validUserIds.length > 0) {
-          filter.userId = {
-            $in: validUserIds.map((id) => new mongoose.Types.ObjectId(id)),
-          };
-        } else {
-          return res.json({
-            orders: [],
-            totalPages: 0,
-            totalCount: 0,
-            currentPage: parseInt(page),
-          });
-        }
-      } else {
-        // Default to all allocated users
-        filter.userId = {
-          $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
-        };
-      }
-    } else {
-      // If not employee, apply filters without user allocation restriction
-      if (userId) {
-        filter.userId = new mongoose.Types.ObjectId(userId);
-      } else if (name || email || contactNumber) {
-        const userFilter = {};
-        if (name) {
-          if (!isNaN(name)) {
-            userFilter.$or = [
-              { fullname: { $regex: name, $options: "i" } },
-              { phoneNumber: { $regex: name, $options: "i" } },
-            ];
-          } else {
-            userFilter.fullname = { $regex: name, $options: "i" };
-          }
-        }
-        if (email) userFilter.email = { $regex: email, $options: "i" };
-        if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
-
-        const matchedUsers = await User.find(userFilter).select("_id");
-        const matchedIds = matchedUsers.map((u) => u._id);
-        filter.userId = { $in: matchedIds };
-      }
+      filter.userId = {
+        $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    } else if (userId) {
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -150,11 +80,15 @@ const filterOrdersForEmployee = async (req, res) => {
 
     const totalPages = Math.ceil(totalCount / limit);
 
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
+
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: parseInt(page),
+      couriers, // Include couriers in the response
     });
   } catch (error) {
     console.error("Error filtering orders:", error);
@@ -221,6 +155,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [],
         });
       }
     }
@@ -236,6 +171,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: parseInt(page),
+          couriers: [],
         });
       }
       filter.userId = userObjId;
@@ -243,7 +179,8 @@ const filterNdrOrdersForEmployee = async (req, res) => {
       const userFilter = {};
       if (name) userFilter.fullname = { $regex: name, $options: "i" };
       if (email) userFilter.email = { $regex: email, $options: "i" };
-      if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
+      if (contactNumber)
+        userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
 
       const users = await User.find(userFilter).select("_id");
       const matchedIds = users.map((u) => u._id.toString());
@@ -283,19 +220,21 @@ const filterNdrOrdersForEmployee = async (req, res) => {
       .lean();
 
     const totalPages = Math.ceil(totalCount / limit);
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: parseInt(page),
+      couriers,
     });
   } catch (error) {
     console.error("Error filtering employee NDR orders:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
   try {
@@ -328,6 +267,7 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: page,
+          couriers: [], // Include couriers in the response
         });
       }
     }
@@ -343,6 +283,7 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
           totalPages: 0,
           totalCount: 0,
           currentPage: page,
+          couriers: [], // Include couriers in the response
         });
       }
       filter.userId = userObjId;
@@ -363,21 +304,21 @@ const getAllOrdersByManualRtoStatusForEmployee = async (req, res) => {
 
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+    // Fetch all unique couriers
+    const couriers = await Order.distinct("courierServiceName");
 
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      couriers, // Include couriers in the response
     });
   } catch (error) {
     console.error("Error fetching Manual RTO orders (Employee):", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
-
 
 const getOrdersByStatus = async (req, res) => {
   try {
@@ -387,18 +328,92 @@ const getOrdersByStatus = async (req, res) => {
       limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
 
-    const status = req.query.status;
-    const userId = req.query.userId; // ✅ Accept userId from query
-    console.log(userId)
+    const {
+      status,
+      selectedUserId,
+      searchQuery,
+      orderId,
+      awbNumber,
+      trackingId,
+      paymentType,
+      startDate,
+      endDate,
+      courierServiceName,
+      pickupContactName,
+    } = req.query;
+    console.log("rere", req.query);
+    const andConditions = [];
 
-    const filter = {};
+    if (
+      selectedUserId?.trim() &&
+      mongoose.Types.ObjectId.isValid(selectedUserId.trim())
+    ) {
+      andConditions.push({
+        userId: new mongoose.Types.ObjectId(selectedUserId.trim()),
+      });
+    }
+
     if (status && status !== "All") {
-      filter.status = status;
+      andConditions.push({ status });
     }
 
-    if (userId) {
-      filter.userId = new mongoose.Types.ObjectId(userId);
+    if (searchQuery) {
+      andConditions.push({
+        $or: [
+          {
+            "receiverAddress.contactName": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
+          { "receiverAddress.email": { $regex: searchQuery, $options: "i" } },
+          {
+            "receiverAddress.phoneNumber": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
+        ],
+      });
     }
+
+    if (orderId) {
+      const orderIdNum = parseInt(orderId);
+      if (!isNaN(orderIdNum)) {
+        andConditions.push({ orderId: orderIdNum });
+      }
+    }
+
+    if (awbNumber) {
+      andConditions.push({ awb_number: { $regex: awbNumber, $options: "i" } });
+    }
+
+    if (trackingId) {
+      andConditions.push({ trackingId: { $regex: trackingId, $options: "i" } });
+    }
+
+    if (courierServiceName) {
+      andConditions.push({ courierServiceName });
+    }
+
+    if (paymentType) {
+      andConditions.push({ "paymentDetails.method": paymentType });
+    }
+
+    if (startDate && endDate) {
+      andConditions.push({
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        },
+      });
+    }
+
+    if (pickupContactName) {
+      andConditions.push({ "pickupAddress.contactName": pickupContactName });
+    }
+
+    const filter = andConditions.length ? { $and: andConditions } : {};
 
     const totalCount = await Order.countDocuments(filter);
 
@@ -411,18 +426,73 @@ const getOrdersByStatus = async (req, res) => {
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
 
+    // Convert $and conditions into a flat $match object for aggregation
+    const matchStage = filter.$and
+      ? filter.$and.reduce((acc, curr) => ({ ...acc, ...curr }), {})
+      : {};
+
+    // 🚚 Get courier services based on same filters (status + others)
+    const courierServices = await Order.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$courierServiceName",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          courierServiceName: "$_id",
+        },
+      },
+    ]);
+
+    // 🏠 Get pickup locations based on same filters (status + others)
+    const pickupLocations = await Order.aggregate([
+      {
+        $match: {
+          ...matchStage,
+          "pickupAddress.contactName": { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: { contactName: "$pickupAddress.contactName" },
+          address: { $first: "$pickupAddress.address" },
+          phoneNumber: { $first: "$pickupAddress.phoneNumber" },
+          email: { $first: "$pickupAddress.email" },
+          pinCode: { $first: "$pickupAddress.pinCode" },
+          city: { $first: "$pickupAddress.city" },
+          state: { $first: "$pickupAddress.state" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          contactName: "$_id.contactName",
+          address: 1,
+          phoneNumber: 1,
+          email: 1,
+          pinCode: 1,
+          city: 1,
+          state: 1,
+        },
+      },
+    ]);
+    // console.log("cour",courierServices)
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      courierServices: courierServices.map((c) => c.courierServiceName),
+      pickupLocations,
     });
   } catch (error) {
     console.error("Error fetching orders by status:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 const searchUser = async (req, res) => {
   const { query } = req.query;
@@ -438,7 +508,7 @@ const searchUser = async (req, res) => {
       { fullname: regex },
       { email: regex },
       { phoneNumber: regex },
-    ]
+    ];
 
     // If the query is a number, also search in userId
     if (!isNaN(query)) {
@@ -457,7 +527,6 @@ const searchUser = async (req, res) => {
   }
 };
 
-
 const getAllOrdersByNdrStatus = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -466,17 +535,87 @@ const getAllOrdersByNdrStatus = async (req, res) => {
       limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
 
-    const status = req.query.status;
-    const userId = req.query.userId; // ✅ Accept userId from query if provided
+    const {
+      status,
+  selectedUserId,
+      searchQuery,
+      orderId,
+      awbNumber,
+      trackingId,
+      paymentType,
+      startDate,
+      endDate,
+      courierServiceName,
+      pickupContactName,
+    } = req.query;
+console.log("ne",req.query)
+    const andConditions = [];
 
-    const filter = {};
     if (status && status !== "All") {
-      filter.ndrStatus = status;
+      andConditions.push({ ndrStatus: status });
     }
 
-    if (userId) {
-      filter.userId = new mongoose.Types.ObjectId(userId);
+    if (selectedUserId && mongoose.Types.ObjectId.isValid(selectedUserId)) {
+      andConditions.push({ userId: new mongoose.Types.ObjectId(selectedUserId) });
     }
+
+    if (searchQuery) {
+      andConditions.push({
+        $or: [
+          {
+            "receiverAddress.contactName": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
+          { "receiverAddress.email": { $regex: searchQuery, $options: "i" } },
+          {
+            "receiverAddress.phoneNumber": {
+              $regex: searchQuery,
+              $options: "i",
+            },
+          },
+        ],
+      });
+    }
+
+    if (orderId) {
+      const orderIdNum = parseInt(orderId);
+      if (!isNaN(orderIdNum)) {
+        andConditions.push({ orderId: orderIdNum });
+      }
+    }
+
+    if (awbNumber) {
+      andConditions.push({ awb_number: { $regex: awbNumber, $options: "i" } });
+    }
+
+    if (trackingId) {
+      andConditions.push({ trackingId: { $regex: trackingId, $options: "i" } });
+    }
+
+    if (courierServiceName) {
+      andConditions.push({ courierServiceName });
+    }
+
+    if (paymentType) {
+      andConditions.push({ "paymentDetails.method": paymentType });
+    }
+
+    if (startDate && endDate) {
+      andConditions.push({
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        },
+      });
+    }
+
+    if (pickupContactName) {
+      andConditions.push({ "pickupAddress.contactName": pickupContactName });
+    }
+
+    const filter = andConditions.length ? { $and: andConditions } : {};
 
     const totalCount = await Order.countDocuments(filter);
 
@@ -489,18 +628,73 @@ const getAllOrdersByNdrStatus = async (req, res) => {
     const orders = await query.lean();
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
 
+    // Convert filter for aggregation use
+    const matchStage = filter.$and
+      ? filter.$and.reduce((acc, curr) => ({ ...acc, ...curr }), {})
+      : {};
+
+    // 🚚 Get courier services based on NDR filters
+    const courierServices = await Order.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$courierServiceName",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          courierServiceName: "$_id",
+        },
+      },
+    ]);
+
+    // 🏠 Get pickup locations based on NDR filters
+    const pickupLocations = await Order.aggregate([
+      {
+        $match: {
+          ...matchStage,
+          "pickupAddress.contactName": { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: { contactName: "$pickupAddress.contactName" },
+          address: { $first: "$pickupAddress.address" },
+          phoneNumber: { $first: "$pickupAddress.phoneNumber" },
+          email: { $first: "$pickupAddress.email" },
+          pinCode: { $first: "$pickupAddress.pinCode" },
+          city: { $first: "$pickupAddress.city" },
+          state: { $first: "$pickupAddress.state" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          contactName: "$_id.contactName",
+          address: 1,
+          phoneNumber: 1,
+          email: 1,
+          pinCode: 1,
+          city: 1,
+          state: 1,
+        },
+      },
+    ]);
+
     res.json({
       orders,
       totalPages,
       totalCount,
       currentPage: page,
+      courierServices: courierServices.map((c) => c.courierServiceName),
+      pickupLocations,
     });
   } catch (error) {
     console.error("Error fetching NDR orders:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 const getAllOrdersByManualRtoStatus = async (req, res) => {
   try {
@@ -545,7 +739,6 @@ const getAllOrdersByManualRtoStatus = async (req, res) => {
   }
 };
 
-
 const filterOrders = async (req, res) => {
   try {
     const {
@@ -578,14 +771,13 @@ const filterOrders = async (req, res) => {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Include full end day
-    
+
       filter.createdAt = {
         $gte: start,
         $lte: end,
       };
     }
-    
-    
+
     if (type) filter["paymentDetails.method"] = type;
     if (courier) filter.courierServiceName = courier;
     if (userId) {
@@ -641,8 +833,6 @@ const filterOrders = async (req, res) => {
   }
 };
 
-
-
 const filterNdrOrders = async (req, res) => {
   try {
     const {
@@ -684,13 +874,13 @@ const filterNdrOrders = async (req, res) => {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Include full end day
-    
+
       filter.createdAt = {
         $gte: start,
         $lte: end,
       };
     }
-    
+
     if (userId) {
       filter.userId = new mongoose.Types.ObjectId(userId);
     } else if (name || email || contactNumber) {
@@ -698,7 +888,8 @@ const filterNdrOrders = async (req, res) => {
       const userFilter = {};
       if (name) userFilter.fullname = { $regex: name, $options: "i" };
       if (email) userFilter.email = { $regex: email, $options: "i" };
-      if (contactNumber) userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
+      if (contactNumber)
+        userFilter.phoneNumber = { $regex: contactNumber, $options: "i" };
       const users = await User.find(userFilter).select("_id");
       userIds = users.map((u) => u._id);
       if (userIds.length > 0) filter.userId = { $in: userIds };

@@ -19,51 +19,45 @@ const generateTicketNumber = () => {
   return Math.floor(1000000000 + Math.random() * 9000000000).toString();
 };
 
-// Create a new ticket
 const createTicket = async (req, res) => {
-  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, userId, email, isAdmin, company, status, message } = req.body;
+  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, email, isAdmin, company, status, message } = req.body;
 
-  if (!category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !userId || !email || !company || !message) {
+  // Get userId from auth middleware, not from req.body
+  const userId = req.user?._id || req.employee?._id;
+
+  if (!userId || !category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !email || !company || !message) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
-  try {
-    const ticketNumber = generateTicketNumber();
-
-    // Ensure AWB numbers are stored correctly
-    if (typeof awbNumbers === "string") {
-      awbNumbers = awbNumbers.split(",").map(awb => awb.trim()).filter(awb => awb.length > 0);
-    }
-
-    // Validate status
-    const validStatuses = ["active", "resolved", "deleted"];
-    if (status && !validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
-    }
-
-    const newTicket = new Ticket({
-      category,
-      subcategory,
-      awbType,
-      awbNumbers,
-      ticketNumber,
-      fullname,
-      phoneNumber,
-      userId,
-      email,
-      isAdmin,
-      company,
-      message,
-      status: status || "active" // Default to "active" if not provided
-    });
-
-    await newTicket.save();
-
-    res.status(201).json({ message: "Ticket created successfully", ticket: newTicket });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+  // ...rest of your code
+  const ticketNumber = generateTicketNumber();
+  if (typeof awbNumbers === "string") {
+    awbNumbers = awbNumbers.split(",").map(awb => awb.trim()).filter(awb => awb.length > 0);
   }
+  const validStatuses = ["active", "resolved", "deleted"];
+  if (status && !validStatuses.includes(status)) {
+    return res.status(400).json({ message: "Invalid status value" });
+  }
+
+  const newTicket = new Ticket({
+    category,
+    subcategory,
+    awbType,
+    awbNumbers,
+    ticketNumber,
+    fullname,
+    phoneNumber,
+    userId, // use the one from auth
+    email,
+    isAdmin,
+    company,
+    message,
+    status: status || "active"
+  });
+
+  await newTicket.save();
+
+  res.status(201).json({ message: "Ticket created successfully", ticket: newTicket });
 };
 
 // Get all tickets
@@ -79,7 +73,7 @@ const getAllTickets = async (req, res) => {
 
 const getUserTickets = async (req, res) => {
   try {
-    const userId =req.user?.userId || req.employee?.employeeId;
+    const userId =req.user?._id || req.employee?._id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: User not found" });

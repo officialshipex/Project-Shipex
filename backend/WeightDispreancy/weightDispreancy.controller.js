@@ -218,14 +218,19 @@ const uploadDispreancy = async (req, res) => {
         },
         excessWeightCharges: {
           excessWeight,
-          excessCharges: additionalCharges[0].forward.finalCharges,
-          pendingAmount: additionalCharges[0].forward.finalCharges,
+          excessCharges:
+            additionalCharges[0].forward.charges +
+            additionalCharges[0].forward.gst,
+          pendingAmount:
+            additionalCharges[0].forward.charges +
+            additionalCharges[0].forward.gst,
         },
         status: "new",
         adminStatus: "pending",
       });
 
       discrepancies.push(discrepancy);
+      console.log("final data", discrepancy);
     }
 
     if (discrepancies.length > 0) {
@@ -239,7 +244,11 @@ const uploadDispreancy = async (req, res) => {
         if (!userDetails || !userDetails.Wallet) continue;
 
         const walletId = userDetails.Wallet.toString();
-        const amountToHold = discrepancy.excessWeightCharges.pendingAmount || 0;
+        const amountToHold = Number(
+          discrepancy.excessWeightCharges?.pendingAmount || 0
+        ).toFixed(2);
+
+        console.log("amoutn", amountToHold);
 
         if (isNaN(amountToHold)) {
           console.warn(
@@ -587,7 +596,7 @@ const AllDiscrepancyBasedId = async (req, res) => {
       total,
       page: Number(page),
       limit: parsedLimit ?? "all",
-      page:totalPages,
+      page: totalPages,
       currentPage: Number(page),
       results,
     });
@@ -596,7 +605,6 @@ const AllDiscrepancyBasedId = async (req, res) => {
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
-
 
 const AcceptDiscrepancy = async (req, res) => {
   try {
