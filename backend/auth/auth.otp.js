@@ -22,15 +22,15 @@ otpRouter.post("/send-otp", async (req, res) => {
     try {
         console.log(`Sending OTP to ${phoneNumber}: ${otp}`);
 
-        const response = await axios.get("http://control.yourbulksms.com/api/sendhttp.php", {
+        const response = await axios.get("http://control.yourbulksms.com/api/sendhttp.php?", {
             params: {
                 authkey: "3632686970657834343532", // Replace with actual API key
                 mobiles: phoneNumber,
-                message: `Your OTP for mobile verification is ${otp} IBITOT`,
+                message: `Your verification Code is ${otp}. Do not share with anyone. IBTTCH`,
                 sender: "IBITOT",
                 route: "2",
                 country: "91",
-                DLT_TE_ID: "1707168482954578613",
+                DLT_TE_ID: "1707169675321312841",
             },
         });
 
