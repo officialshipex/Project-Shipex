@@ -276,6 +276,92 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
+    const user = await User.findById(id)
+      .populate("Wallet", "balance")
+      // .select("userId fullname email phoneNumber company kycDone creditLimit createdAt")
+      .lean();
+console.log("user",user)
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const [plan, codPlan, account, aadhar, pan, gst] = await Promise.all([
+      Plan.findOne({ userId: user._id }).lean(),
+      CodPlans.findOne({ user: user._id }).lean(),
+      Account.findOne({ user: user._id }).lean(),
+      Aadhar.findOne({ user: user._id }).lean(),
+      Pan.findOne({ user: user._id }).lean(),
+      Gst.findOne({ user: user._id }).lean(),
+    ]);
+
+    const walletBalance = user.Wallet?.balance || 0;
+
+    const userDetails = {
+      id: user._id,
+      userId: user.userId,
+      fullname: user.fullname,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      company: user.company,
+      kycStatus: user.kycDone,
+      walletAmount: walletBalance,
+      creditLimit: user.creditLimit || 0,
+      rateCard: plan?.planName || "N/A",
+      codPlan: codPlan?.planName || "N/A",
+      createdAt: user.createdAt,
+      updatedAt:user.updatedAt,
+      accountDetails: account ? {
+        beneficiaryName: account.nameAtBank,
+        accountNumber: account.accountNumber,
+        ifscCode: account.ifsc,
+        bankName: account.bank,
+        branchName: account.branch,
+      } : null,
+      aadharDetails: aadhar ? {
+        aadharNumber: aadhar.aadhaarNumber,
+        nameOnAadhar: aadhar.name,
+        state: aadhar.state,
+        address: aadhar.address,
+      } : null,
+      panDetails: pan ? {
+        panNumber: pan.pan,
+        nameOnPan: pan.nameProvided,
+        panType: pan.pan,
+        referenceId: pan.panRefId,
+      } : null,
+      gstDetails: gst ? {
+        gstNumber: gst.gstin,
+        companyAddress: gst.address,
+        pincode: gst.pincode,
+        state: gst.state,
+        city: gst.city,
+      } : null,
+    };
+    console.log(userDetails)
+
+    return res.status(200).json({
+      success: true,
+      userDetails,
+    });
+  } catch (error) {
+    console.error("Error in getUserById:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user by ID",
+      error: error.message,
+    });
+  }
+};
+
+
 const getUserDetails = async (req, res) => {
   try {
     const existsingUser = await User.findById(req.user._id)
@@ -445,4 +531,5 @@ module.exports = {
   getRatecards,
   getAllUsers,
   changeUser,
+  getUserById
 };

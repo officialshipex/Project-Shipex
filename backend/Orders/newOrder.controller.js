@@ -53,7 +53,7 @@ const newOrder = async (req, res) => {
       productDetails,
       packageDetails,
       paymentDetails,
-      commodityId,
+      // commodityId,
     } = req.body;
     console.log(req.body);
 
@@ -63,8 +63,8 @@ const newOrder = async (req, res) => {
       !receiverAddress ||
       !productDetails ||
       !packageDetails ||
-      !paymentDetails ||
-      !commodityId
+      !paymentDetails 
+      // !commodityId
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -95,7 +95,7 @@ const newOrder = async (req, res) => {
       packageDetails,
       paymentDetails,
       status: "new",
-      commodityId: commodityId,
+      // commodityId: commodityId,
       tracking: [
         {
           title: "Created",
@@ -1133,7 +1133,13 @@ const cancelOrdersAtBooked = async (req, res) => {
 // setInterval(trackOrders, 60 * 100000);
 const passbook = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user._id;
+    }
 
     const {
       fromDate,

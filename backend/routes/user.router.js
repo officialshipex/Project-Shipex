@@ -10,7 +10,7 @@ router.post('/getUserDetails',isAuthorized,userController.changeUser);
 router.get('/getAllUsers',isAuthorized,userController.getUsers);
 router.get('/getAllPlans',isAuthorized,userController.getAllPlans);
 router.get('/getUsers',isAuthorized,userController.getAllUsers);
-
+router.get("/getUserById",isAuthorized,userController.getUserById)
 router.get('/AssignPlan/:userId/:planId',isAuthorized,userController.assignPlan);
 
 module.exports=router;

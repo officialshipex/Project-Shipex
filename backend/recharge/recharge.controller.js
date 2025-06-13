@@ -295,7 +295,13 @@ const razorpayWebhook = async (req, res) => {
 
 const getWalletHistoryByUserId = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user._id;
+    }
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
@@ -345,7 +351,13 @@ const getWalletHistoryByUserId = async (req, res) => {
 
 const getWalletBalanceAndHoldAmount = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user._id;
+    }
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
