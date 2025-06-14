@@ -6,7 +6,7 @@ const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
 const { getZone } = require("../../../Rate/zoneManagementController");
-
+const commodityOptions = require("../../../config/commodityOptions");
 // const router = express.Router();
 
 // DTDC API Configuration from environment variables
@@ -58,10 +58,19 @@ const createOrder = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Wallet not found" });
     }
-
     const productNames = currentOrder.productDetails
       .map((product) => product.name)
-      .join(", "); // Convert array to a comma-separated string
+      .join(", ");
+
+    // Detect commodity_id based on product name
+    const lowerCaseProductNames = productNames.toLowerCase();
+    let commodityId = "Others";
+    for (const option of commodityOptions) {
+      if (lowerCaseProductNames.includes(option.name.toLowerCase())) {
+        commodityId = option.id;
+        break;
+      }
+    }
 
     // Construct shipment payload
     const codCollectionMode =
@@ -112,18 +121,14 @@ const createOrder = async (req, res) => {
           cod_amount: codAmount,
 
           ...(courierServiceName === "Dtdc Air" && {
-            commodity_id: currentOrder?.commodityId || "Others",
+            commodity_id: commodityId,
           }),
           reference_number: "",
         },
       ],
     };
+    console.log("consignments",shipmentData);
 
-    console.log(
-      "orgin,destination",
-      shipmentData.consignments[0].origin_details,
-      shipmentData.consignments[0].destination_details
-    );
 
     // API call to DTDC
     let response;
@@ -188,7 +193,7 @@ const createOrder = async (req, res) => {
       data: response.data,
     });
   } catch (error) {
-    console.error("Error creating shipment:", error.response);
+    console.error("Error creating shipment:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create shipment",

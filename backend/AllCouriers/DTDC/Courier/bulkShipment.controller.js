@@ -6,6 +6,7 @@ const Order = require("../../../models/newOrder.model");
 const Wallet = require("../../../models/wallet");
 const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
 const { getZone } = require("../../../Rate/zoneManagementController");
+const commodityOptions = require("../../../config/commodityOptions");
 
 // const router = express.Router();
 
@@ -55,6 +56,14 @@ const createOrderDTDC = async (
       .map((product) => product.name)
       .join(", "); // Convert array to a comma-separated string
 
+    const lowerCaseProductNames = productNames.toLowerCase();
+    let commodityId = "Others";
+    for (const option of commodityOptions) {
+      if (lowerCaseProductNames.includes(option.name.toLowerCase())) {
+        commodityId = option.id;
+        break;
+      }
+    }
     // Construct shipment payload
     const codCollectionMode =
       currentOrder.paymentDetails.method === "COD" ? "cash" : null;
@@ -104,7 +113,7 @@ const createOrderDTDC = async (
           cod_amount: codAmount,
 
           ...(serviceDetails.name === "Dtdc Air" && {
-            commodity_id: currentOrder?.commodityId || "Others",
+            commodity_id: commodityId,
           }),
           reference_number: "",
         },
@@ -138,7 +147,7 @@ const createOrderDTDC = async (
       currentOrder.totalFreightCharges = charges;
       currentOrder.courierServiceName = serviceDetails.name;
       currentOrder.shipmentCreatedAt = new Date();
-      currentOrder.zone=zone.zone;
+      currentOrder.zone = zone.zone;
       let savedOrder = await currentOrder.save();
 
       // console.log("sjakjska",balanceToBeDeducted)

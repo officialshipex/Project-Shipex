@@ -26,11 +26,12 @@ otpRouter.post("/send-otp", async (req, res) => {
             params: {
                 authkey: "3632686970657834343532", // Replace with actual API key
                 mobiles: phoneNumber,
-                message: `Your verification Code is ${otp}. Do not share with anyone. IBTTCH`,
+                message: `Your verification Code is ${otp}. Do not share with anyone.IBTTCH`,
                 sender: "IBITOT",
                 route: "2",
                 country: "91",
-                DLT_TE_ID: "1707169675321312841",
+                // DLT_TE_ID: "1707168482954578613",
+                DLT_TE_ID:"1707169675321312841"
             },
         });
 
@@ -42,6 +43,7 @@ otpRouter.post("/send-otp", async (req, res) => {
                 success: true,
                 message: "OTP sent successfully",
                 data: response.data,
+                otp:otp
             });
         } else {
             console.error("Failed OTP API Response:", response.data);

@@ -504,9 +504,15 @@ cron.schedule("25 2 * * *", () => {
 
 const codRemittanceData = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user._id;
+    }
     const { fromDate, toDate } = req.query;
-    console.log("-------------->",fromDate,toDate)
+    console.log("-------------->", fromDate, toDate);
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const remittanceIdFilter = req.query.remittanceIdFilter;
@@ -553,7 +559,7 @@ const codRemittanceData = async (req, res) => {
         (entry) => entry.status === statusFilter.trim()
       );
     }
-if (fromDate && toDate) {
+    if (fromDate && toDate) {
       const from = new Date(fromDate);
       const to = new Date(toDate);
 
@@ -1078,8 +1084,8 @@ const courierCodRemittance = async (req, res) => {
     const limitQuery = req.query.limit;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
- const searchFilter = req.query.searchFilter || "";
-   const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
+    const searchFilter = req.query.searchFilter || "";
+    const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
     const statusFilter = req.query.statusFilter || "";
     const allOrders = await CourierCodRemittance.aggregate([
       {
@@ -1131,48 +1137,46 @@ const courierCodRemittance = async (req, res) => {
         },
       },
     ]);
-   // 2. Apply JavaScript filter
-let filteredOrders = allOrders;
-// filter by username or phone number or email
-if (searchFilter) {
-  const lowerCaseFilter = searchFilter.toLowerCase();
+    // 2. Apply JavaScript filter
+    let filteredOrders = allOrders;
+    // filter by username or phone number or email
+    if (searchFilter) {
+      const lowerCaseFilter = searchFilter.toLowerCase();
 
-  filteredOrders = allOrders.filter((order) => {
-    const name = order.userName?.toLowerCase() || "";
-    const phone = order.PhoneNumber?.toLowerCase() || "";
-    const email = order.Email?.toLowerCase() || "";
+      filteredOrders = allOrders.filter((order) => {
+        const name = order.userName?.toLowerCase() || "";
+        const phone = order.PhoneNumber?.toLowerCase() || "";
+        const email = order.Email?.toLowerCase() || "";
 
-    return (
-      name.includes(lowerCaseFilter) ||
-      phone.includes(lowerCaseFilter) ||
-      email.includes(lowerCaseFilter)
-    );
-  });
-}
-// filter by orderId and awb number 
-if (orderIdAwbNumberFilter) {
-  const filterValues = orderIdAwbNumberFilter
-    .split(",")
-    .map((val) => val.trim()); // Convert to array and trim spaces
+        return (
+          name.includes(lowerCaseFilter) ||
+          phone.includes(lowerCaseFilter) ||
+          email.includes(lowerCaseFilter)
+        );
+      });
+    }
+    // filter by orderId and awb number
+    if (orderIdAwbNumberFilter) {
+      const filterValues = orderIdAwbNumberFilter
+        .split(",")
+        .map((val) => val.trim()); // Convert to array and trim spaces
 
-  filteredOrders = allOrders.filter((order) => {
-    const orderIdStr = order.userId?.toString() || "";
-    const awbStr = order.AwbNumber?.toString() || "";
+      filteredOrders = allOrders.filter((order) => {
+        const orderIdStr = order.userId?.toString() || "";
+        const awbStr = order.AwbNumber?.toString() || "";
 
-    // Check if any of the filter values match orderID or AWB_Number
-    return filterValues.some((filter) =>
-      orderIdStr.includes(filter) || awbStr.includes(filter)
-    );
-  });
-}
-// filter by status
-if (statusFilter){
-  filteredOrders = allOrders.filter(order =>
-    order.status?.toString().includes(statusFilter)
-  );
-}
-
-
+        // Check if any of the filter values match orderID or AWB_Number
+        return filterValues.some(
+          (filter) => orderIdStr.includes(filter) || awbStr.includes(filter)
+        );
+      });
+    }
+    // filter by status
+    if (statusFilter) {
+      filteredOrders = allOrders.filter((order) =>
+        order.status?.toString().includes(statusFilter)
+      );
+    }
 
     const totalCount = filteredOrders.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
@@ -1207,7 +1211,7 @@ const getAdminCodRemitanceData = async (req, res) => {
     const limitQuery = req.query.limit;
     const userNameFilter = req.query.userNameFilter;
     const remittanceIdFilter = req.query.remittanceIdFilter;
-    const statusFilter= req.query.statusFilter;
+    const statusFilter = req.query.statusFilter;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const allOrders = await adminCodRemittance.aggregate([
@@ -1264,27 +1268,25 @@ const getAdminCodRemitanceData = async (req, res) => {
     // Apply filters conditionally
     let filteredOrders = allOrders;
 
-// Filter by userName
-if (userNameFilter) {
-  filteredOrders = filteredOrders.filter(order =>
-    order.userName
-      ?.toLowerCase()
-      .includes(userNameFilter.toLowerCase())
-  );
-}
+    // Filter by userName
+    if (userNameFilter) {
+      filteredOrders = filteredOrders.filter((order) =>
+        order.userName?.toLowerCase().includes(userNameFilter.toLowerCase())
+      );
+    }
 
-// Filter by remittanceId
-if (remittanceIdFilter) {
-  filteredOrders = filteredOrders.filter(order =>
-    order.remitanceId?.toString().includes(remittanceIdFilter)
-  );
-}
-// Filter by statusFilter
-if (statusFilter){
-  filteredOrders = filteredOrders.filter(order =>
-    order.status?.toString().includes(statusFilter)
-  );
-}
+    // Filter by remittanceId
+    if (remittanceIdFilter) {
+      filteredOrders = filteredOrders.filter((order) =>
+        order.remitanceId?.toString().includes(remittanceIdFilter)
+      );
+    }
+    // Filter by statusFilter
+    if (statusFilter) {
+      filteredOrders = filteredOrders.filter((order) =>
+        order.status?.toString().includes(statusFilter)
+      );
+    }
 
     const totalCount = filteredOrders.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
@@ -1317,7 +1319,7 @@ const CodRemittanceOrder = async (req, res) => {
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
     const searchFilter = req.query.searchFilter || "";
-   const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
+    const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
     const statusFilter = req.query.statusFilter || "";
 
     // Fetch all orders with filter, convert CODAmount, and sort statusFilter
@@ -1375,48 +1377,46 @@ const CodRemittanceOrder = async (req, res) => {
         },
       },
     ]);
-     // 2. Apply JavaScript filter
-let filteredOrders = allOrders;
-// filter by username or phone number or email
-if (searchFilter) {
-  const lowerCaseFilter = searchFilter.toLowerCase();
+    // 2. Apply JavaScript filter
+    let filteredOrders = allOrders;
+    // filter by username or phone number or email
+    if (searchFilter) {
+      const lowerCaseFilter = searchFilter.toLowerCase();
 
-  filteredOrders = allOrders.filter((order) => {
-    const name = order.userName?.toLowerCase() || "";
-    const phone = order.PhoneNumber?.toLowerCase() || "";
-    const email = order.Email?.toLowerCase() || "";
+      filteredOrders = allOrders.filter((order) => {
+        const name = order.userName?.toLowerCase() || "";
+        const phone = order.PhoneNumber?.toLowerCase() || "";
+        const email = order.Email?.toLowerCase() || "";
 
-    return (
-      name.includes(lowerCaseFilter) ||
-      phone.includes(lowerCaseFilter) ||
-      email.includes(lowerCaseFilter)
-    );
-  });
-}
-// filter by orderId and awb number 
-if (orderIdAwbNumberFilter) {
-  const filterValues = orderIdAwbNumberFilter
-    .split(",")
-    .map((val) => val.trim()); // Convert to array and trim spaces
+        return (
+          name.includes(lowerCaseFilter) ||
+          phone.includes(lowerCaseFilter) ||
+          email.includes(lowerCaseFilter)
+        );
+      });
+    }
+    // filter by orderId and awb number
+    if (orderIdAwbNumberFilter) {
+      const filterValues = orderIdAwbNumberFilter
+        .split(",")
+        .map((val) => val.trim()); // Convert to array and trim spaces
 
-  filteredOrders = allOrders.filter((order) => {
-    const orderIdStr = order.orderID?.toString() || "";
-    const awbStr = order.AWB_Number?.toString() || "";
+      filteredOrders = allOrders.filter((order) => {
+        const orderIdStr = order.orderID?.toString() || "";
+        const awbStr = order.AWB_Number?.toString() || "";
 
-    // Check if any of the filter values match orderID or AWB_Number
-    return filterValues.some((filter) =>
-      orderIdStr.includes(filter) || awbStr.includes(filter)
-    );
-  });
-}
-// filter by status
-if (statusFilter){
-  filteredOrders = allOrders.filter(order =>
-    order.status?.toString().includes(statusFilter)
-  );
-}
-
-
+        // Check if any of the filter values match orderID or AWB_Number
+        return filterValues.some(
+          (filter) => orderIdStr.includes(filter) || awbStr.includes(filter)
+        );
+      });
+    }
+    // filter by status
+    if (statusFilter) {
+      filteredOrders = allOrders.filter((order) =>
+        order.status?.toString().includes(statusFilter)
+      );
+    }
 
     // Pagination
     const totalCount = filteredOrders.length;

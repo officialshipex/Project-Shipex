@@ -33,20 +33,27 @@ const getUsers = async (req, res) => {
     // If employee, filter users by allocations
     if (req.employee && req.employee.employeeId) {
       // Get allocations for this employee
-      const allocations = await AllocateRole.find({ employeeId: req.employee.employeeId });
-      const sellerMongoIds = allocations.map(a => a.sellerMongoId);
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+      const sellerMongoIds = allocations.map((a) => a.sellerMongoId);
       // Fetch only users whose _id is in sellerMongoIds
-      allUsers = await User.find({ _id: { $in: sellerMongoIds }, kycDone: true });
+      allUsers = await User.find({
+        _id: { $in: sellerMongoIds },
+        kycDone: true,
+      });
     } else {
       // Admin: get all users as before
       allUsers = await User.find({ kycDone: true });
     }
 
-    const isSeller = allUsers.some(user => user._id.toString() === req.user?.id);
+    const isSeller = allUsers.some(
+      (user) => user._id.toString() === req.user?.id
+    );
 
     res.status(201).json({
       success: true,
-      sellers: allUsers.map(user => ({
+      sellers: allUsers.map((user) => ({
         userId: user.userId,
         id: user._id,
         name: `${user.fullname}`,
@@ -71,84 +78,196 @@ const getUsers = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    let allUsers = [];
-    // If employee, filter users by allocations
-    if (req.employee && req.employee.employeeId) {
-      // Get allocations for this employee
-      const allocations = await AllocateRole.find({ employeeId: req.employee.employeeId });
-      const sellerMongoIds = allocations.map(a => a.sellerMongoId);
-      // Fetch only users whose _id is in sellerMongoIds
-      allUsers = await User.find({ _id: { $in: sellerMongoIds }, kycDone: true }).populate("Wallet");
-    } else {
-      // Admin: get all users as before
-      allUsers = await User.find({ kycDone: true }).populate("Wallet");
+    const {
+      page = 1,
+      limit,
+      search = "",
+      kycStatus,
+      rateCard,
+      balanceType,
+      userId,
+    } = req.query;
+
+    console.log("Request query params:", req.query);
+
+    const parsedLimit = limit === "All" || !limit ? null : Number(limit);
+    const skip = parsedLimit ? (Number(page) - 1) * parsedLimit : 0;
+
+    const query = {};
+
+    // Exact userId match
+    if (userId && userId.trim() !== "") {
+      query.userId = userId.trim();
+    }
+    // Flexible search
+    else if (search && search.trim() !== "") {
+      const trimmedSearch = search.trim();
+      query.$or = [
+        { userId: { $regex: trimmedSearch, $options: "i" } },
+        { fullname: { $regex: trimmedSearch, $options: "i" } },
+        { email: { $regex: trimmedSearch, $options: "i" } },
+        { phoneNumber: { $regex: trimmedSearch, $options: "i" } },
+      ];
     }
 
-    // Fetch user details (as before)
-    const userDetails = await Promise.all(
-      allUsers.map(async (user) => {
-        const account = await Account.findOne({ user: user._id });
-        const aadhar = await Aadhar.findOne({ user: user._id });
-        const pan = await Pan.findOne({ user: user._id });
-        const gst = await Gst.findOne({ user: user._id });
-        const codPlan = await CodPlans.findOne({ user: user._id });
-        const rateCard = await Plan.findOne({ userId: user._id });
-        return {
-          userId: user?.userId || "N/A",
-          fullname: user.fullname,
-          email: user.email,
-          phoneNumber: user.phoneNumber,
-          company: user.company,
-          accountStatus: user.kycDone,
-          kycStatus: user.kycDone,
-          walletAmount: user.Wallet?.balance || 0,
-          creditLimit: user?.creditLimit || 0,
-          rateCard: rateCard?.planName || 0,
-          codPlan: codPlan ? codPlan.planName : "N/A",
-          createdAt: user.createdAt,
-          accountDetails: account
-            ? {
-                beneficiaryName: account.nameAtBank,
-                accountNumber: account.accountNumber,
-                ifscCode: account.ifsc,
-                bankName: account.bank,
-                branchName: account.branch,
-              }
-            : null,
-          aadharDetails: aadhar
-            ? {
-                aadharNumber: aadhar.aadhaarNumber,
-                nameOnAadhar: aadhar.name,
-                state: aadhar.state,
-                address: aadhar.address,
-              }
-            : null,
-          panDetails: pan
-            ? {
-                panNumber: pan.panNumber,
-                nameOnPan: pan.nameProvided,
-                panType: pan.pan,
-                referenceId: pan.panRefId,
-              }
-            : null,
-          gstDetails: gst
-            ? {
-                gstNumber: gst.gstin,
-                companyAddress: gst.address,
-                pincode: gst.pincode,
-                state: gst.state,
-                city: gst.city,
-              }
-            : null,
-        };
-      })
-    );
+    if (kycStatus === "verified") query.kycDone = true;
+    if (kycStatus === "pending") query.kycDone = false;
 
-    res.status(200).json({
+    const hasFilters =
+      (userId && userId.trim() !== "") || (search && search.trim() !== "");
+
+    // Employee-based role filtering
+    if (req.employee?.employeeId && !req.employee.isAdmin) {
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+
+      const sellerMongoIds = allocations.map((a) => a.sellerMongoId);
+
+      // Only apply role restriction if there are allocated sellers
+      if (sellerMongoIds.length > 0) {
+        query._id = { $in: sellerMongoIds };
+      } else {
+        return res.status(200).json({
+          success: true,
+          userIds: [],
+          userDetails: [],
+          verifiedKycCount: 0,
+          pendingKycCount: 0,
+          currentPage: Number(page),
+          totalPages: 0,
+          totalCount: 0,
+        });
+      }
+    }
+
+    // Fetch all users based on constructed query
+    const users = await User.find(query)
+      .populate("Wallet", "balance") // Ensure 'wallet' is correct in schema
+      .select(
+        "userId fullname email phoneNumber company kycDone creditLimit createdAt"
+      )
+      .lean();
+
+    console.log("Fetched users:", users.length);
+
+    const userIds = users.map((u) => u._id);
+
+    const [plans, codPlans, accounts, aadhars, pans, gsts] = await Promise.all([
+      Plan.find({ userId: { $in: userIds } }).lean(),
+      CodPlans.find({ user: { $in: userIds } }).lean(),
+      Account.find({ user: { $in: userIds } }).lean(),
+      Aadhar.find({ user: { $in: userIds } }).lean(),
+      Pan.find({ user: { $in: userIds } }).lean(),
+      Gst.find({ user: { $in: userIds } }).lean(),
+    ]);
+
+    const planMap = new Map(plans.map((p) => [String(p.userId), p]));
+    const codMap = new Map(codPlans.map((p) => [String(p.user), p]));
+    const accountMap = new Map(accounts.map((a) => [String(a.user), a]));
+    const aadharMap = new Map(aadhars.map((a) => [String(a.user), a]));
+    const panMap = new Map(pans.map((p) => [String(p.user), p]));
+    const gstMap = new Map(gsts.map((g) => [String(g.user), g]));
+
+    // Filter by wallet balance & rate card if applied
+    const filteredUsers = users.filter((user) => {
+      const walletBalance = user.wallet?.balance || 0;
+
+      if (balanceType === "positive" && walletBalance < 0) return false;
+      if (balanceType === "negative" && walletBalance >= 0) return false;
+
+      const plan = planMap.get(String(user._id));
+      if (
+        rateCard &&
+        plan?.planName?.toLowerCase() !== rateCard.toLowerCase()
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const totalCount = filteredUsers.length;
+    const totalPages = parsedLimit ? Math.ceil(totalCount / parsedLimit) : 1;
+
+    const paginatedUsers = parsedLimit
+      ? filteredUsers.slice(skip, skip + parsedLimit)
+      : filteredUsers;
+
+    const userDetails = paginatedUsers.map((user) => {
+      const walletBalance = user.Wallet?.balance || 0;
+      const plan = planMap.get(String(user._id));
+
+      return {
+        id:user._id,
+        userId: user.userId,
+        fullname: user.fullname,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        company: user.company,
+        kycStatus: user.kycDone,
+        walletAmount: walletBalance,
+        creditLimit: user.creditLimit || 0,
+        rateCard: plan?.planName || "N/A",
+        codPlan: codMap.get(String(user._id))?.planName || "N/A",
+        createdAt: user.createdAt,
+        accountDetails: (() => {
+          const acc = accountMap.get(String(user._id));
+          if (!acc) return null;
+          return {
+            beneficiaryName: acc.nameAtBank,
+            accountNumber: acc.accountNumber,
+            ifscCode: acc.ifsc,
+            bankName: acc.bank,
+            branchName: acc.branch,
+          };
+        })(),
+        aadharDetails: (() => {
+          const a = aadharMap.get(String(user._id));
+          if (!a) return null;
+          return {
+            aadharNumber: a.aadhaarNumber,
+            nameOnAadhar: a.name,
+            state: a.state,
+            address: a.address,
+          };
+        })(),
+        panDetails: (() => {
+          const p = panMap.get(String(user._id));
+          if (!p) return null;
+          return {
+            panNumber: p.panNumber,
+            nameOnPan: p.nameProvided,
+            panType: p.pan,
+            referenceId: p.panRefId,
+          };
+        })(),
+        gstDetails: (() => {
+          const g = gstMap.get(String(user._id));
+          if (!g) return null;
+          return {
+            gstNumber: g.gstin,
+            companyAddress: g.address,
+            pincode: g.pincode,
+            state: g.state,
+            city: g.city,
+          };
+        })(),
+      };
+    });
+
+    return res.status(200).json({
       success: true,
-      data: userDetails,
+      userIds: userDetails.map((u) => u.userId),
+      userDetails,
+      verifiedKycCount: await User.countDocuments({ ...query, kycDone: true }),
+      pendingKycCount: await User.countDocuments({ ...query, kycDone: false }),
+      currentPage: Number(page),
+      totalPages,
+      totalCount,
     });
   } catch (error) {
+    console.error("Error in getAllUsers:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching users",
@@ -156,6 +275,92 @@ const getAllUsers = async (req, res) => {
     });
   }
 };
+
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
+    const user = await User.findById(id)
+      .populate("Wallet", "balance")
+      // .select("userId fullname email phoneNumber company kycDone creditLimit createdAt")
+      .lean();
+console.log("user",user)
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const [plan, codPlan, account, aadhar, pan, gst] = await Promise.all([
+      Plan.findOne({ userId: user._id }).lean(),
+      CodPlans.findOne({ user: user._id }).lean(),
+      Account.findOne({ user: user._id }).lean(),
+      Aadhar.findOne({ user: user._id }).lean(),
+      Pan.findOne({ user: user._id }).lean(),
+      Gst.findOne({ user: user._id }).lean(),
+    ]);
+
+    const walletBalance = user.Wallet?.balance || 0;
+
+    const userDetails = {
+      id: user._id,
+      userId: user.userId,
+      fullname: user.fullname,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      company: user.company,
+      kycStatus: user.kycDone,
+      walletAmount: walletBalance,
+      creditLimit: user.creditLimit || 0,
+      rateCard: plan?.planName || "N/A",
+      codPlan: codPlan?.planName || "N/A",
+      createdAt: user.createdAt,
+      updatedAt:user.updatedAt,
+      accountDetails: account ? {
+        beneficiaryName: account.nameAtBank,
+        accountNumber: account.accountNumber,
+        ifscCode: account.ifsc,
+        bankName: account.bank,
+        branchName: account.branch,
+      } : null,
+      aadharDetails: aadhar ? {
+        aadharNumber: aadhar.aadhaarNumber,
+        nameOnAadhar: aadhar.name,
+        state: aadhar.state,
+        address: aadhar.address,
+      } : null,
+      panDetails: pan ? {
+        panNumber: pan.pan,
+        nameOnPan: pan.nameProvided,
+        panType: pan.pan,
+        referenceId: pan.panRefId,
+      } : null,
+      gstDetails: gst ? {
+        gstNumber: gst.gstin,
+        companyAddress: gst.address,
+        pincode: gst.pincode,
+        state: gst.state,
+        city: gst.city,
+      } : null,
+    };
+    console.log(userDetails)
+
+    return res.status(200).json({
+      success: true,
+      userDetails,
+    });
+  } catch (error) {
+    console.error("Error in getUserById:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user by ID",
+      error: error.message,
+    });
+  }
+};
+
 
 const getUserDetails = async (req, res) => {
   try {
@@ -179,12 +384,18 @@ const getUserDetails = async (req, res) => {
 const changeUser = async (req, res) => {
   try {
     console.log("hi");
-    const userId = req.user ? req.user.id : req.employee ? req.employee.id : null;
-if (!userId) {
-  return res.status(401).json({ message: "Unauthorized: user not found in token" });
-}
+    const userId = req.user
+      ? req.user.id
+      : req.employee
+      ? req.employee.id
+      : null;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: user not found in token" });
+    }
     const { adminTab } = req.body;
-    console.log("ad",adminTab)
+    console.log("ad", adminTab);
 
     if (typeof adminTab !== "boolean") {
       return res.status(400).json({ message: "Invalid adminTab value" });
@@ -320,4 +531,5 @@ module.exports = {
   getRatecards,
   getAllUsers,
   changeUser,
+  getUserById
 };
