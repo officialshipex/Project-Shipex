@@ -127,12 +127,8 @@ const createOrder = async (req, res) => {
         },
       ],
     };
+    console.log("consignments",shipmentData);
 
-    console.log(
-      "orgin,destination",
-      shipmentData.consignments[0].origin_details,
-      shipmentData.consignments[0].destination_details
-    );
 
     // API call to DTDC
     let response;
@@ -197,7 +193,7 @@ const createOrder = async (req, res) => {
       data: response.data,
     });
   } catch (error) {
-    console.error("Error creating shipment:", error.response);
+    console.error("Error creating shipment:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create shipment",

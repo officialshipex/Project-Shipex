@@ -55,7 +55,7 @@ const newOrder = async (req, res) => {
       paymentDetails,
       // commodityId,
     } = req.body;
-    console.log(req.body);
+    // console.log(req.body);
 
     // Validate request data
     if (
