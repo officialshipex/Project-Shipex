@@ -7,11 +7,11 @@ const {getAllShippingTransactions}=require("./Billings/shipping")
 const {getAllCodRemittance}=require("./Billings/codRemmitances")
 
 
-app.get("/allTransactionHistory",getAllTransactionHistory);
+app.get("/allTransactionHistory", isAuthorized, getAllTransactionHistory);
 app.post("/add-history",addWalletHistory)
-app.get("/allPassbook",getAllPassbookTransactions)
-app.get("/allShipping",getAllShippingTransactions)
-app.get("/allCodRemittance",getAllCodRemittance)
+app.get("/allPassbook", isAuthorized, getAllPassbookTransactions)
+app.get("/allShipping", isAuthorized, getAllShippingTransactions)
+app.get("/allCodRemittance", isAuthorized, getAllCodRemittance)
 
 
 module.exports = app;

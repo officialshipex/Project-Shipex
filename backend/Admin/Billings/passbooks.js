@@ -1,5 +1,6 @@
-const User=require("../../models/User.model")
-const Wallet=require("../../models/wallet")
+const User = require("../../models/User.model");
+const Wallet = require("../../models/wallet");
+const AllocateRole = require("../../models/allocateRoleSchema");
 const mongoose = require("mongoose");
 
 const getAllPassbookTransactions = async (req, res) => {
@@ -13,13 +14,28 @@ const getAllPassbookTransactions = async (req, res) => {
       limit = 20,
       awbNumber,
       orderId
-    //   description,
     } = req.query;
-
-    console.log(req.query)
 
     const userMatchStage = {};
     const transactionMatchStage = {};
+
+    // --- Employee filtering logic ---
+    let allocatedUserIds = null;
+    if (req.employee && req.employee.employeeId) {
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      if (allocatedUserIds.length === 0) {
+        return res.json({
+          total: 0,
+          page: Number(page),
+          limit: limit === "all" ? "all" : Number(limit),
+          results: [],
+        });
+      }
+      userMatchStage["_id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
 
     // Filter by user (ID, email, or name)
     if (userSearch) {
@@ -118,4 +134,4 @@ const getAllPassbookTransactions = async (req, res) => {
   }
 };
 
-module.exports={getAllPassbookTransactions}
+module.exports = { getAllPassbookTransactions };
