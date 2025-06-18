@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const NewOrder = require("../../models/newOrder.model");
 const User = require("../../models/User.model");
+const AllocateRole = require("../../models/allocateRoleSchema");
 
 const getAllShippingTransactions = async (req, res) => {
   try {
@@ -15,9 +16,27 @@ const getAllShippingTransactions = async (req, res) => {
       status,
       provider
     } = req.query;
-console.log("re",req.query)
+
     const userMatchStage = {};
     const orderMatchStage = {};
+
+    // Employee filtering logic
+    let allocatedUserIds = null;
+    if (req.employee && req.employee.employeeId) {
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      if (allocatedUserIds.length === 0) {
+        return res.json({
+          total: 0,
+          page: Number(page),
+          limit: limit === "all" ? "all" : Number(limit),
+          results: [],
+        });
+      }
+      orderMatchStage["userId"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
 
     // User search filter
     if (userSearch) {
@@ -40,12 +59,12 @@ console.log("re",req.query)
       orderMatchStage["createdAt"] = { $gte: startDate, $lte: endDate };
     }
 
-    if(status){
-        orderMatchStage["status"]=status;
+    if (status) {
+      orderMatchStage["status"] = status;
     }
 
-    if(provider){
-        orderMatchStage["provider"]=provider;
+    if (provider) {
+      orderMatchStage["provider"] = provider;
     }
 
     if (awbNumber) {
@@ -81,7 +100,7 @@ console.log("re",req.query)
           totalFreightCharges: 1,
           createdAt: 1,
           shipmentCreatedAt: 1,
-          status:"$status",
+          status: "$status",
           ndrStatus: "$ndrStatus",
           paymentMethod: "$paymentDetails.method",
           paymentAmount: "$paymentDetails.amount",
@@ -94,7 +113,7 @@ console.log("re",req.query)
           pickupAddress: 1,
           receiverAddress: 1,
           productDetails: 1,
-          packageDetails:1
+          packageDetails: 1
         },
       },
       { $sort: { createdAt: -1 } },
