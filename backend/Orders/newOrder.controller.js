@@ -63,7 +63,7 @@ const newOrder = async (req, res) => {
       !receiverAddress ||
       !productDetails ||
       !packageDetails ||
-      !paymentDetails 
+      !paymentDetails
       // !commodityId
     ) {
       return res.status(400).json({ error: "All fields are required" });
@@ -1134,12 +1134,7 @@ const cancelOrdersAtBooked = async (req, res) => {
 const passbook = async (req, res) => {
   try {
     const { id } = req.query;
-    let userId;
-    if (id) {
-      userId = id;
-    } else {
-      userId = req.user._id;
-    }
+    const userId = id || req.user._id;
 
     const {
       fromDate,
@@ -1151,14 +1146,11 @@ const passbook = async (req, res) => {
       limit = 20,
     } = req.query;
 
-    // console.log("re",req.query)
-
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
     const currentUser = await user.findById(userId);
-
     if (!currentUser || !currentUser.Wallet) {
       return res.status(404).json({ message: "Wallet not found" });
     }
@@ -1175,7 +1167,6 @@ const passbook = async (req, res) => {
       };
     }
 
-    // Other filters
     if (category) {
       transactionMatchStage["wallet.transactions.category"] = category;
     }
@@ -1188,7 +1179,6 @@ const passbook = async (req, res) => {
       transactionMatchStage["wallet.transactions.channelOrderId"] = orderId;
     }
 
-    // Normalize and parse limit
     const parsedLimit =
       typeof limit === "string" && limit.toLowerCase() === "all"
         ? null
@@ -1212,6 +1202,25 @@ const passbook = async (req, res) => {
       { $unwind: "$wallet" },
       { $unwind: "$wallet.transactions" },
       { $match: transactionMatchStage },
+
+      // Lookup courierServiceName from orders using awb_number
+      {
+        $lookup: {
+          from: "neworders",
+          localField: "wallet.transactions.awb_number",
+          foreignField: "awb_number",
+          as: "orderInfo",
+        },
+      },
+      {
+        $addFields: {
+          courierServiceName: {
+            $arrayElemAt: ["$orderInfo.courierServiceName", 0],
+          },
+          provider: { $arrayElemAt: ["$orderInfo.provider", 0] },
+        },
+      },
+
       {
         $project: {
           _id: 0,
@@ -1223,6 +1232,8 @@ const passbook = async (req, res) => {
           awb_number: "$wallet.transactions.awb_number",
           orderId: "$wallet.transactions.channelOrderId",
           description: "$wallet.transactions.description",
+          courierServiceName: 1,
+          provider:1,
         },
       },
       { $sort: { date: -1 } },

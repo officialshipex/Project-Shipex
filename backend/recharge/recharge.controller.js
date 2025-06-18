@@ -295,27 +295,28 @@ const razorpayWebhook = async (req, res) => {
 
 const getWalletHistoryByUserId = async (req, res) => {
   try {
-    const { id } = req.query;
-    let userId;
-    if (id) {
-      userId = id;
-    } else {
-      userId = req.user._id;
-    }
-
+    const {
+      id,
+      page = 1,
+      limit = 10,
+      transactionId,
+      paymentId,
+      status,
+      fromDate,
+      toDate,
+    } = req.query;
+    const userId = id || req.user._id;
+    console.log("trans", req.query);
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
     }
 
-    const { page = 1, limit = 10 } = req.query;
-
-    // Step 1: Get user wallet ID
+    // Get user wallet ID
     const user = await User.findById(userId).select("Wallet").lean();
     if (!user?.Wallet) {
       return res.status(404).json({ message: "Wallet not found for user." });
     }
 
-    // Step 2: Get wallet and walletHistory
     const wallet = await Wallet.findById(user.Wallet)
       .select("walletHistory")
       .lean();
@@ -325,14 +326,36 @@ const getWalletHistoryByUserId = async (req, res) => {
 
     let history = wallet.walletHistory || [];
 
-    // Step 4: Sort and Paginate
+    // Apply filters
+    history = history.filter((item) => {
+      const matchTransactionId = transactionId
+        ? item.paymentDetails.transactionId?.includes(transactionId)
+        : true;
+      const matchPaymentId = paymentId
+        ? item.paymentDetails.paymentId?.includes(paymentId)
+        : true;
+      const matchStatus = status ? item.status === status : true;
+
+      const itemDate = new Date(item.date);
+      const matchFromDate = fromDate ? itemDate >= new Date(fromDate) : true;
+      const matchToDate = toDate ? itemDate <= new Date(toDate) : true;
+
+      return (
+        matchTransactionId &&
+        matchPaymentId &&
+        matchStatus &&
+        matchFromDate &&
+        matchToDate
+      );
+    });
+
+    // Sort and paginate
     history.sort((a, b) => new Date(b.date) - new Date(a.date));
     const totalCount = history.length;
     const start = (page - 1) * limit;
     const end = start + parseInt(limit);
     const paginated = history.slice(start, end);
 
-    // Step 5: Respond
     return res.status(200).json({
       success: true,
       data: paginated,
