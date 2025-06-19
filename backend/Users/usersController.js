@@ -88,7 +88,7 @@ const getAllUsers = async (req, res) => {
       userId,
     } = req.query;
 
-    console.log("Request query params:", req.query);
+    // console.log("Request query params:", req.query);
 
     const parsedLimit = limit === "All" || !limit ? null : Number(limit);
     const skip = parsedLimit ? (Number(page) - 1) * parsedLimit : 0;
@@ -116,15 +116,22 @@ const getAllUsers = async (req, res) => {
     const hasFilters =
       (userId && userId.trim() !== "") || (search && search.trim() !== "");
 
-    // Employee-based role filtering
-    if (req.employee?.employeeId && !req.employee.isAdmin) {
+    // console.log(req.employee)
+    // --- User/Employee-based role filtering ---
+    if (req.employee && req.employee.employeeId) {
+      // console.log("EMPLOYEE ID:", req.employee.employeeId);
+    
       const allocations = await AllocateRole.find({
-        employeeId: req.employee.employeeId,
+        employeeId: String(req.employee.employeeId),
       });
-
-      const sellerMongoIds = allocations.map((a) => a.sellerMongoId);
-
-      // Only apply role restriction if there are allocated sellers
+      // console.log("ALLOCATIONS FOUND:", allocations);
+    
+      const sellerMongoIds = allocations
+        .map((a) => a.sellerMongoId)
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id));
+      // console.log("ALLOCATED SELLERS:", sellerMongoIds);
+    
       if (sellerMongoIds.length > 0) {
         query._id = { $in: sellerMongoIds };
       } else {
@@ -140,6 +147,7 @@ const getAllUsers = async (req, res) => {
         });
       }
     }
+// For all other cases (admin or user), show all users (no filter needed)
 
     // Fetch all users based on constructed query
     const users = await User.find(query)
@@ -149,7 +157,7 @@ const getAllUsers = async (req, res) => {
       )
       .lean();
 
-    console.log("Fetched users:", users.length);
+    // console.log("Fetched users:", users.length);
 
     const userIds = users.map((u) => u._id);
 
