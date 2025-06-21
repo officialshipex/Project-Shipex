@@ -15,7 +15,7 @@ const ShreeMarutiController = require("./AllCouriersRoutes/shreemaruti.router");
 const nimbuspostRoutes = require("./AllCouriersRoutes/nimbuspost.router");
 const delhiveryRouter = require("./AllCouriersRoutes/delhivery.router");
 const compression = require("compression");
-const courierCodRemittanceSchedule=require("./COD/codScheduleTask")
+const courierCodRemittanceSchedule = require("./COD/codScheduleTask");
 const otpRouter = require("./auth/auth.otp");
 const emailOtpRouter = require("./notification/emailOtpVerification");
 
@@ -29,12 +29,12 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(helmet());
 // Only allow from same origin (common)
-app.use(
-  helmet.frameguard({ action: 'sameorigin' }) 
-);
+app.use(helmet.frameguard({ action: "sameorigin" }));
 
 app.use(cors()); // ✅ Only call once
 app.use(compression());
+
+console.log("🌍 MONGODB_URI from env (database.js):", process.env.MONGODB_URI);
 
 // 🛠 Setup Session
 const store = MongoStore.create({
