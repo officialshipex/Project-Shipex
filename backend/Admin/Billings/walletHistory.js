@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../../models/User.model");
 const Wallet = require("../../models/wallet");
+const AllocateRole = require("../../models/allocateRoleSchema");
 
 const getAllTransactionHistory = async (req, res) => {
   try {
@@ -14,9 +15,26 @@ const getAllTransactionHistory = async (req, res) => {
       paymentId,
       transactionId,
     } = req.query;
-    console.log("re", req.query);
     const userMatchStage = {};
     const transactionMatchStage = {};
+
+    // --- Employee filtering logic ---
+    let allocatedUserIds = null;
+    if (req.employee && req.employee.employeeId) {
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      if (allocatedUserIds.length === 0) {
+        return res.json({
+          total: 0,
+          page: Number(page),
+          limit: limit === "all" ? "all" : Number(limit),
+          results: [],
+        });
+      }
+      userMatchStage["_id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
 
     // Search by ID, email, or name
     if (userSearch) {
@@ -33,11 +51,9 @@ const getAllTransactionHistory = async (req, res) => {
     }
 
     // Normalize dates
-    const startDate = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
-    const endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
-
-    // Build match conditions
     if (fromDate && toDate) {
+      const startDate = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
+      const endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
       transactionMatchStage["wallet.walletHistory.date"] = {
         $gte: startDate,
         $lte: endDate,
@@ -86,10 +102,8 @@ const getAllTransactionHistory = async (req, res) => {
             phoneNumber: "$phoneNumber",
           },
           amount: "$wallet.walletHistory.paymentDetails.amount",
-          //   status: "$wallet.walletHistory.paymentDetails.status",
           type: "$wallet.walletHistory.paymentDetails.type",
           date: "$wallet.walletHistory.date",
-          //   remark: "$wallet.walletHistory.remark",
           paymentId: "$wallet.walletHistory.paymentDetails.paymentId",
           orderId: "$wallet.walletHistory.paymentDetails.orderId",
           transactionId: "$wallet.walletHistory.paymentDetails.transactionId",
@@ -125,6 +139,7 @@ const getAllTransactionHistory = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;

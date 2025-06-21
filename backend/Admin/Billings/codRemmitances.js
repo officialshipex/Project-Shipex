@@ -1,5 +1,6 @@
 const User = require("../../models/User.model");
 const CodRemittance = require("../../COD/codRemittance.model");
+const AllocateRole = require("../../models/allocateRoleSchema");
 const mongoose = require("mongoose");
 
 const getAllCodRemittance = async (req, res) => {
@@ -17,6 +18,30 @@ const getAllCodRemittance = async (req, res) => {
 
     const userMatchStage = {};
     const remittanceMatchStage = {};
+
+    // --- Employee filtering logic ---
+    let allocatedUserIds = null;
+    if (req.employee && req.employee.employeeId) {
+      const allocations = await AllocateRole.find({
+        employeeId: req.employee.employeeId,
+      });
+      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      if (allocatedUserIds.length === 0) {
+        return res.json({
+          total: 0,
+          page: Number(page),
+          limit: limit === "all" ? "all" : Number(limit),
+          results: [],
+          summary: {
+            totalCodRemitted: 0,
+            totalDeductions: 0,
+            totalRemittanceInitiated: 0,
+            CODToBeRemitted: null,
+          },
+        });
+      }
+      userMatchStage["user._id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
 
     if (userSearch) {
       const regex = new RegExp(userSearch, "i");

@@ -20,6 +20,7 @@ const {
   uploadCourierCodRemittance,
   exportOrderInRemittance
 } = require("./cod.controller");
+const { isAuthorized } = require("../middleware/auth.middleware");
 router.post("/codPlanUpdate", codPlanUpdate);
 router.get("/codRemittanceData", codRemittanceData);
 router.get("/getCodRemitance", getCodRemitance);
