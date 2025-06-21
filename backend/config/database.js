@@ -21,7 +21,7 @@ async function connection() {
 
 // Retry logic for MongoDB connection
 const connectWithRetry = () => {
-    console.log("🌍 MONGODB_URI from env (database.js):", process.env.MONGODB_URI);
+    
     mongoose.connect(process.env.MONGODB_URI, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -36,6 +36,6 @@ const connectWithRetry = () => {
     });
 };
 
-connectWithRetry();  // Initial call to connect
+// connectWithRetry();  // Initial call to connect
 
 module.exports = connection;
