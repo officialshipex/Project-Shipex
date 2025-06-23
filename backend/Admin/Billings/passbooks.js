@@ -13,7 +13,7 @@ const getAllPassbookTransactions = async (req, res) => {
       page = 1,
       limit = 20,
       awbNumber,
-      orderId
+      orderId,
     } = req.query;
 
     const userMatchStage = {};
@@ -34,7 +34,9 @@ const getAllPassbookTransactions = async (req, res) => {
           results: [],
         });
       }
-      userMatchStage["_id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+      userMatchStage["_id"] = {
+        $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
     }
 
     // Filter by user (ID, email, or name)
@@ -70,8 +72,8 @@ const getAllPassbookTransactions = async (req, res) => {
       transactionMatchStage["wallet.transactions.awb_number"] = awbNumber;
     }
 
-    if(orderId){
-        transactionMatchStage["wallet.transactions.channelOrderId"]=orderId;
+    if (orderId) {
+      transactionMatchStage["wallet.transactions.channelOrderId"] = orderId;
     }
 
     const parsedLimit = limit === "all" ? 0 : Number(limit);
@@ -90,6 +92,26 @@ const getAllPassbookTransactions = async (req, res) => {
       { $unwind: "$wallet" },
       { $unwind: "$wallet.transactions" },
       { $match: transactionMatchStage },
+
+      // 🔁 Join with neworders based on awb_number
+      {
+        $lookup: {
+          from: "neworders",
+          let: { awb: "$wallet.transactions.awb_number" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$awb_number", "$$awb"] } } },
+            {
+              $project: {
+                courierServiceName: 1,
+                provider: 1,
+                _id: 0,
+              },
+            },
+          ],
+          as: "orderInfo",
+        },
+      },
+
       {
         $project: {
           _id: 0,
@@ -102,20 +124,30 @@ const getAllPassbookTransactions = async (req, res) => {
           },
           category: "$wallet.transactions.category",
           amount: "$wallet.transactions.amount",
-          balanceAfterTransaction: "$wallet.transactions.balanceAfterTransaction",
+          balanceAfterTransaction:
+            "$wallet.transactions.balanceAfterTransaction",
           date: "$wallet.transactions.date",
           awb_number: "$wallet.transactions.awb_number",
-          orderId:"$wallet.transactions.channelOrderId",
+          orderId: "$wallet.transactions.channelOrderId",
           description: "$wallet.transactions.description",
+          courierServiceName: {
+            $arrayElemAt: ["$orderInfo.courierServiceName", 0],
+          },
+          provider: { $arrayElemAt: ["$orderInfo.provider", 0] },
         },
       },
+
       { $sort: { date: -1 } },
     ];
 
     const [results, totalResult] = await Promise.all([
       parsedLimit === 0
         ? User.aggregate(basePipeline)
-        : User.aggregate([...basePipeline, { $skip: skip }, { $limit: parsedLimit }]),
+        : User.aggregate([
+            ...basePipeline,
+            { $skip: skip },
+            { $limit: parsedLimit },
+          ]),
 
       User.aggregate([...basePipeline, { $count: "total" }]),
     ]);
