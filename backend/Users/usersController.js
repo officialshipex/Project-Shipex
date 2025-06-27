@@ -199,7 +199,7 @@ const getAllUsers = async (req, res) => {
       const plan = planMap.get(String(user._id));
 
       return {
-        id:user._id,
+        id: user._id,
         userId: user.userId,
         fullname: user.fullname,
         email: user.email,
@@ -281,16 +281,20 @@ const getUserById = async (req, res) => {
     const { id } = req.query;
 
     if (!id) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User ID is required" });
     }
 
     const user = await User.findById(id)
       .populate("Wallet", "balance")
       // .select("userId fullname email phoneNumber company kycDone creditLimit createdAt")
       .lean();
-console.log("user",user)
+    console.log("user", user);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const [plan, codPlan, account, aadhar, pan, gst] = await Promise.all([
@@ -317,35 +321,43 @@ console.log("user",user)
       rateCard: plan?.planName || "N/A",
       codPlan: codPlan?.planName || "N/A",
       createdAt: user.createdAt,
-      updatedAt:user.updatedAt,
-      accountDetails: account ? {
-        beneficiaryName: account.nameAtBank,
-        accountNumber: account.accountNumber,
-        ifscCode: account.ifsc,
-        bankName: account.bank,
-        branchName: account.branch,
-      } : null,
-      aadharDetails: aadhar ? {
-        aadharNumber: aadhar.aadhaarNumber,
-        nameOnAadhar: aadhar.name,
-        state: aadhar.state,
-        address: aadhar.address,
-      } : null,
-      panDetails: pan ? {
-        panNumber: pan.pan,
-        nameOnPan: pan.nameProvided,
-        panType: pan.pan,
-        referenceId: pan.panRefId,
-      } : null,
-      gstDetails: gst ? {
-        gstNumber: gst.gstin,
-        companyAddress: gst.address,
-        pincode: gst.pincode,
-        state: gst.state,
-        city: gst.city,
-      } : null,
+      updatedAt: user.updatedAt,
+      accountDetails: account
+        ? {
+            beneficiaryName: account.nameAtBank,
+            accountNumber: account.accountNumber,
+            ifscCode: account.ifsc,
+            bankName: account.bank,
+            branchName: account.branch,
+          }
+        : null,
+      aadharDetails: aadhar
+        ? {
+            aadharNumber: aadhar.aadhaarNumber,
+            nameOnAadhar: aadhar.name,
+            state: aadhar.state,
+            address: aadhar.address,
+          }
+        : null,
+      panDetails: pan
+        ? {
+            panNumber: pan.pan,
+            nameOnPan: pan.nameProvided,
+            panType: pan.pan,
+            referenceId: pan.panRefId,
+          }
+        : null,
+      gstDetails: gst
+        ? {
+            gstNumber: gst.gstin,
+            companyAddress: gst.address,
+            pincode: gst.pincode,
+            state: gst.state,
+            city: gst.city,
+          }
+        : null,
     };
-    console.log(userDetails)
+    console.log(userDetails);
 
     return res.status(200).json({
       success: true,
@@ -360,7 +372,6 @@ console.log("user",user)
     });
   }
 };
-
 
 const getUserDetails = async (req, res) => {
   try {
@@ -523,6 +534,36 @@ const getRatecards = async (req, res) => {
   }
 };
 
+// Update profile controller
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id; // Assuming authentication middleware sets this
+    const { brandName, website } = req.body;
+
+    let updateData = {
+      brandName,
+      website,
+    };
+
+    // If image uploaded, add profileImage S3 URL
+    if (req.file && req.file.location) {
+      updateData.profileImage = req.file.location;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    });
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserDetails,
@@ -531,5 +572,6 @@ module.exports = {
   getRatecards,
   getAllUsers,
   changeUser,
-  getUserById
+  getUserById,
+  updateProfile,
 };
