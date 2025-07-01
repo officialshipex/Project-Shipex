@@ -12,7 +12,7 @@ const {
 const { isAuthorized } = require("../middleware/auth.middleware.js");
 
 // Create a ticket with file upload support
-router.post("/", upload.single("file"), isAuthorized, createTicket);
+router.post("/", upload.array("attachments", 5), isAuthorized, createTicket);
 
 // Fetch all tickets (Admin only)
 router.get("/", getAllTickets);
