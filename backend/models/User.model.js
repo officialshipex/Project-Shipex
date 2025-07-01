@@ -78,6 +78,19 @@ const usersSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // ✅ NEW FIELDS
+    brandName: {
+      type: String,
+      default: "",
+    },
+    website: {
+      type: String,
+      default: "",
+    },
+    profileImage: {
+      type: String,
+      default: "", // This will store the S3 URL
+    },
   },
   { timestamps: true }
 );

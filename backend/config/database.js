@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 async function connection() {
     try {
+        
+    
         await mongoose.connect(process.env.MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -20,6 +22,7 @@ async function connection() {
 
 // Retry logic for MongoDB connection
 const connectWithRetry = () => {
+    
     mongoose.connect(process.env.MONGODB_URI, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -34,6 +37,6 @@ const connectWithRetry = () => {
     });
 };
 
-connectWithRetry();  // Initial call to connect
+// connectWithRetry();  // Initial call to connect
 
 module.exports = connection;
