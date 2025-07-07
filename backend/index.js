@@ -6,6 +6,7 @@ const {startTrackingLoop}=require("./Orders/tracking.controller")
 const PORT = process.env.PORT || 5000;
 
 (async function () {
+  console.log("server is there")
   try {
     console.log("connection started")
     await connection();
