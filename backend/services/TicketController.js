@@ -2,16 +2,15 @@ const Ticket = require('../models/TicketSchema');
 const multer = require('multer');
 const path = require('path');
 
-// Multer configuration for file uploads
+// Multer configuration for file uploads (multiple files)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/'); // Save files in the uploads folder
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
   }
 });
-
 const upload = multer({ storage });
 
 // Generate unique 10-digit ticket number
@@ -20,46 +19,65 @@ const generateTicketNumber = () => {
 };
 
 const createTicket = async (req, res) => {
-  let { category, subcategory, awbType, awbNumbers, fullname, phoneNumber, email, isAdmin, company, status, message } = req.body;
+  try {
+    // For multipart/form-data, fields are in req.body, files in req.files
+    let {
+      category, subcategory, awbType, awbNumbers, fullname, phoneNumber,
+      email, isAdmin, company, status, message
+    } = req.body;
 
-  // Get userId from auth middleware, not from req.body
-  const userId = req.user?._id || req.employee?._id;
+    // Get userId from auth middleware, not from req.body
+    const userId = req.user?._id || req.employee?._id;
 
-  if (!userId || !category || !subcategory || !awbType || !awbNumbers || !fullname || !phoneNumber || !email || !company || !message) {
-    return res.status(400).json({ message: "All fields are required" });
+    if (!userId || !category || !subcategory || !fullname || !phoneNumber || !email || !company || !message) {
+      return res.status(400).json({ message: "All fields except AWB and attachments are required" });
+    }
+
+    const ticketNumber = generateTicketNumber();
+
+    // Parse awbNumbers if present
+    if (awbNumbers && typeof awbNumbers === "string") {
+      awbNumbers = awbNumbers.split(",").map(awb => awb.trim()).filter(awb => awb.length > 0);
+    } else if (!awbNumbers) {
+      awbNumbers = [];
+    }
+
+    const validStatuses = ["active", "resolved", "deleted"];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    // Handle multiple attachments (files/images)
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map(file => file.path);
+    }
+
+    const newTicket = new Ticket({
+      category,
+      subcategory,
+      awbType,
+      awbNumbers,
+      ticketNumber,
+      fullname,
+      phoneNumber,
+      userId,
+      email,
+      isAdmin,
+      company,
+      message,
+      status: status || "active",
+      attachments
+    });
+
+    await newTicket.save();
+
+    res.status(201).json({ message: "Ticket created successfully", ticket: newTicket });
+  } catch (error) {
+    console.error("Error creating ticket:", error);
+    res.status(500).json({ message: "Server error" });
   }
-
-  // ...rest of your code
-  const ticketNumber = generateTicketNumber();
-  if (typeof awbNumbers === "string") {
-    awbNumbers = awbNumbers.split(",").map(awb => awb.trim()).filter(awb => awb.length > 0);
-  }
-  const validStatuses = ["active", "resolved", "deleted"];
-  if (status && !validStatuses.includes(status)) {
-    return res.status(400).json({ message: "Invalid status value" });
-  }
-
-  const newTicket = new Ticket({
-    category,
-    subcategory,
-    awbType,
-    awbNumbers,
-    ticketNumber,
-    fullname,
-    phoneNumber,
-    userId, // use the one from auth
-    email,
-    isAdmin,
-    company,
-    message,
-    status: status || "active"
-  });
-
-  await newTicket.save();
-
-  res.status(201).json({ message: "Ticket created successfully", ticket: newTicket });
 };
-
 // Get all tickets
 const getAllTickets = async (req, res) => {
   try {
