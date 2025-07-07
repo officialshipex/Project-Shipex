@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 
 const connectWithRetry = async (retries = 5, delay = 5000) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
+    console.log(`🚀 Attempting MongoDB connection (Attempt ${attempt})`);
+
     try {
       await mongoose.connect(process.env.MONGODB_URI, {
         useNewUrlParser: true,
@@ -13,17 +15,14 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
       });
 
       console.log("✅ Database connected successfully");
-      return; // Exit loop on success
+      return;
     } catch (err) {
-      console.error(
-        `❌ Attempt ${attempt} - MongoDB connection failed:`,
-        err.message
-      );
+      console.error(`❌ MongoDB connection failed (Attempt ${attempt}):`, err.message);
       if (attempt < retries) {
-        console.log(`🔁 Retrying in ${delay / 1000}s...`);
+        console.log(`⏳ Retrying in ${delay / 1000} seconds...`);
         await new Promise((res) => setTimeout(res, delay));
       } else {
-        console.error("❌ All retry attempts failed. Exiting...");
+        console.error("💥 All retry attempts failed. Exiting...");
         process.exit(1);
       }
     }
