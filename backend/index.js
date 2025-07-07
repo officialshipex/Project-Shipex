@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 5000;
 
 (async function () {
   try {
+    console.log("connection started")
     await connection();
     const app = require("./server");
     app.listen(PORT, "0.0.0.0", () => {
