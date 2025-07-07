@@ -49,10 +49,7 @@ app.use(passport.initialize());
 
 // Routes
 app.use("/v1", router);
-app.use(
-  "/v1/channel/webhook-handler",
-  express.raw({ type: "application/json" })
-);
+app.use("/v1/channel/webhook-handler", express.raw({ type: "application/json" }));
 app.use("/v1/Shiprocket", ShipRocketController);
 app.use("/v1/shreeMaruti", ShreeMarutiController);
 app.use("/v1/delhivery", delhiveryRouter);

@@ -404,7 +404,7 @@ const remittanceScheduleData = async () => {
     console.error("❌ Error in remittance schedule:", error);
   }
 };
-remittanceScheduleData();
+// remittanceScheduleData();
 cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();

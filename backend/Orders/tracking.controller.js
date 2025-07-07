@@ -646,7 +646,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop();
+startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -774,4 +774,4 @@ const formatAmazonDate = (isoDateStr) => {
   }
 };
 
-module.exports = trackSingleOrder;
+module.exports = {trackSingleOrder,startTrackingLoop};
