@@ -85,10 +85,11 @@ const getAllUsers = async (req, res) => {
       kycStatus,
       rateCard,
       balanceType,
+      id,
       userId,
     } = req.query;
 
-    // console.log("Request query params:", req.query);
+    console.log("Request query params:", req.query);
 
     const parsedLimit = limit === "All" || !limit ? null : Number(limit);
     const skip = parsedLimit ? (Number(page) - 1) * parsedLimit : 0;
@@ -96,9 +97,22 @@ const getAllUsers = async (req, res) => {
     const query = {};
 
     // Exact userId match
-    if (userId && userId.trim() !== "") {
-      query.userId = userId.trim();
+    if (id && id.trim() !== "") {
+      // If you want to fetch using MongoDB's ObjectId
+      query._id = new mongoose.Types.ObjectId(id.trim());
+    } else if (userId && userId.trim() !== "") {
+      // If you want to fetch by userId (6-digit number)
+      query.userId = Number(userId.trim()); // 👈 Cast to Number
+    } else if (search && search.trim() !== "") {
+      const trimmedSearch = search.trim();
+      query.$or = [
+        { userId: { $regex: trimmedSearch, $options: "i" } }, // Keep this if userId is searchable as a string
+        { fullname: { $regex: trimmedSearch, $options: "i" } },
+        { email: { $regex: trimmedSearch, $options: "i" } },
+        { phoneNumber: { $regex: trimmedSearch, $options: "i" } },
+      ];
     }
+
     // Flexible search
     else if (search && search.trim() !== "") {
       const trimmedSearch = search.trim();
@@ -120,18 +134,18 @@ const getAllUsers = async (req, res) => {
     // --- User/Employee-based role filtering ---
     if (req.employee && req.employee.employeeId) {
       // console.log("EMPLOYEE ID:", req.employee.employeeId);
-    
+
       const allocations = await AllocateRole.find({
         employeeId: String(req.employee.employeeId),
       });
       // console.log("ALLOCATIONS FOUND:", allocations);
-    
+
       const sellerMongoIds = allocations
         .map((a) => a.sellerMongoId)
         .filter(Boolean)
         .map((id) => new mongoose.Types.ObjectId(id));
       // console.log("ALLOCATED SELLERS:", sellerMongoIds);
-    
+
       if (sellerMongoIds.length > 0) {
         query._id = { $in: sellerMongoIds };
       } else {
@@ -147,7 +161,7 @@ const getAllUsers = async (req, res) => {
         });
       }
     }
-// For all other cases (admin or user), show all users (no filter needed)
+    // For all other cases (admin or user), show all users (no filter needed)
 
     // Fetch all users based on constructed query
     const users = await User.find(query)
@@ -179,7 +193,7 @@ const getAllUsers = async (req, res) => {
 
     // Filter by wallet balance & rate card if applied
     const filteredUsers = users.filter((user) => {
-      const walletBalance = user.wallet?.balance || 0;
+      const walletBalance = user.Wallet?.balance || 0;
 
       if (balanceType === "positive" && walletBalance < 0) return false;
       if (balanceType === "negative" && walletBalance >= 0) return false;

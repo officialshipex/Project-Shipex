@@ -1118,10 +1118,16 @@ const courierCodRemittance = async (req, res) => {
       }
       // Find all AWB numbers for allocated users
       const orders = await Order.find(
-        { userId: { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) } },
+        {
+          userId: {
+            $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
+        },
         { awb_number: 1 }
       ).lean();
-      allowedAwbNumbers = orders.map(o => o.awb_number?.toString()).filter(Boolean);
+      allowedAwbNumbers = orders
+        .map((o) => o.awb_number?.toString())
+        .filter(Boolean);
     }
 
     // Fetch all courier COD remittance orders
@@ -1198,9 +1204,16 @@ const courierCodRemittance = async (req, res) => {
     // Calculate totals with same filter
     let totals = [
       {
-        totalCODAmount: filteredOrders.reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        paidCODAmount: filteredOrders.filter(o => o.status === "Paid").reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        pendingCODAmount: filteredOrders.filter(o => o.status === "Pending").reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
+        totalCODAmount: filteredOrders.reduce(
+          (sum, o) => sum + (parseFloat(o.CODAmount) || 0),
+          0
+        ),
+        paidCODAmount: filteredOrders
+          .filter((o) => o.status === "Paid")
+          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
+        pendingCODAmount: filteredOrders
+          .filter((o) => o.status === "Pending")
+          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
       },
     ];
 
@@ -1261,11 +1274,19 @@ const getAdminCodRemitanceData = async (req, res) => {
         });
       }
       // Find all remittanceIds for allocated users
-      const remittances = await adminCodRemittance.find(
-        { userId: { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) } },
-        { remitanceId: 1 }
-      ).lean();
-      allowedRemittanceIds = remittances.map(r => r.remitanceId?.toString());
+      const remittances = await adminCodRemittance
+        .find(
+          {
+            userId: {
+              $in: allocatedUserIds.map(
+                (id) => new mongoose.Types.ObjectId(id)
+              ),
+            },
+          },
+          { remitanceId: 1 }
+        )
+        .lean();
+      allowedRemittanceIds = remittances.map((r) => r.remitanceId?.toString());
     }
 
     // Fetch all admin COD remittance orders
@@ -1349,22 +1370,20 @@ const getAdminCodRemitanceData = async (req, res) => {
 
     // Filter by userName
     if (userNameFilter) {
-      filteredOrders = filteredOrders.filter(order =>
-        order.userName
-          ?.toLowerCase()
-          .includes(userNameFilter.toLowerCase())
+      filteredOrders = filteredOrders.filter((order) =>
+        order.userName?.toLowerCase().includes(userNameFilter.toLowerCase())
       );
     }
 
     // Filter by remittanceId
     if (remittanceIdFilter) {
-      filteredOrders = filteredOrders.filter(order =>
+      filteredOrders = filteredOrders.filter((order) =>
         order.remitanceId?.toString().includes(remittanceIdFilter)
       );
     }
     // Filter by statusFilter
     if (statusFilter) {
-      filteredOrders = filteredOrders.filter(order =>
+      filteredOrders = filteredOrders.filter((order) =>
         order.status?.toString().includes(statusFilter)
       );
     }
@@ -1430,10 +1449,14 @@ const CodRemittanceOrder = async (req, res) => {
       }
       // Find all orderIds for allocated users
       const orders = await Order.find(
-        { userId: { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) } },
+        {
+          userId: {
+            $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
+        },
         { orderId: 1 }
       ).lean();
-      allowedOrderIds = orders.map(o => o.orderId?.toString());
+      allowedOrderIds = orders.map((o) => o.orderId?.toString());
     }
 
     // Fetch all COD remittance orders
@@ -1510,9 +1533,16 @@ const CodRemittanceOrder = async (req, res) => {
     // Calculate totals with same filter
     let totals = [
       {
-        totalCODAmount: filteredOrders.reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        paidCODAmount: filteredOrders.filter(o => o.status === "Paid").reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        pendingCODAmount: filteredOrders.filter(o => o.status === "Pending").reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
+        totalCODAmount: filteredOrders.reduce(
+          (sum, o) => sum + (parseFloat(o.CODAmount) || 0),
+          0
+        ),
+        paidCODAmount: filteredOrders
+          .filter((o) => o.status === "Paid")
+          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
+        pendingCODAmount: filteredOrders
+          .filter((o) => o.status === "Pending")
+          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
       },
     ];
 

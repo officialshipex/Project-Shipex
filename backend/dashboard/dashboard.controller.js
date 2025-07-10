@@ -2,6 +2,8 @@ const Order = require("../models/newOrder.model");
 const { getZone } = require("../Rate/zoneManagementController");
 const Cod = require("../COD/codRemittance.model");
 const moment = require("moment");
+const User = require("../models/User.model");
+const mongoose = require("mongoose");
 
 const dashboard = async (req, res) => {
   try {
@@ -256,37 +258,44 @@ const dashboard = async (req, res) => {
 
 const getBusinessInsights = async (req, res) => {
   try {
-    const userId = req.user._id;
+    let userId = req.user._id;
+    let searchId = req.query.userId;
+
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
 
     // Dates
     const now = new Date();
     const startOfToday = moment().startOf("day").toDate();
     const last30Days = moment().subtract(30, "days").toDate();
     const prev30Days = moment().subtract(60, "days").toDate();
-
     const startOfWeek = moment().startOf("week").toDate();
     const startOfLastWeek = moment()
       .subtract(1, "weeks")
       .startOf("week")
       .toDate();
-
     const startOfMonth = moment().startOf("month").toDate();
     const startOfLastMonth = moment()
       .subtract(1, "months")
       .startOf("month")
       .toDate();
-
     const startOfQuarter = moment().startOf("quarter").toDate();
     const startOfLastQuarter = moment()
       .subtract(1, "quarters")
       .startOf("quarter")
       .toDate();
 
+    let baseMatch = {};
+    if (!isAdminView) {
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
     const [result] = await Order.aggregate([
-      { $match: { userId } },
+      { $match: baseMatch },
       {
         $facet: {
-          // Today
           todaysOrders: [
             { $match: { createdAt: { $gte: startOfToday } } },
             { $count: "count" },
@@ -305,18 +314,13 @@ const getBusinessInsights = async (req, res) => {
               },
             },
           ],
-
-          // Last 30 days
           last30DaysOrders: [
             { $match: { createdAt: { $gte: last30Days } } },
             { $count: "count" },
           ],
           last30DaysRevenue: [
             {
-              $match: {
-                createdAt: { $gte: last30Days },
-                status: "Delivered",
-              },
+              $match: { createdAt: { $gte: last30Days }, status: "Delivered" },
             },
             {
               $group: {
@@ -325,14 +329,8 @@ const getBusinessInsights = async (req, res) => {
               },
             },
           ],
-
-          // Previous 30 days
           prev30DaysOrders: [
-            {
-              $match: {
-                createdAt: { $gte: prev30Days, $lt: last30Days },
-              },
-            },
+            { $match: { createdAt: { $gte: prev30Days, $lt: last30Days } } },
             { $count: "count" },
           ],
           prev30DaysRevenue: [
@@ -350,7 +348,7 @@ const getBusinessInsights = async (req, res) => {
             },
           ],
 
-          // Week comparisons
+          // WEEK
           weekOrders: [
             { $match: { createdAt: { $gte: startOfWeek } } },
             { $count: "count" },
@@ -363,8 +361,33 @@ const getBusinessInsights = async (req, res) => {
             },
             { $count: "count" },
           ],
+          weekRevenue: [
+            {
+              $match: { createdAt: { $gte: startOfWeek }, status: "Delivered" },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
+          ],
+          lastWeekRevenue: [
+            {
+              $match: {
+                createdAt: { $gte: startOfLastWeek, $lt: startOfWeek },
+                status: "Delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
+          ],
 
-          // Month comparisons
+          // MONTH
           monthOrders: [
             { $match: { createdAt: { $gte: startOfMonth } } },
             { $count: "count" },
@@ -377,8 +400,36 @@ const getBusinessInsights = async (req, res) => {
             },
             { $count: "count" },
           ],
+          monthRevenue: [
+            {
+              $match: {
+                createdAt: { $gte: startOfMonth },
+                status: "Delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
+          ],
+          lastMonthRevenue: [
+            {
+              $match: {
+                createdAt: { $gte: startOfLastMonth, $lt: startOfMonth },
+                status: "Delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
+          ],
 
-          // Quarter comparisons
+          // QUARTER
           quarterOrders: [
             { $match: { createdAt: { $gte: startOfQuarter } } },
             { $count: "count" },
@@ -386,19 +437,44 @@ const getBusinessInsights = async (req, res) => {
           lastQuarterOrders: [
             {
               $match: {
-                createdAt: {
-                  $gte: startOfLastQuarter,
-                  $lt: startOfQuarter,
-                },
+                createdAt: { $gte: startOfLastQuarter, $lt: startOfQuarter },
               },
             },
             { $count: "count" },
+          ],
+          quarterRevenue: [
+            {
+              $match: {
+                createdAt: { $gte: startOfQuarter },
+                status: "Delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
+          ],
+          lastQuarterRevenue: [
+            {
+              $match: {
+                createdAt: { $gte: startOfLastQuarter, $lt: startOfQuarter },
+                status: "Delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                revenue: { $sum: "$paymentDetails.amount" },
+              },
+            },
           ],
         },
       },
     ]);
 
-    // Extract results
+    // Extract data
     const todayOrderCount = result.todaysOrders[0]?.count || 0;
     const todayRevenue = result.todaysRevenue[0]?.revenue || 0;
 
@@ -416,6 +492,15 @@ const getBusinessInsights = async (req, res) => {
 
     const quarterCount = result.quarterOrders[0]?.count || 0;
     const lastQuarterCount = result.lastQuarterOrders[0]?.count || 0;
+
+    const weekRevenue = result.weekRevenue[0]?.revenue || 0;
+    const lastWeekRevenue = result.lastWeekRevenue[0]?.revenue || 0;
+
+    const monthRevenue = result.monthRevenue[0]?.revenue || 0;
+    const lastMonthRevenue = result.lastMonthRevenue[0]?.revenue || 0;
+
+    const quarterRevenue = result.quarterRevenue[0]?.revenue || 0;
+    const lastQuarterRevenue = result.lastQuarterRevenue[0]?.revenue || 0;
 
     // Calculations
     const avgDailyOrders = Math.round(last30Count / 30);
@@ -450,7 +535,28 @@ const getBusinessInsights = async (req, res) => {
           ).toFixed(2)
         : "0.00";
 
-    // Response
+    const weekRevenueGrowth =
+      lastWeekRevenue > 0
+        ? (((weekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100).toFixed(2)
+        : "0.00";
+
+    const monthRevenueGrowth =
+      lastMonthRevenue > 0
+        ? (
+            ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) *
+            100
+          ).toFixed(2)
+        : "0.00";
+
+    const quarterRevenueGrowth =
+      lastQuarterRevenue > 0
+        ? (
+            ((quarterRevenue - lastQuarterRevenue) / lastQuarterRevenue) *
+            100
+          ).toFixed(2)
+        : "0.00";
+
+    // Final Response
     return res.status(200).json({
       success: true,
       data: {
@@ -468,6 +574,20 @@ const getBusinessInsights = async (req, res) => {
           quarterCount,
           quarterGrowth,
         },
+        valueBreakdown: {
+          week: {
+            revenue: weekRevenue,
+            revenueGrowth: weekRevenueGrowth,
+          },
+          month: {
+            revenue: monthRevenue,
+            revenueGrowth: monthRevenueGrowth,
+          },
+          quarter: {
+            revenue: quarterRevenue,
+            revenueGrowth: quarterRevenueGrowth,
+          },
+        },
       },
     });
   } catch (error) {
@@ -484,12 +604,28 @@ const getDashboardOverview = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    const searchId = req.query.userId;
+
+    const userData = await User.findById(userId);
+    // Check if admin and has adminTab access
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    // Determine final user filter
+    let baseMatch = {};
+    if (!isAdminView) {
+      // Normal user: restrict to their own orders
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      // Admin with a selected user
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
     const today = moment().startOf("day").toDate();
     const yesterday = moment().subtract(1, "day").startOf("day").toDate();
     const last30Days = moment().subtract(30, "days").toDate();
 
     const [result] = await Order.aggregate([
-      { $match: { userId } },
+      { $match: baseMatch },
       {
         $facet: {
           todaysOrders: [
@@ -628,7 +764,7 @@ const getDashboardOverview = async (req, res) => {
 
     // COD values from Cod model
     const codSummary = await Cod.aggregate([
-      { $match: { userId } },
+      { $match: baseMatch },
       { $unwind: "$remittanceData" },
       {
         $group: {
@@ -713,12 +849,28 @@ const getDashboardOverview = async (req, res) => {
 const getOverviewGraphsData = async (req, res) => {
   try {
     const userId = req.user._id;
+
+    const searchId = req.query.userId;
+
+    const userData = await User.findById(userId);
+    // Check if admin and has adminTab access
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    // Determine final user filter
+    let baseMatch = {};
+    if (!isAdminView) {
+      // Normal user: restrict to their own orders
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      // Admin with a selected user
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
     const last30Days = moment().subtract(30, "days").toDate();
 
     const [result] = await Order.aggregate([
       {
         $match: {
-          userId,
+          ...baseMatch,
           createdAt: { $gte: last30Days },
         },
       },
@@ -788,6 +940,22 @@ const getOverviewCardData = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    const searchId = req.query.userId;
+
+    const userData = await User.findById(userId);
+    // Check if admin and has adminTab access
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    // Determine final user filter
+    let baseMatch = {};
+    if (!isAdminView) {
+      // Normal user: restrict to their own orders
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      // Admin with a selected user
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
     const startOfMonth = moment().startOf("month").toDate();
     const startOfWeek = moment().startOf("week").toDate();
     const startOfQuarter = moment().startOf("quarter").toDate();
@@ -795,7 +963,7 @@ const getOverviewCardData = async (req, res) => {
     const last30Days = moment().subtract(30, "days").toDate();
 
     const [result] = await Order.aggregate([
-      { $match: { userId } },
+      { $match: baseMatch },
       {
         $facet: {
           ordersByZone: [
@@ -881,8 +1049,8 @@ const getOverviewCardData = async (req, res) => {
           weightSplit: [
             {
               $match: {
+                ...baseMatch,
                 createdAt: { $gte: last30Days },
-                userId,
               },
             },
             {
@@ -975,10 +1143,456 @@ const getOverviewCardData = async (req, res) => {
   }
 };
 
+const getOrderSummary = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
+    // Extract filters
+    const { startDate, endDate, zone, courier, paymentMode } = req.query;
+    // console.log("xone", zone);
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+    let baseMatch = {};
+    if (!isAdminView) {
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+    // Base match filter
+    const matchFilter = baseMatch;
+
+    if (startDate && endDate) {
+      matchFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    if (zone) matchFilter.zone = zone;
+    if (courier) matchFilter.provider = courier;
+    if (paymentMode) matchFilter["paymentDetails.method"] = paymentMode;
+
+    // Fetch total orders first to compute percentages
+    const totalOrders = await Order.countDocuments(matchFilter);
+
+    // Define statuses to count
+    const statusList = [
+      "new",
+      "Ready To Ship",
+      "In-transit",
+      "Out for Delivery",
+      "Delivered",
+      "Cancelled",
+      "Undelivered",
+      "Lost",
+      "Damaged",
+    ];
+
+    // Fetch counts for each status
+    const statusCounts = await Order.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statusMap = {};
+    statusCounts.forEach(({ _id, count }) => {
+      statusMap[_id] = count;
+    });
+
+    const getPercent = (count) =>
+      totalOrders > 0
+        ? ((count / totalOrders) * 100).toFixed(2) + "%"
+        : "0.00%";
+
+    // Construct response structure
+    const summaryData = {
+      totalOrders,
+      new: {
+        count: statusMap["new"] || 0,
+        percent: getPercent(statusMap["new"] || 0),
+      },
+      readyToShip: {
+        count: statusMap["Ready To Ship"] || 0,
+        percent: getPercent(statusMap["Ready To Ship"] || 0),
+      },
+      inTransit: {
+        count: statusMap["In-transit"] || 0,
+        percent: getPercent(statusMap["In-transit"] || 0),
+      },
+      outForDelivery: {
+        count: statusMap["Out for Delivery"] || 0,
+        percent: getPercent(statusMap["Out for Delivery"] || 0),
+      },
+      delivered: {
+        count: statusMap["Delivered"] || 0,
+        percent: getPercent(statusMap["Delivered"] || 0),
+      },
+      cancelled: {
+        count: statusMap["Cancelled"] || 0,
+        percent: getPercent(statusMap["Cancelled"] || 0),
+      },
+      undelivered: {
+        count: statusMap["Undelivered"] || 0,
+        percent: getPercent(statusMap["Undelivered"] || 0),
+      },
+      lost: {
+        count: statusMap["Lost"] || 0,
+        percent: getPercent(statusMap["Lost"] || 0),
+      },
+      damaged: {
+        count: statusMap["Damaged"] || 0,
+        percent: getPercent(statusMap["Damaged"] || 0),
+      },
+    };
+    // console.log("sum", summaryData);
+    return res.status(200).json({
+      success: true,
+      data: summaryData,
+    });
+  } catch (error) {
+    console.error("getOrderSummary error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+const getOrdersGraphsData = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
+    const { startDate, endDate, zone, courier, paymentMode } = req.query;
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+    // let baseMatch={};
+    let baseMatch = {
+      provider: { $ne: null },
+      zone: { $nin: [null, "", undefined] },
+    };
+
+    if (!isAdminView) {
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
+    if (startDate && endDate) {
+      baseMatch.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    if (zone) {
+      baseMatch.zone = zone;
+    }
+
+    if (courier) {
+      baseMatch.provider = courier;
+    }
+
+    if (paymentMode) {
+      baseMatch["paymentDetails.method"] = paymentMode;
+    }
+
+    const [results] = await Order.aggregate([
+      { $match: baseMatch },
+      {
+        $facet: {
+          couriersSplit: [
+            {
+              $group: {
+                _id: "$provider",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+          paymentMode: [
+            {
+              $group: {
+                _id: "$paymentDetails.method",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+          zone: [
+            {
+              $group: {
+                _id: "$zone",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        couriersSplit: results.couriersSplit,
+        paymentMode: results.paymentMode,
+        zone: results.zone,
+      },
+    });
+  } catch (error) {
+    console.error("Graph Controller Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+const getRTOSummaryData = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
+    const { startDate, endDate, courier, paymentMode, zone } = req.query;
+
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    const match = {
+      status: { $in: ["RTO", "RTO In-transit", "RTO Delivered"] },
+    };
+
+    if (!isAdminView) {
+      match.userId = userId;
+    } else if (searchId) {
+      match.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
+    if (startDate && endDate) {
+      match.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    if (courier) {
+      match.provider = courier;
+    }
+
+    if (paymentMode) {
+      match["paymentDetails.method"] = paymentMode;
+    }
+
+    if (zone) {
+      match.zone = zone;
+    }
+
+    const result = await Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$status",
+          value: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const summary = {
+      total: 0,
+      initiated: 0,
+      inTransit: 0,
+      delivered: 0,
+    };
+
+    result.forEach((item) => {
+      summary.total += item.value;
+      switch (item._id) {
+        case "RTO":
+          summary.initiated = item.value;
+          break;
+        case "RTO In-transit":
+          summary.inTransit = item.value;
+          break;
+        case "RTO Delivered":
+          summary.delivered = item.value;
+          break;
+        default:
+          break;
+      }
+    });
+
+    const percent = (val) =>
+      summary.total ? ((val / summary.total) * 100).toFixed(2) + "%" : "0.00%";
+
+    res.json({
+      success: true,
+      data: {
+        total: summary.total,
+        initiated: {
+          count: summary.initiated,
+          percent: percent(summary.initiated),
+        },
+        inTransit: {
+          count: summary.inTransit,
+          percent: percent(summary.inTransit),
+        },
+        delivered: {
+          count: summary.delivered,
+          percent: percent(summary.delivered),
+        },
+      },
+    });
+  } catch (err) {
+    console.error("RTO Summary Error:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+const getRTOGraphsData = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
+    const { startDate, endDate, courier, zone, paymentMode } = req.query;
+
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    const match = {
+      status: { $in: ["RTO", "RTO In-transit", "RTO Delivered"] }, // RTO-specific
+    };
+
+    if (!isAdminView) {
+      match.userId = userId;
+    } else if (searchId) {
+      match.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
+    if (startDate && endDate) {
+      match.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    if (courier) {
+      match.provider = courier;
+    }
+
+    if (paymentMode) {
+      match["paymentDetails.method"] = paymentMode;
+    }
+
+    if (zone) {
+      match.zone = zone;
+    }
+
+    const [results] = await Order.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          couriersSplit: [
+            {
+              $group: {
+                _id: "$provider",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+          paymentMode: [
+            {
+              $group: {
+                _id: "$paymentDetails.method",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+          zone: [
+            {
+              $match: { zone: { $ne: null } }, // skip orders without zone
+            },
+            {
+              $group: {
+                _id: "$zone",
+                value: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                name: "$_id",
+                value: 1,
+                _id: 0,
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        couriersSplit: results.couriersSplit,
+        paymentMode: results.paymentMode,
+        zone: results.zone,
+      },
+    });
+  } catch (error) {
+    console.error("RTO Graph Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   dashboard,
   getBusinessInsights,
   getDashboardOverview,
   getOverviewGraphsData,
   getOverviewCardData,
+  getOrderSummary,
+  getOrdersGraphsData,
+  getRTOSummaryData,
+  getRTOGraphsData
 };

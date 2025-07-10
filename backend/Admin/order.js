@@ -22,7 +22,6 @@ const filterOrdersForEmployee = async (req, res) => {
 
     const filter = {};
 
-
     // Order-level filters
     if (orderId && !isNaN(orderId)) {
       filter.orderId = Number(orderId);
@@ -82,8 +81,8 @@ const filterOrdersForEmployee = async (req, res) => {
         });
       }
       filter.userId = objectId;
-    } 
-    
+    }
+
     if (searchQuery) {
       const userFilter = {
         $or: [
@@ -321,9 +320,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
 
       let validUserIds = matchedIds;
       if (allocatedUserIds) {
-        validUserIds = matchedIds.filter((id) =>
-          allocatedUserIds.includes(id)
-        );
+        validUserIds = matchedIds.filter((id) => allocatedUserIds.includes(id));
       }
 
       if (validUserIds.length > 0) {
@@ -689,21 +686,24 @@ const getOrdersByStatus = async (req, res) => {
 
 const searchUser = async (req, res) => {
   const { query } = req.query;
-  // console.log("Search query:", query);
 
   if (!query || query.trim() === "") {
     return res.status(400).json({ message: "Query parameter is required." });
   }
 
   try {
-    const regex = new RegExp(query, "i");
+    const escapeRegex = (string) =>
+      string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const safeQuery = escapeRegex(query.trim());
+    const regex = new RegExp(safeQuery, "i");
+
     const conditions = [
       { fullname: regex },
       { email: regex },
       { phoneNumber: regex },
     ];
 
-    // If the query is a number, also search in userId
     if (!isNaN(query)) {
       conditions.push({ userId: Number(query) });
     }
@@ -712,7 +712,6 @@ const searchUser = async (req, res) => {
       "fullname email phoneNumber _id userId"
     );
 
-    // console.log("Matched users:", users);
     res.json({ users });
   } catch (err) {
     console.error("Error while searching users:", err);
@@ -730,7 +729,7 @@ const getAllOrdersByNdrStatus = async (req, res) => {
 
     const {
       status,
-  selectedUserId,
+      selectedUserId,
       searchQuery,
       orderId,
       awbNumber,
@@ -741,7 +740,7 @@ const getAllOrdersByNdrStatus = async (req, res) => {
       courierServiceName,
       pickupContactName,
     } = req.query;
-console.log("ne",req.query)
+    console.log("ne", req.query);
     const andConditions = [];
 
     if (status && status !== "All") {
@@ -749,7 +748,9 @@ console.log("ne",req.query)
     }
 
     if (selectedUserId && mongoose.Types.ObjectId.isValid(selectedUserId)) {
-      andConditions.push({ userId: new mongoose.Types.ObjectId(selectedUserId) });
+      andConditions.push({
+        userId: new mongoose.Types.ObjectId(selectedUserId),
+      });
     }
 
     if (searchQuery) {
