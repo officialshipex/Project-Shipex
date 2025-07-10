@@ -639,14 +639,14 @@ const startTrackingLoop = async () => {
     console.log("🕒 Starting Order Tracking");
     await trackOrders();
     console.log("⏳ Waiting for 5 minutes before next tracking cycle...");
-    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Wait 5 minutes, then call again
+    setTimeout(startTrackingLoop, 15 * 60 * 1000); // Wait 5 minutes, then call again
   } catch (error) {
     console.error("❌ Error in tracking loop:", error);
-    setTimeout(startTrackingLoop, 5 * 60 * 1000); // Retry after 5 minutes even on error
+    setTimeout(startTrackingLoop, 15 * 60 * 1000); // Retry after 5 minutes even on error
   }
 };
 
-// startTrackingLoop();
+startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
