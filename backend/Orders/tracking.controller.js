@@ -212,6 +212,8 @@ const trackSingleOrder = async (order) => {
         "weekly off": "In-transit",
         "stock scan": "In-transit",
         "offload at origin": "In-transit",
+        "received at delivery centre":"In-transit",
+        "damaged":"Damaged",
         "out for delivery": "Out for Delivery",
         "otp based delivered": "Delivered",
         delivered: "Delivered",
@@ -226,6 +228,7 @@ const trackSingleOrder = async (order) => {
         "rto not delivered": "RTO In-transit",
         "rto out for delivery": "RTO In-transit",
         "rto mis route": "RTO In-transit",
+        "shipment received short":"RTO In-transit",
         "rto delivered": "RTO Delivered",
       };
 

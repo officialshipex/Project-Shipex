@@ -264,12 +264,12 @@ const getShipmentTracking = async (trackingId) => {
       }
     );
 // console.log("response", response.data.payload);
-    console.log(
-      "Tracking Information:",
-      response.data.payload.eventHistory[
-        response.data.payload.eventHistory.length - 1
-      ].eventCode
-    );
+    // console.log(
+    //   "Tracking Information:",
+    //   response.data.payload.eventHistory[
+    //     response.data.payload.eventHistory.length - 1
+    //   ].eventCode
+    // );
     return { success: true, data: response.data.payload };
   } catch (error) {
     console.error(

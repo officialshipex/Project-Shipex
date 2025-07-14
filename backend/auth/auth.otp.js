@@ -32,7 +32,7 @@ otpRouter.post("/send-otp", async (req, res) => {
           authkey: "3632686970657834343532", // Replace with actual API key
           mobiles: phoneNumber,
           message: `Your Application Verification Code is ${otp} IBITTS`,
-          sender: "IBITOT",
+          sender: "IBITTS",
           route: "2",
           country: "0",
           // DLT_TE_ID: "1707168482954578613",
