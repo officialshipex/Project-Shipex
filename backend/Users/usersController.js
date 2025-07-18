@@ -520,6 +520,28 @@ const assignPlan = async (req, res) => {
   }
 };
 
+const makeAdmin = async () => {
+  try {
+    const userId = 17333;
+
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: userId },
+      { isAdmin: true },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      console.log("❌ User not found");
+    } else {
+      console.log("✅ User updated to admin:", updatedUser);
+    }
+  } catch (error) {
+    console.error("❌ Error making user admin:", error.message);
+  }
+};
+
+// makeAdmin();
+
 const getRatecards = async (req, res) => {
   try {
     const { plan: currentPlan } = req.body;

@@ -55,7 +55,7 @@ const newOrder = async (req, res) => {
       paymentDetails,
       // commodityId,
     } = req.body;
-    // console.log(req.body);
+    console.log(req.body);
 
     // Validate request data
     if (
@@ -66,8 +66,9 @@ const newOrder = async (req, res) => {
       !paymentDetails
       // !commodityId
     ) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({ error: "Alll fields are required" });
     }
+
 
     if (!["COD", "Prepaid"].includes(paymentDetails.method)) {
       return res.status(400).json({ error: "Invalid payment method" });
@@ -84,7 +85,7 @@ const newOrder = async (req, res) => {
         isUnique = true;
       }
     }
-
+const compositeOrderId = `${req.user._id}-${orderId}`;
     // Create a new shipment
     const shipment = new Order({
       userId: req.user._id,
@@ -94,6 +95,7 @@ const newOrder = async (req, res) => {
       productDetails,
       packageDetails,
       paymentDetails,
+      compositeOrderId,
       status: "new",
       // commodityId: commodityId,
       tracking: [
@@ -112,7 +114,7 @@ const newOrder = async (req, res) => {
       shipment,
     });
   } catch (error) {
-    // console.log("1111111111",error)
+    console.log("1111111111",error)
     res.status(400).json({ error: "All fields are required" });
   }
 };
