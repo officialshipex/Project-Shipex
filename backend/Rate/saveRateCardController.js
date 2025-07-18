@@ -27,12 +27,12 @@ const saveRate = async (req, res) => {
     // Fetch users with assigned plans (filtered by planName)
     const usersWithPlans = await Plan.find({ planName: plan });
 
-    if (!usersWithPlans || usersWithPlans.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No users found with assigned plans",
-      });
-    }
+    // if (!usersWithPlans || usersWithPlans.length === 0) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "No users found with assigned plans",
+    //   });
+    // }
 
     console.log(usersWithPlans);
 

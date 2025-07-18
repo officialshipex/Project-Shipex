@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const RTOCharges=require("./RTO/rtoController")
 const authRouter = require("./routes/auth.router");
 const { isAuthorized } = require("./middleware/auth.middleware");
 const getKyc=require("./GetKycDetals/getKyc.router")
@@ -53,6 +53,7 @@ router.use("/label",LabelSettings)
 
 const adminOrderRoute=require("./routes/adminOrder.router")
 const adminBilling=require("./Admin/adminRouter")
+
 router.use("/admin",adminOrderRoute)
 router.use("/adminBilling",adminBilling);
 
