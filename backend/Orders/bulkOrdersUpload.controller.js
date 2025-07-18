@@ -311,7 +311,7 @@ const bulkOrder = async (req, res) => {
             isUnique = true;
           }
         }
-
+const compositeOrderId = `${req.user._id}-${orderId}`;
         return {
           userId: userID,
           orderId: orderId,
@@ -380,6 +380,7 @@ const bulkOrder = async (req, res) => {
               height: parseFloat(row["*Height (cm)"] || 0),
             },
           },
+          compositeOrderId,
           status: "new",
         };
       })
