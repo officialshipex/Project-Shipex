@@ -7,6 +7,7 @@ const Pan = require("../models/Pan.model");
 const Gst = require("../models/Gstin.model");
 const CodPlans = require("../COD/codPan.model");
 const AllocateRole = require("../models/allocateRoleSchema");
+const Order = require("../models/newOrder.model");
 const { generateKeySync } = require("crypto");
 
 // const getUsers = async (req, res) => {
@@ -215,10 +216,34 @@ const getAllUsers = async (req, res) => {
     const paginatedUsers = parsedLimit
       ? filteredUsers.slice(skip, skip + parsedLimit)
       : filteredUsers;
+    // console.log("userIds:", userIds);
+    // Step 1: Aggregate order count and last order date for all fetched user IDs
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          userId: { $in: userIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",
+          orderCount: { $sum: 1 },
+          lastOrderDate: { $max: "$createdAt" },
+        },
+      },
+    ]);
+    // console.log("Order stats:", orderStats);
+
+    // Step 2: Map it by userId for quick access
+    const orderStatsMap = new Map(
+      orderStats.map((stat) => [String(stat._id), stat])
+    );
+    // console.log("Order stats map:", orderStatsMap);
 
     const userDetails = paginatedUsers.map((user) => {
       const walletBalance = user.Wallet?.balance || 0;
       const plan = planMap.get(String(user._id));
+      const stats = orderStatsMap.get(String(user._id));
 
       return {
         id: user._id,
@@ -233,6 +258,8 @@ const getAllUsers = async (req, res) => {
         rateCard: plan?.planName || "N/A",
         codPlan: codMap.get(String(user._id))?.planName || "N/A",
         createdAt: user.createdAt,
+        orderCount: stats?.orderCount || 0,
+        lastOrderDate: stats?.lastOrderDate || null,
         accountDetails: (() => {
           const acc = accountMap.get(String(user._id));
           if (!acc) return null;
