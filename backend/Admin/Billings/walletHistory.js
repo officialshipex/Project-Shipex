@@ -162,13 +162,14 @@ const generateUniqueTransactionId = async () => {
 
 const addWalletHistory = async (req, res) => {
   try {
-    const { userId, status, paymentId, orderId, amount } = req.body;
+    const { userId, paymentId, orderId, amount } = req.body;
     console.log("re",req.body)
 
     // 1. Validate required fields
     if (!userId || !paymentId || !orderId || amount == null) {
       return res.status(400).json({ message: "Missing required fields" });
     }
+    const status = "success"; // Assuming success for this example
     const userID = Number(userId);
     const numericAmount = Number(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
@@ -207,7 +208,7 @@ const addWalletHistory = async (req, res) => {
         amount: numericAmount,
         transactionId,
       },
-      status,
+      status, // Assuming success for this example
     };
 
     // 7. Push history

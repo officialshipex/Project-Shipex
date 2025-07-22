@@ -88,60 +88,53 @@ const razorpayWebhook = async (req, res) => {
     .digest("hex");
 
   if (razorpaySignature !== expectedSignature) {
-    console.log("validation failed");
+    console.log("❌ Signature validation failed");
     return res
       .status(400)
       .json({ success: false, message: "Invalid signature" });
   }
 
   const event = req.body;
-  console.log("event", event);
+  console.log("📩 Webhook event:", event.event);
+
+  if (event.event !== "payment.captured" && event.event !== "payment.failed") {
+    console.log("⚠️ Ignored Razorpay webhook event:", event.event);
+    return res.status(200).json({ success: true, message: "Event ignored" });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    if (
-      event.event !== "payment.captured" &&
-      event.event !== "payment.failed"
-    ) {
-      console.log("Unhandled Razorpay webhook event:", event.event);
-      return res.status(200).json({ success: true, message: "Event ignored" });
-    }
-
     const payment = event.payload.payment.entity;
 
-    console.log("payment", payment);
-
-    // Fetch full payment details to get the original order notes (like walletId)
     const fullPayment = await razorpay.payments.fetch(payment.id);
-    console.log("fullpayment", fullPayment);
     const order = await razorpay.orders.fetch(payment.order_id);
-    console.log("order", order);
     const walletId = order.notes?.walletId || fullPayment.notes?.walletId;
-    console.log("walletId", walletId);
 
     if (!walletId) {
-      console.log("Missing walletId in payment notes:", fullPayment.notes);
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing walletId" });
+      console.log("⚠️ Missing walletId:", {
+        notes: order.notes,
+        fullPaymentNotes: fullPayment.notes,
+      });
+      throw new Error("Missing walletId in Razorpay notes");
     }
 
-    let wallet = await Wallet.findById(walletId);
+    const wallet = await Wallet.findById(walletId).session(session);
     if (!wallet) {
-      console.log("wallet not found");
-      return res
-        .status(404)
-        .json({ success: false, message: "Wallet not found" });
+      throw new Error("Wallet not found for walletId: " + walletId);
     }
 
-    // If walletHistory does not exist, initialize it as an empty array
-    if (!wallet.walletHistory) {
-      wallet.walletHistory = [];
-    }
+    if (!wallet.walletHistory) wallet.walletHistory = [];
 
+    // Prevent duplicate paymentId
     const alreadyExists = wallet.walletHistory.some(
       (txn) => txn.paymentDetails?.paymentId === payment.id
     );
+
     if (alreadyExists) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(200).json({
         success: true,
         message:
@@ -152,16 +145,8 @@ const razorpayWebhook = async (req, res) => {
     }
 
     const rrn = fullPayment.acquirer_data?.rrn;
-    if (rrn && typeof rrn === "string" && rrn.trim() !== "") {
-      console.log("✅ Using Razorpay RRN as transaction ID:", rrn);
-    } else {
-      console.log(
-        "⚠️ RRN missing or invalid, generating fallback transaction ID"
-      );
-    }
     const transactionId =
       rrn && rrn.trim() !== "" ? rrn : await generateUniqueTransactionId();
-
     const amount = payment.amount / 100;
 
     const paymentDetails = {
@@ -169,54 +154,60 @@ const razorpayWebhook = async (req, res) => {
       orderId: payment.order_id,
       walletId,
       amount,
-      transactionId: transactionId,
+      transactionId,
+      signature: payment.signature || "",
     };
-    console.log("transaction id");
 
     if (event.event === "payment.captured") {
-      console.log("payment captured");
       wallet.balance += amount;
 
       wallet.walletHistory.push({
         status: "success",
-        paymentDetails: {
-          ...paymentDetails,
-          signature: payment.signature || "",
-        },
+        paymentDetails,
       });
 
-      await wallet.save();
-      return res.status(200).json({
-        success: true,
-        message: "Payment captured & wallet updated",
-      });
+      await wallet.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log("✅ Payment captured & wallet updated");
+      return res
+        .status(200)
+        .json({ success: true, message: "Payment captured & wallet updated" });
     }
 
     if (event.event === "payment.failed") {
-      console.log("payment failed");
       wallet.walletHistory.push({
         status: "failed",
         paymentDetails: {
           ...paymentDetails,
-          description: payment.error_description || "No description provided",
+          description: payment.error_description || "No description",
         },
       });
 
-      await wallet.save();
+      await wallet.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log("❌ Payment failed logged");
       return res
         .status(200)
         .json({ success: true, message: "Failed payment logged" });
     }
 
-    console.log("Unhandled Razorpay webhook event:", event.event);
+    // Fallback (should not reach here)
+    await session.abortTransaction();
+    session.endSession();
     return res
       .status(200)
       .json({ success: true, message: "Unhandled event type" });
-  } catch (err) {
-    console.error("Webhook processing error:", err);
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("💥 Razorpay webhook processing error:", error);
     return res
       .status(500)
-      .json({ success: false, message: "Internal server error" });
+      .json({ success: false, message: "Webhook processing error" });
   }
 };
 
