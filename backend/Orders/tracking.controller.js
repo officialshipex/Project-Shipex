@@ -1,6 +1,8 @@
 const Order = require("../models/newOrder.model");
 const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
+const DTDCStatusMapping = require("./DTDCStatusMapping");
+const cron = require("node-cron");
 const {
   shipmentTrackingforward,
 } = require("../AllCouriers/EcomExpress/Couriers/couriers.controllers");
@@ -186,52 +188,7 @@ const trackSingleOrder = async (order) => {
       }
     }
     if (provider === "DTDC") {
-      const DTDCStatusMapping = {
-        "order received": "Ready To Ship",
-        "pickup failed": "Ready To Ship",
-        "pickup awaited": "Ready To Ship",
-        "softdata upload": "Ready To Ship",
-        "pickup scheduled": "Ready To Ship",
-        "not picked": "Ready To Ship",
-        "pickup reassigned": "Ready To Ship",
-        "picked up": "In-transit",
-        "shipment under investigation": "In-transit",
-        booked: "In-transit",
-        "in transit": "In-transit",
-        "reached at destination": "In-transit",
-        "mis route": "In-transit",
-        "fdm prepared": "In-transit",
-        "wrong pincode": "In-transit",
-        "waiting for rto approval from origin": "In-transit",
-        "non serviceable location": "In-transit",
-        "disturbed/ prohibited area": "In-transit",
-        "e-waybill dispute": "In-transit",
-        "booking not updated": "In-transit",
-        "shipment received after cut-off time at destination": "In-transit",
-        "off-loaded by airlines (central team access)": "In-transit",
-        "weekly off": "In-transit",
-        "stock scan": "In-transit",
-        "offload at origin": "In-transit",
-        "received at delivery centre":"In-transit",
-        "damaged":"Damaged",
-        "out for delivery": "Out for Delivery",
-        "otp based delivered": "Delivered",
-        delivered: "Delivered",
-        "not delivered": "Undelivered",
-        "set rto initiated": "Undelivered",
-        "rto processed & forwarded": "RTO",
-        "return as per client instruction.": "RTO",
-        "rto booked": "RTO",
-        "rto in transit": "RTO In-transit",
-        "rto reached at destination": "RTO In-transit",
-        "rto fdm prepared": "RTO In-transit",
-        "rto not delivered": "RTO In-transit",
-        "rto out for delivery": "RTO In-transit",
-        "rto mis route": "RTO In-transit",
-        "shipment received short":"RTO In-transit",
-        "rto delivered": "RTO Delivered",
-      };
-
+      
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = DTDCStatusMapping[instruction];
 
@@ -262,7 +219,7 @@ const trackSingleOrder = async (order) => {
             previousStatus !== "Not Delivered" &&
             previousStatus !== "SETRTO"))
       ) {
-        console.log("awb with number", awb_number);
+        // console.log("awb with number", awb_number);
         order.status = "Cancelled";
         order.ndrStatus = "Cancelled";
         balanceTobeAdded =
@@ -314,6 +271,7 @@ const trackSingleOrder = async (order) => {
             // normalizedData.StrRemarks="";
           }
         }
+        updateNdrHistoryByAwb(order.awb_number);
       }
 
       if (
@@ -328,7 +286,7 @@ const trackSingleOrder = async (order) => {
         instruction === "otp based delivered"
       ) {
         order.status = "Delivered";
-        order.ndrStatus = "Delivered";
+        // order.ndrStatus = "Delivered";
       }
     }
     if (provider === "Amazon") {
@@ -641,15 +599,15 @@ const startTrackingLoop = async () => {
   try {
     console.log("🕒 Starting Order Tracking");
     await trackOrders();
-    console.log("⏳ Waiting for 5 minutes before next tracking cycle...");
-    setTimeout(startTrackingLoop, 15 * 60 * 1000); // Wait 5 minutes, then call again
+    console.log("⏳ Waiting for 3 hours before next tracking cycle...");
+    setTimeout(startTrackingLoop, 3 * 60 * 60 * 1000);  // Wait 3 hours, then call again
   } catch (error) {
     console.error("❌ Error in tracking loop:", error);
     setTimeout(startTrackingLoop, 15 * 60 * 1000); // Retry after 5 minutes even on error
   }
 };
 
-startTrackingLoop();
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   const providerMappings = {
@@ -777,4 +735,43 @@ const formatAmazonDate = (isoDateStr) => {
   }
 };
 
-module.exports = {trackSingleOrder,startTrackingLoop};
+
+
+const updateNdrHistoryByAwb = async (awb_number) => {
+  try {
+    const order = await Order.findOne({ awb_number });
+
+    if (!order) {
+      console.log(`❌ Order not found for AWB: ${awb_number}`);
+      return;
+    }
+
+    const initialLength = order.ndrHistory.length;
+
+    // Get keys from mapping (lowercase for matching)
+    const statusKeys = Object.keys(DTDCStatusMapping).map(s => s.toLowerCase());
+
+    // Filter out remarks that match any mapping key
+    const filteredNdrHistory = order.ndrHistory.filter(ndr =>
+      !statusKeys.includes(ndr.remark?.toLowerCase())
+    );
+
+    if (filteredNdrHistory.length < initialLength) {
+      order.ndrHistory = filteredNdrHistory;
+      order.attempt += 1;
+      await order.save();
+      console.log(`✅ Updated order ${awb_number} — Removed ${initialLength - filteredNdrHistory.length} NDR entries`);
+    } else {
+      console.log(`ℹ️ No matching NDR remarks to remove for order ${awb_number}`);
+    }
+  } catch (error) {
+    console.error("❌ Error updating order by AWB:", error);
+  }
+};
+
+// updateNdrHistoryByAwb("I75008816");
+
+
+
+
+module.exports = { trackSingleOrder, startTrackingLoop };

@@ -219,6 +219,7 @@ const dashboard = async (req, res) => {
         percentage: Number(percentage), // or keep as string with '%' suffix
       };
     });
+    console.log("ndr", totalNdr);
     return res.status(200).json({
       success: true,
       data: {
@@ -799,7 +800,7 @@ const getDashboardOverview = async (req, res) => {
       avgShippingData.count > 0
         ? Math.round(avgShippingData.totalFreight / avgShippingData.count)
         : 0;
-
+const totalNdr = result.actionRequired[0]?.count || 0 +result.actionRequested[0]?.count || 0 + result.ndrDelivered[0]?.count || 0;
     return res.status(200).json({
       success: true,
       data: {
@@ -829,7 +830,7 @@ const getDashboardOverview = async (req, res) => {
 
         // NDR Details
         ndrStats: {
-          totalNdr: result.totalNdr[0]?.count || 0,
+          totalNdr: totalNdr || 0,
           actionRequired: result.actionRequired[0]?.count || 0,
           actionRequested: result.actionRequested[0]?.count || 0,
           ndrDelivered: result.ndrDelivered[0]?.count || 0,
@@ -1584,6 +1585,138 @@ const getRTOGraphsData = async (req, res) => {
   }
 };
 
+const getCourierComparison = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
+
+    const userData = await User.findById(userId);
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
+
+    let baseMatch = { courierServiceName: { $ne: null } };
+
+    if (!isAdminView) {
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
+
+    const orders = await Order.aggregate([
+      { $match: baseMatch },
+      {
+        $group: {
+          _id: {
+            provider: "$provider",
+            courierServiceName: "$courierServiceName",
+          },
+          shipmentCount: { $sum: 1 },
+          codOrders: {
+            $sum: {
+              $cond: [{ $eq: ["$paymentDetails.method", "COD"] }, 1, 0],
+            },
+          },
+          prepaidOrders: {
+            $sum: {
+              $cond: [{ $eq: ["$paymentDetails.method", "Prepaid"] }, 1, 0],
+            },
+          },
+          delivered: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0],
+            },
+          },
+          firstAttempt: {
+            $sum: {
+              $cond: [{ $eq: ["$firstAttemptDelivered", true] }, 1, 0],
+            },
+          },
+          ndrDelivered: {
+            $sum: {
+              $cond: [{ $eq: ["$ndrStatus", "Delivered"] }, 1, 0],
+            },
+          },
+          ndrRaised: {
+            $sum: {
+              $cond: [{ $eq: ["$ndrStatus", "Raised"] }, 1, 0],
+            },
+          },
+          rto: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "RTO"] }, 1, 0],
+            },
+          },
+          lostOrDamaged: {
+            $sum: {
+              $cond: [{ $in: ["$status", ["Lost", "Damaged"]] }, 1, 0],
+            },
+          },
+          zoneA: {
+            $sum: {
+              $cond: [{ $eq: ["$zone", "zoneA"] }, 1, 0],
+            },
+          },
+          zoneB: {
+            $sum: {
+              $cond: [{ $eq: ["$zone", "zoneB"] }, 1, 0],
+            },
+          },
+          zoneC: {
+            $sum: {
+              $cond: [{ $eq: ["$zone", "zoneC"] }, 1, 0],
+            },
+          },
+          zoneD: {
+            $sum: {
+              $cond: [{ $eq: ["$zone", "zoneD"] }, 1, 0],
+            },
+          },
+          zoneE: {
+            $sum: {
+              $cond: [{ $eq: ["$zone", "zoneE"] }, 1, 0],
+            },
+          },
+        },
+      },
+      { $sort: { shipmentCount: -1 } }, // 🔥 Sort by shipmentCount descending
+    ]);
+
+    const formatted = orders.map((o) => ({
+      courier: o._id.provider,
+      courierServiceName: o._id.courierServiceName,
+      shipmentCount: o.shipmentCount || "-",
+      codOrders: o.codOrders || "-",
+      prepaidOrders: o.prepaidOrders || "-",
+      delivered: o.delivered || "-",
+      firstAttempt: o.firstAttempt || "-",
+      ndrDelivered: o.ndrDelivered || "-",
+      ndrRaised: o.ndrRaised || "-",
+      rto: o.rto || "-",
+      "Lost/Damaged": o.lostOrDamaged || "-",
+      "Zone A": o.zoneA || 0,
+      "Zone B": o.zoneB || 0,
+      "Zone C": o.zoneC || 0,
+      "Zone D": o.zoneD || 0,
+      "Zone E": o.zoneE || 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Courier Comparison Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
 
 module.exports = {
   dashboard,
@@ -1594,5 +1727,6 @@ module.exports = {
   getOrderSummary,
   getOrdersGraphsData,
   getRTOSummaryData,
-  getRTOGraphsData
+  getRTOGraphsData,
+  getCourierComparison
 };
