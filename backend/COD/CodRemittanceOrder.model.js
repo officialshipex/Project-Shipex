@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { courierCodRemittance } = require("./cod.controller");
+// const { courierCodRemittance } = require("./cod.controller");
 
 const CodRemittanceOrderSchema = new mongoose.Schema({
       Date: {

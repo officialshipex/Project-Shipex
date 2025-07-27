@@ -18,7 +18,7 @@ const AllocateRole = require("../models/allocateRoleSchema");
 
 // const { date } = require("joi");
 const CourierCodRemittance = require("./CourierCodRemittance.js");
-const CodRemittanceOrders = require("./CodRemittanceOrder.model.js");
+const CodRemittanceOrdersModel = require("./CodRemittanceOrder.model.js");
 const SameDateDelivered = require("./samedateDelivery.model.js");
 const BankAccountDetails = require("../models/BankAccount.model.js");
 const codPlanUpdate = async (req, res) => {
@@ -188,6 +188,7 @@ cron.schedule("1 1 * * *", () => {
   console.log("Running scheduled task at 1:01 AM: Fetching orders...");
   codToBeRemitteds();
 });
+// codToBeRemitteds();
 
 const remittanceScheduleData = async () => {
   try {
@@ -215,7 +216,7 @@ const remittanceScheduleData = async () => {
         await new CodPlan({ user: remittance.userId, planName: "D+7" }).save();
         continue;
       }
-
+      // console.log("codPlan", codPlan);
       const planDays = parseInt(codPlan.planName.replace(/\D/g, ""), 10);
       const planCharges = codPlan.planCharges || 0;
 
@@ -524,8 +525,9 @@ const codRemittanceData = async (req, res) => {
     const limit =
       limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-
+    // console.log("userId", userId);
     const remittanceDoc = await codRemittance.findOne({ userId });
+    // console.log("remittanceDoc", remittanceDoc);
 
     if (!remittanceDoc) {
       return res.status(404).json({
@@ -894,7 +896,7 @@ const uploadCodRemittance = async (req, res) => {
 
         const paymentAmount = Number(order?.paymentDetails?.amount || 0);
 
-        await CodRemittanceOrders.findOneAndUpdate(
+        await CodRemittanceOrdersModel.findOneAndUpdate(
           { orderID: order.orderId },
           { $set: { status: "Paid" } }
         );
@@ -1248,6 +1250,10 @@ const getAdminCodRemitanceData = async (req, res) => {
     const statusFilter = req.query.statusFilter;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
+    const startDate = req.query.startDate
+      ? new Date(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
     // --- Employee filtering logic ---
     let allocatedUserIds = null;
@@ -1293,6 +1299,13 @@ const getAdminCodRemitanceData = async (req, res) => {
     let matchStage = {};
     if (allowedRemittanceIds) {
       matchStage.remitanceId = { $in: allowedRemittanceIds };
+    }
+
+    if (startDate && endDate) {
+      matchStage.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
     }
 
     const allOrders = await adminCodRemittance.aggregate([
@@ -1422,6 +1435,12 @@ const CodRemittanceOrder = async (req, res) => {
     const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
     const statusFilter = req.query.statusFilter || "";
     const courierProvider = req.query.courierProvider || "";
+    const startDate = req.query.startDate
+      ? new Date(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+
+    // console.log("req",req.query)
 
     // --- Employee filtering logic ---
     let allocatedUserIds = null;
@@ -1465,7 +1484,7 @@ const CodRemittanceOrder = async (req, res) => {
       matchStage.orderID = { $in: allowedOrderIds };
     }
 
-    let allOrders = await CodRemittanceOrders.aggregate([
+    let allOrders = await CodRemittanceOrdersModel.aggregate([
       { $match: matchStage },
       {
         $addFields: {
@@ -1478,7 +1497,7 @@ const CodRemittanceOrder = async (req, res) => {
         },
       },
     ]);
-
+    // console.log("allOrders", allOrders);
     // 2. Apply JavaScript filter
     let filteredOrders = allOrders;
 
@@ -1522,6 +1541,13 @@ const CodRemittanceOrder = async (req, res) => {
           order.courierProvider &&
           order.courierProvider.toLowerCase() === courierProvider.toLowerCase()
       );
+    }
+    // filter by date range
+    if (startDate && endDate) {
+      filteredOrders = filteredOrders.filter((order) => {
+        const orderDate = new Date(order.createdAt); // replace with actual date field
+        return orderDate >= startDate && orderDate <= endDate;
+      });
     }
 
     const totalCount = filteredOrders.length;

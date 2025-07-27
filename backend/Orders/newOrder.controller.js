@@ -1116,7 +1116,7 @@ const cancelOrdersAtBooked = async (req, res) => {
           balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
           date: new Date().toISOString().slice(0, 16).replace("T", " "), // Format date & time
           awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
-          description: `Freight Chages Received`,
+          description: `Freight Charges Received`,
         },
       },
     });

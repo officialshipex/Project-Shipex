@@ -16,6 +16,7 @@ const CourierCodRemittance = require("./CourierCodRemittance.js");
 const CodRemittanceOrders = require("./CodRemittanceOrder.model.js");
 const SameDateDelivered = require("./samedateDelivery.model.js");
 // Core function: process remittances (no req/res here)
+// console.log("Starting scheduled task for processing COD remittances...");
 const processCourierCodRemittance = async () => {
   // console.log("----------->")
   // Step 1: Get all Delivered COD Orders
@@ -84,7 +85,7 @@ const processCourierCodRemittance = async () => {
     message: "Courier COD remittance processed successfully.",
   };
 };
-processCourierCodRemittance();
+// processCourierCodRemittance();
 cron.schedule(
   "0 0,12 * * *",
   () => {
@@ -97,6 +98,7 @@ cron.schedule(
 );
 
 const processCodRemittanceOrder = async () => {
+  console.log("Processing COD Remittance Orders...");
   const codDeliveredOrders = await Order.aggregate([
     {
       $match: {
@@ -105,6 +107,7 @@ const processCodRemittanceOrder = async () => {
       },
     },
   ]);
+  console.log("codDeliveredOrders", codDeliveredOrders.length);
   const remittedOrders = await CodRemittanceOrders.aggregate([
     {
       $project: {
@@ -163,3 +166,5 @@ cron.schedule(
     timezone: "Asia/Kolkata",
   }
 );
+
+// processCodRemittanceOrder();
