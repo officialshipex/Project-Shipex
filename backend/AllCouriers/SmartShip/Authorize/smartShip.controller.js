@@ -1,116 +1,70 @@
-require('dotenv').config();
-const axios = require('axios');
-const Courier=require("../../../models/courierSecond");
-
+require("dotenv").config();
+const axios = require("axios");
+const AllCourier = require("../../../models/AllCourierSchema");
+const USERNAME = process.env.SMARTSHIP_USERNAME;
+const PASSWORD = process.env.SMARTSHIP_PASSWORD;
 const getAccessToken = async () => {
-    const credentials = {
-        username: process.env.SMARTSHIP_USERNAME,
-        password: process.env.SMARTSHIP_PASSWORD,
-        client_id: process.env.SMARTSHIP_CLIENT_ID,
-        client_secret: process.env.SMARTSHIP_CLIENT_SECRET,
-        grant_type: "password",
-    };
+  const credentials = {
+    username: process.env.SMARTSHIP_USERNAME,
+    password: process.env.SMARTSHIP_PASSWORD,
+    client_id: process.env.SMARTSHIP_CLIENT_ID,
+    client_secret: process.env.SMARTSHIP_CLIENT_SECRET,
+    grant_type: "password",
+  };
 
-    try {
-        const response = await axios.post('https://oauth.smartship.in/loginToken.php', credentials, {
-            headers: { 'Content-Type': 'application/json' },
-        });
-        console.log('Access Token:', response.data.access_token);
-        return response.data.access_token   
-    } catch (error) {
-        console.log('Error fetching access token:', error.response);
-        return error.response.data
-        }
-    }
-
-    const saveSmartShip=async(req,res)=>{
-        try {
-            const existingCourier = await Courier.findOne({ provider: 'SmartShip' });
-        
-            if (existingCourier) {
-              return res.status(400).json({ message: 'SmartShip service is already added' });
-            }
-        
-            const newCourier = new Courier({
-              provider: 'SmartShip'
-            });
-            await newCourier.save();
-            res.status(201).json({ message: 'SmartShip Integrated Successfully' });
-          } catch (error) {
-            res.status(500).json({ message: 'An error has occurred', error: error.message });
-          }
-    }
-
-    const isEnabeled = async (req, res) => {
-      try {
-        const existingCourier = await Courier.findOne({ provider:'SmartShip'});
-    
-        if (!existingCourier) {
-          return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-        }
-    
-        if (existingCourier.isEnabeled && !existingCourier.toEnabeled) {
-          return res.status(201).json({ isEnabeled: true, toEnabeled: false });
-      
-      } else if (!existingCourier.isEnabeled && existingCourier.toEnabeled) {
-          return res.status(201).json({ isEnabeled: false, toEnabeled: true });
-      
-      } else if (existingCourier.isEnabeled && existingCourier.toEnabeled) {
-          return res.status(201).json({ isEnabeled: true, toEnabeled: true });
-      
-      } else {
-          return res.status(201).json({ isEnabeled: false, toEnabeled: false });
+  try {
+    const response = await axios.post(
+      "https://oauth.smartship.in/loginToken.php",
+      credentials,
+      {
+        headers: { "Content-Type": "application/json" },
       }
-      
-      } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-      }
-      };
+    );
+    console.log("Access Token:", response.data.access_token);
+    return response.data.access_token;
+  } catch (error) {
+    console.log("Error fetching access token:", error.response);
+    return error.response.data;
+  }
+};
 
+const saveSmartShip = async (req, res) => {
+  const { username, password } = req.body.credentials; // Destructure credentials
+  const { courierName, courierProvider, CODDays, status } = req.body; // Destructure courier data
+  console.log(PASSWORD);
 
-      const enable = async (req, res) => {
+  // Validate if the provided credentials match the expected ones
+  if (
+    USERNAME !== username ||
+    PASSWORD !== password
+  ) {
+    return res
+      .status(401)
+      .json({ message: "Unauthorized access. Invalid credentials." });
+  }
 
-        try {
-          const existingCourier = await Courier.findOne({ provider:'SmartShip'});
-      
-          if (!existingCourier) {
-            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-          }
-      
-          existingCourier.isEnabeled = true;
-          existingCourier.toEnabeled = false;
-          const result = await existingCourier.save();
-          return res.status(201).json({ isEnabeled: true, toEnabeled: false });
-        }
-        catch (error) {
-          onsole.error("Error:", error);
-          res.status(500).json({ message: "Internal Server Error" });
-        }
-      
-      }
+  const courierData = {
+    courierName,
+    courierProvider,
+    CODDays,
+    status,
+  };
 
-      const disable = async (req, res) => {
+  try {
+    // Create a new courier entry in the database
+    const newCourier = new AllCourier(courierData);
+    await newCourier.save();
 
-        try {
-          const existingCourier = await Courier.findOne({ provider:'SmartShip'});
-      
-          if (!existingCourier) {
-            return res.status(404).json({ isEnabeled: false, message: "Courier not found" });
-          }
-      
-          existingCourier.isEnabeled = true;
-          existingCourier.toEnabeled = true;
-          const result=await existingCourier.save();
-          return res.status(201).json({ isEnabeled: true, toEnabeled:true});
-        }
-        catch (error) {
-          onsole.error("Error:", error);
-          res.status(500).json({ message: "Internal Server Error" });
-        }
-      
-      }
-    
+    return res.status(201).json({
+      message: "Courier successfully added.",
+      courier: newCourier,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to add courier.",
+      error: error.message,
+    });
+  }
+};
 
-
-module.exports = { getAccessToken,saveSmartShip,isEnabeled,disable,enable};
+module.exports = { getAccessToken, saveSmartShip };
