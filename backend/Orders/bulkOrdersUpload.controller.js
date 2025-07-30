@@ -404,6 +404,15 @@ const bulkOrder = async (req, res) => {
     fileData.successfullyUploaded = orderDocs.length;
     await fileData.save();
 
+    // Delete uploaded file
+    fs.unlink(req.file.path, (err) => {
+      if (err) {
+        console.error("⚠️ Failed to delete uploaded file:", err);
+      } else {
+        console.log("🧹 Temporary file deleted:", req.file.path);
+      }
+    });
+
     return res.status(200).json({
       message: "Bulk order uploaded successfully",
       file: fileData,
