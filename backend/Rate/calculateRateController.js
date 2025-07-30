@@ -11,6 +11,9 @@ const {
 const {
   checkServiceabilityDTDC,
 } = require("../AllCouriers/DTDC/Courier/couriers.controller.js");
+const {
+  checkSmartshipHubServiceability,
+} = require("../AllCouriers/SmartShip/Couriers/couriers.controller.js");
 
 const calculateRate = async (req, res) => {
   try {
@@ -46,7 +49,7 @@ const calculateRate = async (req, res) => {
       const mode = rc.mode;
       let serviceable;
 
-      if (!["EcomExpres", "Delhivery", "DTDC"].includes(provider)) {
+      if (!["EcomExpres", "Delhivery", "DTDC","Smartship"].includes(provider)) {
         continue;
       }
 
@@ -56,27 +59,35 @@ const calculateRate = async (req, res) => {
           pickUpPincode,
           deliveryPincode
         );
-        console.log("ecom", serviceable);
+        // console.log("ecom", serviceable);
       } else if (provider === "Delhivery") {
         serviceable = await checkPincodeServiceabilityDelhivery(
           deliveryPincode,
           order_type
         );
-        console.log("dele", serviceable);
+        // console.log("dele", serviceable);
       } else if (provider === "DTDC") {
         serviceable = await checkServiceabilityDTDC(
           pickUpPincode,
           deliveryPincode
         );
-        console.log("check", serviceable);
+        // console.log("check", serviceable);
+      } else if (provider === "Smartship") {
+        const payload = {
+          source_pincode: pickUpPincode,
+          destination_pincode: deliveryPincode,
+          order_weight: applicableWeight,
+          order_value: declaredValue,
+        };
+        serviceable = await checkSmartshipHubServiceability(payload);
+        console.log("serviceable", serviceable);
       }
-
       // if (!isServiceable) continue; // Skip if not serviceable
 
       if (serviceable.success === false) {
         continue;
       }
-
+      
       let basicCharge = parseFloat(rc.weightPriceBasic[0][currentZone]);
       let additionalCharge = parseFloat(
         rc.weightPriceAdditional[0][currentZone]

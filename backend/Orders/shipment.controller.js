@@ -17,6 +17,7 @@ const {
 const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couriers/couriers.controllers")
 const {checkAmazonServiceability}=require("../AllCouriers/Amazon/Courier/couriers.controller")
 const {checkServiceabilityDTDC}=require("../AllCouriers/DTDC/Courier/couriers.controller")
+const {checkSmartshipHubServiceability}=require("../AllCouriers/SmartShip/Couriers/couriers.controller")
 
 
 const checkServiceabilityAll = async (service, id, pincode) => {
@@ -161,6 +162,16 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       console.log("rerere",result)
       return result
     }
+    if(service.provider==="Smartship"){
+      const payload={
+        source_pincode:pincode,
+        destination_pincode:currentOrder.receiverAddress.pinCode,
+        order_weight:weight,
+        order_value:currentOrder.paymentDetails?.amount || 0,
+      }
+      const result=await checkSmartshipHubServiceability(payload)
+      return result
+    } 
     
 
     // return false;
