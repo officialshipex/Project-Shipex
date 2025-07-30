@@ -235,7 +235,7 @@ const filterNdrOrdersForEmployee = async (req, res) => {
       page = 1,
       limit = 20,
     } = req.query;
-
+    console.log("Query Params:", req.query);
     const filter = {};
 
     // Order ID
@@ -262,10 +262,10 @@ const filterNdrOrdersForEmployee = async (req, res) => {
       filter.ndrStatus = ndrStatus;
     }
 
-    // Order Status
-    if (status && status !== "All") {
-      filter.status = status;
-    }
+    // // Order Status
+    // if (status && status !== "All") {
+    //   filter.status = status;
+    // }
 
     // Courier
     if (courier) {

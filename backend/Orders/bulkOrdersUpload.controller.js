@@ -9,7 +9,6 @@ const bulkOrdersExcel = require("../model/bulkOrdersExcel.model.js");
 const bulkOrdersCSV = require("../model/bulkOrderCSV.model.js");
 const PickupAddress = require("../models/pickupAddress.model.js");
 
-
 const downloadSampleExcel = async (req, res) => {
   try {
     // Create a new workbook and add a worksheet
@@ -229,7 +228,6 @@ function parseExcel(filePath) {
   return data;
 }
 
-
 const bulkOrder = async (req, res) => {
   try {
     const userID = req.user._id;
@@ -311,7 +309,28 @@ const bulkOrder = async (req, res) => {
             isUnique = true;
           }
         }
-const compositeOrderId = `${req.user._id}-${orderId}`;
+        const compositeOrderId = `${req.user._id}-${orderId}`;
+        const product1Quantity = parseInt(row["*Product 1 Quantity"] || 1);
+        const product2Quantity = parseInt(
+          row["Product 2 Quantity (Optional)"] || 1
+        );
+        const product3Quantity = parseInt(
+          row["Product 3 Quantity (Optional)"] || 1
+        );
+
+        const product1Price = parseFloat(row["*Product 1 Unit Price"] || 0);
+        const product2Price = parseFloat(
+          row["Product 2 Unit Price (Optional)"] || 0
+        );
+        const product3Price = parseFloat(
+          row["Product 3 Unit Price (Optional)"] || 0
+        );
+
+        const totalAmount =
+          product1Quantity * product1Price +
+          product2Quantity * product2Price +
+          product3Quantity * product3Price;
+
         return {
           userId: userID,
           orderId: orderId,
@@ -327,18 +346,15 @@ const compositeOrderId = `${req.user._id}-${orderId}`;
           },
           paymentDetails: {
             method: row["*Method (COD/Prepaid)"] || "Prepaid",
-            amount:
-              parseFloat(row["*Product 1 Unit Price"] || 0) +
-              parseFloat(row["Product 2 Unit Price (Optional)"] || 0) +
-              parseFloat(row["Product 3 Unit Price (Optional)"] || 0),
+            amount: totalAmount,
           },
           productDetails: [
             {
               id: 1,
               name: row["*Product 1 Name"] || "Unknown Product",
               sku: row["*Product 1 SKU"] || "UNKNOWN_SKU",
-              quantity: parseInt(row["*Product 1 Quantity"] || 1),
-              unitPrice: parseFloat(row["*Product 1 Unit Price"] || 0),
+              quantity: product1Quantity,
+              unitPrice: product1Price,
             },
             ...(row["Product 2 Name (Optional)"]
               ? [
@@ -346,12 +362,8 @@ const compositeOrderId = `${req.user._id}-${orderId}`;
                     id: 2,
                     name: row["Product 2 Name (Optional)"],
                     sku: row["Product 2 SKU (Optional)"] || "UNKNOWN_SKU",
-                    quantity: parseInt(
-                      row["Product 2 Quantity (Optional)"] || 1
-                    ),
-                    unitPrice: parseFloat(
-                      row["Product 2 Unit Price (Optional)"] || 0
-                    ),
+                    quantity: product2Quantity,
+                    unitPrice: product2Price,
                   },
                 ]
               : []),
@@ -361,16 +373,13 @@ const compositeOrderId = `${req.user._id}-${orderId}`;
                     id: 3,
                     name: row["Product 3 Name (Optional)"],
                     sku: row["Product 3 SKU (Optional)"] || "UNKNOWN_SKU",
-                    quantity: parseInt(
-                      row["Product 3 Quantity (Optional)"] || 1
-                    ),
-                    unitPrice: parseFloat(
-                      row["Product 3 Unit Price (Optional)"] || 0
-                    ),
+                    quantity: product3Quantity,
+                    unitPrice: product3Price,
                   },
                 ]
               : []),
           ],
+
           packageDetails: {
             deadWeight,
             applicableWeight,
