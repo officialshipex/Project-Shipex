@@ -79,7 +79,6 @@ const generateUniqueTransactionId = async () => {
 // Razorpay webhook handler
 const razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
   const razorpaySignature = req.headers["x-razorpay-signature"];
   const body = JSON.stringify(req.body);
 
@@ -98,141 +97,117 @@ const razorpayWebhook = async (req, res) => {
   const event = req.body;
   console.log("📩 Webhook event:", event.event);
 
+  // Always acknowledge Razorpay immediately
+  res.status(200).json({ success: true, message: "Webhook received" });
+
+  // Process in background
   if (event.event !== "payment.captured" && event.event !== "payment.failed") {
     console.log("⚠️ Ignored Razorpay webhook event:", event.event);
-    return res.status(200).json({ success: true, message: "Event ignored" });
+    return;
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  setImmediate(async () => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const payment = event.payload.payment.entity;
-
-    let fullPayment, order;
     try {
-      fullPayment = await razorpay.payments.fetch(payment.id);
-      order = await razorpay.orders.fetch(payment.order_id);
-    } catch (apiError) {
-      console.error(
-        "❌ Failed to fetch payment/order from Razorpay:",
-        apiError
+      const payment = event.payload.payment.entity;
+      console.log("Payment details:", payment);
+
+      let fullPayment, order;
+      try {
+        fullPayment = await razorpay.payments.fetch(payment.id);
+        order = await razorpay.orders.fetch(payment.order_id);
+      } catch (apiError) {
+        console.error(
+          "❌ Failed to fetch payment/order from Razorpay:",
+          apiError
+        );
+        throw new Error("Razorpay fetch failure");
+      }
+
+      const walletId = order.notes?.walletId || fullPayment.notes?.walletId;
+      if (!walletId) {
+        console.log("⚠️ Missing walletId:", {
+          notes: order.notes,
+          fullPaymentNotes: fullPayment.notes,
+        });
+        await session.abortTransaction();
+        session.endSession();
+        return;
+      }
+
+      const wallet = await Wallet.findById(walletId).session(session);
+      if (!wallet) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("❌ Wallet not found for walletId:", walletId);
+        return;
+      }
+
+      if (!Array.isArray(wallet.walletHistory)) {
+        wallet.walletHistory = [];
+      }
+
+      const alreadyExists = wallet.walletHistory.some(
+        (txn) => txn.paymentDetails?.paymentId === payment.id
       );
-      throw new Error("Razorpay fetch failure");
-    }
 
-    const walletId = order.notes?.walletId || fullPayment.notes?.walletId;
+      if (alreadyExists) {
+        await session.abortTransaction();
+        session.endSession();
+        console.log("🔁 Duplicate payment. Skipping processing:", payment.id);
+        return;
+      }
 
-    if (!walletId) {
-      console.log("⚠️ Missing walletId:", {
-        notes: order.notes,
-        fullPaymentNotes: fullPayment.notes,
-      });
-      // Instead of crashing, return early and log
+      const rrn = fullPayment.acquirer_data?.rrn;
+      const transactionId = rrn?.trim()
+        ? rrn
+        : await generateUniqueTransactionId();
+      const amount = payment.amount / 100;
+
+      const paymentDetails = {
+        paymentId: payment.id,
+        orderId: payment.order_id,
+        walletId,
+        amount,
+        transactionId,
+        signature: payment.signature || "",
+      };
+
+      if (event.event === "payment.captured") {
+        wallet.balance += amount;
+        wallet.walletHistory.push({ status: "success", paymentDetails });
+        await wallet.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+        console.log("✅ Payment captured & wallet updated:", payment.id);
+        return;
+      }
+
+      if (event.event === "payment.failed") {
+        wallet.walletHistory.push({
+          status: "failed",
+          paymentDetails: {
+            ...paymentDetails,
+            description: payment.error_description || "No description",
+          },
+        });
+        await wallet.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+        console.log("❌ Payment failed logged:", payment.id);
+        return;
+      }
+
       await session.abortTransaction();
       session.endSession();
-      return res.status(200).json({
-        success: false,
-        message: "Missing walletId in Razorpay notes",
-      });
-    }
-
-    const wallet = await Wallet.findById(walletId).session(session);
-    if (!wallet) {
+    } catch (error) {
       await session.abortTransaction();
       session.endSession();
-      console.error("❌ Wallet not found for walletId:", walletId);
-      return res.status(200).json({
-        success: false,
-        message: "Wallet not found",
-      });
+      console.error("💥 Webhook processing error:", error);
     }
-
-    if (!Array.isArray(wallet.walletHistory)) {
-      wallet.walletHistory = [];
-    }
-
-    const alreadyExists = wallet.walletHistory.some(
-      (txn) => txn.paymentDetails?.paymentId === payment.id
-    );
-
-    if (alreadyExists) {
-      await session.abortTransaction();
-      session.endSession();
-      console.log("🔁 Duplicate payment. Skipping processing:", payment.id);
-      return res.status(200).json({
-        success: true,
-        message:
-          event.event === "payment.failed"
-            ? "Failed payment already logged"
-            : "Payment already processed",
-      });
-    }
-
-    const rrn = fullPayment.acquirer_data?.rrn;
-    const transactionId =
-      rrn && rrn.trim() !== "" ? rrn : await generateUniqueTransactionId();
-    const amount = payment.amount / 100;
-
-    const paymentDetails = {
-      paymentId: payment.id,
-      orderId: payment.order_id,
-      walletId,
-      amount,
-      transactionId,
-      signature: payment.signature || "",
-    };
-
-    if (event.event === "payment.captured") {
-      wallet.balance += amount;
-      wallet.walletHistory.push({
-        status: "success",
-        paymentDetails,
-      });
-
-      await wallet.save({ session });
-      await session.commitTransaction();
-      session.endSession();
-
-      console.log("✅ Payment captured & wallet updated:", payment.id);
-      return res
-        .status(200)
-        .json({ success: true, message: "Payment captured & wallet updated" });
-    }
-
-    if (event.event === "payment.failed") {
-      wallet.walletHistory.push({
-        status: "failed",
-        paymentDetails: {
-          ...paymentDetails,
-          description: payment.error_description || "No description",
-        },
-      });
-
-      await wallet.save({ session });
-      await session.commitTransaction();
-      session.endSession();
-
-      console.log("❌ Payment failed logged:", payment.id);
-      return res
-        .status(200)
-        .json({ success: true, message: "Failed payment logged" });
-    }
-
-    // Should never reach here
-    await session.abortTransaction();
-    session.endSession();
-    return res
-      .status(200)
-      .json({ success: true, message: "Unhandled event type" });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error("💥 Webhook processing error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Webhook processing error" });
-  }
+  });
 };
 
 // const verifyPayment = async (req, res) => {
