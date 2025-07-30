@@ -1,427 +1,434 @@
-const axios = require('axios');
-require('dotenv').config();
-const { getAccessToken } =require("../Authorize/smartShip.controller");
-const Courier=require("../../../models/courierSecond");
-const Services=require("../../../models/courierServiceSecond.model");
-const{getUniqueId}=require("../../getUniqueId");
+const axios = require("axios");
+require("dotenv").config();
+const { getAccessToken } = require("../Authorize/smartShip.controller");
+const Order = require("../../../models/newOrder.model");
+const { getZone } = require("../../../Rate/zoneManagementController");
+const Wallet = require("../../../models/wallet");
+const User = require("../../../models/User.model");
+const PickupAddress = require("../../../models/pickupAddress.model");
+const Gstin = require("../../../models/Gstin.model");
 
-const getCouriers = async (req, res) => {
-    try {
-        const hardCoreServices = [
-            { name: "service1" },
-            { name: "service2" },
-            { name: "service3" }
-        ];
+const registerSmartshipHub = async (userId, pinCode) => {
+  try {
+    const pickupAddress = await PickupAddress.findOne({
+      userId,
+      "pickupAddress.pinCode": pinCode,
+    });
 
-        if (hardCoreServices && hardCoreServices.length > 0) {
-            const servicesData = hardCoreServices;
-            const currCourier = await Courier.findOne({ provider: 'SmartShip' }).populate('services');
-            const prevServices = new Set(currCourier.services.map(service => service.courierProviderServiceName));
-
-            const allServices = servicesData.map(element => ({
-                service: element.name,
-                isAdded: prevServices.has(element.name)
-            }));
-
-            return res.status(201).json(allServices);
-        }
-
-        res.status(400).json({ message: 'Failed to fetch services' });
-
-    } catch (error) {
-        console.error('Error:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to fetch couriers', details: error.message });
+    if (!pickupAddress) {
+      throw new Error("Pickup address not found for the given pincode");
     }
+
+    if (pickupAddress.smartshipHubId) {
+      // console.log("✅ Smartship Hub already registered:", pickupAddress.smartshipHubId);
+      return {
+        // success: true,
+        hubId: pickupAddress.smartshipHubId,
+        // message: "Smartship Hub already registered for this pincode",
+      };
+    }
+
+    const { pickupAddress: addr } = pickupAddress;
+
+    const hubPayload = {
+      hub_details: {
+        hub_name: addr.contactName || "Warehouse",
+        pincode: addr.pinCode,
+        city: addr.city,
+        state: addr.state,
+        address1: addr.address,
+        hub_phone: addr.phoneNumber,
+        delivery_type_id: 2,
+      },
+    };
+
+    const accessToken = await getAccessToken();
+
+    const response = await axios.post(
+      "https://api.smartship.in/v2/app/Fulfillmentservice/hubRegistration",
+      hubPayload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const hubId = response?.data?.data?.hub_id;
+
+    if (!hubId) {
+      throw new Error("Smartship Hub ID not returned");
+    }
+
+    pickupAddress.smartshipHubId = hubId;
+    await pickupAddress.save();
+
+    // console.log("✅ Smartship Hub registered and saved:", hubId);
+
+    return {
+      // success: true,
+      hubId,
+      // message: "Smartship Hub registered successfully",
+    };
+  } catch (err) {
+    console.error("❌ Hub Registration Failed:", err.message || err);
+    return {
+      success: false,
+      error: err.message || err,
+    };
+  }
 };
 
-
-const addService = async (req, res) => {
-    try {
-
-        const currCourier = await Courier.findOne({ provider: 'SmartShip' });
-
-        const prevServices = new Set();
-        const services = await Services.find({ '_id': { $in: currCourier.services } });
-
-        services.forEach(service => {
-            prevServices.add(service.courierProviderServiceName);
-        });
-
-        const name = req.body.service;
-
-        if (!prevServices.has(name)) {
-            const newService = new Services({
-                courierProviderServiceId: getUniqueId(),
-                courierProviderServiceName: name,
-                courierProviderName:'SmartShip'
-            });
-
-            const S2 = await Courier.findOne({ provider: 'SmartShip' });
-            S2.services.push(newService._id);
-
-            await newService.save();
-            await S2.save();
-
-            // console.log(`New service saved: ${name}`);
-
-            return res.status(201).json({ message: `${name} has been successfully added` });
-        }
-
-        return res.status(400).json({ message: `${name} already exists` });
-    } catch (error) {
-        console.error(`Error adding service: ${error.message}`);
-        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+const orderRegistrationOneStep = async (req, res) => {
+  try {
+    const { id, finalCharges, courierServiceName, provider } = req.body;
+    console.log("req.body", req.body);
+    const accessToken = await getAccessToken();
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
+    const zone = await getZone(
+      currentOrder.pickupAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
+      // res
+    );
+    // console.log("zone", zone);
+    if (!zone) {
+      return res.status(400).json({ message: "Pincode not serviceable" });
+    }
+    const user = await User.findById(currentOrder.userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const gstin = await Gstin.findOne({ user: user._id });
+
+    const smartshipHub = await registerSmartshipHub(
+      user._id,
+      currentOrder.pickupAddress.pinCode
+    );
+    console.log("Smartship Hub:", smartshipHub);
+
+    const currentWallet = await Wallet.findById(user.Wallet);
+    if (!currentWallet) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Wallet not found" });
+    }
+
+    const effectiveBalance =
+      currentWallet.balance - (currentWallet.holdAmount || 0);
+    if (effectiveBalance < finalCharges) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Low Wallet Balance" });
+    }
+
+    const productNames = currentOrder.productDetails
+      .map((p) => p.name)
+      .join(", ");
+
+    const payload = {
+      request_info: {
+        client_id: "", // Optional
+        run_type: "create",
+      },
+      orders: [
+        {
+          client_order_reference_id: currentOrder.orderId,
+          shipment_type: 1,
+          order_collectable_amount:
+            currentOrder.paymentDetails.method === "COD"
+              ? currentOrder.paymentDetails.amount
+              : 0,
+          total_order_value: currentOrder.paymentDetails.amount.toString(),
+          payment_type: currentOrder.paymentDetails.method.toLowerCase(), // cod or prepaid
+          package_order_weight: (
+            currentOrder.packageDetails.applicableWeight * 1000
+          ).toString(), // in grams
+          package_order_length:
+            currentOrder.packageDetails.volumetricWeight.length.toString(),
+          package_order_height:
+            currentOrder.packageDetails.volumetricWeight.height.toString(),
+          package_order_width:
+            currentOrder.packageDetails.volumetricWeight.width.toString(),
+          shipper_hub_id: smartshipHub.hubId || "",
+          shipper_gst_no: "",
+          order_invoice_date: new Date().toISOString().slice(0, 10), // today's date (or you can pull from order)
+          order_invoice_number: `INV-${currentOrder.orderId}-${Date.now()}`, // optional
+          is_return_qc: "0",
+          return_reason_id: "0",
+          order_meta: {
+            preferred_carriers: [279], // use given courier
+          },
+          product_details: currentOrder.productDetails.map((product) => ({
+            client_product_reference_id: product._id.toString(),
+            product_name: product.name,
+            product_category: product.category || "General",
+            product_hsn_code: product.hsn || "0000",
+            product_quantity: product.quantity || 1,
+            product_gst_tax_rate: product.gst || "0",
+            product_invoice_value: product.unitPrice.toString(),
+          })),
+          consignee_details: {
+            consignee_name: currentOrder.receiverAddress.contactName,
+            consignee_phone: currentOrder.receiverAddress.phoneNumber,
+            consignee_email:
+              currentOrder.receiverAddress.email || "noemail@example.com",
+            consignee_complete_address: currentOrder.receiverAddress.address,
+            consignee_pincode: currentOrder.receiverAddress.pinCode,
+          },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      "https://api.smartship.in/v2/app/Fulfillmentservice/orderRegistrationOneStep",
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    console.log("Smartship Order Response:", response.data);
+    // console.log(
+    //   "Smartship Order Response:",
+    //   response.data.data.errors.data_discrepancy
+    // );
+    // Save AWB and update order status
+    const result = response.data?.data?.success_order_details?.orders?.[0];
+
+    if (result?.awb_number) {
+      currentOrder.status = "Ready To Ship";
+      currentOrder.awb_number = result.awb_number;
+      currentOrder.shipment_id = result.request_order_id || "";
+      currentOrder.provider = provider;
+      currentOrder.totalFreightCharges = parseInt(finalCharges);
+      currentOrder.courierServiceName = courierServiceName;
+      currentOrder.shipmentCreatedAt = new Date();
+      currentOrder.zone = zone.zone;
+      await currentOrder.save();
+
+      await currentWallet.updateOne({
+        $inc: { balance: -parseInt(finalCharges) },
+        $push: {
+          transactions: {
+            channelOrderId: currentOrder.orderId,
+            category: "debit",
+            amount: parseInt(finalCharges),
+            balanceAfterTransaction: effectiveBalance - parseInt(finalCharges),
+            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            awb_number: result.awb_number,
+            description: `Freight Charges Applied`,
+          },
+        },
+      });
+    }
+
+    return res.status(200).json({
+      message: "Shipment Created Successfully",
+      success: true,
+      data: response.data,
+    });
+  } catch (error) {
+    console.error(
+      "Smartship Order Registration Error:",
+      error?.response?.data || error.message
+    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to register order",
+      error: error?.response?.data || error.message,
+    });
+  }
 };
 
-//1.One Stap Order Registration...
-const OneStapOrderRegisteration = async(req,res) => {
-    try {
-        const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/orderRegistrationOneStep';
-        const orderData = req.body;  
-        const token = await getAccessToken();
+const checkSmartshipHubServiceability = async (payload) => {
+  try {
+    const accessToken = await getAccessToken();
 
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
+    const requestBody = {
+      order_info: {
+        source_pincode: payload.source_pincode,
+        destination_pincode: payload.destination_pincode,
+        order_weight: payload.order_weight || 0.5,
+        order_value: payload.order_value || 100,
+        preferred_carriers: [1, 3, 279],
+        delivery_type: 1,
+      },
+      request_info: {
+        extra_info: false,
+        cost_info: false,
+      },
+    };
 
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
-    }
-}
+    const response = await axios.post(
+      "https://api.smartship.in/v2/app/Fulfillmentservice/ServiceabilityHubWise",
+      requestBody,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-//2. Order Registration .....
-const orderRegistration = async(req,res) => {
-    try {
-        const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/orderRegistration';
-        const orderData = req.body;
-        const token = await getAccessToken();
+    console.log("Smartship Serviceability Response:", response.data);
 
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
-    }
-}
+    const serviceabilityData = response.data?.data;
+    const serviceable = serviceabilityData?.serviceability_status === true;
 
-//3.Get Order details...
-const getOrderDetails = async(req,res) => {
-    try {
-        const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/orderDetails';
-        const orderData = req.body;
-        const token = await getAccessToken();
+    return {
+      success: serviceable,
+      data: serviceabilityData || {},
+    };
+  } catch (err) {
+    console.error(
+      "Smartship Serviceability Error:",
+      err.response?.data || err.message
+    );
+    return {
+      success: false,
+      error: err.response?.data || err.message,
+    };
+  }
+};
 
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
-    }
-}
-
-//4.create Manifest....
-const createManifest = async(req,res) => {
-    try {
-        const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/createManifest';
-        const orderData = req.body;
-        const token = await getAccessToken();
-
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
-    }
-}
-
-//5.get Shipping label..
-const getShippingLabel = async(req,res) => {
-    try {
-        const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/getShippingLabels';
-        const orderData = req.body;
-        const token = await getAccessToken();
-    
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
+const cancelSmartshipOrder = async (client_order_reference_id) => {
+  try {
+    if (!client_order_reference_id) {
+      return {
+        success: false,
+        message: "client_order_reference_id is required",
+      };
     }
 
-}
+    const isCancelled = await Order.findOne({
+      orderId: client_order_reference_id,
+      status: "Cancelled",
+    });
 
-//6.Cancel Order...
-const cancelOrder = async(req,res) => {
-    try {
-        const url = ':https://api.smartship.in/v2/app/Fulfillmentservice/orderCancellation';
-        const orderData = req.body;
-        const token = await getAccessToken();
-    
-        const response = await axios.post(url, orderData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
+    if (isCancelled) {
+      return {
+        // success: false,
+        code:400,
+        error: "Order is already cancelled",
+      };
     }
-}
 
-//7.tracking order by Tracking Id...
-const  trackOrderByTrackingID = async(req,res) => {
-    try {
-        const url = `https://api.smartship.in/v1/Trackorder?tracking_numbers=${tracking_number}`;
-        const tracking_number = req.body;
-        const token = await getAccessToken();
-    
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
+    const accessToken = await getAccessToken();
+
+    const requestPayload = {
+      request_info: {
+        ip_address: "14.142.227.166",
+        browser_name: "Mozilla",
+        location: "Delhi",
+      },
+      orders: {
+        client_order_reference_ids: [client_order_reference_id],
+        request_order_ids: [],
+      },
+    };
+
+    const response = await axios.post(
+      "https://api.smartship.in/v2/app/Fulfillmentservice/orderCancellation",
+      requestPayload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const cancellationDetails =
+      response?.data?.data?.order_cancellation_details;
+
+    if (cancellationDetails?.successful) {
+      await Order.updateOne(
+        { orderId: client_order_reference_id },
+        { $set: { status: "Cancelled" } }
+      );
+
+      return {
+        // error: true,
+        code:201,
+        data: cancellationDetails.successful,
+      };
+    } else {
+      console.error(
+        "Smartship Cancellation Error:",
+        cancellationDetails?.failure || "Unknown error"
+      );
+      return {
+        code:400,
+        error: true,
+        message: "Failed to cancel order",
+        details: cancellationDetails?.failure || {},
+      };
     }
-}
+  } catch (error) {
+    console.error(
+      "Smartship Cancel Order Error:",
+      error?.response?.data || error.message
+    );
+    return {
+      error: true,
+      message: "Failed to cancel order",
+      error: error?.response?.data || error.message,
+    };
+  }
+};
 
-//8.tracking order by Tracking Id...
-const  trackOrderByRequestorderId = async(req,res) => {
-    try {
-        const url = `https://api.smartship.in/v1/Trackorder?request_order_ids=${request_order_ids}`;
-        const request_order_ids = req.body;
-        const token = await getAccessToken();
-    
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
+// cancelSmartshipOrder(342276)
+
+const trackOrderSmartShip = async (AWBNo, shipment_id) => {
+  const access_key = await getAccessToken();
+  console.log(access_key);
+
+  try {
+    const response = await axios.post(
+      `https://api.smartship.in/v1/Trackorder?tracking_numbers=${AWBNo}`,
+      {}, // <-- empty body
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_key}`,
+        },
+      }
+    );
+
+    // console.log("response data", response.data);
+    console.log("response status", response.data.data.scans);
+    if (response.data.message === "success") {
+      return { success: true, data: response.data.data };
     }
-}
+  } catch (error) {
+    console.error(
+      "Error tracking shipment:",
+      error.response?.data || error.message
+    );
+    return {
+      success: false,
+      error: error.response?.data || error.message,
+      status: 500,
+    };
+  }
+};
 
-//8.tracking order by Tracking Id...
-const  trackOrderByOrderReferenceId = async(req,res) => {
-    try {
-        const url = `https://api.smartship.in/v1/Trackorder?order_reference_ids=${order_reference_ids}`;
-        const order_reference_ids = req.body;
-    
-        const token = await getAccessToken();
-    
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        console.log("API response:", response.data);
-        return res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error) {
-        console.error("Error during hub registration:", error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'An unknown error occurred'
-        });
-    }
-}
-
-//8.Hub registration....
-// const hubRegistration = async (req, res) => {
-//     try {
-//         const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/hubRegistration';
-//         const hubData = req.body;
-
-//         const token = await getAccessToken();
-
-//         const response = await axios.post(url, hubData, {
-//             headers: {
-//                 'Authorization': `Bearer ${token}`,
-//                 'Content-Type': 'application/json'
-//             }
-//         });
-
-//         console.log("API response:", response.data);e
-//         return res.json({
-//             success: true,
-//             data: response.data
-//         });
-//     } catch (error) {
-//         console.error("Error during hub registration:", error);
-//         return res.status(500).json({
-//             success: false,
-//             error: error.message || 'An unknown error occurred'
-//         });
-//     }
-// };
-
-// // 9.
-// const getHubDetails = async(req,res) => {
-//     try {
-//         const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/getHubDetail';
-//         const hubData = req.body;
-
-//         const token = await getAccessToken();
-
-//         const response = await axios.post(url, hubData, {
-//             headers: {
-//                 'Authorization': `Bearer ${token}`,
-//                 'Content-Type': 'application/json'
-//             }
-//         });
-
-//         console.log("API response:", response.data);
-//         return res.json({
-//             success: true,
-//             data: response.data
-//         });
-//     } catch (error) {
-//         console.error("Error during hub registration:", error);
-//         return res.status(500).json({
-//             success: false,
-//             error: error.message || 'An unknown error occurred'
-//         });
-        
-//     }
-// }
-
-// //10.
-// const deleteHub = async(req,res) => {
-//     try {
-//         const url = 'https://api.smartship.in/v2/app/Fulfillmentservice/deleteHub';
-//         const hubData = req.body;
-
-//         const token = await getAccessToken();
-
-//         const response = await axios.post(url, hubData, {
-//             headers: {
-//                 'Authorization': `Bearer ${token}`,
-//                 'Content-Type': 'application/json'
-//             }
-//         });
-        
-//         console.log("API response:", response.data);
-//         return res.json({
-//             success: true,
-//             data: response.data
-//         });
-//     } catch (error) {
-//         console.error("Error during hub registration:", error);
-//         return res.status(500).json({
-//             success: false,
-//             error: error.message || 'An unknown error occurred'
-//         });
-        
-//     }
-// }
+// trackOrderSmartShip("3159427899221","20692433")
 
 module.exports = {
-    OneStapOrderRegisteration,
-    orderRegistration,
-    getOrderDetails,
-    createManifest,
-    getShippingLabel,
-    cancelOrder,
-    trackOrderByTrackingID,
-    trackOrderByRequestorderId,
-    trackOrderByOrderReferenceId,
-    getCouriers,
-    addService
-    // hubRegistration,
-    // getHubDetails,
-    // deleteHub,
-}
+  orderRegistrationOneStep,
+  checkSmartshipHubServiceability,
+  cancelSmartshipOrder,
+  trackOrderSmartShip,
+};

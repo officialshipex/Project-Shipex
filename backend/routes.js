@@ -107,7 +107,7 @@ router.use("/Shiprocket", ShipRocketController);
 router.use("/EcomExpress", EcomExpressController);
 router.use("/Xpressbees", XpressbeesController);
 router.use("/ShreeMaruti", shreeMarutiController);
-router.use("/SmartShip", SmartShipController);
+router.use("/Smartship", SmartShipController);
 router.use('/DTDC',DtdcController)
 router.use("/Delhivery", DelhiveryController);
 router.use("/Amazon",AmazonRouter);

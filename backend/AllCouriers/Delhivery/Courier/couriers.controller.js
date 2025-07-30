@@ -275,7 +275,7 @@ const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
     });
     let result = response.data.delivery_codes;
 
-    console.log("serv", result);
+    // console.log("serv", result);
 
     let finalResult = false;
 

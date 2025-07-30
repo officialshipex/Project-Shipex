@@ -13,6 +13,10 @@ const pickupAddress = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
   },
+  smartshipHubId:{
+    type: String,
+    default: "",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

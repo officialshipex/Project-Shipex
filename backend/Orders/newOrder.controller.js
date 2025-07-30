@@ -33,6 +33,9 @@ const {
   cancelOrderShreeMaruti,
   trackOrderShreeMaruti,
 } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller");
+const {
+  cancelSmartshipOrder,
+} = require("../AllCouriers/SmartShip/Couriers/couriers.controller");
 const { checkServiceabilityAll } = require("./shipment.controller");
 const { calculateRateForService } = require("../Rate/calculateRateController");
 const csv = require("csv-parser");
@@ -69,7 +72,6 @@ const newOrder = async (req, res) => {
       return res.status(400).json({ error: "Alll fields are required" });
     }
 
-
     if (!["COD", "Prepaid"].includes(paymentDetails.method)) {
       return res.status(400).json({ error: "Invalid payment method" });
     }
@@ -85,7 +87,7 @@ const newOrder = async (req, res) => {
         isUnique = true;
       }
     }
-const compositeOrderId = `${req.user._id}-${orderId}`;
+    const compositeOrderId = `${req.user._id}-${orderId}`;
     // Create a new shipment
     const shipment = new Order({
       userId: req.user._id,
@@ -114,7 +116,7 @@ const compositeOrderId = `${req.user._id}-${orderId}`;
       shipment,
     });
   } catch (error) {
-    console.log("1111111111",error)
+    console.log("1111111111", error);
     res.status(400).json({ error: "All fields are required" });
   }
 };
@@ -999,7 +1001,7 @@ const cancelOrdersAtNotShipped = async (req, res) => {
 };
 const cancelOrdersAtBooked = async (req, res) => {
   const allOrders = req.body;
-  console.log(allOrders);
+  // console.log(allOrders);
   try {
     const users = await user.findOne({ _id: allOrders.userId });
     // console.log(users)
@@ -1010,11 +1012,9 @@ const cancelOrdersAtBooked = async (req, res) => {
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with Xpressbees",
-          details: result,
-          orderId: currentOrder._id,
-        };
+        return res
+          .status(400)
+          .send({ error: "Failed to cancel order" });
       } else {
         currentOrder.status = "new";
       }
@@ -1029,11 +1029,9 @@ const cancelOrdersAtBooked = async (req, res) => {
       } else if (currentOrder.provider === "Nimuspost") {
         const result = await cancelShipmentXpressBees(currentOrder.awb_number);
         if (result.error) {
-          return {
-            error: "Failed to cancel shipment with NimbusPost",
-            details: result,
-            orderId: currentOrder._id,
-          };
+          return res
+          .status(400)
+          .send({ error: "Failed to cancel order" });
         }
       }
     } else if (currentOrder.provider === "Delhivery") {
@@ -1065,29 +1063,30 @@ const cancelOrdersAtBooked = async (req, res) => {
     } else if (currentOrder.provider === "DTDC") {
       const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with DTDC",
-          details: result,
-          orderId: currentOrder._id,
-        };
+        return res
+          .status(400)
+          .send({ error: result.error });
       }
     } else if (currentOrder.provider === "EcomExpress") {
       const result = await cancelShipmentforward(currentOrder.awb_number);
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with EcomExpress",
-          details: result,
-          orderId: currentOrder._id,
-        };
+        return res
+          .status(400)
+          .send({ error: result.error });
       }
     } else if (currentOrder.provider === "Amazon") {
       const result = await cancelShipment(currentOrder.shipment_id);
       if (result.error) {
-        return {
-          error: "Failed to cancel shipment with Amazon",
-          details: result,
-          orderId: currentOrder._id,
-        };
+        return res
+          .status(400)
+          .send({ error: result.error });
+      }
+    } else if (currentOrder.provider === "Smartship") {
+      const result = await cancelSmartshipOrder(currentOrder.orderId);
+      if (result.error) {
+        return res
+          .status(400)
+          .send({ error: result.error });
       }
     } else {
       return {
@@ -1235,7 +1234,7 @@ const passbook = async (req, res) => {
           orderId: "$wallet.transactions.channelOrderId",
           description: "$wallet.transactions.description",
           courierServiceName: 1,
-          provider:1,
+          provider: 1,
         },
       },
       { $sort: { date: -1 } },

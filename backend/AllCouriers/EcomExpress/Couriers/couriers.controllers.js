@@ -48,7 +48,7 @@ const checkServiceabilityEcomExpress = async (
     const destinationResponse = await axios.post(url, destinationFormData, {
       headers: destinationFormData.getHeaders(),
     });
-    console.log("Destination Serviceability:", destinationResponse.data);
+    // console.log("Destination Serviceability:", destinationResponse.data);
 
     if (
       !destinationResponse?.data?.length ||

@@ -380,7 +380,7 @@ const checkAmazonServiceability = async (provider, payload) => {
 
     const rates = response.data.payload.rates || [];
     const ineligibleRates = response.data.payload.ineligibleRates || [];
-    console.log("reat", response.data.payload);
+    // console.log("reat", response.data.payload);
 
     if (rates.length > 0) {
       const selectedRate = rates[0]; // Use the first rate (or allow user to pick one)
@@ -394,7 +394,7 @@ const checkAmazonServiceability = async (provider, payload) => {
           return [];
         }) || [];
 
-      console.log("val", valueAddedServiceIds);
+      // console.log("val", valueAddedServiceIds);
 
       return {
         success: true,

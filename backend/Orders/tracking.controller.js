@@ -2,6 +2,7 @@ const Order = require("../models/newOrder.model");
 const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
 const DTDCStatusMapping = require("./DTDCStatusMapping");
+const SmartShipStatusMaping = require("./SmartShipStatusMapping");
 const cron = require("node-cron");
 const {
   shipmentTrackingforward,
@@ -21,6 +22,9 @@ const {
 const {
   trackOrderDTDC,
 } = require("../AllCouriers/DTDC/Courier/couriers.controller");
+const {
+  trackOrderSmartShip,
+} = require("../AllCouriers/SmartShip/Couriers/couriers.controller");
 const Bottleneck = require("bottleneck");
 const orderSchemaModel = require("../models/orderSchema.model");
 
@@ -35,7 +39,7 @@ const limiter = new Bottleneck({
 const trackSingleOrder = async (order) => {
   try {
     // console.log("Tracking order:", order.orderId);
-    const { provider, awb_number } = order;
+    const { provider, awb_number, shipment_id } = order;
     if (!provider || !awb_number) return;
 
     const currentWallet = await Wallet.findById(
@@ -51,6 +55,7 @@ const trackSingleOrder = async (order) => {
       DTDC: trackOrderDTDC,
       EcomExpress: shipmentTrackingforward,
       Amazon: getShipmentTracking,
+      Smartship: trackOrderSmartShip,
     };
 
     if (!trackingFunctions[provider]) {
@@ -58,7 +63,7 @@ const trackSingleOrder = async (order) => {
       return;
     }
 
-    const result = await trackingFunctions[provider](awb_number);
+    const result = await trackingFunctions[provider](awb_number, shipment_id);
     if (!result || !result.success || !result.data) return;
 
     const normalizedData = mapTrackingResponse(result.data, provider);
@@ -188,7 +193,6 @@ const trackSingleOrder = async (order) => {
       }
     }
     if (provider === "DTDC") {
-      
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = DTDCStatusMapping[instruction];
 
@@ -399,6 +403,80 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "RTO Delivered";
         }
       }
+    }
+    if (provider === "Smartship") {
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      console.log("Smartship instruction", instruction);
+      order.status = SmartShipStatusMaping[instruction];
+      if (order.status === "RTO") {
+        order.ndrStatus = "RTO";
+      }
+      console.log("Smartship instruction", instruction);
+      if (order.status === "RTO In-transit") {
+        order.ndrStatus = "RTO In-transit";
+      }
+
+      if (SmartShipStatusMaping[instruction] === "Out for Delivery") {
+        order.ndrStatus = "Out for Delivery";
+      }
+      if (
+        (order.ndrStatus === "Undelivered" ||
+          order.ndrStatus === "Out for Delivery") &&
+        (normalizedData.Instructions === "Delivered" ||
+          normalizedData.Instructions === "Delivery Confirmed by Customer")
+      ) {
+        order.ndrStatus = "Delivered";
+      }
+      if (SmartShipStatusMaping[instruction] === "Undelivered") {
+        order.status = "Undelivered";
+        order.ndrStatus = "Undelivered";
+        order.ndrReason = {
+          date: normalizedData.StatusDateTime,
+          reason: normalizedData.StrRemarks,
+        };
+        // if (!Array.isArray(order.ndrHistory)) {
+        //   order.ndrHistory = [];
+        // }
+        const lastEntryDate = new Date(
+          order.ndrHistory[order.ndrHistory.length - 1]?.date
+        ).toDateString();
+        const currentStatusDate = new Date(
+          normalizedData.StatusDateTime
+        ).toDateString();
+
+        if (
+          lastEntryDate !== currentStatusDate ||
+          order.ndrHistory.length === 0
+        ) {
+          const attemptCount = order.ndrHistory?.length || 0;
+          if (DTDCStatusMapping[instruction] === "Undelivered") {
+            // process.exit(1)
+            order.ndrHistory.push({
+              date: normalizedData.StatusDateTime,
+              action: "Auto Reattempt",
+              remark: normalizedData.StrRemarks,
+              attempt: attemptCount + 1,
+            });
+            // normalizedData.StrRemarks="";
+          }
+        }
+        updateNdrHistoryByAwb(order.awb_number);
+      }
+      if (
+        (order.status === "RTO" || order.status === "RTO In-transit") &&
+        (instruction === "rto delivered to shipper" ||
+          instruction === "rto delivered to fc")
+      ) {
+        order.status = "RTO Delivered";
+        order.ndrStatus = "RTO Delivered";
+      }
+      if (
+        instruction === "delivered" ||
+        instruction === "delivery confirmed by customer"
+      ) {
+        order.status = "Delivered";
+        // order.ndrStatus = "Delivered";
+      }
     } else {
       const statusMap = {
         "UD:Manifested": { status: "Ready To Ship" },
@@ -600,7 +678,7 @@ const startTrackingLoop = async () => {
     console.log("🕒 Starting Order Tracking");
     await trackOrders();
     console.log("⏳ Waiting for 3 hours before next tracking cycle...");
-    setTimeout(startTrackingLoop, 3 * 60 * 60 * 1000);  // Wait 3 hours, then call again
+    setTimeout(startTrackingLoop, 3 * 60 * 60 * 1000); // Wait 3 hours, then call again
   } catch (error) {
     console.error("❌ Error in tracking loop:", error);
     setTimeout(startTrackingLoop, 15 * 60 * 1000); // Retry after 5 minutes even on error
@@ -610,6 +688,21 @@ const startTrackingLoop = async () => {
 // startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
+  if (provider === "Smartship") {
+    // console.log("Smartship data", data);
+    const scans = data?.scans;
+    const orderId = Object.keys(scans || {})[0]; // only one AWB per call
+    const scanArray = scans?.[orderId];
+    const latestScan = scanArray?.[0];
+    // console.log("latestScan", latestScan);
+    return {
+      Status: latestScan?.status_description || "N/A",
+      StrRemarks: latestScan?.status_description || "N/A",
+      StatusLocation: latestScan?.location || "Unknown",
+      StatusDateTime: formatSmartShipDateTime(latestScan?.date_time) || null,
+      Instructions: latestScan?.action || "N/A",
+    };
+  }
   const providerMappings = {
     EcomExpress: {
       Status: data.rts_system_delivery_status || "N/A",
@@ -636,6 +729,7 @@ const mapTrackingResponse = (data, provider) => {
         ? data.trackDetails[data.trackDetails.length - 1].strAction
         : "N/A",
     },
+
     Amazon: {
       Status: data.summary?.status || "N/A",
       StrRemarks:
@@ -735,7 +829,27 @@ const formatAmazonDate = (isoDateStr) => {
   }
 };
 
+const formatSmartShipDateTime = (dateTimeStr) => {
+  if (!dateTimeStr || typeof dateTimeStr !== "string") return null;
 
+  try {
+    // Input: "29-07-2025 23:01:06"
+    const [datePart, timePart] = dateTimeStr.trim().split(" ");
+    const [day, month, year] = datePart.split("-").map(Number);
+    const [hours, minutes, seconds] = timePart.split(":").map(Number);
+
+    // Create a Date in UTC directly using Date.UTC
+    const utcDate = new Date(
+      Date.UTC(year, month - 1, day, hours, minutes, seconds)
+    );
+
+    // Return ISO string without shifting (i.e., time stays 23:01:06)
+    return utcDate.toISOString();
+  } catch (err) {
+    console.warn("Invalid SmartShip date format:", dateTimeStr);
+    return null;
+  }
+};
 
 const updateNdrHistoryByAwb = async (awb_number) => {
   try {
@@ -749,20 +863,28 @@ const updateNdrHistoryByAwb = async (awb_number) => {
     const initialLength = order.ndrHistory.length;
 
     // Get keys from mapping (lowercase for matching)
-    const statusKeys = Object.keys(DTDCStatusMapping).map(s => s.toLowerCase());
+    const statusKeys = Object.keys(DTDCStatusMapping).map((s) =>
+      s.toLowerCase()
+    );
 
     // Filter out remarks that match any mapping key
-    const filteredNdrHistory = order.ndrHistory.filter(ndr =>
-      !statusKeys.includes(ndr.remark?.toLowerCase())
+    const filteredNdrHistory = order.ndrHistory.filter(
+      (ndr) => !statusKeys.includes(ndr.remark?.toLowerCase())
     );
 
     if (filteredNdrHistory.length < initialLength) {
       order.ndrHistory = filteredNdrHistory;
       order.attempt += 1;
       await order.save();
-      console.log(`✅ Updated order ${awb_number} — Removed ${initialLength - filteredNdrHistory.length} NDR entries`);
+      console.log(
+        `✅ Updated order ${awb_number} — Removed ${
+          initialLength - filteredNdrHistory.length
+        } NDR entries`
+      );
     } else {
-      console.log(`ℹ️ No matching NDR remarks to remove for order ${awb_number}`);
+      console.log(
+        `ℹ️ No matching NDR remarks to remove for order ${awb_number}`
+      );
     }
   } catch (error) {
     console.error("❌ Error updating order by AWB:", error);
@@ -770,8 +892,5 @@ const updateNdrHistoryByAwb = async (awb_number) => {
 };
 
 // updateNdrHistoryByAwb("I75008816");
-
-
-
 
 module.exports = { trackSingleOrder, startTrackingLoop };
