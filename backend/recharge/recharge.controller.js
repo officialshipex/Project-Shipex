@@ -87,49 +87,52 @@ const razorpayWebhook = async (req, res) => {
     .update(body)
     .digest("hex");
 
+  // Signature verification
   if (razorpaySignature !== expectedSignature) {
-    console.log("❌ Signature validation failed");
+    console.log("❌ Invalid Razorpay webhook signature.");
     return res
       .status(400)
       .json({ success: false, message: "Invalid signature" });
   }
 
   const event = req.body;
-  console.log("📩 Webhook event:", event.event);
+  console.log("📩 Received Razorpay event:", event.event);
 
-  // Always acknowledge Razorpay immediately
+  // Immediate ACK to Razorpay
   res.status(200).json({ success: true, message: "Webhook received" });
 
-  // Process in background
-  if (event.event !== "payment.captured" && event.event !== "payment.failed") {
-    console.log("⚠️ Ignored Razorpay webhook event:", event.event);
+  // Process only allowed events
+  if (!["payment.captured", "payment.failed"].includes(event.event)) {
+    console.log("⚠️ Ignoring unsupported Razorpay event:", event.event);
     return;
   }
 
+  // Async processing
   setImmediate(async () => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
       const payment = event.payload.payment.entity;
-      console.log("Payment details:", payment);
+      console.log("💳 Payment details received:", payment);
 
       let fullPayment, order;
       try {
         fullPayment = await razorpay.payments.fetch(payment.id);
         order = await razorpay.orders.fetch(payment.order_id);
+        console.log("✅ Fetched payment and order successfully");
       } catch (apiError) {
         console.error(
-          "❌ Failed to fetch payment/order from Razorpay:",
-          apiError
+          "❌ Error fetching payment/order from Razorpay:",
+          apiError?.message
         );
-        throw new Error("Razorpay fetch failure");
+        throw new Error("Failed to fetch payment/order");
       }
 
       const walletId = order.notes?.walletId || fullPayment.notes?.walletId;
       if (!walletId) {
-        console.log("⚠️ Missing walletId:", {
-          notes: order.notes,
+        console.warn("⚠️ Missing walletId in Razorpay notes", {
+          orderNotes: order.notes,
           fullPaymentNotes: fullPayment.notes,
         });
         await session.abortTransaction();
@@ -139,31 +142,27 @@ const razorpayWebhook = async (req, res) => {
 
       const wallet = await Wallet.findById(walletId).session(session);
       if (!wallet) {
+        console.error("❌ Wallet not found for walletId:", walletId);
         await session.abortTransaction();
         session.endSession();
-        console.error("❌ Wallet not found for walletId:", walletId);
         return;
       }
 
-      if (!Array.isArray(wallet.walletHistory)) {
-        wallet.walletHistory = [];
-      }
-
-      const alreadyExists = wallet.walletHistory.some(
+      // Prevent duplicate transactions
+      const alreadyExists = wallet.walletHistory?.some(
         (txn) => txn.paymentDetails?.paymentId === payment.id
       );
 
       if (alreadyExists) {
+        console.log("🔁 Duplicate webhook, skipping:", payment.id);
         await session.abortTransaction();
         session.endSession();
-        console.log("🔁 Duplicate payment. Skipping processing:", payment.id);
         return;
       }
 
       const rrn = fullPayment.acquirer_data?.rrn;
-      const transactionId = rrn?.trim()
-        ? rrn
-        : await generateUniqueTransactionId();
+      const transactionId =
+        rrn?.trim() || (await generateUniqueTransactionId());
       const amount = payment.amount / 100;
 
       const paymentDetails = {
@@ -181,7 +180,7 @@ const razorpayWebhook = async (req, res) => {
         await wallet.save({ session });
         await session.commitTransaction();
         session.endSession();
-        console.log("✅ Payment captured & wallet updated:", payment.id);
+        console.log("✅ Payment captured and wallet updated:", payment.id);
         return;
       }
 
@@ -205,7 +204,10 @@ const razorpayWebhook = async (req, res) => {
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
-      console.error("💥 Webhook processing error:", error);
+      console.error(
+        "💥 Razorpay webhook internal error:",
+        error.message || error
+      );
     }
   });
 };
