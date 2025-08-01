@@ -21,7 +21,7 @@ const createOneClickShipment = async (req, res) => {
     }
     const zone = await getZone(
       currentOrder.pickupAddress.pinCode,
-      currentOrder.receiverAddress.pinCode,
+      currentOrder.receiverAddress.pinCode
       // res
     );
     if (!zone) {
@@ -132,7 +132,7 @@ const createOneClickShipment = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.label = labelUrl;
-      currentOrder.zone=zone.zone;
+      currentOrder.zone = zone.zone;
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
@@ -263,7 +263,7 @@ const getShipmentTracking = async (trackingId) => {
         },
       }
     );
-// console.log("response", response.data.payload);
+    // console.log("response", response.data.payload);
     // console.log(
     //   "Tracking Information:",
     //   response.data.payload.eventHistory[
@@ -301,7 +301,11 @@ const checkAmazonServiceability = async (provider, payload) => {
       postalCode: payload.destination.pinCode,
       countryCode: "IN",
     };
-
+    const totalQuantity = payload.productDetails.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+    const weightPerUnit = Math.floor(payload.weight / totalQuantity); // in grams
     const requestBody = {
       shipFrom,
       shipTo,
@@ -323,23 +327,21 @@ const checkAmazonServiceability = async (provider, payload) => {
             unit: "INR",
           },
           packageClientReferenceId: `${payload.orderId}`,
-          items: [
-            {
-              itemValue: {
-                value: payload.order_amount,
-                unit: "INR",
-              },
-              quantity: 1,
-              weight: {
-                unit: "GRAM",
-                value: payload.weight,
-              },
-              isHazmat: false,
-              invoiceDetails: {
-                invoiceDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-              },
+          items: payload.productDetails.map((item) => ({
+            itemValue: {
+              value: Number(item.unitPrice),
+              unit: "INR",
             },
-          ],
+            quantity: item.quantity,
+            weight: {
+              unit: "GRAM",
+              value: weightPerUnit
+            },
+            isHazmat: false,
+            invoiceDetails: {
+              invoiceDate: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+            },
+          })),
         },
       ],
       taxDetails: [
@@ -363,7 +365,11 @@ const checkAmazonServiceability = async (provider, payload) => {
       }),
     };
 
-    // console.log("body", requestBody);
+    console.log(
+      "body",
+      requestBody.packages[0].items,
+      requestBody.packages[0].weight
+    );
 
     const response = await axios.post(
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",

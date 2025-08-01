@@ -17,7 +17,7 @@ const isAuthorized = async (req, res, next) => {
   if (Bearer !== "Bearer" || !token) {
     return res.status(401).json({
       success: false,
-      message: "Invalid authorization format",
+      message: "Invalid authorization format. Expected 'Bearer <token>'",
     });
   }
 
@@ -34,7 +34,7 @@ const isAuthorized = async (req, res, next) => {
       req.user = user;
       req.employee = null;
       req.isEmployee = false; // <-- ADD THIS
-    } else if (decoded.employee && decoded.employee.isEmployee === true) {
+    } else if (decoded?.employee && decoded.employee.isEmployee === true) {
       // It's an employee
       const employee = await Role.findById(decoded.employee.id);
       if (!employee) {
@@ -45,7 +45,7 @@ const isAuthorized = async (req, res, next) => {
       
       req.isEmployee = true; // <-- ADD THIS
     } else {
-      return res.status(401).json({ success: false, message: "Invalid token payload" });
+      return res.status(401).json({ success: false, message: "Invalid token payload. Unauthorized access." });
     }
 
     next();

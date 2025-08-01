@@ -99,6 +99,7 @@ const newOrder = async (req, res) => {
       paymentDetails,
       compositeOrderId,
       status: "new",
+      channel:"custom",
       // commodityId: commodityId,
       tracking: [
         {

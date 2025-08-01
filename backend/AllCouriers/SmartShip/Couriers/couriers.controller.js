@@ -201,8 +201,24 @@ const orderRegistrationOneStep = async (req, res) => {
     console.log("Smartship Order Response:", response.data);
     // console.log(
     //   "Smartship Order Response:",
-    //   response.data.data.errors.data_discrepancy
+    //   response.data.data.duplicate_orders.orders_details
     // );
+
+    // Duplicate order check
+    const respData = response.data?.data;
+    if (
+      (!respData?.success_order_details ||
+        !respData.success_order_details.orders ||
+        respData.success_order_details.orders.length === 0) &&
+      respData?.duplicate_orders
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate orderId is not allowed in courier Bluedart, ship with another courier",
+        errors: respData.errors,
+        duplicate_orders: respData.duplicate_orders,
+      });
+    }
     // Save AWB and update order status
     const result = response.data?.data?.success_order_details?.orders?.[0];
 
@@ -319,7 +335,7 @@ const cancelSmartshipOrder = async (client_order_reference_id) => {
     if (isCancelled) {
       return {
         // success: false,
-        code:400,
+        code: 400,
         error: "Order is already cancelled",
       };
     }
@@ -360,7 +376,7 @@ const cancelSmartshipOrder = async (client_order_reference_id) => {
 
       return {
         // error: true,
-        code:201,
+        code: 201,
         data: cancellationDetails.successful,
       };
     } else {
@@ -369,7 +385,7 @@ const cancelSmartshipOrder = async (client_order_reference_id) => {
         cancellationDetails?.failure || "Unknown error"
       );
       return {
-        code:400,
+        code: 400,
         error: true,
         message: "Failed to cancel order",
         details: cancellationDetails?.failure || {},
