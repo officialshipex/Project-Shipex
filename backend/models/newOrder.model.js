@@ -16,7 +16,7 @@ const orderSchema = new mongoose.Schema(
     },
     channel:{
       type: String,
-      required:true
+      // required:true
     },
     pickupAddress: {
       contactName: { type: String, required: true },
