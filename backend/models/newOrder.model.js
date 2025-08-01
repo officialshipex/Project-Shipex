@@ -14,6 +14,10 @@ const orderSchema = new mongoose.Schema(
     channelId: {
       type: Number,
     },
+    channel:{
+      type: String,
+      required:true
+    },
     pickupAddress: {
       contactName: { type: String, required: true },
       email: { type: String },
