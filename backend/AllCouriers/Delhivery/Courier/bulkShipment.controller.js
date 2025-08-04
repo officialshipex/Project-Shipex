@@ -103,30 +103,42 @@ const createShipmentFunctionDelhivery = async (
           finalCharges === "N/A" ? 0 : parseInt(finalCharges);
         currentOrder.courierServiceName = selectedServiceDetails.name;
         currentOrder.shipmentCreatedAt = new Date();
-        currentOrder.zone=zone.zone;
+        currentOrder.zone = zone.zone;
 
         await currentOrder.save(); // Save the updated order
 
-        // Fetch the latest wallet balance before deducting
-        let updatedWallet = await Wallet.findById(walletId);
-        let balanceToBeDeducted =
-          finalCharges === "N/A" ? 0 : parseInt(finalCharges);
+        const transaction = {
+          channelOrderId: currentOrder.orderId,
+          category: "debit",
+          amount: finalCharges,
+          date: new Date().toISOString().slice(0, 16).replace("T", " "),
+          awb_number: result.waybill,
+          description: "Freight Charges Applied",
+          balanceAfterTransaction: null, // temporary placeholder
+        };
 
-        await updatedWallet.updateOne({
-          $inc: { balance: -balanceToBeDeducted },
-          $push: {
-            transactions: {
-              channelOrderId: currentOrder.orderId || null,
-              category: "debit",
-              amount: balanceToBeDeducted,
-              balanceAfterTransaction:
-                updatedWallet.balance - balanceToBeDeducted,
-              date: new Date().toISOString().slice(0, 16).replace("T", " "),
-              awb_number: result.waybill || "",
-              description: `Freight Charges Applied`,
-            },
+        const updatedWallet = await Wallet.findOneAndUpdate(
+          { _id: walletId, balance: { $gte: finalCharges } },
+          {
+            $inc: { balance: -finalCharges },
+            $push: { transactions: transaction },
           },
-        });
+          { new: true }
+        );
+
+        // Patch the last inserted transaction with the correct balanceAfterTransaction
+        if (updatedWallet) {
+          const updatedBalance = updatedWallet.balance;
+
+          await Wallet.updateOne(
+            { _id: walletId, "transactions.awb_number": result.waybill },
+            {
+              $set: {
+                "transactions.$.balanceAfterTransaction": updatedBalance,
+              },
+            }
+          );
+        }
 
         return {
           status: 201,

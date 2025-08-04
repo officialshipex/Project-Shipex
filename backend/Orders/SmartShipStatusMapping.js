@@ -3,6 +3,7 @@ const SmartShipStatusMapping = {
   "order confirmed": "Ready To Ship",
   "shipping label generated": "Ready To Ship",
   "manifested": "Ready To Ship",
+  "pick up scan on field":"In-transit",
   "shipped": "In-transit",
   "delivered": "Delivered",
   "delivery attempted - out of delivery area": "Undelivered",

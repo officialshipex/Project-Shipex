@@ -14,6 +14,7 @@ const {
 const {
   checkSmartshipHubServiceability,
 } = require("../AllCouriers/SmartShip/Couriers/couriers.controller.js");
+const { checkAmazonServiceability } = require("../AllCouriers/Amazon/Courier/couriers.controller.js");
 
 const calculateRate = async (req, res) => {
   try {
@@ -49,7 +50,7 @@ const calculateRate = async (req, res) => {
       const mode = rc.mode;
       let serviceable;
 
-      if (!["EcomExpres", "Delhivery", "DTDC","Smartship"].includes(provider)) {
+      if (!["EcomExpres", "Delhivery", "DTDC","Smartship","Amazon"].includes(provider)) {
         continue;
       }
 
@@ -80,8 +81,18 @@ const calculateRate = async (req, res) => {
           order_value: declaredValue,
         };
         serviceable = await checkSmartshipHubServiceability(payload);
-        console.log("serviceable", serviceable);
+        // console.log("serviceable", serviceable);
       }
+      else if(provider==="Amazon"){
+          const payload={
+            pickUpPincode,
+            deliveryPincode,
+            applicableWeight,
+            declaredValue
+          }
+          serviceable=await checkAmazonServiceability(payload)
+          console.log("servicable",serviceable);
+        }
       // if (!isServiceable) continue; // Skip if not serviceable
 
       if (serviceable.success === false) {

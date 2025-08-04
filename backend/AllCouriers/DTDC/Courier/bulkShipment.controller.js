@@ -39,7 +39,7 @@ const createOrderDTDC = async (
       // res
     );
     if (!zone) {
-      return res.status(400).json({ message: "Pincode not serviceable" });
+      return ({success:false, message: "Pincode not serviceable" });
     }
 
     const currentWallet = await Wallet.findById(walletId);
@@ -184,6 +184,8 @@ const createOrderDTDC = async (
         ],
         { new: true } // Return updated wallet
       );
+
+      
     } else {
       console.log("ererer", response.data);
       return { message: "Error creating shipment" };
