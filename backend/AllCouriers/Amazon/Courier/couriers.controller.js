@@ -279,9 +279,9 @@ const getShipmentTracking = async (trackingId) => {
   }
 };
 
-const checkAmazonServiceability = async (provider, payload) => {
+const checkAmazonServiceability = async (provider,payload) => {
   try {
-    // console.log("payloadprovider", payload);
+    console.log("payloadprovider", payload);
 
     const accessToken = await getAmazonAccessToken();
     if (!accessToken) return { success: false, reason: "Missing access token" };
@@ -406,6 +406,7 @@ const checkAmazonServiceability = async (provider, payload) => {
         success: true,
         reason: "Pincodes are serviceable",
         rate: selectedRate.rateId,
+        serviceable:true,
         requestToken: response.data.payload.requestToken,
         valueAddedServiceIds, // ✅ include this in return
       };
@@ -421,7 +422,7 @@ const checkAmazonServiceability = async (provider, payload) => {
     }
   } catch (error) {
     console.error(
-      "Error checking serviceability:",
+      "Error checking serviceabilityyy:",
       error.response?.data || error.message
     );
     return { success: false, reason: "Error checking serviceability" };

@@ -6,7 +6,7 @@ const { getZone } = require("../../../Rate/zoneManagementController");
 const Wallet = require("../../../models/wallet");
 const User = require("../../../models/User.model");
 const PickupAddress = require("../../../models/pickupAddress.model");
-const Gstin = require("../../../models/Gstin.model");
+
 
 const registerSmartshipHub = async (userId, pinCode) => {
   try {
@@ -107,7 +107,6 @@ const orderRegistrationOneStep = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const gstin = await Gstin.findOne({ user: user._id });
 
     const smartshipHub = await registerSmartshipHub(
       user._id,
@@ -127,7 +126,7 @@ const orderRegistrationOneStep = async (req, res) => {
     if (effectiveBalance < finalCharges) {
       return res
         .status(400)
-        .json({ success: false, message: "Low Wallet Balance" });
+        .json({ success: false, message: "Insufficient wallet balance" });
     }
 
     const productNames = currentOrder.productDetails
@@ -199,10 +198,17 @@ const orderRegistrationOneStep = async (req, res) => {
       }
     );
     console.log("Smartship Order Response:", response.data);
-    // console.log(
-    //   "Smartship Order Response:",
-    //   response.data.data.duplicate_orders.orders_details
-    // );
+    console.log(
+      "Smartship Order Response:",
+      response.data.data.errors.account_validation
+    );
+
+    if(response.data.data.errors){
+      return res.status(400).json({
+        success:false,
+        message:"Error creating Shipment",
+      })
+    }
 
     // Duplicate order check
     const respData = response.data?.data;
@@ -408,7 +414,7 @@ const cancelSmartshipOrder = async (client_order_reference_id) => {
 
 const trackOrderSmartShip = async (AWBNo, shipment_id) => {
   const access_key = await getAccessToken();
-  console.log(access_key);
+  // console.log(access_key);
 
   try {
     const response = await axios.post(
@@ -423,7 +429,7 @@ const trackOrderSmartShip = async (AWBNo, shipment_id) => {
     );
 
     // console.log("response data", response.data);
-    console.log("response status", response.data.data.scans);
+    // console.log("response status", response.data.data.scans);
     if (response.data.message === "success") {
       return { success: true, data: response.data.data };
     }
@@ -440,11 +446,12 @@ const trackOrderSmartShip = async (AWBNo, shipment_id) => {
   }
 };
 
-// trackOrderSmartShip("3159427899221","20692433")
+// trackOrderSmartShip("77951390521")
 
 module.exports = {
   orderRegistrationOneStep,
   checkSmartshipHubServiceability,
   cancelSmartshipOrder,
   trackOrderSmartShip,
+  registerSmartshipHub
 };

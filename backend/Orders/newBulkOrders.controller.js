@@ -23,6 +23,7 @@ const {
 const {
   createShipmentAmazon,
 } = require("../AllCouriers/Amazon/Courier/bulkShipment.controller");
+const { orderRegistrationOneStep } = require("../AllCouriers/SmartShip/Couriers/bulkShipment.controller");
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
@@ -115,6 +116,15 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
+        case "Smartship":
+          result=await orderRegistrationOneStep(
+            serviceDetails,
+            order._id,
+            wh,
+            walletId,
+            charges
+          )
+          break;
       case "ShreeMaruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
@@ -304,55 +314,7 @@ const createBulkOrder = async (req, res) => {
 
       await Promise.all(autoShipPromises);
 
-      // Handle fallback for remaining orders
-      // if (remainingOrders.length > 0) {
-      //   const fallbackPromises = remainingOrders.map(async (order) => {
-      //     let shipmentCreated = false;
-
-      //     for (let service of servicesToBeConsidered) {
-      //       try {
-      //         const isServiceable = await checkServiceabilityAll(
-      //           service,
-      //           order,
-      //           `${wh.pinCode}`
-      //         );
-
-      //         if (isServiceable) {
-      //           const result = await createShipment(
-      //             service,
-      //             order,
-      //             wh,
-      //             walletId,
-      //             selectedServiceDetails
-      //           );
-
-      //           if (result?.status === 200) {
-      //             successCount++;
-      //             shipmentCreated = true;
-      //             remainingOrders.splice(remainingOrders.indexOf(order), 1);
-      //             break;
-      //           } else {
-      //             console.warn(
-      //               `Shipment creation failed for order ${order._id} with service ${service.courierProviderName}.`
-      //             );
-      //           }
-      //         }
-      //       } catch (error) {
-      //         console.error(
-      //           `Error checking serviceability for order ${order._id} with service ${service.courierProviderName}:`,
-      //           error
-      //         );
-      //       }
-      //     }
-
-      //     if (!shipmentCreated) {
-      //       failureCount++;
-      //       console.warn(`No serviceable option found for order ${order._id}.`);
-      //     }
-      //   });
-
-      //   await Promise.all(fallbackPromises);
-      // }
+      
 
       return res.status(201).json({
         message: `${successCount} orders created successfully & ${failureCount} failed.`,

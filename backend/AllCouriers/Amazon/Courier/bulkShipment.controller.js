@@ -135,46 +135,41 @@ const createShipmentAmazon = async (
     currentOrder.courierServiceName = serviceDetails.courierServiceName;
     currentOrder.shipmentCreatedAt = new Date();
     currentOrder.label = labelUrl;
-    currentOrder.zone=zone.zone;
+    currentOrder.zone = zone.zone;
 
     await currentOrder.save();
 
-    // Update Wallet with atomic deduction
+    const transaction = {
+      channelOrderId: currentOrder.orderId,
+      category: "debit",
+      amount: charges,
+      date: new Date().toISOString().slice(0, 16).replace("T", " "),
+      awb_number: result.packageDocumentDetails[0].trackingId,
+      description: "Freight Charges Applied",
+      balanceAfterTransaction: null, // temporary placeholder
+    };
+
     const updatedWallet = await Wallet.findOneAndUpdate(
-      { _id: walletId, balance: { $gte: charges } }, // Ensure sufficient balance
-      [
-        {
-          $set: {
-            balance: { $subtract: ["$balance", charges] }, // Deduct balance correctly
-            transactions: {
-              $concatArrays: [
-                "$transactions",
-                [
-                  {
-                    channelOrderId: currentOrder.orderId,
-                    category: "debit",
-                    amount: charges,
-                    balanceAfterTransaction: {
-                      $subtract: ["$balance", charges],
-                    }, // Updated correctly
-                    date: new Date()
-                      .toISOString()
-                      .slice(0, 16)
-                      .replace("T", " "),
-                    awb_number: trackingId,
-                    description: `Freight Charges Applied`,
-                  },
-                ],
-              ],
-            },
-          },
-        },
-      ],
-      { new: true } // Return updated wallet
+      { _id: walletId, balance: { $gte: charges } },
+      {
+        $inc: { balance: -charges },
+        $push: { transactions: transaction },
+      },
+      { new: true }
     );
 
-    if (!updatedWallet) {
-      return { success: false, message: "Wallet update failed" };
+    // Patch the last inserted transaction with the correct balanceAfterTransaction
+    if (updatedWallet) {
+      const updatedBalance = updatedWallet.balance;
+
+      await Wallet.updateOne(
+        { _id: walletId, "transactions.awb_number": result.packageDocumentDetails[0].trackingId },
+        {
+          $set: {
+            "transactions.$.balanceAfterTransaction": updatedBalance,
+          },
+        }
+      );
     }
 
     return {

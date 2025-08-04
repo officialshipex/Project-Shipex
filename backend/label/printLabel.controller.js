@@ -18,6 +18,8 @@ router.get("/generate-pdf/:id", async (req, res) => {
       return res.status(404).send("Order not found");
     }
 
+
+
     const barcodeBuffer1 = await bwipjs.toBuffer({
       bcid: "code128",
       text: String(orderData.orderId),
@@ -331,7 +333,10 @@ router.get("/generate-pdf/:id", async (req, res) => {
 
     doc.moveDown();
     doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
-    if (!labelSettings?.warehouseSettings.hideRTOName || labelSettings == null) {
+    if (
+      !labelSettings?.warehouseSettings.hideRTOName ||
+      labelSettings == null
+    ) {
       doc
         .font("Helvetica")
         .text(orderData.pickupAddress.contactName, leftMargin, doc.y);

@@ -25,4 +25,27 @@ const getAllCouriers = async (req, res) => {
     }
   };
 
-  module.exports = {getAllCouriers, deleteCourier};
+
+
+const updateStatusController = async (req, res) => {
+  try {
+    // const { provider } = req.params; // e.g., 'DTDC'
+    const { provider,status } = req.body;     // 'Enable' or 'Disable'
+
+    // Find and update by provider field
+    const courier = await AllCourier.findOneAndUpdate(
+      { courierProvider: provider },
+      { status },
+      { new: true }
+    );
+    if (!courier) {
+      return res.status(404).json({ message: 'Courier not found' });
+    }
+    res.json({ message: 'Status updated', courier });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating status', error });
+  }
+};
+
+
+  module.exports = {getAllCouriers, deleteCourier,updateStatusController};

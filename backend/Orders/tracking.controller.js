@@ -372,6 +372,7 @@ const trackSingleOrder = async (order) => {
               });
             }
           }
+          updateNdrHistoryByAwb(order.awb_number);
         }
       } else {
         if (
@@ -558,6 +559,7 @@ const trackSingleOrder = async (order) => {
           remark: normalizedData.Instructions,
           attempt: attemptCount + 1,
         });
+        updateNdrHistoryByAwb(order.awb_number);
       }
     }
 
@@ -677,8 +679,8 @@ const startTrackingLoop = async () => {
   try {
     console.log("🕒 Starting Order Tracking");
     await trackOrders();
-    console.log("⏳ Waiting for 3 hours before next tracking cycle...");
-    setTimeout(startTrackingLoop, 3 * 60 * 60 * 1000); // Wait 3 hours, then call again
+    console.log("⏳ Waiting for 1 hours before next tracking cycle...");
+    setTimeout(startTrackingLoop, 1 * 60 * 60 * 1000); // Wait 3 hours, then call again
   } catch (error) {
     console.error("❌ Error in tracking loop:", error);
     setTimeout(startTrackingLoop, 15 * 60 * 1000); // Retry after 5 minutes even on error
@@ -873,9 +875,14 @@ const updateNdrHistoryByAwb = async (awb_number) => {
     );
 
     if (filteredNdrHistory.length < initialLength) {
-      order.ndrHistory = filteredNdrHistory;
-      order.attempt += 1;
+      // Optional: Renumber attempts sequentially
+      order.ndrHistory = filteredNdrHistory.map((ndr, index) => ({
+        ...ndr,
+        attempt: index + 1,
+      }));
+
       await order.save();
+
       console.log(
         `✅ Updated order ${awb_number} — Removed ${
           initialLength - filteredNdrHistory.length
