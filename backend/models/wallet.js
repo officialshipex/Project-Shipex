@@ -5,7 +5,7 @@ const transactionSchema = new mongoose.Schema(
     channelOrderId: { type: String },
     category: { type: String, enum: ["credit", "debit"], required: true },
     amount: { type: Number, required: true },
-    balanceAfterTransaction: { type: Number, required: true },
+    balanceAfterTransaction: { type: Number },
     date: { type: Date, default: Date.now },
     awb_number: { type: String },
     description: { type: String },

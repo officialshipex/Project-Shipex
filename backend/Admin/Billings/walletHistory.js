@@ -33,7 +33,9 @@ const getAllTransactionHistory = async (req, res) => {
           results: [],
         });
       }
-      userMatchStage["_id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+      userMatchStage["_id"] = {
+        $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
+      };
     }
 
     // Search by ID, email, or name
@@ -140,7 +142,6 @@ const getAllTransactionHistory = async (req, res) => {
   }
 };
 
-
 const generateUniqueTransactionId = async () => {
   let transactionId, exists;
   do {
@@ -163,7 +164,7 @@ const generateUniqueTransactionId = async () => {
 const addWalletHistory = async (req, res) => {
   try {
     const { userId, paymentId, orderId, amount } = req.body;
-    console.log("re",req.body)
+    console.log("re", req.body);
 
     // 1. Validate required fields
     if (!userId || !paymentId || !orderId || amount == null) {
@@ -240,4 +241,103 @@ const addWalletHistory = async (req, res) => {
   }
 };
 
-module.exports = { getAllTransactionHistory, addWalletHistory };
+const addPassbook = async (req, res) => {
+  try {
+    const {
+      status,
+      orderId,
+      awbNumber,
+      amount,
+      description,
+      transactionType,
+      userId,
+    } = req.body;
+    console.log("re", req.body);
+
+    // Validate incoming fields
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    if (!amount) {
+      return res.status(400).json({ error: "Amount is required" });
+    }
+
+    if (!transactionType) {
+      return res.status(400).json({ error: "Transaction type is required" });
+    }
+
+    if (!["credit", "debit"].includes(transactionType)) {
+      return res
+        .status(400)
+        .json({ error: "Transaction type must be 'credit' or 'debit'" });
+    }
+    if (!description) {
+      return res.status(400).json({ error: "Description is required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || !user.Wallet) {
+      return res.status(404).json({ error: "User or wallet not found" });
+    }
+
+    const walletId = user.Wallet;
+    const wallet = await Wallet.findById(walletId);
+    if (!wallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    // Generate unique 10-digit transaction ID
+    // const transactionId = generateUniqueTransactionId();
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount)) {
+      return res.status(400).json({ error: "Amount must be a valid number" });
+    }
+
+    const currentBalance =
+      typeof wallet.balance === "number" ? wallet.balance : 0;
+      console.log("currentBalance",currentBalance);
+
+    // Calculate new balance
+    const newBalance =
+  transactionType === "credit"
+    ? currentBalance + parsedAmount
+    : currentBalance - parsedAmount;
+console.log("new balance",newBalance)
+    // Add to wallet history
+    // wallet.walletHistory.push({
+    //   paymentDetails: {
+    //     orderId,
+    //     description,
+    //     walletId,
+    //     amount: parseFloat(amount),
+    //     transactionId,
+    //   },
+    //   status: status || "success",
+    // });
+
+    // Add to transactions
+    wallet.transactions.push({
+      channelOrderId: orderId,
+      category: transactionType,
+      amount: parseFloat(amount),
+      balanceAfterTransaction: newBalance,
+      awb_number: awbNumber,
+      description,
+    });
+
+    // Update wallet balance
+    wallet.balance = newBalance;
+
+    await wallet.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Passbook updated successfully" });
+  } catch (error) {
+    console.error("addPassbook error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+module.exports = { getAllTransactionHistory, addWalletHistory, addPassbook };
