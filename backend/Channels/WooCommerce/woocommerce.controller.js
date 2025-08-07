@@ -2,9 +2,9 @@ const axios = require("axios");
 const Order = require("../../models/newOrder.model");
 const AllChannel = require("../allChannel.model"); // Adjust path if necessary
 
-const storeURL="http://localhost/wordpress/wordpress";
-const consumerKey="ck_9ce0ecc8e0602447215d5cfe42f297fd0cbf19cf";
-const consumerSecret="cs_eb673ea166231c4a1c52c44543c9d595f9be32c6";
+const storeURL="https://www.mahadevrediments.in/";
+const consumerKey="ck_167c49505d20d4ec91bc4bb73459df2c4e7fc489";
+const consumerSecret="cs_e479f1773fc3fc267c0ca01ce1845405d8c5ff66";
 
 // Function to fetch orders from WooCommerce
 const fetchWooCommerceOrders = async (

@@ -3,6 +3,7 @@ const {
   callShiprocketNdrApi,
   callNimbustNdrApi,
   callEcomExpressNdrApi,
+  callSmartshipNdrApi,
   handleDelhiveryNdrAction,
   submitNdrToDtdc,
   submitNdrToAmazon
@@ -25,7 +26,7 @@ const ndrProcessController = async (req, res) => {
 
   // console.log("awb",awb_number)
   const orderDetails = await Order.findOne({ awb_number: awb_number });
-  // console.log("dtdc",req.body)
+  console.log("dtdc",req.body)
   // const orderDetails = getOrderDetails(orderId);
 
   if (!orderDetails) {
@@ -55,6 +56,9 @@ const ndrProcessController = async (req, res) => {
     } else if(orderDetails.provider==="Amazon"){
       response=await submitNdrToAmazon(awb_number,action,comments,scheduled_delivery_date)
       console.log("re",response)
+    }else if(orderDetails.provider==="Smartship"){
+      console.log("smartship")
+      response=await callSmartshipNdrApi(awb_number)
     }
     else {
       return res.status(400).json({ error: "Unsupported platform" });

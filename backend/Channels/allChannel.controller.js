@@ -6,7 +6,7 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const Order = require("../models/newOrder.model");
-const createWooCommerceWebhook = require("./WooCommerce/woocommerce.controller");
+const {createWooCommerceWebhook} = require("./WooCommerce/woocommerce.controller");
 
 const createWebhook = async (storeURL, storeAccessToken) => {
   const webhookURL = "https://api.shipexindia.com/v1/channel/webhook/orders";
@@ -376,7 +376,7 @@ const storeAllChannelDetails = async (req, res) => {
       syncInventory,
       syncDate,
     } = req.body;
-
+console.log("req",req.body)
     if (
       !storeName ||
       !storeURL ||
@@ -412,7 +412,7 @@ const storeAllChannelDetails = async (req, res) => {
         storeClientSecret
       );
     }
-    // console.log("wekdfn", webHook);
+    console.log("wekdfn", webHook);
     const newChannel = new AllChannel({
       userId,
       channel,
