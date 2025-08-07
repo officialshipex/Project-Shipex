@@ -2,9 +2,9 @@ const axios = require("axios");
 const Order = require("../../models/newOrder.model");
 const AllChannel = require("../allChannel.model"); // Adjust path if necessary
 
-const storeURL="https://www.mahadevrediments.in/";
-const consumerKey="ck_167c49505d20d4ec91bc4bb73459df2c4e7fc489";
-const consumerSecret="cs_e479f1773fc3fc267c0ca01ce1845405d8c5ff66";
+const storeURL = "https://www.mahadevrediments.in/";
+const consumerKey = "ck_167c49505d20d4ec91bc4bb73459df2c4e7fc489";
+const consumerSecret = "cs_e479f1773fc3fc267c0ca01ce1845405d8c5ff66";
 
 // Function to fetch orders from WooCommerce
 const fetchWooCommerceOrders = async (
@@ -30,7 +30,27 @@ const fetchWooCommerceOrders = async (
   }
 };
 // fetchWooCommerceOrders(storeURL,consumerKey,consumerSecret)
+// Payment method mapping
+function mapWCPayment(method, methodTitle) {
+  if (
+    ["COD", "Cash on Delivery", "cash_on_delivery"].includes(method) ||
+    /cod/i.test(method) ||
+    /cash on delivery/i.test(methodTitle)
+  )
+    return "COD";
+  return "Prepaid";
+}
 
+// Validate WooCommerce webhook signature (HMAC SHA256)
+function isWooCommerceRequestValid(req) {
+  const signature = req.headers["x-wc-webhook-signature"];
+  if (!signature || !WOOCOMMERCE_WEBHOOK_SECRET) return false;
+  const expected = crypto
+    .createHmac("sha256", WOOCOMMERCE_WEBHOOK_SECRET)
+    .update(JSON.stringify(req.body), "utf8")
+    .digest("base64");
+  return expected === signature;
+}
 //webhook creation
 const checkExistingWooCommerceWebhooks = async (
   storeURL,
@@ -114,32 +134,53 @@ const createWooCommerceWebhook = async (
 
 const wooCommerceWebhookHandler = async (req, res) => {
   try {
-    console.log("Received WooCommerce Webhook:", req.body);
-    const orderData = req.body;
+    // Webhook authenticity validation
+    // if (!isWooCommerceRequestValid(req)) {
+    //   return res.status(401).json({ error: "Invalid WooCommerce signature" });
+    // }
 
-    // Retrieve WooCommerce store details from the database
-    const store = await AllChannel.findOne({ storeURL: orderData.store_url });
-    if (!store) {
-      return res.status(400).json({ error: "Store not found" });
+    const orderData = req.body;
+    console.log("Received WooCommerce Webhook:", orderData);
+
+    // 1. Find WooCommerce store (assume only 1 for now; improve if multiple)
+    const store = await AllChannel.findOne({}); // Or use other logic if multi-store
+
+    // 2. Map/find/create user (by email)
+    let userId;
+    let user = null;
+    if (orderData.billing && orderData.billing.email) {
+      user = await User.findOne({ email: orderData.billing.email });
+      if (!user) {
+        // Optionally, create the user if not found:
+        user = await User.create({
+          email: orderData.billing.email,
+          name: [orderData.billing.first_name, orderData.billing.last_name]
+            .filter(Boolean)
+            .join(" "),
+          // ... more fields as needed
+        });
+      }
+      userId = user._id;
+    } else {
+      return res
+        .status(400)
+        .json({ error: "No customer email found in WooCommerce order" });
     }
 
+    // 3. Product details + weight/dimensions aggregation
     let totalWeight = 0;
     let totalLength = 10,
       totalWidth = 10,
       totalHeight = 10;
-
-    // Process line items and fetch product weight & dimensions
     const productDetails = await Promise.all(
-      orderData.line_items.map(async (item) => {
+      (orderData.line_items || []).map(async (item) => {
         const productInfo = await getWooCommerceProductDetails(
           item.product_id,
-          store.storeURL,
-          store.storeClientId,
-          store.storeClientSecret
+          storeURL,
+          consumerKey,
+          consumerSecret
         );
-
-        // Accumulate total weight and dimensions
-        totalWeight += parseFloat(productInfo.weight) || 0;
+        totalWeight += parseFloat(productInfo.weight) * item.quantity || 0;
         totalLength = Math.max(
           totalLength,
           parseFloat(productInfo.length) || 10
@@ -149,24 +190,36 @@ const wooCommerceWebhookHandler = async (req, res) => {
           totalHeight,
           parseFloat(productInfo.height) || 10
         );
-
         return {
           id: item.id,
           quantity: item.quantity,
           name: item.name,
           sku: item.sku,
-          unitPrice: item.price,
+          unitPrice: String(item.price), // always string
         };
       })
     );
+    const compositeOrderId = `${orderData.customer_id}-${orderData.id}`;
 
-    // Create and save the order in the database
-    const newOrder = new Order({
-      userId: orderData.customer_id,
+    // 4. Map payment details
+    const paymentMethod = mapWCPayment(
+      orderData.payment_method,
+      orderData.payment_method_title
+    );
+    // For orders that are not Prepaid, amount can be omitted if your schema is set up as such.
+    const paymentDetails = {
+      method: paymentMethod,
+      ...(paymentMethod === "Prepaid"
+        ? { amount: parseFloat(orderData.total) }
+        : {}),
+    };
+
+    // 5. Prepare order payload
+    const orderPayload = {
+      userId,
       orderId: orderData.id,
       pickupAddress: {
-        contactName:
-          orderData.billing.first_name + " " + orderData.billing.last_name,
+        contactName: `${orderData.billing.first_name} ${orderData.billing.last_name}`,
         email: orderData.billing.email,
         phoneNumber: orderData.billing.phone,
         address: `${orderData.billing.address_1}, ${orderData.billing.city}`,
@@ -175,8 +228,7 @@ const wooCommerceWebhookHandler = async (req, res) => {
         state: orderData.billing.state,
       },
       receiverAddress: {
-        contactName:
-          orderData.shipping.first_name + " " + orderData.shipping.last_name,
+        contactName: `${orderData.shipping.first_name} ${orderData.shipping.last_name}`,
         email: orderData.billing.email,
         phoneNumber: orderData.shipping.phone || "0000000000",
         address: orderData.shipping.address_1,
@@ -184,26 +236,36 @@ const wooCommerceWebhookHandler = async (req, res) => {
         city: orderData.shipping.city,
         state: orderData.shipping.state,
       },
-      productDetails, // Includes product details without weight
+      productDetails,
       packageDetails: {
-        deadWeight: totalWeight, // Total weight of all products
-        applicableWeight: totalWeight, // Can be adjusted later if needed
+        deadWeight: totalWeight,
+        applicableWeight: totalWeight,
         volumetricWeight: {
           length: totalLength,
           width: totalWidth,
           height: totalHeight,
         },
       },
-      paymentDetails: {
-        method: orderData.payment_method_title || "Unknown",
-        amount: orderData.total,
-      },
+      compositeOrderId,
+      paymentDetails,
       status: orderData.status,
-    });
+    };
 
-    await newOrder.save();
-
-    res.status(200).json({ message: "WooCommerce order synced successfully." });
+    try {
+      await Order.create(orderPayload);
+      res
+        .status(200)
+        .json({ message: "WooCommerce order synced successfully." });
+    } catch (err) {
+      if (err.code === 11000) {
+        // duplicate compositeOrderId
+        res
+          .status(200)
+          .json({ message: "Duplicate: WooCommerce order already synced." });
+      } else {
+        throw err;
+      }
+    }
   } catch (error) {
     console.error("Error syncing WooCommerce order:", error);
     res.status(500).json({ error: "Internal Server Error" });
