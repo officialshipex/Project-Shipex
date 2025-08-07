@@ -18,6 +18,7 @@ const SmartShipStatusMapping = {
   "refusal confirmation code verified":"Undelivered",
   "consignee refused to accept":"Undelivered",
   "consignee not available cant deliver":"Undelivered",
+  "address incomplete  incorrect":"Undelivered",
   "delivered": "Delivered",
   
   
