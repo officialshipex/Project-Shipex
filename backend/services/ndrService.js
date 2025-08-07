@@ -598,6 +598,83 @@ console.log("successConsignmentList", successConsignmentList);
   }
 };
 
+const callSmartshipNdrApi = async (req, res) => {
+  try {
+    const {
+      request_order_id,
+      action_id,
+      comments,
+      next_attempt_date,
+      client_order_reference_id,
+      address,
+      phone,
+      names,
+      alternate_address,
+      alternate_number,
+    } = req.body;
+
+    // Validation: action_id and comments are mandatory
+    if (!action_id || !comments) {
+      return res.status(400).json({ error: "action_id and comments are required" });
+    }
+
+    // Either request_order_id or client_order_reference_id must be provided
+    if (!request_order_id && (!client_order_reference_id || client_order_reference_id.length === 0)) {
+      return res.status(400).json({
+        error: "Either request_order_id or client_order_reference_id must be provided",
+      });
+    }
+
+    // Prepare request payload
+    const requestBody = {
+      orders: [
+        {
+          request_order_id,
+          action_id,
+          comments,
+          next_attempt_date,
+          client_order_reference_id,
+          address,
+          phone,
+          names,
+          alternate_address,
+          alternate_number,
+        },
+      ],
+    };
+
+    // Call Smartship API
+    const smartshipResponse = await axios.post(
+      "http://api.smartship.in/v2/app/Fulfillmentservice/orderReattempt",
+      requestBody,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.SMARTSHIP_TOKEN}`, // Use your token here
+        },
+      }
+    );
+
+    const { status, code, message, data } = smartshipResponse.data;
+
+    return res.status(code).json({
+      status,
+      message,
+      data,
+    });
+  } catch (error) {
+    console.error("❌ Error calling Smartship Reattempt API:", error.message);
+
+    if (error.response) {
+      return res.status(error.response.status).json({
+        error: error.response.data || "Error from Smartship API",
+      });
+    }
+
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 
 module.exports = {
   getOrderDetails,
@@ -607,4 +684,5 @@ module.exports = {
   handleDelhiveryNdrAction,
   submitNdrToDtdc,
   submitNdrToAmazon,
+  callSmartshipNdrApi
 };
