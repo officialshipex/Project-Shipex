@@ -97,5 +97,6 @@ const getDTDCAuthToken = async () => {
     };
   }
 };
+// getDTDCAuthToken();
 
 module.exports = { getToken, saveDtdc, getDTDCAuthToken };
