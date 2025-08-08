@@ -15,6 +15,7 @@ const SmartShipStatusMapping = {
   "shipment outscan":"Out for Delivery",
   "call logs":"Out for Delivery",
   "shipped": "In-transit",
+  "delivery  scheduled for next working day":"In-transit",
   "refusal confirmation code verified":"Undelivered",
   "consignee refused to accept":"Undelivered",
   "consignee not available cant deliver":"Undelivered",
