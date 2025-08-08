@@ -376,7 +376,7 @@ const storeAllChannelDetails = async (req, res) => {
       syncInventory,
       syncDate,
     } = req.body;
-console.log("req",req.body)
+// console.log("req",req.body)
     if (
       !storeName ||
       !storeURL ||
