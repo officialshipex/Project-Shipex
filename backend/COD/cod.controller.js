@@ -645,6 +645,7 @@ const codRemittanceRecharge = async (req, res) => {
     await remittanceRecord.updateOne({
       $inc: { CODToBeRemitted: -amount },
       $inc: { rechargeAmount: amount },
+      $inc: { RemittanceInitiated: -amount },
     });
     await currentWallet.updateOne({
       $inc: { balance: amount },
