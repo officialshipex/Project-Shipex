@@ -20,7 +20,7 @@ const SmartShipStatusMapping = {
   "consignee refused to accept":"Undelivered",
   "consignee not available cant deliver":"Undelivered",
   "address incomplete  incorrect":"Undelivered",
-  "delivered": "Delivered",
+  "shipment delivered": "Delivered",
   
   
 };
