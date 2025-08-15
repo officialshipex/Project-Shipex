@@ -21,6 +21,7 @@ const SmartShipStatusMapping = {
   "consignee not available cant deliver":"Undelivered",
   "address incomplete  incorrect":"Undelivered",
   "shipment delivered": "Delivered",
+  "rto  shipper request":"RTO"
   
   
 };

@@ -168,7 +168,7 @@ const getAllUsers = async (req, res) => {
     const users = await User.find(query)
       .populate("Wallet", "balance") // Ensure 'wallet' is correct in schema
       .select(
-        "userId fullname email phoneNumber company kycDone creditLimit createdAt"
+        "userId fullname email phoneNumber company kycDone creditLimit createdAt lastLogin"
       )
       .lean();
 
@@ -250,6 +250,7 @@ const getAllUsers = async (req, res) => {
         userId: user.userId,
         fullname: user.fullname,
         email: user.email,
+        lastLogin: user.lastLogin,
         phoneNumber: user.phoneNumber,
         company: user.company,
         kycStatus: user.kycDone,
@@ -304,7 +305,7 @@ const getAllUsers = async (req, res) => {
         })(),
       };
     });
-
+// console.log("user",userDetails)
     return res.status(200).json({
       success: true,
       userIds: userDetails.map((u) => u.userId),

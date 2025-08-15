@@ -6,7 +6,7 @@ const {
   callSmartshipNdrApi,
   handleDelhiveryNdrAction,
   submitNdrToDtdc,
-  submitNdrToAmazon
+  submitNdrToAmazon,
 } = require("../services/ndrService");
 const Order = require("../models/newOrder.model");
 
@@ -21,18 +21,20 @@ const ndrProcessController = async (req, res) => {
     consignee_address,
     customer_code,
     rtoAction,
-    remarks
+    remarks,
+    next_attempt_date,
+    phone,
   } = req.body;
 
   // console.log("awb",awb_number)
   const orderDetails = await Order.findOne({ awb_number: awb_number });
-  console.log("dtdc",req.body)
+  console.log("dtdc", req.body);
   // const orderDetails = getOrderDetails(orderId);
 
   if (!orderDetails) {
     return res.status(404).json({ error: "Order not found" });
   }
-// console.log("ordrer",orderDetails)
+  // console.log("ordrer",orderDetails)
   try {
     let response;
     if (orderDetails.platform === "shiprocket") {
@@ -51,22 +53,37 @@ const ndrProcessController = async (req, res) => {
       );
     } else if (orderDetails.provider === "Delhivery") {
       response = await handleDelhiveryNdrAction(awb_number, action);
-    } else if(orderDetails.provider==="DTDC"){
-      response=await submitNdrToDtdc(awb_number,customer_code,rtoAction,remarks)
-    } else if(orderDetails.provider==="Amazon"){
-      response=await submitNdrToAmazon(awb_number,action,comments,scheduled_delivery_date)
-      console.log("re",response)
-    }else if(orderDetails.provider==="Smartship"){
-      console.log("smartship")
-      response=await callSmartshipNdrApi(awb_number)
-    }
-    else {
+    } else if (orderDetails.provider === "DTDC") {
+      response = await submitNdrToDtdc(
+        awb_number,
+        customer_code,
+        rtoAction,
+        remarks
+      );
+    } else if (orderDetails.provider === "Amazon") {
+      response = await submitNdrToAmazon(
+        awb_number,
+        action,
+        comments,
+        scheduled_delivery_date
+      );
+      console.log("re", response);
+    } else if (orderDetails.provider === "Smartship") {
+      console.log("smartship");
+      response = await callSmartshipNdrApi(
+        awb_number,
+        action,
+        comments,
+        next_attempt_date,
+        phone
+      );
+    } else {
       return res.status(400).json({ error: "Unsupported platform" });
     }
-    console.log("resererer",response)
+    console.log("resererer", response);
     res.json({ success: response.success, data: response.error });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({ data: error.response.error });
   }
 };

@@ -18,7 +18,8 @@ const {checkServiceabilityEcomExpress}=require("../AllCouriers/EcomExpress/Couri
 const {checkAmazonServiceability}=require("../AllCouriers/Amazon/Courier/couriers.controller")
 const {checkServiceabilityDTDC}=require("../AllCouriers/DTDC/Courier/couriers.controller")
 const {checkSmartshipHubServiceability}=require("../AllCouriers/SmartShip/Couriers/couriers.controller");
-const {checkEkartServiceability}=require("../AllCouriers/Ekart/Couriers/couriers.controller")
+const {checkEkartServiceability}=require("../AllCouriers/Ekart/Couriers/couriers.controller");
+const {checkVamashipServiceability}=require("../AllCouriers/Vamaship/Couriers/couriers.controller")
 
 
 const checkServiceabilityAll = async (service, id, pincode) => {
@@ -175,6 +176,15 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     }
     if(service.provider==="Ekart"){
       const result=await checkEkartServiceability(pincode,currentOrder.receiverAddress.pinCode)
+      return result
+    }
+    if(service.provider==="Vamaship"){
+      const payload={
+        source_pincode:pincode,
+        destination_pincode:currentOrder.receiverAddress.pinCode,        
+        payment_type:currentOrder.paymentDetails?.method,
+      }
+      const result=await checkVamashipServiceability(payload)
       return result
     } 
     

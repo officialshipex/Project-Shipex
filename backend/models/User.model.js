@@ -91,6 +91,8 @@ const usersSchema = new mongoose.Schema(
       type: String,
       default: "", // This will store the S3 URL
     },
+    lastLogin: { type: Date }
+
   },
   { timestamps: true }
 );

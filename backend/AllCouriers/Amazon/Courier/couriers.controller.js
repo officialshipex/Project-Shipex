@@ -365,11 +365,11 @@ const checkAmazonServiceability = async (provider,payload) => {
       }),
     };
 
-    console.log(
-      "body",
-      requestBody.packages[0].items,
-      requestBody.packages[0].weight
-    );
+    // console.log(
+    //   "body",
+    //   requestBody.packages[0].items,
+    //   requestBody.packages[0].weight
+    // );
 
     const response = await axios.post(
       "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments/rates",

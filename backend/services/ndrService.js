@@ -5,6 +5,9 @@ const Order = require("../models/newOrder.model");
 const moment = require("moment");
 const FormData = require("form-data");
 const {
+  getAccessToken,
+} = require("../AllCouriers/SmartShip/Authorize/smartShip.controller");
+const {
   getAmazonAccessToken,
 } = require("../AllCouriers/Amazon/Authorize/saveCourierController");
 const {
@@ -492,10 +495,8 @@ const submitNdrToDtdc = async (
     const result = response.data;
     console.log("DTDC Response:", result);
 
-    const {
-      validConsignmentResponse,
-      invalidConsignmentResponse,
-    } = result?.result || {};
+    const { validConsignmentResponse, invalidConsignmentResponse } =
+      result?.result || {};
 
     const {
       successConsignmentList = [],
@@ -523,9 +524,11 @@ const submitNdrToDtdc = async (
         details: failedConsignmentList,
       });
     }
-console.log("successConsignmentList", successConsignmentList);
+    console.log("successConsignmentList", successConsignmentList);
     // Handle success consignments
-    if (successConsignmentList.some(item => item.consgNumber === awb_number)) {
+    if (
+      successConsignmentList.some((item) => item.consgNumber === awb_number)
+    ) {
       const orderInDb = await Order.findOne({ awb_number });
 
       if (!orderInDb) {
@@ -540,7 +543,7 @@ console.log("successConsignmentList", successConsignmentList);
         orderInDb.ndrHistory = [];
       }
 
-      const latestInstruction =remarks;
+      const latestInstruction = remarks;
 
       const ndrHistoryEntry = {
         date: new Date(),
@@ -560,7 +563,7 @@ console.log("successConsignmentList", successConsignmentList);
         success: true,
         message: "DTDC NDR submission successful",
         failedOrders,
-        dtdcResponse: result, 
+        dtdcResponse: result,
       };
     }
 
@@ -598,47 +601,45 @@ console.log("successConsignmentList", successConsignmentList);
   }
 };
 
-const callSmartshipNdrApi = async (req, res) => {
+const callSmartshipNdrApi = async (
+  awb_number,
+  action,
+  comments,
+  next_attempt_date
+) => {
   try {
-    const {
-      request_order_id,
-      action_id,
-      comments,
-      next_attempt_date,
-      client_order_reference_id,
-      address,
-      phone,
-      names,
-      alternate_address,
-      alternate_number,
-    } = req.body;
+    const token = await getAccessToken();
 
-    // Validation: action_id and comments are mandatory
-    if (!action_id || !comments) {
-      return res.status(400).json({ error: "action_id and comments are required" });
+    // Validation
+    if (!action || !comments) {
+      return {
+        success: false,
+        error: "action and comments are required",
+      };
     }
 
-    // Either request_order_id or client_order_reference_id must be provided
-    if (!request_order_id && (!client_order_reference_id || client_order_reference_id.length === 0)) {
-      return res.status(400).json({
-        error: "Either request_order_id or client_order_reference_id must be provided",
-      });
+    let action_id = action === "RTO" ? 2 : 1;
+
+    // Fetch order from DB
+    const currentOrder = await Order.findOne({ awb_number });
+    if (!currentOrder) {
+      return {
+        success: false,
+        error: `Order not found for AWB: ${awb_number}`,
+      };
     }
 
-    // Prepare request payload
+    // Prepare payload
     const requestBody = {
       orders: [
         {
-          request_order_id,
-          action_id,
+          request_order_id: currentOrder.shipment_id,
+          action_id: String(action_id),
           comments,
           next_attempt_date,
-          client_order_reference_id,
-          address,
-          phone,
-          names,
-          alternate_address,
-          alternate_number,
+          address: currentOrder.receiverAddress.address || "",
+          phone: currentOrder.receiverAddress.phoneNumber || "",
+          names: currentOrder.receiverAddress.contactName || "",
         },
       ],
     };
@@ -650,28 +651,64 @@ const callSmartshipNdrApi = async (req, res) => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SMARTSHIP_TOKEN}`, // Use your token here
+          Authorization: `Bearer ${token}`,
         },
       }
     );
 
+    // console.log("smartship",smartshipResponse.data)
+
     const { status, code, message, data } = smartshipResponse.data;
 
-    return res.status(code).json({
-      status,
-      message,
-      data,
-    });
+    if (status === 1) {
+      // ✅ Update order in DB like DTDC controller
+      if (!Array.isArray(currentOrder.ndrHistory)) {
+        currentOrder.ndrHistory = [];
+      }
+
+      const ndrHistoryEntry = {
+        date: new Date(),
+        action: action_id === 1 ? "RE-ATTEMPT" : "RTO",
+        remark: comments,
+        attempt: currentOrder.ndrHistory.length + 1,
+      };
+
+      currentOrder.ndrStatus = "Action_Requested";
+      currentOrder.status = "Undelivered";
+      currentOrder.ndrHistory.push(ndrHistoryEntry);
+      await currentOrder.save();
+
+      return {
+        success: true,
+        statusCode: code,
+        message: "NDR submission successful",
+        smartshipResponse: smartshipResponse.data,
+      };
+    }
+
+    // If Smartship API didn't return success
+    return {
+      success: false,
+      statusCode: code,
+      error: message || "Smartship API request failed",
+      smartshipResponse: smartshipResponse.data,
+    };
   } catch (error) {
     console.error("❌ Error calling Smartship Reattempt API:", error.message);
 
     if (error.response) {
-      return res.status(error.response.status).json({
+      return {
+        success: false,
+        statusCode: error.response.status,
         error: error.response.data || "Error from Smartship API",
-      });
+      };
     }
 
-    return res.status(500).json({ error: "Internal server error" });
+    return {
+      success: false,
+      statusCode: 500,
+      error: "Internal server error",
+    };
   }
 };
 
@@ -684,5 +721,5 @@ module.exports = {
   handleDelhiveryNdrAction,
   submitNdrToDtdc,
   submitNdrToAmazon,
-  callSmartshipNdrApi
+  callSmartshipNdrApi,
 };

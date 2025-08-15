@@ -47,6 +47,7 @@ const {
   cancelOrderDTDC,
   trackOrderDTDC,
 } = require("../AllCouriers/DTDC/Courier/couriers.controller");
+const { cancelVamashipOrder } = require("../AllCouriers/Vamaship/Couriers/couriers.controller");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -1089,7 +1090,13 @@ const cancelOrdersAtBooked = async (req, res) => {
           .status(400)
           .send({ error: result.error });
       }
-    } else {
+    } else if(currentOrder.provider==="Vamaship"){
+      const result=await cancelVamashipOrder(currentOrder.shipment_id);
+      if(result.error){
+        return res.status(400).send({error:result.error});
+      }
+    }
+     else {
       return {
         error: "Unsupported courier provider",
         orderId: currentOrder._id,

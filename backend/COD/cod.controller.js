@@ -220,11 +220,25 @@ const remittanceScheduleData = async () => {
       const planDays = parseInt(codPlan.planName.replace(/\D/g, ""), 10);
       const planCharges = codPlan.planCharges || 0;
 
+      const startOfTodayUTC = new Date(
+        Date.UTC(
+          today.getUTCFullYear(),
+          today.getUTCMonth(),
+          today.getUTCDate()
+        )
+      );
+      const deliveryUTC = new Date(
+        Date.UTC(
+          remittance.deliveryDate.getUTCFullYear(),
+          remittance.deliveryDate.getUTCMonth(),
+          remittance.deliveryDate.getUTCDate()
+        )
+      );
       const dayDiff = Math.floor(
-        (today - new Date(remittance.deliveryDate)) / (1000 * 60 * 60 * 24)
+        (startOfTodayUTC - deliveryUTC) / (1000 * 60 * 60 * 24)
       );
 
-      if (dayDiff === planDays) {
+      if (dayDiff >= planDays) {
         if (!user) {
           console.log(`User not found: ${remittance.userId}`);
           continue;
@@ -319,9 +333,10 @@ const remittanceScheduleData = async () => {
           {
             $inc: {
               CODToBeRemitted: -codToBeDeducted,
-              RemittanceInitiated: remittance.totalCod,
+              RemittanceInitiated: codToBeDeducted, // match deduction amount
               TotalDeductionfromCOD: TotalDeduction,
             },
+
             $set: {
               rechargeAmount: rechargeAmount, // or just `rechargeAmount` if same name
             },
@@ -370,24 +385,24 @@ const remittanceScheduleData = async () => {
         try {
           // Uncomment and use the logic you need
           if (isNotSunday) {
-            if ([1, 4, 7].includes(planDays)) {
+            const shouldRemitToday =
+              [1, 4, 7].includes(planDays) || // Always remit on these days
+              (planDays === 2 && isTodayMWF) || // MWF plan
+              (planDays === 3 && isTodayTF) || // Tue/Fri plan
+              dayDiff > planDays; // Catch-up for missed days
+
+            if (shouldRemitToday) {
               await new adminCodRemittance(remittanceEntry).save();
               remittanceData.remittanceData.push(remittanceEntryForUser);
-              await remittanceData.save();
-            } else if (planDays === 2 && isTodayMWF) {
-              await new adminCodRemittance(remittanceEntry).save();
-              remittanceData.remittanceData.push(remittanceEntryForUser);
-              await remittanceData.save();
-            } else if (planDays === 3 && isTodayTF) {
-              await new adminCodRemittance(remittanceEntry).save();
-              remittanceData.remittanceData.push(remittanceEntryForUser);
-              await remittanceData.save();
             } else {
               await new afterPlan(remittanceEntry).save();
             }
           } else {
             await new afterPlan(remittanceEntry).save();
           }
+
+          // Save once after pushing any entries
+          await remittanceData.save();
 
           await SameDateDelivered.updateOne(
             { _id: remittance._id },
@@ -410,13 +425,14 @@ cron.schedule("45 1 * * *", () => {
   console.log("Running scheduled task at 1:45 AM: Fetching orders...");
   remittanceScheduleData();
 });
+
 const fetchExtraData = async () => {
   try {
     const today = new Date();
-    const day = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const day = today.getDay(); // 0 = Sunday
     const isNotSunday = day !== 0;
-    const isTodayMWF = [1, 3, 5].includes(day); // Monday, Wednesday, Friday
-    const isTodayTF = [2, 5].includes(day); // Tuesday, Friday
+    const isTodayMWF = [1, 3, 5].includes(day);
+    const isTodayTF = [2, 5].includes(day);
 
     const afterCodPlans = await afterPlan.find();
 
@@ -428,73 +444,68 @@ const fetchExtraData = async () => {
       }
 
       const planDays = parseInt(codPlan.planName.replace(/\D/g, ""), 10);
-      let shouldMoveToAdmin = false;
 
-      if (isNotSunday) {
-        if ([1, 4, 7].includes(planDays)) {
-          shouldMoveToAdmin = true;
-        } else if (planDays === 2 && isTodayMWF) {
-          shouldMoveToAdmin = true;
-        } else if (planDays === 3 && isTodayTF) {
-          shouldMoveToAdmin = true;
-        }
+      // --- Catch-up logic for missed payouts ---
+      const dayDiff = Math.floor(
+        (today - new Date(plan.orderDetails?.date || today)) /
+          (1000 * 60 * 60 * 24)
+      );
+      const shouldMoveToAdmin =
+        (isNotSunday &&
+          ([1, 4, 7].includes(planDays) ||
+            (planDays === 2 && isTodayMWF) ||
+            (planDays === 3 && isTodayTF))) ||
+        dayDiff >= planDays;
+
+      if (!shouldMoveToAdmin) {
+        console.log(`⏭️ Skipping user ${plan.userId}: Not yet due`);
+        continue;
       }
 
-      if (shouldMoveToAdmin) {
-        const orderDetails = plan.orderDetails || {};
+      const orderDetails = plan.orderDetails || {};
+      const newRemittance = new adminCodRemittance({
+        date: today,
+        userId: plan.userId,
+        userName: plan.userName,
+        remitanceId: plan.remitanceId,
+        totalCod: plan.totalCod,
+        amountCreditedToWallet: plan.amountCreditedToWallet,
+        adjustedAmount: plan.adjustedAmount,
+        earlyCodCharges: plan.earlyCodCharges,
+        status: plan.totalCod === 0 ? "Paid" : "Pending",
+        orderDetails: {
+          date: orderDetails.date || today,
+          codcal: orderDetails.codcal || 0,
+          orders: orderDetails.orders || [],
+        },
+      });
 
-        // Save to adminCodRemittance collection
-        const newRemittance = new adminCodRemittance({
-          date: today,
-          userId: plan.userId,
-          userName: plan.userName,
-          remitanceId: plan.remitanceId,
-          totalCod: plan.totalCod,
-          amountCreditedToWallet: plan.amountCreditedToWallet,
-          adjustedAmount: plan.adjustedAmount,
-          earlyCodCharges: plan.earlyCodCharges,
-          status: plan.totalCod === 0 ? "Paid" : "Pending",
-          orderDetails: {
-            date: orderDetails.date || today,
-            codcal: orderDetails.codcal || 0,
-            orders: orderDetails.orders || [],
-          },
-        });
+      const remittanceEntryForUser = {
+        date: today,
+        remittanceId: plan.remitanceId,
+        codAvailable: Number(plan.totalCod.toFixed(2)),
+        amountCreditedToWallet: plan.amountCreditedToWallet,
+        adjustedAmount: plan.adjustedAmount,
+        earlyCodCharges: Number(plan.earlyCodCharges.toFixed(2)),
+        status: plan.totalCod === 0 ? "Paid" : "Pending",
+        orderDetails: {
+          date: orderDetails.date || today,
+          codcal: orderDetails.codcal || 0,
+          orders: orderDetails.orders || [],
+        },
+      };
 
-        await newRemittance.save();
-
-        // Build remittance entry for CODRemittance collection
-        const remittanceEntryForUser = {
-          data: today,
-          remittanceId: plan.remitanceId,
-          codAvailable: Number(plan.totalCod.toFixed(2)),
-          amountCreditedToWallet: plan.amountCreditedToWallet,
-          adjustedAmount: plan.adjustedAmount,
-          earlyCodCharges: Number(plan.earlyCodCharges.toFixed(2)),
-          status: totalCod === 0 ? "Paid" : "Pending",
-          orderDetails: {
-            date: orderDetails.date || today,
-            codcal: orderDetails.codcal || 0,
-            orders: orderDetails.orders || [],
-          },
-        };
-        // Push into remittanceData array of CODRemittance collection
-        await codRemittance.findOneAndUpdate(
+      // --- Atomic migration ---
+      await Promise.all([
+        newRemittance.save(),
+        codRemittance.findOneAndUpdate(
           { userId: plan.userId },
           { $push: { remittanceData: remittanceEntryForUser } }
-        );
+        ),
+        afterPlan.findByIdAndDelete(plan._id),
+      ]);
 
-        // Delete entry from afterPlan
-        await afterPlan.findByIdAndDelete(plan._id);
-
-        console.log(
-          `✅ Moved to adminCodRemittance & updated CODRemittance: ${plan.userId}`
-        );
-      } else {
-        console.log(
-          `⏭️ Skipping user ${plan.userId}: today not valid for plan D+${planDays}`
-        );
-      }
+      console.log(`✅ Migrated COD for user: ${plan.userId}`);
     }
   } catch (error) {
     console.error("❌ Error in fetchExtraData:", error.message);
@@ -502,33 +513,31 @@ const fetchExtraData = async () => {
 };
 
 cron.schedule("25 2 * * *", () => {
-  console.log("Running scheduled task at 1.30 AM: Fetching orders...");
+  console.log("Running scheduled task at 2:25 AM: Migrating afterPlan...");
   fetchExtraData();
 });
+fetchExtraData();
 
 const codRemittanceData = async (req, res) => {
   try {
-    const { id } = req.query;
-    let userId;
-    if (id) {
-      userId = id;
-    } else {
-      userId = req.user._id;
-    }
-    const { fromDate, toDate } = req.query;
-    console.log("-------------->", fromDate, toDate);
-    const page = parseInt(req.query.page) || 1;
-    const limitQuery = req.query.limit;
-    const remittanceIdFilter = req.query.remittanceIdFilter;
-    const utrFilter = req.query.utrFilter;
-    const statusFilter = req.query.statusFilter;
-    const limit =
-      limitQuery === "All" || !limitQuery ? null : parseInt(limitQuery);
-    const skip = limit ? (page - 1) * limit : 0;
-    // console.log("userId", userId);
-    const remittanceDoc = await codRemittance.findOne({ userId });
-    // console.log("remittanceDoc", remittanceDoc);
+    const {
+      id,
+      fromDate,
+      toDate,
+      remittanceIdFilter,
+      utrFilter,
+      statusFilter,
+    } = req.query;
 
+    const page = Number(req.query.page) || 1;
+    const limitQuery = req.query.limit;
+    const limit =
+      !limitQuery || limitQuery === "All" ? null : Number(limitQuery);
+    const skip = limit ? (page - 1) * limit : 0;
+
+    const userId = id || req.user._id;
+
+    const remittanceDoc = await codRemittance.findOne({ userId }).lean();
     if (!remittanceDoc) {
       return res.status(404).json({
         success: false,
@@ -536,52 +545,100 @@ const codRemittanceData = async (req, res) => {
       });
     }
 
-    // Filter by remittanceId if provided
-    let filteredData = [...remittanceDoc.remittanceData].reverse();
+    // ---- Normalize rows ----
+    let rows = Array.isArray(remittanceDoc.remittanceData)
+      ? remittanceDoc.remittanceData.map((r) => {
+          const dateVal = r.date ?? r.data ?? null;
+          return {
+            ...r,
+            date: dateVal ? new Date(dateVal) : null,
+            status: r.status || "Pending",
+            codAvailable: Number(r.codAvailable || 0),
+            amountCreditedToWallet: Number(r.amountCreditedToWallet || 0),
+            earlyCodCharges: Number(r.earlyCodCharges || 0),
+            adjustedAmount: Number(r.adjustedAmount || 0),
+            utr: r.utr ?? "",
+          };
+        })
+      : [];
 
+    // ---- Filters ----
     if (remittanceIdFilter) {
-      const remittanceIdArray = remittanceIdFilter
+      const terms = remittanceIdFilter
         .split(",")
-        .map((id) => id.trim());
-      filteredData = filteredData.filter((entry) => {
-        const remittanceIdStr = String(entry.remittanceId);
-        return remittanceIdArray.some((idPart) =>
-          remittanceIdStr.includes(idPart)
-        );
+        .map((s) => s.trim())
+        .filter(Boolean);
+      rows = rows.filter((e) => {
+        const idStr = e.remittanceId ? String(e.remittanceId) : "";
+        return terms.some((t) => idStr.includes(t));
       });
     }
+
     if (utrFilter) {
-      const remittanceIdArray = utrFilter.split(",").map((id) => id.trim());
-      filteredData = filteredData.filter((entry) => {
-        const remittanceIdStr = String(entry.utr);
-        return remittanceIdArray.some((idPart) =>
-          remittanceIdStr.includes(idPart)
-        );
+      const terms = utrFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      rows = rows.filter((e) => {
+        const utrStr = e.utr ? String(e.utr) : "";
+        return terms.some((t) => utrStr.includes(t));
       });
     }
+
     if (statusFilter) {
-      filteredData = filteredData.filter(
-        (entry) => entry.status === statusFilter.trim()
-      );
+      rows = rows.filter((e) => e.status === statusFilter.trim());
     }
+
     if (fromDate && toDate) {
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
-
-      // Normalize to 00:00:00 and 23:59:59
-      from.setHours(0, 0, 0, 0);
-      to.setHours(23, 59, 59, 999);
-
-      filteredData = filteredData.filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= from && entryDate <= to;
-      });
+      const start = new Date(fromDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      rows = rows.filter((e) => e.date && e.date >= start && e.date <= end);
     }
-    const totalCount = filteredData.length;
-    const paginatedData = limit
-      ? filteredData.slice(skip, skip + limit)
-      : filteredData;
+
+    // ---- Sort newest first ----
+    rows.sort((a, b) => {
+      const aTime = a.date ? a.date.getTime() : 0;
+      const bTime = b.date ? b.date.getTime() : 0;
+      return bTime - aTime;
+    });
+
+    // ---- Pagination ----
+    const totalCount = rows.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+    const paginated = limit ? rows.slice(skip, skip + limit) : rows;
+
+    // ---- DATASET totals (from ALL filtered rows, before pagination) ----
+    const datasetTotals = rows.reduce(
+      (acc, e) => {
+        if (e.status === "Paid") {
+          acc.totalCodRemitted += e.codAvailable;
+        } else if (e.status === "Pending") {
+          acc.remittanceInitiated += e.codAvailable; // as requested
+        }
+        // Deduction across ALL rows
+        acc.totalDeductions +=
+          e.amountCreditedToWallet + e.earlyCodCharges + e.adjustedAmount;
+        return acc;
+      },
+      { totalCodRemitted: 0, totalDeductions: 0, remittanceInitiated: 0 }
+    );
+
+    // ---- VISIBLE totals (from PAGINATED rows only) ----
+    const visibleTotals = paginated.reduce(
+      (acc, e) => {
+        if (e.status === "Paid") {
+          acc.totalCodRemitted += e.codAvailable;
+        } else if (e.status === "Pending") {
+          acc.totalRemittanceInitiated += e.codAvailable; // matches table rows shown
+        }
+        acc.totalDeductions +=
+          e.amountCreditedToWallet + e.earlyCodCharges + e.adjustedAmount;
+        return acc;
+      },
+      { totalCodRemitted: 0, totalDeductions: 0, totalRemittanceInitiated: 0 }
+    );
 
     return res.status(200).json({
       success: true,
@@ -591,17 +648,30 @@ const codRemittanceData = async (req, res) => {
       limit: limit || "All",
       totalPages,
       data: {
-        CODToBeRemitted: remittanceDoc.CODToBeRemitted,
-        LastCODRemitted: remittanceDoc.LastCODRemitted,
-        TotalCODRemitted: remittanceDoc.TotalCODRemitted,
-        TotalDeductionfromCOD: remittanceDoc.TotalDeductionfromCOD,
-        RemittanceInitiated: remittanceDoc.RemittanceInitiated,
-        rechargeAmount: remittanceDoc.rechargeAmount,
-        remittanceData: paginatedData,
+        // Snapshot-like values, but now computed from the FILTERED DATASET
+        TotalCODRemitted: Number(datasetTotals.totalCodRemitted.toFixed(2)),
+        TotalDeductionfromCOD: Number(datasetTotals.totalDeductions.toFixed(2)), // ✅ fixed
+        RemittanceInitiated: Number(
+          datasetTotals.remittanceInitiated.toFixed(2)
+        ), // ✅ sum of pending codAvailable
+        CODToBeRemitted: Number(remittanceDoc.CODToBeRemitted || 0),
+        LastCODRemitted: Number(remittanceDoc.LastCODRemitted || 0),
+        rechargeAmount: Number(remittanceDoc.rechargeAmount || 0),
+
+        // What the user sees on THIS page
+        visibleSummary: {
+          totalCodRemitted: Number(visibleTotals.totalCodRemitted.toFixed(2)),
+          totalDeductions: Number(visibleTotals.totalDeductions.toFixed(2)),
+          totalRemittanceInitiated: Number(
+            visibleTotals.totalRemittanceInitiated.toFixed(2)
+          ),
+        },
+
+        remittanceData: paginated,
       },
     });
   } catch (error) {
-    console.error("Error fetching COD remittance data:", error.message);
+    console.error("Error fetching COD remittance data:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while retrieving COD remittance data",
@@ -633,41 +703,64 @@ const getCodRemitance = async (req, res) => {
 
 const codRemittanceRecharge = async (req, res) => {
   try {
-    const user = req.user._id;
+    const userId = req.user._id;
     const { amount, walletId } = req.body;
-    const remittanceRecord = await codRemittance.findOne({ userId: user });
-    const currentWallet = await Wallet.findOne({ _id: walletId });
+
+    // Validate amount
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Invalid recharge amount" });
+    }
+
+    const remittanceRecord = await codRemittance.findOne({ userId });
+    if (!remittanceRecord) {
+      return res.status(404).json({ message: "Remittance record not found" });
+    }
+
     if (amount > remittanceRecord.CODToBeRemitted) {
       return res
-        .status(404)
-        .json({ message: "Insufficient Cod Remittance Amount" });
+        .status(400)
+        .json({ message: "Insufficient COD Remittance Amount" });
     }
+
+    const currentWallet = await Wallet.findById(walletId);
+    if (!currentWallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    // Update remittance amounts
     await remittanceRecord.updateOne({
-      $inc: { CODToBeRemitted: -amount },
-      $inc: { rechargeAmount: amount },
-      $inc: { RemittanceInitiated: -amount },
+      $inc: {
+        CODToBeRemitted: -amount,
+        rechargeAmount: amount,
+        RemittanceInitiated: -amount,
+      },
     });
+
+    // Push transaction and update balance atomically
     await currentWallet.updateOne({
       $inc: { balance: amount },
       $push: {
         transactions: {
           category: "credit",
-          amount: amount, // Fixing incorrect reference
+          amount,
           balanceAfterTransaction: currentWallet.balance + amount,
-          date: new Date().toISOString().slice(0, 16).replace("T", " "),
-          description: `Recharge from COD Remitance`,
+          date: new Date(),
+          description: `Recharge from COD Remittance`,
         },
       },
     });
 
-    return res
-      .status(200)
-      .json({ message: "COD remittance recharge processed successfully." });
+    return res.status(200).json({
+      success: true,
+      message: "COD remittance recharge processed successfully.",
+    });
   } catch (error) {
-    console.log("Error processing COD remittance recharge:", error);
-    return res
-      .status(500)
-      .json({ message: "Failed to process COD remittance recharge." });
+    console.error("Error processing COD remittance recharge:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process COD remittance recharge.",
+      error: error.message,
+    });
   }
 };
 
@@ -817,13 +910,10 @@ function parseExcel(filePath) {
 }
 const uploadCodRemittance = async (req, res) => {
   try {
-    // const userID = req.user._id;
-
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Save file metadata
     const fileData = new File({
       filename: req.file.filename,
       date: new Date(),
@@ -831,180 +921,135 @@ const uploadCodRemittance = async (req, res) => {
     });
     await fileData.save();
 
-    // Determine file extension
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
     let codRemittances = [];
 
-    // Parse file based on extension
     if (fileExtension === ".csv") {
-      codRemittances = await parseCSV(req.file.path, fileData);
-    } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
+      codRemittances = await parseCSV(req.file.path);
+    } else if ([".xlsx", ".xls"].includes(fileExtension)) {
       codRemittances = await parseExcel(req.file.path);
     } else {
       return res.status(400).json({ error: "Unsupported file format" });
     }
 
-    if (!codRemittances || codRemittances.length === 0) {
-      return res.status(400).json({
-        error: "The uploaded file is empty or contains invalid data",
-      });
+    if (!codRemittances.length) {
+      return res
+        .status(400)
+        .json({ error: "The uploaded file is empty or invalid" });
     }
 
-    for (const row of codRemittances) {
-      const remittance = await adminCodRemittance.findOne({
-        remitanceId: row["*RemittanceID"],
-      });
+    let errors = [];
+    let remittanceUpdates = [];
+    let userUpdates = [];
+    let orderUpdates = [];
 
+    for (const row of codRemittances) {
+      const remittanceId = row["*RemittanceID"];
+      const utr = row["*UTR"] || "N/A";
+
+      const remittance = await adminCodRemittance.findOne({
+        remitanceId: remittanceId,
+      });
       if (!remittance) {
-        return res.status(400).json({
-          error: `Remittance ID ${row["*RemittanceID"]} not found.`,
-        });
+        errors.push(`Remittance ID ${remittanceId} not found`);
+        continue;
       }
 
       let userRemittance = await codRemittance.findOne({
         userId: remittance.userId,
       });
-
       if (!userRemittance) {
-        console.log(
-          `No COD Remittance found for user ${remittance.userId}, creating a new one.`
-        );
-
         userRemittance = new codRemittance({
-          userId: remittance.userId, // ✅ Use remittance.userId (not req.user._id)
+          userId: remittance.userId,
           TotalCODRemitted: 0,
           TotalDeductionfromCOD: 0,
           RemittanceInitiated: 0,
           remittanceData: [],
         });
-
-        await userRemittance.save();
       }
 
-      // Ensure numeric fields are initialized
-      userRemittance.TotalCODRemitted ??= 0;
-      userRemittance.TotalDeductionfromCOD ??= 0;
-      userRemittance.RemittanceInitiated ??= 0;
-      userRemittance.remittanceData ??= [];
+      // Skip if already marked Paid
+      const alreadyPaid = userRemittance.remittanceData.some(
+        (e) => e.remittanceId === remittanceId && e.status === "Paid"
+      );
+      if (alreadyPaid) {
+        continue;
+      }
 
+      // Deduct initiated amount only if available
+      const paymentAmounts = [];
       for (const item of remittance.orderDetails.orders) {
         const order = await Order.findOne({ _id: item });
+        if (!order) continue;
 
-        if (!order) {
-          console.log(`Order with ID ${item} not found.`);
-          continue;
-        }
+        const amt = Number(order?.paymentDetails?.amount || 0);
+        paymentAmounts.push(amt);
 
-        const paymentAmount = Number(order?.paymentDetails?.amount || 0);
-
-        await CodRemittanceOrdersModel.findOneAndUpdate(
-          { orderID: order.orderId },
-          { $set: { status: "Paid" } }
-        );
-
-        // Safely subtract from RemittanceInitiated
-        if (userRemittance.RemittanceInitiated >= paymentAmount) {
-          userRemittance.RemittanceInitiated -= paymentAmount;
-        } else {
-          console.warn(
-            `RemittanceInitiated (${userRemittance.RemittanceInitiated}) is less than paymentAmount (${paymentAmount}). Skipping deduction to avoid negative value.`
-          );
-        }
+        orderUpdates.push({
+          updateOne: {
+            filter: { orderID: order.orderId },
+            update: { $set: { status: "Paid" } },
+          },
+        });
       }
 
-      // Add to totals
-      userRemittance.TotalCODRemitted += Number(remittance.totalCod || 0);
+      const totalPayment = paymentAmounts.reduce((a, b) => a + b, 0);
+      if (userRemittance.RemittanceInitiated >= totalPayment) {
+        userRemittance.RemittanceInitiated -= totalPayment;
+      }
 
+      // Update totals
+      userRemittance.TotalCODRemitted += Number(remittance.totalCod || 0);
       userRemittance.TotalDeductionfromCOD +=
         Number(remittance.amountCreditedToWallet || 0) +
         Number(remittance.earlyCodCharges || 0) +
         Number(remittance.adjustedAmount || 0);
 
-      // Final safety check before saving
-      const remitted = Number(userRemittance.TotalCODRemitted);
-      const deducted = Number(userRemittance.TotalDeductionfromCOD);
+      // Add/Update remittanceData
+      userRemittance.remittanceData.push({
+        date: remittance.date,
+        remittanceId: remittance.remitanceId,
+        utr,
+        codAvailable: remittance.totalCod || 0,
+        amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
+        earlyCodCharges: remittance.earlyCodCharges || 0,
+        adjustedAmount: remittance.adjustedAmount || 0,
+        remittanceMethod: "Bank Transaction",
+        status: "Paid",
+        orderDetails: {
+          date: remittance.orderDetails.date,
+          codcal: remittance.orderDetails.codcal,
+          orders: [...remittance.orderDetails.orders],
+        },
+      });
 
-      if (isNaN(remitted) || isNaN(deducted)) {
-        console.error("Invalid values detected:", {
-          TotalCODRemitted: userRemittance.TotalCODRemitted,
-          TotalDeductionfromCOD: userRemittance.TotalDeductionfromCOD,
-        });
-        return res.status(500).json({ error: "Invalid remittance values" });
-      }
-
-      // userRemittance.remittanceData.push({
-      //   date: remittance.date,
-      //   remittanceId: remittance.remitanceId,
-      //   utr: row["*UTR"] || "N/A",
-      //   codAvailable: remittance.totalCod || 0,
-      //   amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
-      //   earlyCodCharges: remittance.earlyCodCharges || 0,
-      //   adjustedAmount: remittance.adjustedAmount || 0,
-      //   remittanceMethod: "Bank Transaction",
-      //   status: "Paid",
-      //   orderDetails: {
-      //     date: remittance.orderDetails.date,
-      //     codcal: remittance.orderDetails.codcal,
-      //     orders: [...remittance.orderDetails.orders],
-      //   },
-      // });
-      const existingRemittanceEntryIndex =
-        userRemittance.remittanceData.findIndex(
-          (entry) => entry.remittanceId === remittance.remitanceId
-        );
-
-      if (existingRemittanceEntryIndex !== -1) {
-        // Update existing entry
-        userRemittance.remittanceData[existingRemittanceEntryIndex].utr =
-          row["*UTR"] || "N/A";
-        userRemittance.remittanceData[
-          existingRemittanceEntryIndex
-        ].remittanceMethod = "Bank Transaction";
-        userRemittance.remittanceData[existingRemittanceEntryIndex].status =
-          "Paid";
-      } else {
-        // Push new entry
-        userRemittance.remittanceData.push({
-          date: remittance.date,
-          remittanceId: remittance.remitanceId,
-          utr: row["*UTR"] || "N/A",
-          codAvailable: remittance.totalCod || 0,
-          amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
-          earlyCodCharges: remittance.earlyCodCharges || 0,
-          adjustedAmount: remittance.adjustedAmount || 0,
-          remittanceMethod: "Bank Transaction",
-          status: "Paid",
-          orderDetails: {
-            date: remittance.orderDetails.date,
-            codcal: remittance.orderDetails.codcal,
-            orders: [...remittance.orderDetails.orders],
-          },
-        });
-      }
-
-      await userRemittance.save();
-
-      remittance.status = "Paid";
-      await remittance.save();
+      userUpdates.push(userRemittance.save());
+      remittanceUpdates.push(
+        adminCodRemittance.updateOne(
+          { _id: remittance._id },
+          { $set: { status: "Paid" } }
+        )
+      );
     }
 
-    fs.unlink(req.file.path, (err) => {
-      if (err) {
-        console.error("Error deleting file:", err);
-      } else {
-        console.log("File deleted successfully:", req.file.path);
-      }
-    });
+    await Promise.all([
+      ...userUpdates,
+      ...remittanceUpdates,
+      ...(orderUpdates.length
+        ? CodRemittanceOrdersModel.bulkWrite(orderUpdates)
+        : []),
+    ]);
+
+    fs.unlink(req.file.path, () => {});
 
     return res.status(200).json({
-      message: "COD Remittance uploaded successfully",
+      message: "COD Remittance upload processed",
       file: fileData,
+      errors,
     });
   } catch (error) {
     console.error("Error in uploadCodRemittance:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while processing the file" });
+    res.status(500).json({ error: "Error processing the file" });
   }
 };
 
@@ -1030,43 +1075,46 @@ const CheckCodplan = async (req, res) => {
 
 const remittanceTransactionData = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // Remittance ID
     const userID = req.user._id;
 
     if (!id) {
-      return res.status(400).json({ error: "User ID is required." });
+      return res.status(400).json({ error: "Remittance ID is required." });
     }
 
-    // Fetch remittance data for the user
+    // Fetch remittance data for the current user
     const remittanceData = await codRemittance.findOne({ userId: userID });
-
     if (!remittanceData) {
       return res.status(404).json({ error: "Remittance data not found." });
     }
+
     // Find the specific remittance transaction
     const result = remittanceData.remittanceData.find(
-      (item) => item.remittanceId == id
+      (item) => String(item.remittanceId) === String(id)
     );
-
     if (!result) {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-    // Fetch all orders concurrently using Promise.all()
-    const orderdata = await Promise.all(
-      result.orderDetails.orders.map(async (item) => {
-        return await Order.findOne({ _id: item });
-      })
-    );
+    if (!result.orderDetails || !Array.isArray(result.orderDetails.orders)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid remittance order details." });
+    }
+
+    // Fetch all orders in a single query for performance
+    const orderdata = await Order.find({
+      _id: { $in: result.orderDetails.orders },
+    });
 
     // Construct the response object
     const transactions = {
-      remitanceId: id,
+      remittanceId: id,
       date: result.date,
-      totalOrder: result.orderDetails.orders.length,
-      remitanceAmount: result.codAvailable,
-      deliveryData: result.orderDetails.date,
-      orderDataInArray: orderdata,
+      totalOrders: result.orderDetails.orders.length,
+      remittanceAmount: result.codAvailable,
+      deliveryDate: result.orderDetails.date,
+      orders: orderdata,
     };
 
     return res.status(200).json({
@@ -1090,19 +1138,25 @@ const courierCodRemittance = async (req, res) => {
     const limitQuery = req.query.limit;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-    const searchFilter = req.query.searchFilter || "";
-    const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
-    const statusFilter = req.query.statusFilter || "";
-    const courierProvider = req.query.courierProvider || "";
 
-    // --- Employee filtering logic ---
-    let allocatedUserIds = null;
-    let allowedAwbNumbers = null;
-    if (req.employee && req.employee.employeeId) {
+    const searchFilter = req.query.searchFilter?.trim().toLowerCase() || "";
+    const orderIdAwbNumberFilter =
+      req.query.orderIdAwbNumberFilter?.trim() || "";
+    const statusFilter = req.query.statusFilter?.trim() || "";
+    const courierProvider =
+      req.query.courierProvider?.trim().toLowerCase() || "";
+
+    let matchStage = {};
+
+    // Employee AWB restriction
+    if (req.employee?.employeeId) {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
       });
-      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      const allocatedUserIds = allocations.map((a) =>
+        a.sellerMongoId.toString()
+      );
+
       if (allocatedUserIds.length === 0) {
         return res.status(200).json({
           success: true,
@@ -1119,7 +1173,7 @@ const courierCodRemittance = async (req, res) => {
           },
         });
       }
-      // Find all AWB numbers for allocated users
+
       const orders = await Order.find(
         {
           userId: {
@@ -1128,97 +1182,116 @@ const courierCodRemittance = async (req, res) => {
         },
         { awb_number: 1 }
       ).lean();
-      allowedAwbNumbers = orders
+
+      const allowedAwbNumbers = orders
         .map((o) => o.awb_number?.toString())
         .filter(Boolean);
-    }
+      if (allowedAwbNumbers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "No COD remittance orders for this employee",
+          total: 0,
+          page,
+          limit: limit || "All",
+          totalPages: 1,
+          data: {
+            totalCODAmount: 0,
+            paidCODAmount: 0,
+            pendingCODAmount: 0,
+            orders: [],
+          },
+        });
+      }
 
-    // Fetch all courier COD remittance orders
-    let matchStage = {};
-    if (allowedAwbNumbers) {
       matchStage.AwbNumber = { $in: allowedAwbNumbers };
     }
 
-    let allOrders = await CourierCodRemittance.aggregate([
+    // Search filter
+    if (searchFilter) {
+      matchStage.$or = [
+        { userName: { $regex: searchFilter, $options: "i" } },
+        { PhoneNumber: { $regex: searchFilter, $options: "i" } },
+        { Email: { $regex: searchFilter, $options: "i" } },
+      ];
+    }
+
+    // Order ID / AWB filter
+    if (orderIdAwbNumberFilter) {
+      const filterValues = orderIdAwbNumberFilter
+        .split(",")
+        .map((v) => v.trim());
+      matchStage.$or = (matchStage.$or || []).concat([
+        { orderID: { $in: filterValues } },
+        { AwbNumber: { $in: filterValues } },
+      ]);
+    }
+
+    // Status filter
+    if (statusFilter) {
+      matchStage.status = { $regex: statusFilter, $options: "i" };
+    }
+
+    // Courier provider filter
+    if (courierProvider) {
+      matchStage.courierProvider = { $regex: courierProvider, $options: "i" };
+    }
+
+    // Fetch and paginate in MongoDB
+    const aggregationPipeline = [
       { $match: matchStage },
       {
         $addFields: {
           codAmountNum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
         },
       },
+      { $sort: { _id: -1 } },
+    ];
+
+    if (limit) {
+      aggregationPipeline.push({ $skip: skip }, { $limit: limit });
+    }
+
+    const orders = await CourierCodRemittance.aggregate(aggregationPipeline);
+
+    // Calculate totals directly in DB
+    const totalsAgg = await CourierCodRemittance.aggregate([
+      { $match: matchStage },
       {
-        $sort: {
-          _id: -1, // Sort by insertion order: latest first
+        $group: {
+          _id: null,
+          totalCODAmount: {
+            $sum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
+          },
+          paidCODAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ["$status", "Paid"] },
+                { $toDouble: { $ifNull: ["$CODAmount", 0] } },
+                0,
+              ],
+            },
+          },
+          pendingCODAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ["$status", "Pending"] },
+                { $toDouble: { $ifNull: ["$CODAmount", 0] } },
+                0,
+              ],
+            },
+          },
         },
       },
     ]);
 
-    // 2. Apply JavaScript filter
-    let filteredOrders = allOrders;
+    const totals = totalsAgg[0] || {
+      totalCODAmount: 0,
+      paidCODAmount: 0,
+      pendingCODAmount: 0,
+    };
 
-    // filter by username or phone number or email
-    if (searchFilter) {
-      const lowerCaseFilter = searchFilter.toLowerCase();
-      filteredOrders = filteredOrders.filter((order) => {
-        const name = order.userName?.toLowerCase() || "";
-        const phone = order.PhoneNumber?.toLowerCase() || "";
-        const email = order.Email?.toLowerCase() || "";
-        return (
-          name.includes(lowerCaseFilter) ||
-          phone.includes(lowerCaseFilter) ||
-          email.includes(lowerCaseFilter)
-        );
-      });
-    }
-    // filter by orderId and awb number
-    if (orderIdAwbNumberFilter) {
-      const filterValues = orderIdAwbNumberFilter
-        .split(",")
-        .map((val) => val.trim());
-      filteredOrders = filteredOrders.filter((order) => {
-        const orderIdStr = order.orderID?.toString() || "";
-        const awbStr = order.AwbNumber?.toString() || "";
-        return filterValues.some(
-          (filter) => orderIdStr.includes(filter) || awbStr.includes(filter)
-        );
-      });
-    }
-    // filter by status
-    if (statusFilter) {
-      filteredOrders = filteredOrders.filter((order) =>
-        order.status?.toString().includes(statusFilter)
-      );
-    }
-    // filter by courier provider
-    if (courierProvider) {
-      filteredOrders = filteredOrders.filter(
-        (order) =>
-          order.courierProvider &&
-          order.courierProvider.toLowerCase() === courierProvider.toLowerCase()
-      );
-    }
-
-    const totalCount = filteredOrders.length;
+    const totalCount = await CourierCodRemittance.countDocuments(matchStage);
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
-    const paginatedData = limit
-      ? filteredOrders.slice(skip, skip + limit)
-      : filteredOrders;
-
-    // Calculate totals with same filter
-    let totals = [
-      {
-        totalCODAmount: filteredOrders.reduce(
-          (sum, o) => sum + (parseFloat(o.CODAmount) || 0),
-          0
-        ),
-        paidCODAmount: filteredOrders
-          .filter((o) => o.status === "Paid")
-          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        pendingCODAmount: filteredOrders
-          .filter((o) => o.status === "Pending")
-          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-      },
-    ];
 
     return res.status(200).json({
       success: true,
@@ -1227,12 +1300,7 @@ const courierCodRemittance = async (req, res) => {
       page,
       limit: limit || "All",
       totalPages,
-      data: {
-        totalCODAmount: totals[0]?.totalCODAmount || 0,
-        paidCODAmount: totals[0]?.paidCODAmount || 0,
-        pendingCODAmount: totals[0]?.pendingCODAmount || 0,
-        orders: paginatedData,
-      },
+      data: { ...totals, orders },
     });
   } catch (error) {
     return res.status(500).json({
@@ -1242,6 +1310,7 @@ const courierCodRemittance = async (req, res) => {
     });
   }
 };
+
 const getAdminCodRemitanceData = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -1426,48 +1495,42 @@ const getAdminCodRemitanceData = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error });
   }
 };
+
 const CodRemittanceOrder = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const limit = limitQuery === "All" ? null : parseInt(limitQuery);
     const skip = limit ? (page - 1) * limit : 0;
-    const searchFilter = req.query.searchFilter || "";
-    const orderIdAwbNumberFilter = req.query.orderIdAwbNumberFilter || "";
-    const statusFilter = req.query.statusFilter || "";
-    const courierProvider = req.query.courierProvider || "";
-    const startDate = req.query.startDate
-      ? new Date(req.query.startDate)
-      : null;
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
-    // console.log("req",req.query)
+    const {
+      searchFilter = "",
+      orderIdAwbNumberFilter = "",
+      statusFilter = "",
+      courierProvider = "",
+      startDate,
+      endDate,
+    } = req.query;
 
-    // --- Employee filtering logic ---
     let allocatedUserIds = null;
     let allowedOrderIds = null;
-    if (req.employee && req.employee.employeeId) {
+
+    // Employee role filtering
+    if (req.employee?.employeeId) {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
       });
       allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
-      if (allocatedUserIds.length === 0) {
+
+      if (!allocatedUserIds.length) {
         return res.status(200).json({
           success: true,
-          message: "COD remittance orders retrieved successfully",
+          message: "No allocated users",
           total: 0,
-          page,
-          limit: limit || "All",
-          totalPages: 1,
-          data: {
-            totalCODAmount: 0,
-            paidCODAmount: 0,
-            pendingCODAmount: 0,
-            orders: [],
-          },
+          data: { orders: [] },
         });
       }
-      // Find all orderIds for allocated users
+
       const orders = await Order.find(
         {
           userId: {
@@ -1476,102 +1539,78 @@ const CodRemittanceOrder = async (req, res) => {
         },
         { orderId: 1 }
       ).lean();
+
       allowedOrderIds = orders.map((o) => o.orderId?.toString());
     }
 
-    // Fetch all COD remittance orders
+    // Build MongoDB match object
     let matchStage = {};
     if (allowedOrderIds) {
       matchStage.orderID = { $in: allowedOrderIds };
     }
+    if (statusFilter) {
+      matchStage.status = statusFilter;
+    }
+    if (courierProvider) {
+      matchStage.courierProvider = new RegExp(`^${courierProvider}$`, "i");
+    }
+    if (startDate && endDate) {
+      matchStage.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+    if (orderIdAwbNumberFilter) {
+      const filterValues = orderIdAwbNumberFilter
+        .split(",")
+        .map((val) => val.trim());
+      matchStage.$or = [
+        { orderID: { $in: filterValues } },
+        { AWB_Number: { $in: filterValues } },
+      ];
+    }
 
-    let allOrders = await CodRemittanceOrdersModel.aggregate([
+    // MongoDB aggregation
+    const allOrders = await CodRemittanceOrdersModel.aggregate([
       { $match: matchStage },
       {
         $addFields: {
           codAmountNum: { $toDouble: { $ifNull: ["$CODAmount", 0] } },
         },
       },
-      {
-        $sort: {
-          _id: -1,
-        },
-      },
+      { $sort: { _id: -1 } },
     ]);
-    // console.log("allOrders", allOrders);
-    // 2. Apply JavaScript filter
-    let filteredOrders = allOrders;
 
-    // filter by username or phone number or email
+    // Filter by searchFilter in memory (name/phone/email search is trickier in MongoDB without $regex)
+    let filteredOrders = allOrders;
     if (searchFilter) {
       const lowerCaseFilter = searchFilter.toLowerCase();
-      filteredOrders = filteredOrders.filter((order) => {
-        const name = order.userName?.toLowerCase() || "";
-        const phone = order.PhoneNumber?.toLowerCase() || "";
-        const email = order.Email?.toLowerCase() || "";
-        return (
-          name.includes(lowerCaseFilter) ||
-          phone.includes(lowerCaseFilter) ||
-          email.includes(lowerCaseFilter)
-        );
-      });
-    }
-    // filter by orderId and awb number
-    if (orderIdAwbNumberFilter) {
-      const filterValues = orderIdAwbNumberFilter
-        .split(",")
-        .map((val) => val.trim());
-      filteredOrders = filteredOrders.filter((order) => {
-        const orderIdStr = order.orderID?.toString() || "";
-        const awbStr = order.AWB_Number?.toString() || "";
-        return filterValues.some(
-          (filter) => orderIdStr.includes(filter) || awbStr.includes(filter)
-        );
-      });
-    }
-    // filter by status
-    if (statusFilter) {
-      filteredOrders = filteredOrders.filter((order) =>
-        order.status?.toString().includes(statusFilter)
-      );
-    }
-    // filter by courier provider
-    if (courierProvider) {
-      filteredOrders = filteredOrders.filter(
+      filteredOrders = allOrders.filter(
         (order) =>
-          order.courierProvider &&
-          order.courierProvider.toLowerCase() === courierProvider.toLowerCase()
+          (order.userName || "").toLowerCase().includes(lowerCaseFilter) ||
+          (order.PhoneNumber || "").toLowerCase().includes(lowerCaseFilter) ||
+          (order.Email || "").toLowerCase().includes(lowerCaseFilter)
       );
-    }
-    // filter by date range
-    if (startDate && endDate) {
-      filteredOrders = filteredOrders.filter((order) => {
-        const orderDate = new Date(order.createdAt); // replace with actual date field
-        return orderDate >= startDate && orderDate <= endDate;
-      });
     }
 
+    // Pagination
     const totalCount = filteredOrders.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     const paginatedData = limit
       ? filteredOrders.slice(skip, skip + limit)
       : filteredOrders;
 
-    // Calculate totals with same filter
-    let totals = [
-      {
-        totalCODAmount: filteredOrders.reduce(
-          (sum, o) => sum + (parseFloat(o.CODAmount) || 0),
-          0
-        ),
-        paidCODAmount: filteredOrders
-          .filter((o) => o.status === "Paid")
-          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-        pendingCODAmount: filteredOrders
-          .filter((o) => o.status === "Pending")
-          .reduce((sum, o) => sum + (parseFloat(o.CODAmount) || 0), 0),
-      },
-    ];
+    // Totals
+    const totalCODAmount = filteredOrders.reduce(
+      (sum, o) => sum + (o.codAmountNum || 0),
+      0
+    );
+    const paidCODAmount = filteredOrders
+      .filter((o) => o.status === "Paid")
+      .reduce((sum, o) => sum + (o.codAmountNum || 0), 0);
+    const pendingCODAmount = filteredOrders
+      .filter((o) => o.status === "Pending")
+      .reduce((sum, o) => sum + (o.codAmountNum || 0), 0);
 
     return res.status(200).json({
       success: true,
@@ -1581,9 +1620,9 @@ const CodRemittanceOrder = async (req, res) => {
       limit: limit || "All",
       totalPages,
       data: {
-        totalCODAmount: totals[0]?.totalCODAmount || 0,
-        paidCODAmount: totals[0]?.paidCODAmount || 0,
-        pendingCODAmount: totals[0]?.pendingCODAmount || 0,
+        totalCODAmount,
+        paidCODAmount,
+        pendingCODAmount,
         orders: paginatedData,
       },
     });
@@ -1600,34 +1639,28 @@ const CodRemittanceOrder = async (req, res) => {
 const sellerremittanceTransactionData = async (req, res) => {
   try {
     const { id } = req.params;
-    const userID = req.user?._id;
-
-    if (!userID) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User ID is required." });
-    }
 
     if (!id) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Remittance ID is required." });
+      return res.status(400).json({
+        success: false,
+        message: "Remittance ID is required.",
+      });
     }
 
-    // Fetch remittance data first
+    // Fetch remittance data
     const remittanceData = await adminCodRemittance
       .findOne({ remitanceId: id })
       .lean();
-
     if (!remittanceData) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Remittance data not found." });
+      return res.status(404).json({
+        success: false,
+        message: "Remittance data not found.",
+      });
     }
 
     const userId = remittanceData.userId;
 
-    // Parallel fetch: Bank details, User (to get Wallet ID), and Orders
+    // Parallel fetch: Bank details, User (to get Wallet ID)
     const [bankDetails, user] = await Promise.all([
       BankAccountDetails.findOne({ user: userId }).lean(),
       users.findById(userId).lean(),
@@ -1637,13 +1670,11 @@ const sellerremittanceTransactionData = async (req, res) => {
       ? await Wallet.findById(user.Wallet).lean()
       : null;
 
+    // Fetch all orders in a single query
     const orderIds = remittanceData.orderDetails?.orders || [];
-
-    const orderData = await Promise.all(
-      orderIds.map((orderId) => Order.findById(orderId).lean())
-    );
-
-    const filteredOrders = orderData.filter(Boolean); // Remove nulls
+    const filteredOrders = orderIds.length
+      ? await Order.find({ _id: { $in: orderIds } }).lean()
+      : [];
 
     const transactions = {
       remitanceId: id,
@@ -1652,7 +1683,7 @@ const sellerremittanceTransactionData = async (req, res) => {
       totalCOD: remittanceData.orderDetails?.codcal || 0,
       remitanceAmount: remittanceData.codAvailable || 0,
       deliveryDate: remittanceData.orderDetails?.date || "N/A",
-      status: remittanceData.status,
+      status: remittanceData.status || "N/A",
       orderDataInArray: filteredOrders,
       bankDetails: {
         accountHolderName: bankDetails?.nameAtBank || "N/A",
@@ -1738,65 +1769,67 @@ const uploadCourierCodRemittance = async (req, res) => {
     });
     await fileData.save();
 
-    // Determine file extension
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
     let codRemittances = [];
 
-    // Parse file based on extension
+    // Parse file
     if (fileExtension === ".csv") {
       codRemittances = await parseCSV(req.file.path, fileData);
-    } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
+    } else if ([".xlsx", ".xls"].includes(fileExtension)) {
       codRemittances = await parseExcel(req.file.path);
     } else {
       return res.status(400).json({ error: "Unsupported file format" });
     }
 
-    // Validation: Check if file contains data
-    if (!codRemittances || codRemittances.length === 0) {
+    if (!codRemittances?.length) {
       return res.status(400).json({
         error: "The uploaded file is empty or contains invalid data",
       });
     }
 
-    // Process each remittance row
+    // Fetch user's remittance once
+    let userRemittance = await CourierCodRemittance.findOne({ userId: userID });
+    if (!userRemittance) {
+      return res
+        .status(404)
+        .json({ error: "User remittance record not found" });
+    }
+
+    let updated = false;
+
+    // Normalize keys for matching
+    const normalize = (val) => (val ? val.toString().trim() : "");
+
     for (const row of codRemittances) {
-      let userRemittance = await CourierCodRemittance.findOne({
-        userId: userID,
-      });
+      const awbNumber = normalize(row["*AWB Number"] || row["AWBNumber"]);
+      const codAmount = parseFloat(row["*COD Amount"] || row["CODAmount"]) || 0;
 
-      // Ensure userRemittance exists
-      if (!userRemittance) continue;
-
-      // for (const item of userRemittance.CourierCodRemittanceData) {
       const orderIndex = userRemittance.CourierCodRemittanceData.findIndex(
-        (data) => data.AwbNumber.toString() === row["*AWB Number"].toString()
+        (data) => normalize(data.AwbNumber) === awbNumber
       );
+
       if (
-        userRemittance &&
+        orderIndex !== -1 &&
         userRemittance.CourierCodRemittanceData[orderIndex].status === "Pending"
       ) {
         userRemittance.CourierCodRemittanceData[orderIndex].status = "Paid";
-
-        // Ensure values are numbers before updating
         userRemittance.TransferredRemittance =
-          (userRemittance.TransferredRemittance || 0) +
-          (userRemittance.CourierCodRemittanceData[orderIndex].CODAmount || 0);
+          (userRemittance.TransferredRemittance || 0) + codAmount;
         userRemittance.TotalRemittanceDue =
-          (userRemittance.TotalRemittanceDue || 0) -
-          (userRemittance.CourierCodRemittanceData[orderIndex].CODAmount || 0);
-        await userRemittance.save();
+          (userRemittance.TotalRemittanceDue || 0) - codAmount;
+
+        updated = true;
       }
     }
 
-    // }
+    if (updated) {
+      await userRemittance.save();
+    }
 
-    // **Delete the uploaded file after processing**
+    // Delete file after DB update
     fs.unlink(req.file.path, (err) => {
-      if (err) {
-        console.error("Error deleting file:", err);
-      } else {
-        console.log("File deleted successfully:", req.file.path);
-      }
+      if (err) console.error("Error deleting file:", err);
+      else console.log("File deleted successfully:", req.file.path);
     });
 
     return res.status(200).json({
@@ -1804,7 +1837,7 @@ const uploadCourierCodRemittance = async (req, res) => {
       file: fileData,
     });
   } catch (error) {
-    console.error("Error in uploadCodRemittance:", error);
+    console.error("Error in uploadCourierCodRemittance:", error);
     res
       .status(500)
       .json({ error: "An error occurred while processing the file" });
