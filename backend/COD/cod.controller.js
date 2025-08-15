@@ -529,7 +529,7 @@ const codRemittanceData = async (req, res) => {
       utrFilter,
       statusFilter,
     } = req.query;
-
+// console.log("hii")
     const page = Number(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const limit =
@@ -640,7 +640,15 @@ const codRemittanceData = async (req, res) => {
       },
       { totalCodRemitted: 0, totalDeductions: 0, totalRemittanceInitiated: 0 }
     );
+    // Sum of earlyCodCharges for all 'Pending' rows
+const pendingEarlyCodCharges = rows.reduce((sum, e) => {
+  if (e.status === "Pending") {
+    return sum + (e.earlyCodCharges || 0);
+  }
+  return sum;
+}, 0);
 
+console.log("reemm",pendingEarlyCodCharges)
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
@@ -652,9 +660,10 @@ const codRemittanceData = async (req, res) => {
         // Snapshot-like values, but now computed from the FILTERED DATASET
         TotalCODRemitted: Number(datasetTotals.totalCodRemitted.toFixed(2)),
         TotalDeductionfromCOD: Number(datasetTotals.totalDeductions.toFixed(2)), // ✅ fixed
-        RemittanceInitiated: Number(
-          datasetTotals.remittanceInitiated.toFixed(2)
-        ), // ✅ sum of pending codAvailable
+        // RemittanceInitiated: Number(
+        //   datasetTotals.remittanceInitiated.toFixed(2)
+        // ), // ✅ sum of pending codAvailable
+        RemittanceInitiated:Number(remittanceDoc.RemittanceInitiated-pendingEarlyCodCharges),
         CODToBeRemitted: Number(remittanceDoc.CODToBeRemitted || 0),
         LastCODRemitted: Number(remittanceDoc.LastCODRemitted || 0),
         rechargeAmount: Number(remittanceDoc.rechargeAmount || 0),

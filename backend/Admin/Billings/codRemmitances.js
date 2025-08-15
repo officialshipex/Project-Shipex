@@ -28,11 +28,9 @@ const getAllCodRemittance = async (req, res) => {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
       });
-
       const allocatedUserIds = allocations.map(
         (a) => new mongoose.Types.ObjectId(a.sellerMongoId)
       );
-
       if (allocatedUserIds.length === 0) {
         return res.json({
           total: 0,
@@ -47,7 +45,6 @@ const getAllCodRemittance = async (req, res) => {
           },
         });
       }
-
       userIdFilter.userId = { $in: allocatedUserIds };
     }
 
@@ -98,7 +95,7 @@ const getAllCodRemittance = async (req, res) => {
         : []),
     ];
 
-    // ---------- One-shot aggregate with FACET ----------
+    // ---------- Aggregation pipeline with safe flattening ----------
     const pipeline = [
       ...base,
       {
@@ -109,21 +106,54 @@ const getAllCodRemittance = async (req, res) => {
             { $match: remittanceMatchStage },
             {
               $addFields: {
+                codAvailableFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.codAvailable" },
+                    { $arrayElemAt: ["$remittanceData.codAvailable", 0] },
+                    "$remittanceData.codAvailable",
+                  ],
+                },
+                amountCreditedToWalletFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.amountCreditedToWallet" },
+                    {
+                      $arrayElemAt: [
+                        "$remittanceData.amountCreditedToWallet",
+                        0,
+                      ],
+                    },
+                    "$remittanceData.amountCreditedToWallet",
+                  ],
+                },
+                earlyCodChargesFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.earlyCodCharges" },
+                    { $arrayElemAt: ["$remittanceData.earlyCodCharges", 0] },
+                    "$remittanceData.earlyCodCharges",
+                  ],
+                },
+                adjustedAmountFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.adjustedAmount" },
+                    { $arrayElemAt: ["$remittanceData.adjustedAmount", 0] },
+                    "$remittanceData.adjustedAmount",
+                  ],
+                },
+              },
+            },
+            {
+              $addFields: {
                 codAvailableNum: {
-                  $toDouble: { $ifNull: ["$remittanceData.codAvailable", 0] },
+                  $toDouble: { $ifNull: ["$codAvailableFlat", 0] },
                 },
                 amountCreditedToWalletNum: {
-                  $toDouble: {
-                    $ifNull: ["$remittanceData.amountCreditedToWallet", 0],
-                  },
+                  $toDouble: { $ifNull: ["$amountCreditedToWalletFlat", 0] },
                 },
                 earlyCodChargesNum: {
-                  $toDouble: {
-                    $ifNull: ["$remittanceData.earlyCodCharges", 0],
-                  },
+                  $toDouble: { $ifNull: ["$earlyCodChargesFlat", 0] },
                 },
                 adjustedAmountNum: {
-                  $toDouble: { $ifNull: ["$remittanceData.adjustedAmount", 0] },
+                  $toDouble: { $ifNull: ["$adjustedAmountFlat", 0] },
                 },
               },
             },
@@ -148,7 +178,9 @@ const getAllCodRemittance = async (req, res) => {
               },
             },
             { $sort: { date: -1 } },
-            ...(parsedLimit === 0 ? [] : [{ $skip: skip }, { $limit: parsedLimit }]),
+            ...(parsedLimit === 0
+              ? []
+              : [{ $skip: skip }, { $limit: parsedLimit }]),
           ],
 
           // 2) Total count for pagination (same filters as rows, but just count)
@@ -158,34 +190,93 @@ const getAllCodRemittance = async (req, res) => {
             { $count: "total" },
           ],
 
-          // 3) Row-based totals so they match what you SEE
+          // 3) Row-based totals, all lines flattened first
           totals: [
-            { $unwind: "$remittanceData" },
+            // Filter docs before unwinding
             { $match: remittanceMatchStage },
+
+            // Flatten and convert RemittanceInitiated
             {
               $addFields: {
-                codAvailableNum: {
-                  $toDouble: { $ifNull: ["$remittanceData.codAvailable", 0] },
-                },
-                amountCreditedToWalletNum: {
-                  $toDouble: {
-                    $ifNull: ["$remittanceData.amountCreditedToWallet", 0],
-                  },
-                },
-                earlyCodChargesNum: {
-                  $toDouble: {
-                    $ifNull: ["$remittanceData.earlyCodCharges", 0],
-                  },
-                },
-                adjustedAmountNum: {
-                  $toDouble: { $ifNull: ["$remittanceData.adjustedAmount", 0] },
+                remittanceInitiatedFlat: {
+                  $cond: [
+                    { $isArray: "$RemittanceInitiated" },
+                    { $arrayElemAt: ["$RemittanceInitiated", 0] },
+                    "$RemittanceInitiated",
+                  ],
                 },
               },
             },
             {
+              $addFields: {
+                remittanceInitiatedNum: {
+                  $toDouble: { $ifNull: ["$remittanceInitiatedFlat", 0] },
+                },
+              },
+            },
+
+            // Now unwind for remittanceData aggregation
+            { $unwind: "$remittanceData" },
+            { $match: remittanceMatchStage },
+
+            {
+              $addFields: {
+                codAvailableFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.codAvailable" },
+                    { $arrayElemAt: ["$remittanceData.codAvailable", 0] },
+                    "$remittanceData.codAvailable",
+                  ],
+                },
+                amountCreditedToWalletFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.amountCreditedToWallet" },
+                    {
+                      $arrayElemAt: [
+                        "$remittanceData.amountCreditedToWallet",
+                        0,
+                      ],
+                    },
+                    "$remittanceData.amountCreditedToWallet",
+                  ],
+                },
+                earlyCodChargesFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.earlyCodCharges" },
+                    { $arrayElemAt: ["$remittanceData.earlyCodCharges", 0] },
+                    "$remittanceData.earlyCodCharges",
+                  ],
+                },
+                adjustedAmountFlat: {
+                  $cond: [
+                    { $isArray: "$remittanceData.adjustedAmount" },
+                    { $arrayElemAt: ["$remittanceData.adjustedAmount", 0] },
+                    "$remittanceData.adjustedAmount",
+                  ],
+                },
+              },
+            },
+            {
+              $addFields: {
+                codAvailableNum: {
+                  $toDouble: { $ifNull: ["$codAvailableFlat", 0] },
+                },
+                amountCreditedToWalletNum: {
+                  $toDouble: { $ifNull: ["$amountCreditedToWalletFlat", 0] },
+                },
+                earlyCodChargesNum: {
+                  $toDouble: { $ifNull: ["$earlyCodChargesFlat", 0] },
+                },
+                adjustedAmountNum: {
+                  $toDouble: { $ifNull: ["$adjustedAmountFlat", 0] },
+                },
+              },
+            },
+
+            // Group by _id and use $first for remittanceInitiatedNum
+            {
               $group: {
-                _id: null,
-                // Sum of COD for Paid rows
+                _id: "$_id",
                 totalCodRemitted: {
                   $sum: {
                     $cond: [
@@ -195,7 +286,6 @@ const getAllCodRemittance = async (req, res) => {
                     ],
                   },
                 },
-                // Sum of deductions across visible rows
                 totalDeductions: {
                   $sum: {
                     $add: [
@@ -205,16 +295,17 @@ const getAllCodRemittance = async (req, res) => {
                     ],
                   },
                 },
-                // Sum of COD for Pending rows (initiated but not paid)
-                totalRemittanceInitiated: {
-                  $sum: {
-                    $cond: [
-                      { $eq: ["$remittanceData.status", "Pending"] },
-                      "$codAvailableNum",
-                      0,
-                    ],
-                  },
-                },
+                remittanceInitiatedNum: { $first: "$remittanceInitiatedNum" }, // Root value, not duplicated
+              },
+            },
+
+            // Sum up across all docs
+            {
+              $group: {
+                _id: null,
+                totalCodRemitted: { $sum: "$totalCodRemitted" },
+                totalDeductions: { $sum: "$totalDeductions" },
+                totalRemittanceInitiated: { $sum: "$remittanceInitiatedNum" },
               },
             },
           ],
@@ -222,9 +313,20 @@ const getAllCodRemittance = async (req, res) => {
           // 4) Snapshot across matched users (no date/status duplication)
           codSnapshot: [
             {
-              $project: {
+              $addFields: {
+                CODToBeRemittedFlat: {
+                  $cond: [
+                    { $isArray: "$CODToBeRemitted" },
+                    { $arrayElemAt: ["$CODToBeRemitted", 0] },
+                    "$CODToBeRemitted",
+                  ],
+                },
+              },
+            },
+            {
+              $addFields: {
                 CODToBeRemittedNum: {
-                  $toDouble: { $ifNull: ["$CODToBeRemitted", 0] },
+                  $toDouble: { $ifNull: ["$CODToBeRemittedFlat", 0] },
                 },
               },
             },
@@ -243,25 +345,31 @@ const getAllCodRemittance = async (req, res) => {
 
     const rows = faceted.rows || [];
     const total = faceted.count?.[0]?.total || 0;
-
+    // console.log("row",rows)
     const totals = faceted.totals?.[0] || {
       totalCodRemitted: 0,
       totalDeductions: 0,
       totalRemittanceInitiated: 0,
     };
-
+    const pendingEarlyCodCharges = rows.reduce((sum, e) => {
+      if (e.status === "Pending") {
+        return sum + (e.earlyCodCharges || 0);
+      }
+      return sum;
+    }, 0);
     const codSnap = faceted.codSnapshot?.[0] || { CODToBeRemitted: 0 };
-
+    // console.log("cod", codSnap)
     return res.json({
       total,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
       results: rows,
       summary: {
-        CODToBeRemitted: codSnap.CODToBeRemitted || 0,       // snapshot (user-level)
-        totalCodRemitted: totals.totalCodRemitted || 0,       // from Paid rows
-        totalDeductions: totals.totalDeductions || 0,         // from visible rows
-        totalRemittanceInitiated: totals.totalRemittanceInitiated || 0, // from Pending rows
+        CODToBeRemitted: codSnap.CODToBeRemitted || 0, // snapshot (user-level)
+        totalCodRemitted: totals.totalCodRemitted || 0, // from Paid rows
+        totalDeductions: totals.totalDeductions || 0, // from visible rows
+        totalRemittanceInitiated:
+          totals.totalRemittanceInitiated - pendingEarlyCodCharges || 0, // from Pending rows
       },
     });
   } catch (error) {
@@ -269,7 +377,5 @@ const getAllCodRemittance = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
 
 module.exports = { getAllCodRemittance };
