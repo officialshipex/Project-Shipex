@@ -529,7 +529,7 @@ const codRemittanceData = async (req, res) => {
       utrFilter,
       statusFilter,
     } = req.query;
-// console.log("hii")
+    // console.log("hii")
     const page = Number(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const limit =
@@ -641,14 +641,14 @@ const codRemittanceData = async (req, res) => {
       { totalCodRemitted: 0, totalDeductions: 0, totalRemittanceInitiated: 0 }
     );
     // Sum of earlyCodCharges for all 'Pending' rows
-const pendingEarlyCodCharges = rows.reduce((sum, e) => {
-  if (e.status === "Pending") {
-    return sum + (e.earlyCodCharges || 0);
-  }
-  return sum;
-}, 0);
+    const pendingEarlyCodCharges = rows.reduce((sum, e) => {
+      if (e.status === "Pending") {
+        return sum + (e.earlyCodCharges || 0);
+      }
+      return sum;
+    }, 0);
 
-console.log("reemm",pendingEarlyCodCharges)
+    console.log("reemm", pendingEarlyCodCharges);
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
@@ -663,7 +663,9 @@ console.log("reemm",pendingEarlyCodCharges)
         // RemittanceInitiated: Number(
         //   datasetTotals.remittanceInitiated.toFixed(2)
         // ), // ✅ sum of pending codAvailable
-        RemittanceInitiated:Number(remittanceDoc.RemittanceInitiated-pendingEarlyCodCharges),
+        RemittanceInitiated: Number(
+          remittanceDoc.RemittanceInitiated - pendingEarlyCodCharges
+        ),
         CODToBeRemitted: Number(remittanceDoc.CODToBeRemitted || 0),
         LastCODRemitted: Number(remittanceDoc.LastCODRemitted || 0),
         rechargeAmount: Number(remittanceDoc.rechargeAmount || 0),
@@ -733,11 +735,17 @@ const codRemittanceRecharge = async (req, res) => {
           .reduce((sum, r) => sum + Number(r.codAvailable || 0), 0)
       : 0;
 
-    // Check if requested recharge exceeds pending COD available
-    if (amount > pendingCodAvailable) {
+    // Determine the lower value between remittanceRecord.RemittanceInitiated and pendingCodAvailable
+    const effectivePending = Math.min(
+      Number(remittanceRecord.RemittanceInitiated || 0),
+      pendingCodAvailable
+    );
+
+    // Check if requested recharge exceeds effective pending amount
+    if (amount > effectivePending) {
       return res.status(400).json({
         message: "Insufficient COD Available Balance",
-        available: pendingCodAvailable,
+        available: effectivePending,
       });
     }
 
