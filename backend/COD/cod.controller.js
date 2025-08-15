@@ -23,7 +23,8 @@ const SameDateDelivered = require("./samedateDelivery.model.js");
 const BankAccountDetails = require("../models/BankAccount.model.js");
 const codPlanUpdate = async (req, res) => {
   try {
-    const userID = req.user?._id; // Ensure req.user exists
+    const { id } = req.query;
+    const userID = id || req.user?._id; // Ensure req.user exists
     const { planName, codAmount } = req.body;
 
     // console.log("Request Body:", req.body); // Debugging log
@@ -711,15 +712,24 @@ const codRemittanceRecharge = async (req, res) => {
       return res.status(400).json({ message: "Invalid recharge amount" });
     }
 
-    const remittanceRecord = await codRemittance.findOne({ userId });
+    const remittanceRecord = await codRemittance.findOne({ userId }).lean();
     if (!remittanceRecord) {
       return res.status(404).json({ message: "Remittance record not found" });
     }
 
-    if (amount > remittanceRecord.CODToBeRemitted) {
-      return res
-        .status(400)
-        .json({ message: "Insufficient COD Remittance Amount" });
+    // Calculate actual pending COD available from remittanceData
+    const pendingCodAvailable = Array.isArray(remittanceRecord.remittanceData)
+      ? remittanceRecord.remittanceData
+          .filter((r) => r.status === "Pending")
+          .reduce((sum, r) => sum + Number(r.codAvailable || 0), 0)
+      : 0;
+
+    // Check if requested recharge exceeds pending COD available
+    if (amount > pendingCodAvailable) {
+      return res.status(400).json({
+        message: "Insufficient COD Available Balance",
+        available: pendingCodAvailable,
+      });
     }
 
     const currentWallet = await Wallet.findById(walletId);
@@ -728,15 +738,18 @@ const codRemittanceRecharge = async (req, res) => {
     }
 
     // Update remittance amounts
-    await remittanceRecord.updateOne({
-      $inc: {
-        CODToBeRemitted: -amount,
-        rechargeAmount: amount,
-        RemittanceInitiated: -amount,
-      },
-    });
+    await codRemittance.updateOne(
+      { _id: remittanceRecord._id },
+      {
+        $inc: {
+          CODToBeRemitted: -amount,
+          rechargeAmount: amount,
+          RemittanceInitiated: -amount,
+        },
+      }
+    );
 
-    // Push transaction and update balance atomically
+    // Push transaction and update wallet balance atomically
     await currentWallet.updateOne({
       $inc: { balance: amount },
       $push: {
@@ -745,7 +758,7 @@ const codRemittanceRecharge = async (req, res) => {
           amount,
           balanceAfterTransaction: currentWallet.balance + amount,
           date: new Date(),
-          description: `Recharge from COD Remittance`,
+          description: "Recharge from COD Remittance",
         },
       },
     });
@@ -1055,7 +1068,9 @@ const uploadCodRemittance = async (req, res) => {
 
 const CheckCodplan = async (req, res) => {
   try {
-    const userId = req.user?._id; // Ensure req.user exists
+    // console.log("reddd", req.query);
+    const { id } = req.query;
+    const userId = id || req.user?._id; // Ensure req.user exists
     if (!userId) {
       return res.status(400).json({ error: "User ID not found" });
     }
