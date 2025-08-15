@@ -4,8 +4,8 @@ if (process.env.NODE_ENV != "production") {
 const { validateForm, validateEmail } = require("../utils/afv");
 const User = require("../models/User.model");
 const Role = require("../models/roles.modal");
-const RateCard=require("../models/rateCards")
-const Plan=require("../models/Plan.model")
+const RateCard = require("../models/rateCards");
+const Plan = require("../models/Plan.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { sendWelcomeEmail } = require("../notification/welcomeNotification");
@@ -126,7 +126,7 @@ const register = async (req, res) => {
     const newPlan = new Plan({
       userId: newUser._id,
       userName: fullname,
-      planName: "bronze", 
+      planName: "bronze",
       rateCard: bronzeRateCard, // Assigning the fetched rate card
     });
 
@@ -197,6 +197,10 @@ const login = async (req, res) => {
         message: "Password is incorrect",
       });
     }
+
+    // 🔹 Save last login date & time
+    user.lastLogin = new Date();
+    await user.save();
 
     const payload = {
       user: {
@@ -385,13 +389,11 @@ const forgetPassword = async (req, res) => {
   }
 };
 
-
-
 module.exports = {
   register,
   login,
   googleLogin,
   googleLoginFail,
   verifySession,
-  forgetPassword
+  forgetPassword,
 };

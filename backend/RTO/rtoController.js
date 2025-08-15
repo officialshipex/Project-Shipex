@@ -169,8 +169,8 @@ const rtoCharges = async () => {
   }
 };
 
-cron.schedule("0 */3 * * *", () => {
-  console.log("⏰ Running scheduled task every 3 hours: Fetching orders...");
+cron.schedule("0 */5 * * *", () => {
+  console.log("⏰ Running scheduled task every 5 hours: Fetching orders...");
   rtoCharges();
 });
 

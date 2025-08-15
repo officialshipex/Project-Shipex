@@ -16,74 +16,62 @@ const getAllCodRemittance = async (req, res) => {
       utr,
     } = req.query;
 
-    const userMatchStage = {};
+    const parsedLimit = limit === "all" ? 0 : Number(limit);
+    const skip = (Number(page) - 1) * (parsedLimit || 0);
+
+    // ---------- Base filters ----------
+    const userIdFilter = {};
     const remittanceMatchStage = {};
 
-    // --- Employee filtering logic ---
-    let allocatedUserIds = null;
-    if (req.employee && req.employee.employeeId) {
+    // Employee allocation filter
+    if (req.employee?.employeeId) {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
       });
-      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+
+      const allocatedUserIds = allocations.map(
+        (a) => new mongoose.Types.ObjectId(a.sellerMongoId)
+      );
+
       if (allocatedUserIds.length === 0) {
         return res.json({
           total: 0,
           page: Number(page),
-          limit: limit === "all" ? "all" : Number(limit),
+          limit: parsedLimit === 0 ? "all" : parsedLimit,
           results: [],
           summary: {
+            CODToBeRemitted: 0,
             totalCodRemitted: 0,
             totalDeductions: 0,
             totalRemittanceInitiated: 0,
-            CODToBeRemitted: null,
           },
         });
       }
-      userMatchStage["user._id"] = { $in: allocatedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+
+      userIdFilter.userId = { $in: allocatedUserIds };
     }
 
-    if (userSearch) {
-      const regex = new RegExp(userSearch, "i");
-      if (mongoose.Types.ObjectId.isValid(userSearch)) {
-        userMatchStage["$or"] = [
-          { "user._id": new mongoose.Types.ObjectId(userSearch) },
-          { "user.email": regex },
-          { "user.fullname": regex },
-        ];
-      } else {
-        userMatchStage["$or"] = [
-          { "user.email": regex },
-          { "user.fullname": regex },
-        ];
-      }
-    }
-
+    // Date filter
     if (fromDate && toDate) {
-      const startDate = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
-      const endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
+      const startDate = new Date(fromDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
       remittanceMatchStage["remittanceData.date"] = {
         $gte: startDate,
         $lte: endDate,
       };
     }
 
-    if (status) {
-      remittanceMatchStage["remittanceData.status"] = status;
-    }
-
-    if (remittanceId) {
+    // Status / remittanceId / utr filters
+    if (status) remittanceMatchStage["remittanceData.status"] = status;
+    if (remittanceId)
       remittanceMatchStage["remittanceData.remittanceId"] = remittanceId;
-    }
+    if (utr) remittanceMatchStage["remittanceData.utr"] = utr;
 
-    if (utr) {
-      remittanceMatchStage["remittanceData.utr"] = utr;
-    }
-
-    const parsedLimit = limit === "all" ? 0 : Number(limit);
-    const skip = (Number(page) - 1) * parsedLimit;
-
-    const basePipeline = [
+    // ---------- Shared base (no unwind) ----------
+    const base = [
+      { $match: userIdFilter },
       {
         $lookup: {
           from: "users",
@@ -93,84 +81,195 @@ const getAllCodRemittance = async (req, res) => {
         },
       },
       { $unwind: "$user" },
-      { $match: userMatchStage },
-      { $unwind: "$remittanceData" },
-      { $match: remittanceMatchStage },
+      ...(userSearch
+        ? [
+            {
+              $match: {
+                $or: [
+                  ...(mongoose.Types.ObjectId.isValid(userSearch)
+                    ? [{ "user._id": new mongoose.Types.ObjectId(userSearch) }]
+                    : []),
+                  { "user.email": new RegExp(userSearch, "i") },
+                  { "user.fullname": new RegExp(userSearch, "i") },
+                ],
+              },
+            },
+          ]
+        : []),
     ];
 
-    const dataPipeline = [
-      ...basePipeline,
+    // ---------- One-shot aggregate with FACET ----------
+    const pipeline = [
+      ...base,
       {
-        $project: {
-          _id: 0,
-          user: {
-            userId: "$user.userId",
-            name: "$user.fullname",
-            email: "$user.email",
-            phoneNumber: "$user.phoneNumber",
-          },
-          remittanceId: "$remittanceData.remittanceId",
-          date: "$remittanceData.date",
-          status: "$remittanceData.status",
-          remittanceMethod: "$remittanceData.remittanceMethod",
-          utr: "$remittanceData.utr",
-          codAvailable: "$remittanceData.codAvailable",
-          amountCreditedToWallet: "$remittanceData.amountCreditedToWallet",
-          earlyCodCharges: "$remittanceData.earlyCodCharges",
-          adjustedAmount: "$remittanceData.adjustedAmount",
-          TotalCODRemitted: "$TotalCODRemitted",
-          TotalDeductionfromCOD: "$TotalDeductionfromCOD",
+        $facet: {
+          // 1) Visible rows (paged)
+          rows: [
+            { $unwind: "$remittanceData" },
+            { $match: remittanceMatchStage },
+            {
+              $addFields: {
+                codAvailableNum: {
+                  $toDouble: { $ifNull: ["$remittanceData.codAvailable", 0] },
+                },
+                amountCreditedToWalletNum: {
+                  $toDouble: {
+                    $ifNull: ["$remittanceData.amountCreditedToWallet", 0],
+                  },
+                },
+                earlyCodChargesNum: {
+                  $toDouble: {
+                    $ifNull: ["$remittanceData.earlyCodCharges", 0],
+                  },
+                },
+                adjustedAmountNum: {
+                  $toDouble: { $ifNull: ["$remittanceData.adjustedAmount", 0] },
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                user: {
+                  userId: "$user.userId",
+                  name: "$user.fullname",
+                  email: "$user.email",
+                  phoneNumber: "$user.phoneNumber",
+                },
+                remittanceId: "$remittanceData.remittanceId",
+                date: "$remittanceData.date",
+                status: "$remittanceData.status",
+                remittanceMethod: "$remittanceData.remittanceMethod",
+                utr: "$remittanceData.utr",
+                codAvailable: "$codAvailableNum",
+                amountCreditedToWallet: "$amountCreditedToWalletNum",
+                earlyCodCharges: "$earlyCodChargesNum",
+                adjustedAmount: "$adjustedAmountNum",
+              },
+            },
+            { $sort: { date: -1 } },
+            ...(parsedLimit === 0 ? [] : [{ $skip: skip }, { $limit: parsedLimit }]),
+          ],
+
+          // 2) Total count for pagination (same filters as rows, but just count)
+          count: [
+            { $unwind: "$remittanceData" },
+            { $match: remittanceMatchStage },
+            { $count: "total" },
+          ],
+
+          // 3) Row-based totals so they match what you SEE
+          totals: [
+            { $unwind: "$remittanceData" },
+            { $match: remittanceMatchStage },
+            {
+              $addFields: {
+                codAvailableNum: {
+                  $toDouble: { $ifNull: ["$remittanceData.codAvailable", 0] },
+                },
+                amountCreditedToWalletNum: {
+                  $toDouble: {
+                    $ifNull: ["$remittanceData.amountCreditedToWallet", 0],
+                  },
+                },
+                earlyCodChargesNum: {
+                  $toDouble: {
+                    $ifNull: ["$remittanceData.earlyCodCharges", 0],
+                  },
+                },
+                adjustedAmountNum: {
+                  $toDouble: { $ifNull: ["$remittanceData.adjustedAmount", 0] },
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                // Sum of COD for Paid rows
+                totalCodRemitted: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$remittanceData.status", "Paid"] },
+                      "$codAvailableNum",
+                      0,
+                    ],
+                  },
+                },
+                // Sum of deductions across visible rows
+                totalDeductions: {
+                  $sum: {
+                    $add: [
+                      "$amountCreditedToWalletNum",
+                      "$earlyCodChargesNum",
+                      "$adjustedAmountNum",
+                    ],
+                  },
+                },
+                // Sum of COD for Pending rows (initiated but not paid)
+                totalRemittanceInitiated: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$remittanceData.status", "Pending"] },
+                      "$codAvailableNum",
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+
+          // 4) Snapshot across matched users (no date/status duplication)
+          codSnapshot: [
+            {
+              $project: {
+                CODToBeRemittedNum: {
+                  $toDouble: { $ifNull: ["$CODToBeRemitted", 0] },
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                CODToBeRemitted: { $sum: "$CODToBeRemittedNum" },
+              },
+            },
+          ],
         },
       },
-      { $sort: { date: -1 } },
     ];
 
-    const summaryPipeline = [
-      ...basePipeline,
-      {
-        $group: {
-          _id: null,
-          totalCodRemitted: { $sum: "$TotalCODRemitted" },
-          totalDeductions: { $sum: "$TotalDeductionfromCOD" },
-          totalRemittanceInitiated: { $sum: "$RemittanceInitiated" },
-          CODToBeRemitted: { $max: "$CODToBeRemitted" },
-        },
-      },
-    ];
+    const [faceted] = await CodRemittance.aggregate(pipeline);
 
-    const [results, totalResult, summaryData] = await Promise.all([
-      parsedLimit === 0
-        ? CodRemittance.aggregate(dataPipeline)
-        : CodRemittance.aggregate([
-            ...dataPipeline,
-            { $skip: skip },
-            { $limit: parsedLimit },
-          ]),
+    const rows = faceted.rows || [];
+    const total = faceted.count?.[0]?.total || 0;
 
-      CodRemittance.aggregate([...dataPipeline, { $count: "total" }]),
+    const totals = faceted.totals?.[0] || {
+      totalCodRemitted: 0,
+      totalDeductions: 0,
+      totalRemittanceInitiated: 0,
+    };
 
-      CodRemittance.aggregate(summaryPipeline),
-    ]);
-
-    const total = totalResult[0]?.total || 0;
-    const summary = summaryData[0] || {};
+    const codSnap = faceted.codSnapshot?.[0] || { CODToBeRemitted: 0 };
 
     return res.json({
       total,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
-      results,
+      results: rows,
       summary: {
-        totalCodRemitted: summary.totalCodRemitted || 0,
-        totalDeductions: summary.totalDeductions || 0,
-        totalRemittanceInitiated: summary.totalRemittanceInitiated || 0,
-        CODToBeRemitted: summary.CODToBeRemitted || null,
+        CODToBeRemitted: codSnap.CODToBeRemitted || 0,       // snapshot (user-level)
+        totalCodRemitted: totals.totalCodRemitted || 0,       // from Paid rows
+        totalDeductions: totals.totalDeductions || 0,         // from visible rows
+        totalRemittanceInitiated: totals.totalRemittanceInitiated || 0, // from Pending rows
       },
     });
   } catch (error) {
     console.error("Error in getAllCodRemittance:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 module.exports = { getAllCodRemittance };

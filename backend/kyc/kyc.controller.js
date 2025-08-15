@@ -455,33 +455,34 @@ verfication.post("/bank-account", async (req, res) => {
         message: "All fields are required",
       });
     }
-
-    // const validateField = validateBankDetails(accountNo, ifsc);
-
-    // if (!validateField.valid) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: validateField.message,
-    //   });
-    // }
-
-    const bankAccountExists = await BankAccount.findOne({
+    // 🔹 Check if the same bank account number exists for another user
+    const accountExistsForAnotherUser = await BankAccount.findOne({
       accountNumber: accountNo,
+      user: { $ne: userId },
     });
 
-    if (bankAccountExists) {
-      if (!bankAccountExists.user.equals(userId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Bank Account already exists for another user",
-        });
-      }
-      return res.status(200).json({
-        success: true,
-        message: "Bank Account already exists",
+    if (accountExistsForAnotherUser) {
+      return res.status(400).json({
+        success: false,
+        message: "This bank account is already linked to another user",
       });
     }
 
+    // 🔹 Check if bank details already exist for this user
+    let existingBankAccount = await BankAccount.findOne({ user: userId });
+    // 🔹 If same details exist, skip everything
+    if (
+      existingBankAccount &&
+      existingBankAccount.accountNumber === accountNo &&
+      existingBankAccount.ifsc === ifsc
+    ) {
+      return res.status(400).json({
+        success: true,
+        message: "Bank Account already exists",
+        data: existingBankAccount,
+      });
+    }
+    // 🔹 Call Cashfree verification API
     const data = JSON.stringify({
       bank_account: accountNo,
       ifsc: ifsc,
@@ -505,38 +506,55 @@ verfication.post("/bank-account", async (req, res) => {
     };
 
     const response = await axios.request(config);
-    console.log(response);
+    console.log("bank account", response.data);
 
     if (response.data.account_status === "INVALID") {
-      console.log(
-        "response.data.account_status_code:",
-        response.data.account_status_code
-      );
       return res.status(400).json({
         success: false,
         message: response.data.account_status_code,
       });
     }
 
-    const newBankAccount = new BankAccount({
-      user: userId,
-      accountNumber: accountNo,
-      ifsc: ifsc,
-      AccountStatus: response.data.account_status,
-      nameAtBank: response.data.name_at_bank,
-      bank: response.data.bank_name,
-      branch: response.data.branch,
-      city: response.data.city,
-      nameMatchResult: response.data.name_match_result,
-    });
+    if (existingBankAccount) {
+      // 🔹 Update existing bank details
+      existingBankAccount.accountNumber = accountNo;
+      existingBankAccount.ifsc = ifsc;
+      existingBankAccount.AccountStatus = response.data.account_status;
+      existingBankAccount.nameAtBank = response.data.name_at_bank;
+      existingBankAccount.bank = response.data.bank_name;
+      existingBankAccount.branch = response.data.branch;
+      existingBankAccount.city = response.data.city;
+      existingBankAccount.nameMatchResult = response.data.name_match_result;
 
-    await newBankAccount.save();
+      await existingBankAccount.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Bank Account verified successfully",
-      data: newBankAccount,
-    });
+      return res.status(200).json({
+        success: true,
+        message: "Bank Account updated successfully",
+        data: existingBankAccount,
+      });
+    } else {
+      // 🔹 Create new bank account
+      const newBankAccount = new BankAccount({
+        user: userId,
+        accountNumber: accountNo,
+        ifsc: ifsc,
+        AccountStatus: response.data.account_status,
+        nameAtBank: response.data.name_at_bank,
+        bank: response.data.bank_name,
+        branch: response.data.branch,
+        city: response.data.city,
+        nameMatchResult: response.data.name_match_result,
+      });
+
+      await newBankAccount.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Bank Account verified successfully",
+        data: newBankAccount,
+      });
+    }
   } catch (err) {
     console.log("err:", err);
 
@@ -684,22 +702,18 @@ verfication.post("/kyc", async (req, res) => {
 
     await User.findByIdAndUpdate(userId, { kycDone: true, isVerified: true });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "KYC verified successfully",
-        data: newKyc,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "KYC verified successfully",
+      data: newKyc,
+    });
   } catch (err) {
     console.error("Error in KYC Submission:", err);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: err.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 });
 

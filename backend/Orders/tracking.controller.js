@@ -1,10 +1,11 @@
 const Order = require("../models/newOrder.model");
 const Wallet = require("../models/wallet");
 const User = require("../models/User.model");
-const DTDCStatusMapping = require("./DTDCStatusMapping");
-const SmartShipStatusMapping = require("./SmartShipStatusMapping");
-const DelhiveryStatusMapping = require("./DelhiveryStatusMapping");
-const AmazonStatusMapping = require("./AmazonStatusMapping");
+const DTDCStatusMapping = require("../statusMap/DTDCStatusMapping");
+const SmartShipStatusMapping = require("../statusMap/SmartShipStatusMapping");
+const DelhiveryStatusMapping = require("../statusMap/DelhiveryStatusMapping");
+const AmazonStatusMapping = require("../statusMap/AmazonStatusMapping");
+const ecomExpressStatusMapping = require("../statusMap/EcomStatusMapping");
 const cron = require("node-cron");
 const {
   shipmentTrackingforward,
@@ -77,36 +78,6 @@ const trackSingleOrder = async (order) => {
     let balanceTobeAdded = 0;
 
     if (provider === "EcomExpress") {
-      const ecomExpressStatusMapping = {
-        "soft data uploaded": "Ready To Ship",
-        "pickup assigned": "In-transit",
-        "out for pickup": "In-transit",
-        "pickup failed": "Ready To Ship",
-        "pickup scheduled": "Ready To Ship",
-        "field pickup done": "In-transit",
-        bagged: "In-transit",
-        "bag added to connection": "In-transit",
-        "departed from location": "In-transit",
-        "redirected to another": "In-transit",
-        "bag inscan at location": "In-transit",
-        "origin facility inscan": "In-transit",
-        "shipment inscan at location": "In-transit",
-        "shipment debagged at location": "In-transit",
-        "redirected to another delivery center (dc update) ": "In-transit",
-        "out for delivery": "Out for Delivery",
-        undelivered: "Undelivered",
-        "mass update": "Undelivered",
-        delivered: "Delivered",
-        "arrived at destination": "In-transit",
-        "ofd lock": "RTO",
-        "rto lock": "RTO",
-        returned: "RTO In-transit",
-        cancelled: "Cancelled",
-        lost: "Cancelled",
-        // undelivered: "In-transit",
-        "not picked": "Ready To Ship",
-      };
-
       const instruction = normalizedData.Instructions?.toLowerCase();
       order.status = ecomExpressStatusMapping[instruction];
 
@@ -294,7 +265,6 @@ const trackSingleOrder = async (order) => {
         order.status = "Delivered";
         // order.ndrStatus = "Delivered";
       }
-      
     }
     if (provider === "Amazon") {
       // console.log("Amazon", normalizedData);
@@ -407,7 +377,6 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "RTO Delivered";
         }
       }
-      
     }
     if (provider === "Smartship") {
       const instruction = normalizedData.Instructions?.toLowerCase();
@@ -417,7 +386,11 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "RTO";
       }
       // console.log("Smartship instruction", instruction);
-      if (order.status === "RTO In-transit") {
+      if (
+        instruction !== "rto  shipper request" &&
+        normalizedData.Status === "Return To Origin"
+      ) {
+        order.status = "RTO In-transit";
         order.ndrStatus = "RTO In-transit";
       }
 
@@ -427,7 +400,7 @@ const trackSingleOrder = async (order) => {
       if (
         (order.ndrStatus === "Undelivered" ||
           order.ndrStatus === "Out for Delivery") &&
-        (normalizedData.Instructions === "Delivered" ||
+        (instruction === "shipment delivered" ||
           normalizedData.Instructions === "Delivery Confirmed by Customer")
       ) {
         order.ndrStatus = "Delivered";
@@ -466,7 +439,85 @@ const trackSingleOrder = async (order) => {
           }
         }
       }
-      
+
+      if (
+        (order.status === "RTO" || order.status === "RTO In-transit") &&
+        (instruction === "rto delivered to shipper" ||
+          instruction === "rto delivered to fc")
+      ) {
+        order.status = "RTO Delivered";
+        order.ndrStatus = "RTO Delivered";
+      }
+      if (
+        instruction === "delivered" ||
+        instruction === "delivery confirmed by customer"
+      ) {
+        order.status = "Delivered";
+        // order.ndrStatus = "Delivered";
+      }
+    }
+    if (provider === "Vamaship") {
+      const instruction = normalizedData.Instructions?.toLowerCase();
+      // console.log("Smartship instruction", instruction);
+      order.status = SmartShipStatusMapping[instruction];
+      if (order.status === "RTO") {
+        order.ndrStatus = "RTO";
+      }
+      // console.log("Smartship instruction", instruction);
+      if (
+        instruction !== "rto  shipper request" &&
+        normalizedData.Status === "Return To Origin"
+      ) {
+        order.status = "RTO In-transit";
+        order.ndrStatus = "RTO In-transit";
+      }
+
+      if (SmartShipStatusMapping[instruction] === "Out for Delivery") {
+        order.ndrStatus = "Out for Delivery";
+      }
+      if (
+        (order.ndrStatus === "Undelivered" ||
+          order.ndrStatus === "Out for Delivery") &&
+        (instruction === "shipment delivered" ||
+          normalizedData.Instructions === "Delivery Confirmed by Customer")
+      ) {
+        order.ndrStatus = "Delivered";
+      }
+      if (SmartShipStatusMapping[instruction] === "Undelivered") {
+        order.status = "Undelivered";
+        order.ndrStatus = "Undelivered";
+        updateNdrHistoryByAwb(order.awb_number);
+        order.ndrReason = {
+          date: normalizedData.StatusDateTime,
+          reason: normalizedData.StrRemarks,
+        };
+        // if (!Array.isArray(order.ndrHistory)) {
+        //   order.ndrHistory = [];
+        // }
+        const lastEntryDate = new Date(
+          order.ndrHistory[order.ndrHistory.length - 1]?.date
+        ).toDateString();
+        const currentStatusDate = new Date(
+          normalizedData.StatusDateTime
+        ).toDateString();
+
+        if (
+          lastEntryDate !== currentStatusDate ||
+          order.ndrHistory.length === 0
+        ) {
+          const attemptCount = order.ndrHistory?.length || 0;
+          if (SmartShipStatusMapping[instruction] === "Undelivered") {
+            // process.exit(1)
+            order.ndrHistory.push({
+              date: normalizedData.StatusDateTime,
+              action: "Auto Reattempt",
+              remark: normalizedData.StrRemarks,
+              attempt: attemptCount + 1,
+            });
+          }
+        }
+      }
+
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
         (instruction === "rto delivered to shipper" ||
@@ -565,7 +616,6 @@ const trackSingleOrder = async (order) => {
           });
         }
       }
-      
     }
 
     const lastTrackingEntry = order.tracking[order.tracking.length - 1];

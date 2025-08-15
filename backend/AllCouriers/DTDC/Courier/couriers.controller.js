@@ -337,7 +337,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
     );
 
     const zipCodeResponse = response.data.ZIPCODE_RESP || [];
-    console.log("DTDC Response:", response.data);
+    // console.log("DTDC Response:", response.data);
 
     if (zipCodeResponse.length === 0) {
       return { success: false }; // No data returned

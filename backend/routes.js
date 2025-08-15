@@ -31,6 +31,7 @@ const DelhiveryController = require("./AllCouriersRoutes/delhivery.router");
 const DtdcController = require("./AllCouriersRoutes/dtdc.router");
 const AmazonRouter = require("./AllCouriersRoutes/amazon.router");
 const Ekart = require("./AllCouriersRoutes/ekart.router");
+const Vamaship=require("./AllCouriersRoutes/vamaship.router")
 const LabelRouter = require("./label/label.router");
 const couriersB2CRoutes = require("./routes/couriersB2C.router");
 // const courierServicesRoutes=require('./routes/courierServiceB2C.router');
@@ -114,6 +115,7 @@ router.use("/DTDC", DtdcController);
 router.use("/Delhivery", DelhiveryController);
 router.use("/Amazon", AmazonRouter);
 router.use("/Ekart",Ekart)
+router.use("/Vamaship",Vamaship)
 
 router.use("/label", LabelRouter);
 router.use("/user", userRouter);
