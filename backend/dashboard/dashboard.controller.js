@@ -830,7 +830,7 @@ const totalNdr = result.actionRequired[0]?.count || 0 +result.actionRequested[0]
 
         // NDR Details
         ndrStats: {
-          totalNdr: totalNdr || 0,
+          totalNdr: result.actionRequired[0]?.count+result.actionRequested[0]?.count || 0,
           actionRequired: result.actionRequired[0]?.count || 0,
           actionRequested: result.actionRequested[0]?.count || 0,
           ndrDelivered: result.ndrDelivered[0]?.count || 0,
