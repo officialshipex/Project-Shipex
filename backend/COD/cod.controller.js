@@ -517,7 +517,7 @@ cron.schedule("25 2 * * *", () => {
   console.log("Running scheduled task at 2:25 AM: Migrating afterPlan...");
   fetchExtraData();
 });
-fetchExtraData();
+// fetchExtraData();
 
 const codRemittanceData = async (req, res) => {
   try {
@@ -723,6 +723,18 @@ const codRemittanceRecharge = async (req, res) => {
       return res.status(400).json({ message: "Invalid recharge amount" });
     }
 
+    // ✅ Find user correctly
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Fetch all COD orders for this user (Pending)
+    const allCodRemittanceOrder = await CodRemittanceOrdersModel.find({
+      Email: user.email,
+      status: "Pending",
+    }).sort({ Date: 1 }); // optional: sort oldest first
+
     const remittanceRecord = await codRemittance.findOne({ userId }).lean();
     if (!remittanceRecord) {
       return res.status(404).json({ message: "Remittance record not found" });
@@ -735,14 +747,14 @@ const codRemittanceRecharge = async (req, res) => {
           .reduce((sum, r) => sum + Number(r.codAvailable || 0), 0)
       : 0;
 
-    // Determine the lower value between remittanceRecord.RemittanceInitiated and pendingCodAvailable
+    // Determine the lower value between RemittanceInitiated and pendingCodAvailable
     const effectivePending = Math.min(
       Number(remittanceRecord.RemittanceInitiated || 0),
       pendingCodAvailable
     );
 
     // Check if requested recharge exceeds effective pending amount
-    if (amount > effectivePending) {
+    if (amount > remittanceRecord.CODToBeRemitted) {
       return res.status(400).json({
         message: "Insufficient COD Available Balance",
         available: effectivePending,
@@ -754,7 +766,28 @@ const codRemittanceRecharge = async (req, res) => {
       return res.status(404).json({ message: "Wallet not found" });
     }
 
-    // Update remittance amounts
+    // ✅ Deduct amount against COD Orders
+    let remainingAmount = amount;
+    let fulfilledOrders = [];
+
+    for (const order of allCodRemittanceOrder) {
+      const codValue = Number(order.CODAmount);
+
+      if (remainingAmount >= codValue) {
+        // Mark this order as Paid
+        await CodRemittanceOrdersModel.updateOne(
+          { _id: order._id },
+          { $set: { status: "Paid" } }
+        );
+
+        fulfilledOrders.push(order.orderID);
+        remainingAmount -= codValue;
+      }
+
+      if (remainingAmount <= 0) break;
+    }
+
+    // ✅ Update remittance record
     await codRemittance.updateOne(
       { _id: remittanceRecord._id },
       {
@@ -766,7 +799,7 @@ const codRemittanceRecharge = async (req, res) => {
       }
     );
 
-    // Push transaction and update wallet balance atomically
+    // ✅ Push transaction and update wallet balance
     await currentWallet.updateOne({
       $inc: { balance: amount },
       $push: {
@@ -783,6 +816,9 @@ const codRemittanceRecharge = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "COD remittance recharge processed successfully.",
+      rechargedAmount: amount,
+      fulfilledOrders,
+      remainingBalance: remainingAmount,
     });
   } catch (error) {
     console.error("Error processing COD remittance recharge:", error);
@@ -793,6 +829,7 @@ const codRemittanceRecharge = async (req, res) => {
     });
   }
 };
+
 
 const downloadSampleExcel = async (req, res) => {
   try {
@@ -1643,7 +1680,7 @@ const CodRemittanceOrder = async (req, res) => {
     const pendingCODAmount = filteredOrders
       .filter((o) => o.status === "Pending")
       .reduce((sum, o) => sum + (o.codAmountNum || 0), 0);
-
+    console.log("pagin", paginatedData);
     return res.status(200).json({
       success: true,
       message: "COD remittance orders retrieved successfully",
