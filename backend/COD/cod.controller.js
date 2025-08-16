@@ -517,7 +517,7 @@ cron.schedule("25 2 * * *", () => {
   console.log("Running scheduled task at 2:25 AM: Migrating afterPlan...");
   fetchExtraData();
 });
-fetchExtraData();
+// fetchExtraData();
 
 const codRemittanceData = async (req, res) => {
   try {
