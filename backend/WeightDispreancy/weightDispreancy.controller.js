@@ -131,7 +131,7 @@ const uploadDispreancy = async (req, res) => {
         !matchedRateCard.weightPriceAdditional?.length
       )
         continue;
-      console.log("awb", awb);
+      // console.log("awb", awb);
       const basicWeightSlabGrams = matchedRateCard.weightPriceBasic[0].weight;
       const additionalWeightSlabGrams =
         matchedRateCard.weightPriceAdditional[0].weight;
@@ -147,20 +147,20 @@ const uploadDispreancy = async (req, res) => {
 
       const applicableWeightKg = Math.max(volumetricWeightKg, actualWeightKg);
 
-      console.log("applicableWeightKg", applicableWeightKg);
+      // console.log("applicableWeightKg", applicableWeightKg);
       const roundedApplicableGrams =
         Math.ceil((applicableWeightKg * 1000) / basicWeightSlabGrams) *
         basicWeightSlabGrams;
 
-      console.log("roundedApplicableGrams", roundedApplicableGrams);
+      // console.log("roundedApplicableGrams", roundedApplicableGrams);
       const chargedGrams =
         Math.ceil(
           (chargeData.chargeWeight * 1000) / additionalWeightSlabGrams
         ) * additionalWeightSlabGrams;
       const chargedKg = chargedGrams / 1000;
       if (chargedGrams <= basicWeightSlabGrams) continue;
-      console.log("chargedGrams", chargedGrams);
-      console.log("chargedKg", chargedKg);
+      // console.log("chargedGrams", chargedGrams);
+      // console.log("chargedKg", chargedKg);
       if (chargedGrams <= roundedApplicableGrams) continue;
 
       let excessGrams = chargedGrams - roundedApplicableGrams;
@@ -189,7 +189,7 @@ const uploadDispreancy = async (req, res) => {
       const additionalCharges = await calculateRateForDispute(payload);
       if (!additionalCharges || !additionalCharges[0]) continue;
 
-      console.log("additionalCharges", additionalCharges);
+      // console.log("additionalCharges", additionalCharges);
 
       const discrepancy = new WeightDiscrepancy({
         userId,
@@ -230,7 +230,7 @@ const uploadDispreancy = async (req, res) => {
       });
 
       discrepancies.push(discrepancy);
-      console.log("final data", discrepancy);
+      // console.log("final data", discrepancy);
     }
 
     if (discrepancies.length > 0) {
@@ -248,7 +248,7 @@ const uploadDispreancy = async (req, res) => {
           discrepancy.excessWeightCharges?.pendingAmount || 0
         ).toFixed(2);
 
-        console.log("amoutn", amountToHold);
+        // console.log("amoutn", amountToHold);
 
         if (isNaN(amountToHold)) {
           console.warn(
@@ -663,7 +663,7 @@ const AcceptDiscrepancy = async (req, res) => {
       amount: extraCharges,
       balanceAfterTransaction: wallet.balance,
       awb_number: awb_number,
-      description: `Charge for excess weight`,
+      description: `Weight Dispute Charges Applied`,
     };
     wallet.transactions.push(newTransaction);
 
@@ -778,7 +778,7 @@ const AcceptAllDiscrepancies = async (req, res) => {
         amount: extraCharges,
         balanceAfterTransaction: wallet.balance, // can remain same for all if needed
         awb_number: discrepancy.awbNumber,
-        description: `Charge for excess weight`,
+        description: `Weight Dispute Charges Applied`,
       };
 
       wallet.transactions.push(newTransaction);
@@ -860,7 +860,7 @@ const autoAcceptDiscrepancies = async () => {
         amount: extraCharges,
         balanceAfterTransaction: wallet.balance,
         awb_number: discrepancy.awbNumber,
-        description: `Auto-accepted charge`,
+        description: `Auto-accepted Weight Dispute charge`,
       };
 
       wallet.transactions.push(newTransaction);

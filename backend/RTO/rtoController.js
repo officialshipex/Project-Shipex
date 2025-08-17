@@ -64,7 +64,7 @@ const rtoCharges = async () => {
         const totalChargesReverse = charges + gstAmountForward;
 
         const awb = item.awb_number || "";
-        const codDescription = "COD Charges Reversed";
+        const codDescription = "COD Charges Received";
         const rtoDescription = "RTO Freight Charges Applied";
         const currentDate = new Date()
           .toISOString()

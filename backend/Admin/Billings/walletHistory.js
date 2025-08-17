@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const User = require("../../models/User.model");
 const Wallet = require("../../models/wallet");
 const AllocateRole = require("../../models/allocateRoleSchema");
+const Order = require("../../models/newOrder.model");
+const weightDispreancy = require("../../WeightDispreancy/weightDispreancy.model");
 
 const getAllTransactionHistory = async (req, res) => {
   try {
@@ -219,13 +221,13 @@ const addWalletHistory = async (req, res) => {
     if (status === "success") {
       wallet.balance += numericAmount;
 
-      // wallet.transactions.push({
-      //   category: "credit",
-      //   amount: Number(amount),
-      //   balanceAfterTransaction: wallet.balance,
-      //   description: `Credited via Payment ID ${paymentId}`,
-      //   channelOrderId: orderId,
-      // });
+      wallet.transactions.push({
+        category: "credit",
+        amount: Number(amount),
+        balanceAfterTransaction: wallet.balance,
+        description: `Recharge From Gateway(Razorpay)`,
+        channelOrderId: orderId,
+      });
     }
 
     await wallet.save();
@@ -296,14 +298,14 @@ const addPassbook = async (req, res) => {
 
     const currentBalance =
       typeof wallet.balance === "number" ? wallet.balance : 0;
-      console.log("currentBalance",currentBalance);
+    console.log("currentBalance", currentBalance);
 
     // Calculate new balance
     const newBalance =
-  transactionType === "credit"
-    ? currentBalance + parsedAmount
-    : currentBalance - parsedAmount;
-console.log("new balance",newBalance)
+      transactionType === "credit"
+        ? currentBalance + parsedAmount
+        : currentBalance - parsedAmount;
+    console.log("new balance", newBalance);
     // Add to wallet history
     // wallet.walletHistory.push({
     //   paymentDetails: {
@@ -340,4 +342,212 @@ console.log("new balance",newBalance)
   }
 };
 
-module.exports = { getAllTransactionHistory, addWalletHistory, addPassbook };
+const walletUpdation = async (req, res) => {
+  try {
+    const { amount, description, awbNumber, userId, category } = req.body;
+
+    console.log("req data", req.body);
+
+    // ✅ Validate required fields
+    if (!userId) return res.status(400).json({ error: "User ID is required" });
+    if (!awbNumber)
+      return res.status(400).json({ error: "AWB Number is required" });
+    if (!description)
+      return res.status(400).json({ error: "Description is required" });
+    if (!amount) return res.status(400).json({ error: "Amount is required" });
+    if (!category)
+      return res.status(400).json({ error: "Category is required" });
+    if (!["credit", "debit"].includes(category.toLowerCase())) {
+      return res
+        .status(400)
+        .json({ error: "Category must be either 'credit' or 'debit'" });
+    }
+
+    // ✅ Find User
+    const user = await User.findOne({ userId });
+    if (!user || !user.Wallet) {
+      return res.status(404).json({ error: "User or Wallet not found" });
+    }
+
+    // ✅ Find Wallet
+    const wallet = await Wallet.findById(user.Wallet);
+    if (!wallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    // ✅ Check if AWB Number already exists
+    const existingTxn = wallet.transactions.find(
+      (txn) => txn.awb_number === awbNumber
+    );
+
+    if (!existingTxn) {
+      return res.status(404).json({
+        success: false,
+        message: `No transaction found with AWB Number: ${awbNumber}`,
+      });
+    }
+
+    // ✅ Fetch Order
+    const order = await Order.findOne({ awb_number: awbNumber });
+
+    // ===== Orders Validations =====
+    if (
+      (description === "COD Charges" ||
+        description === "RTO Freight Charges") &&
+      order.status !== "RTO Delivered"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "COD or RTO Freight Charges can only be applied when the order status is 'RTO Delivered'.",
+      });
+    }
+
+    if (
+      (description === "Shipment Lost Liability" ||
+        description === "Shipment Damaged Liability") &&
+      !["Lost", "Damaged", "RTO Lost", "RTO Damaged"].includes(order.status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Shipment liability can only be applied if the order status is 'Lost', 'Damaged', 'RTO Lost', or 'RTO Damaged'. Current status: ${order.status}.`,
+      });
+    }
+
+    if (
+      (description === "Shipment Lost Liability" ||
+        description === "Shipment Damaged Liability") &&
+      amount > 2000
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Liability amount cannot exceed 2000.",
+      });
+    }
+
+    if (
+      description === "Weight Dispute Charges" &&
+      order.status !== "Delivered"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Weight dispute charges can only be applied when the order status is 'Delivered'.",
+      });
+    }
+
+    const dispute = await weightDispreancy.findOne({ awbNumber: awbNumber });
+
+    if (
+      description === "Weight Dispute Charges" &&
+      category === "debit" &&
+      dispute.status === "Accepted"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Weight dispute charges have already been debited for this order.",
+      });
+    }
+
+    if (
+      description === "Weight Dispute Charges" &&
+      category === "credit" &&
+      dispute.status === "new"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Weight dispute charges cannot be credited until the dispute is resolved.",
+      });
+    }
+
+    // ✅ Normalize comparison
+    const normalizedReqDesc = description.trim().toLowerCase();
+    const normalizedCategory = category.trim().toLowerCase();
+
+    // ✅ Duplicate prevention (DB desc INCLUDES req desc)
+    const duplicateTxn = wallet.transactions.find(
+      (txn) =>
+        txn.awb_number === awbNumber &&
+        txn.description &&
+        txn.description.trim().toLowerCase().includes(normalizedReqDesc) &&
+        txn.category &&
+        txn.category.trim().toLowerCase() === normalizedCategory
+    );
+
+    if (duplicateTxn) {
+      return res.status(409).json({
+        success: false,
+        message: `A ${category} transaction with description '${description}' already exists for AWB Number ${awbNumber}.`,
+      });
+    }
+
+    // ✅ Add NEW transaction since duplicate not found
+    const parsedAmount = parseFloat(amount);
+    const currentBalance =
+      typeof wallet.balance === "number" ? wallet.balance : 0;
+
+    const newBalance =
+      normalizedCategory === "credit"
+        ? currentBalance + parsedAmount
+        : currentBalance - parsedAmount;
+    let updatedCategory;
+    if (category === "credit") {
+      updatedCategory = "Received";
+    } else {
+      updatedCategory = "Applied";
+    }
+    wallet.transactions.push({
+      channelOrderId: order.orderId,
+      awb_number: awbNumber,
+      description: `${description} ${updatedCategory}`,
+      category,
+      amount: parsedAmount,
+      balanceAfterTransaction: newBalance,
+    });
+
+    wallet.balance = newBalance; // ✅ Update balance
+
+    await wallet.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Transaction recorded successfully.",
+      balance: newBalance,
+    });
+  } catch (error) {
+    console.error("walletUpdation error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Node/Express controller
+const searchAwb = async (req, res) => {
+  // console.log("re",req.query)
+  try {
+    const { query } = req.query;
+    if (!query || query.trim().length < 3) return res.json({ awbs: [] });
+    // Example: Case-insensitive search by awbNumber
+    const orders = await Order.find({
+      awb_number: { $regex: query, $options: "i" },
+    }).limit(10);
+    // Return list as [{ awbNumber, orderId }]
+    const awbs = orders.map((o) => ({
+      awbNumber: o.awb_number,
+      orderId: o.orderId,
+    }));
+    console.log("awb", awbs);
+    res.json({ awbs });
+  } catch (error) {
+    res.status(500).json({ error: "Could not fetch AWB list." });
+  }
+};
+
+module.exports = {
+  getAllTransactionHistory,
+  addWalletHistory,
+  addPassbook,
+  walletUpdation,
+  searchAwb,
+};
