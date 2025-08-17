@@ -177,6 +177,14 @@ const razorpayWebhook = async (req, res) => {
       if (event.event === "payment.captured") {
         wallet.balance += amount;
         wallet.walletHistory.push({ status: "success", paymentDetails });
+        // ✅ Add transaction schema entry (for balance impact)
+        wallet.transactions.push({
+          category: "credit", // since wallet is recharged
+          amount,
+          balanceAfterTransaction: wallet.balance,
+          description: `Recharge From Gateway(Razorpay)`,
+          channelOrderId: payment.order_id,
+        });
         await wallet.save({ session });
         await session.commitTransaction();
         session.endSession();
@@ -211,79 +219,6 @@ const razorpayWebhook = async (req, res) => {
     }
   });
 };
-
-// const verifyPayment = async (req, res) => {
-//   const {
-//     razorpay_order_id,
-//     razorpay_payment_id,
-//     razorpay_signature,
-//     walletId,
-//     amount,
-//   } = req.body;
-
-//   const generated_signature = crypto
-//     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-//     .update(razorpay_order_id + "|" + razorpay_payment_id)
-//     .digest("hex");
-
-//   if (generated_signature === razorpay_signature) {
-//     console.log("Payment verified successfully");
-
-//     try {
-//       const currentWallet = await Wallet.findById(walletId);
-
-//       if (!currentWallet) {
-//         return res
-//           .status(404)
-//           .json({ success: false, message: "Wallet not found" });
-//       }
-
-//       // Update balance
-//       currentWallet.balance += amount;
-//       // Generate unique 10-digit transactionId
-//       let transactionId;
-//       let exists = true;
-
-//       while (exists) {
-//         transactionId =
-//           Date.now().toString().slice(-6) +
-//           Math.floor(1000 + Math.random() * 9000);
-//         exists = await Wallet.exists({
-//           "walletHistory.paymentDetails.transactionId": transactionId,
-//         });
-//       }
-
-//       // Save detailed walletHistory (only payment info)
-//       currentWallet.walletHistory.push({
-//         status: "success",
-//         paymentDetails: {
-//           paymentId: razorpay_payment_id,
-//           orderId: razorpay_order_id,
-//           signature: razorpay_signature,
-//           walletId: walletId,
-//           amount: amount,
-//           transactionId: transactionId,
-//         },
-//       });
-
-//       await currentWallet.save();
-
-//       console.log("Wallet updated with payment details");
-
-//       res.json({ success: true, message: "Payment successful" });
-//     } catch (err) {
-//       console.error("Error processing payment:", err);
-//       res.status(500).json({
-//         success: false,
-//         message: "Server error during payment processing",
-//       });
-//     }
-//   } else {
-//     res
-//       .status(400)
-//       .json({ success: false, message: "Payment verification failed" });
-//   }
-// };
 
 const getWalletHistoryByUserId = async (req, res) => {
   try {
