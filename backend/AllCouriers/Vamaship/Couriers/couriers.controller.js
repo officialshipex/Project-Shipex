@@ -162,7 +162,7 @@ const createVamashipShipment = async (req, res) => {
             category: "debit",
             amount: parseInt(finalCharges),
             balanceAfterTransaction: effectiveBalance - parseInt(finalCharges),
-            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            date: new Date(),
             awb_number: shipmentInfo.awb,
             description: `Freight Charges Applied`,
           },

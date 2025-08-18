@@ -1121,7 +1121,7 @@ const cancelOrdersAtBooked = async (req, res) => {
           category: "credit",
           amount: balanceTobeAdded, // Fixing incorrect reference
           balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
-          date: new Date().toISOString().slice(0, 16).replace("T", " "), // Format date & time
+          date: new Date(), // Format date & time
           awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
           description: `Freight Charges Received`,
         },

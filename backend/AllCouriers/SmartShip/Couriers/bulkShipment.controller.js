@@ -167,7 +167,7 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
                       balanceAfterTransaction:{
                         $subtract:["$balance",charges],
                       },
-                      date:new Date().toISOString().slice(0,16).replace("T"," "),
+                      date:new Date(),
                       awb_number:result.awb_number,
                       description:"Freight Charges Applied",
                     },

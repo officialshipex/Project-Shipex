@@ -111,7 +111,7 @@ const createShipmentFunctionDelhivery = async (
           channelOrderId: currentOrder.orderId,
           category: "debit",
           amount: finalCharges,
-          date: new Date().toISOString().slice(0, 16).replace("T", " "),
+          date: new Date(),
           awb_number: result.waybill,
           description: "Freight Charges Applied",
           balanceAfterTransaction: null, // temporary placeholder

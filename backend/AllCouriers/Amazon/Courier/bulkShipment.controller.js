@@ -143,7 +143,7 @@ const createShipmentAmazon = async (
       channelOrderId: currentOrder.orderId,
       category: "debit",
       amount: charges,
-      date: new Date().toISOString().slice(0, 16).replace("T", " "),
+      date: new Date(),
       awb_number: result.packageDocumentDetails[0].trackingId,
       description: "Freight Charges Applied",
       balanceAfterTransaction: null, // temporary placeholder

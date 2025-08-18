@@ -176,7 +176,7 @@ const createOrder = async (req, res) => {
             amount: balanceToBeDeducted, // Fixing incorrect reference
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
-            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            date: new Date(),
             awb_number: result.reference_number || "", // Ensuring it follows the schema
             description: `Freight Charges Applied`,
           },

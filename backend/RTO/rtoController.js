@@ -66,10 +66,8 @@ const rtoCharges = async () => {
         const awb = item.awb_number || "";
         const codDescription = "COD Charges Received";
         const rtoDescription = "RTO Freight Charges Applied";
-        const currentDate = new Date()
-          .toISOString()
-          .slice(0, 16)
-          .replace("T", " ");
+        const currentDate = new Date();
+          
 
         const user = await users.findOne({ _id: item.userId });
         const Wallet = await wallet.findOne({ _id: user.Wallet });

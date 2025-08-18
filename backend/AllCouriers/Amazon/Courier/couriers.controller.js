@@ -145,7 +145,7 @@ const createOneClickShipment = async (req, res) => {
             amount: balanceToBeDeducted,
             balanceAfterTransaction:
               currentWallet.balance - balanceToBeDeducted,
-            date: new Date().toISOString().slice(0, 16).replace("T", " "),
+            date: new Date(),
             awb_number: result.packageDocumentDetails[0].trackingId || "",
             description: "Freight Charges Applied",
           },

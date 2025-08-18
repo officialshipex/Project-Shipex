@@ -162,7 +162,7 @@ const createOrderDTDC = async (
               category: "debit",
               amount: charges,
               balanceAfterTransaction: currentWallet.balance - charges,
-              date: new Date().toISOString().slice(0, 16).replace("T", " "),
+              date: new Date(),
               awb_number: result.reference_number,
               description: "Freight Charges Applied",
             },
