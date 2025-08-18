@@ -30,6 +30,7 @@ const DTDCStatusMapping = {
   "restricted delivery hours":"In-transit",
   "vehicle held in check post for inspection":"In-transit",
   "linehaul delayed road block / traffic jam":"In-transit",
+  "vehicle breakdown":"In-transit",
   damaged: "Damaged",
   "out for delivery": "Out for Delivery",
   "otp based delivered": "Delivered",
