@@ -794,7 +794,7 @@ const codRemittanceRecharge = async (req, res) => {
         $inc: {
           CODToBeRemitted: -amount,
           rechargeAmount: amount,
-          RemittanceInitiated: -amount,
+          // RemittanceInitiated: -amount,
         },
       }
     );

@@ -544,10 +544,106 @@ const searchAwb = async (req, res) => {
   }
 };
 
+const reverseTransaction = async (req, res) => {
+  try {
+    const { transaction } = req.body;
+    if (!transaction || !transaction.user || !transaction.awb_number) {
+      return res.status(400).json({ error: "Invalid request data" });
+    }
+
+    const userId = transaction.user._id;
+    const awbNumber = transaction.awb_number;
+    const orderId = transaction.orderId;
+    const amount = transaction.amount;
+    const description = transaction.description;
+    const category = transaction.category;
+
+    // 1. Find user and wallet
+    const user = await User.findById(userId);
+    if (!user || !user.Wallet) {
+      return res.status(404).json({ error: "User or wallet not found" });
+    }
+
+    const wallet = await Wallet.findById(user.Wallet);
+    if (!wallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+    const reversedDescription = getReversedDescription(description);
+    // 2. Check if already reversed ("credit" transaction with this AWB number exists)
+    const alreadyReversed = wallet.transactions.some(
+      (txn) =>
+        txn.awb_number === awbNumber &&
+        txn.category === "credit" &&
+        txn.description === reversedDescription
+    );
+    if (alreadyReversed) {
+      return res
+        .status(400)
+        .json({ error: "Amount already reversed for this AWB number." });
+    }
+
+    // 3. Find original transaction to get balance before reversal
+    // (optional: for accurate balance if needed)
+    const originalTxn = wallet.transactions.find(
+      (txn) =>
+        txn.awb_number === awbNumber &&
+        txn.category === category &&
+        txn.description === description
+    );
+    if (!originalTxn) {
+      return res
+        .status(404)
+        .json({ error: "Original debit transaction not found." });
+    }
+
+    // 4. Prepare new balance and add reversal transaction
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount)) {
+      return res.status(400).json({ error: "Amount must be a valid number." });
+    }
+
+    const newBalance =
+      (typeof wallet.balance === "number" ? wallet.balance : 0) + parsedAmount;
+
+    wallet.transactions.push({
+      channelOrderId: orderId,
+      category: "credit",
+      amount: parsedAmount,
+      balanceAfterTransaction: newBalance,
+      awb_number: awbNumber,
+      description: reversedDescription,
+    });
+
+    wallet.balance = newBalance;
+    await wallet.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Amount reversed successfully." });
+  } catch (error) {
+    console.error("reverseTransaction error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getReversedDescription = (description) => {
+  if (!description) return "";
+
+  const words = description.trim().split(" ");
+  const lastWord = words[words.length - 1];
+
+  if (lastWord.toLowerCase() === "applied") {
+    words[words.length - 1] = "Received";
+  }
+
+  return words.join(" ");
+};
+
 module.exports = {
   getAllTransactionHistory,
   addWalletHistory,
   addPassbook,
   walletUpdation,
   searchAwb,
+  reverseTransaction,
 };
