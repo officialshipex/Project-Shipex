@@ -23,7 +23,9 @@ const {
 const {
   createShipmentAmazon,
 } = require("../AllCouriers/Amazon/Courier/bulkShipment.controller");
-const { orderRegistrationOneStep } = require("../AllCouriers/SmartShip/Couriers/bulkShipment.controller");
+const {
+  orderRegistrationOneStep,
+} = require("../AllCouriers/SmartShip/Couriers/bulkShipment.controller");
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
@@ -116,15 +118,15 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-        case "Smartship":
-          result=await orderRegistrationOneStep(
-            serviceDetails,
-            order._id,
-            wh,
-            walletId,
-            charges
-          )
-          break;
+      case "Smartship":
+        result = await orderRegistrationOneStep(
+          serviceDetails,
+          order._id,
+          wh,
+          walletId,
+          charges
+        );
+        break;
       case "ShreeMaruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
@@ -214,62 +216,27 @@ const shipBulkOrder = async (req, res) => {
 };
 
 const createBulkOrder = async (req, res) => {
-  // console.log("Bulk order creation initiated");
-  // console.log(req.user._id);
-  const { item, selectedOrders, wh } = req.body;
+  const { item, selectedOrders, wh, id, selectedServiceDetails } = req.body;
   let successCount = 0;
   let failureCount = 0;
   const userId = req.user._id;
-  const user = await User.findOne({ _id: userId });
-  const walletId = user.Wallet;
-  const wallet = await Wallet.findOne({ _id: user.Wallet });
-
-  // console.log("999999",wallet)
-  // const { walletId, availableServices, userId } = req.body;
-  // const { selectedServiceDetails, id, wh } = req.body.payload;
-
-  // const servicesToBeConsidered = availableServices.filter(
-  //   (item) => item.courierProviderServiceName !== "AutoShip"
-  // );
-
-  const remainingOrders = [...selectedOrders];
 
   try {
-    // if (!Array.isArray(id) || id.length === 0) {
-    //   return res
-    //     .status(400)
-    //     .json({ error: "No orders provided for bulk creation." });
-    // }
+    const user = await User.findOne({ _id: userId });
+    const walletId = user.Wallet;
+    const wallet = await Wallet.findOne({ _id: walletId });
 
+    const remainingOrders = [...(selectedOrders || id || [])];
+
+    // Helper for delay
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    // ---------------------- AUTO-SHIP ORDERS ----------------------
     if (item) {
-      // console.log("item");
-      const autoShipPromises = selectedOrders.map(async (order) => {
-        // const priorityServices = await AutoShip(order, wh, userId);
-
-        // if (priorityServices.length > 0) {
-        // const validPriorityServices = priorityServices;
-        // .sort((a, b) => a.priority - b.priority)
-        // .filter((service) =>
-        //   servicesToBeConsidered.some(
-        //     (availableService) =>
-        //       availableService.courierProviderServiceName ===
-        //       service.courierProviderServiceName
-        //   )
-        // );
-        const orderDetails = await Order.findOne({ _id: order });
-
-        // for (let service of validPriorityServices) {
+      for (const order of selectedOrders) {
         try {
-          // const isServiceable = await checkServiceabilityAll(
-          //   item,
-          //   order,
-          //   `${wh.pinCode}`
-          // );
-          // if (!isServiceable) {
-          //   continue;
-          // }
+          const orderDetails = await Order.findOne({ _id: order });
 
-          // Calculate charges before creating the shipment
           const details = {
             pickupPincode: `${wh.pinCode}`,
             deliveryPincode: `${orderDetails.receiverAddress.pinCode}`,
@@ -284,13 +251,9 @@ const createBulkOrder = async (req, res) => {
           };
 
           const rates = await calculateRateForServiceBulk(details);
-          // console.log("rtfdd", rates);
           const charges = parseInt(rates[0]?.forward?.finalCharges);
-          // console.log(charges)
 
-          if (!charges) {
-            throw new Error("Invalid charges calculated.");
-          }
+          if (!charges) throw new Error("Invalid charges calculated.");
 
           const result = await createShipment(
             item,
@@ -299,22 +262,21 @@ const createBulkOrder = async (req, res) => {
             walletId,
             charges
           );
-          console.log("resulttte", result);
+
           if (result) {
             successCount++;
             remainingOrders.splice(remainingOrders.indexOf(order), 1);
-            // break;
+          } else {
+            failureCount++;
           }
         } catch (error) {
-          console.error(`Error processing AutoShip order ${order._id}:`, error);
+          console.error(`Error processing AutoShip order ${order}:`, error);
+          failureCount++;
         }
-        // }
-        // }
-      });
 
-      await Promise.all(autoShipPromises);
-
-      
+        // ✅ Add delay between orders
+        await delay(1000);
+      }
 
       return res.status(201).json({
         message: `${successCount} orders created successfully & ${failureCount} failed.`,
@@ -325,53 +287,51 @@ const createBulkOrder = async (req, res) => {
       });
     }
 
-    // Handle non-AutoShip orders
-    const orderPromises = id.map(async (order) => {
-      const details = {
-        pickupPincode: `${wh.pinCode}`,
-        deliveryPincode: `${order.shipping_details.pinCode}`,
-        length: order.shipping_cost.dimensions.length,
-        breadth: order.shipping_cost.dimensions.width,
-        height: order.shipping_cost.dimensions.height,
-        weight: order.shipping_cost.weight,
-        cod: order.order_type === "Cash on Delivery" ? "Yes" : "No",
-        valueInINR: order.sub_total,
-        filteredServices: [selectedServiceDetails],
-        rateCardType: req.body.plan,
-      };
+    // ---------------------- NON-AUTOSHIP ORDERS ----------------------
+    if (id && Array.isArray(id)) {
+      for (const order of id) {
+        try {
+          const details = {
+            pickupPincode: `${wh.pinCode}`,
+            deliveryPincode: `${order.shipping_details.pinCode}`,
+            length: order.shipping_cost.dimensions.length,
+            breadth: order.shipping_cost.dimensions.width,
+            height: order.shipping_cost.dimensions.height,
+            weight: order.shipping_cost.weight,
+            cod: order.order_type === "Cash on Delivery" ? "Yes" : "No",
+            valueInINR: order.sub_total,
+            filteredServices: [selectedServiceDetails],
+            rateCardType: req.body.plan,
+          };
 
-      try {
-        const rates = await calculateRateForService(details);
-        const charges = parseInt(rates[0]?.forward?.finalCharges);
-        // const charges=70;
+          const rates = await calculateRateForService(details);
+          const charges = parseInt(rates[0]?.forward?.finalCharges);
 
-        if (!charges) {
-          throw new Error("Invalid charges calculated.");
-        }
+          if (!charges) throw new Error("Invalid charges calculated.");
 
-        const result = await createShipment(
-          selectedServiceDetails,
-          order,
-          wh,
-          walletId,
-          charges
-        );
+          const result = await createShipment(
+            selectedServiceDetails,
+            order,
+            wh,
+            walletId,
+            charges
+          );
 
-        console.log("Bulk Shipment Result is:", result);
-
-        if (result) {
-          successCount++;
-          remainingOrders.splice(remainingOrders.indexOf(order), 1);
-        } else {
+          if (result) {
+            successCount++;
+            remainingOrders.splice(remainingOrders.indexOf(order), 1);
+          } else {
+            failureCount++;
+          }
+        } catch (error) {
+          console.error(`Error processing order ${order._id}:`, error);
           failureCount++;
         }
-      } catch (error) {
-        console.error(`Error processing order ${order._id}:`, error);
-        failureCount++;
-      }
-    });
 
-    await Promise.all(orderPromises);
+        // ✅ Add delay between orders
+        await delay(1000);
+      }
+    }
 
     return res.status(201).json({
       message: `${successCount} orders created successfully & ${failureCount} failed.`,
@@ -387,8 +347,8 @@ const createBulkOrder = async (req, res) => {
       message: error.message,
       successCount,
       failureCount,
-      remainingOrdersCount: remainingOrders.length,
-      remainingOrders,
+      remainingOrdersCount: selectedOrders?.length || id?.length || 0,
+      remainingOrders: selectedOrders || id || [],
     });
   }
 };

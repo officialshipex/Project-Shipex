@@ -39,7 +39,7 @@ const createOrderDTDC = async (
       // res
     );
     if (!zone) {
-      return ({success:false, message: "Pincode not serviceable" });
+      return { success: false, message: "Pincode not serviceable" };
     }
 
     const currentWallet = await Wallet.findById(walletId);
@@ -154,44 +154,28 @@ const createOrderDTDC = async (
       // Deduct wallet balance using atomic operation and update transaction
       const updatedWallet = await Wallet.findOneAndUpdate(
         { _id: walletId, balance: { $gte: charges } }, // Ensure sufficient balance
-        [
-          {
-            $set: {
-              balance: { $subtract: ["$balance", charges] }, // Deduct balance correctly
-              transactions: {
-                $concatArrays: [
-                  "$transactions",
-                  [
-                    {
-                      channelOrderId: currentOrder.orderId,
-                      category: "debit",
-                      amount: charges,
-                      balanceAfterTransaction: {
-                        $subtract: ["$balance", charges],
-                      }, // Updated correctly
-                      date: new Date()
-                        .toISOString()
-                        .slice(0, 16)
-                        .replace("T", " "),
-                      awb_number: result.reference_number,
-                      description: `Freight Charges Applied`,
-                    },
-                  ],
-                ],
-              },
+        {
+          $inc: { balance: -charges }, // Deduct balance
+          $push: {
+            transactions: {
+              channelOrderId: currentOrder.orderId,
+              category: "debit",
+              amount: charges,
+              balanceAfterTransaction: currentWallet.balance - charges,
+              date: new Date().toISOString().slice(0, 16).replace("T", " "),
+              awb_number: result.reference_number,
+              description: "Freight Charges Applied",
             },
           },
-        ],
-        { new: true } // Return updated wallet
+        },
+        { new: true }
       );
-
-      
     } else {
       console.log("ererer", response.data);
       return { message: "Error creating shipment" };
     }
 
-    console.log(response.data.data);
+    console.log("res data", response.data.data);
 
     return {
       message: "Shipment Created Successfully",

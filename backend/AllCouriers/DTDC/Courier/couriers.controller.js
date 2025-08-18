@@ -165,7 +165,9 @@ const createOrder = async (req, res) => {
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)
-      await currentWallet.updateOne({
+      await Wallet.findOneAndUpdate(
+        {_id:user.Wallet,balance:{$gte:balanceToBeDeducted}},
+        {
         $inc: { balance: -balanceToBeDeducted },
         $push: {
           transactions: {
