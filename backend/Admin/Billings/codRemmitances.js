@@ -105,6 +105,13 @@ const getAllCodRemittance = async (req, res) => {
             { $unwind: "$remittanceData" },
             { $match: remittanceMatchStage },
             {
+              $group: {
+                _id: "$remittanceData.remittanceId",
+                doc: { $first: "$$ROOT" },
+              },
+            },
+            { $replaceRoot: { newRoot: "$doc" } },
+            {
               $addFields: {
                 codAvailableFlat: {
                   $cond: [
@@ -358,7 +365,7 @@ const getAllCodRemittance = async (req, res) => {
       return sum;
     }, 0);
     const codSnap = faceted.codSnapshot?.[0] || { CODToBeRemitted: 0 };
-    // console.log("cod", codSnap)
+    console.log("cod", rows);
     return res.json({
       total,
       page: Number(page),
