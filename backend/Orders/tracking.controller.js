@@ -181,7 +181,7 @@ const trackSingleOrder = async (order) => {
       }
       if (
         (order.ndrStatus === "Undelivered" ||
-          order.ndrStatus === "Out for Delivery") &&
+          order.ndrStatus === "Out for Delivery" || order.ndrStatus==="Action_Requested") &&
         normalizedData.Instructions === "Delivered"
       ) {
         order.ndrStatus = "Delivered";
@@ -289,7 +289,7 @@ const trackSingleOrder = async (order) => {
         }
         if (
           (order.ndrStatus === "Undelivered" ||
-            order.ndrStatus === "Out for Delivery") &&
+            order.ndrStatus === "Out for Delivery" || order.ndrStatus==="Action_Requested") &&
           normalizedData.Instructions === "Delivered"
         ) {
           order.ndrStatus = "Delivered";
@@ -399,7 +399,7 @@ const trackSingleOrder = async (order) => {
       }
       if (
         (order.ndrStatus === "Undelivered" ||
-          order.ndrStatus === "Out for Delivery") &&
+          order.ndrStatus === "Out for Delivery" || order.ndrStatus==="Action_Requested") &&
         (instruction === "shipment delivered" ||
           normalizedData.Instructions === "Delivery Confirmed by Customer")
       ) {

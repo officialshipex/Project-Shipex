@@ -197,6 +197,10 @@ const remittanceScheduleData = async () => {
       status: "Pending",
     });
 
+    console.log(
+      `Found ${existingSameDateDelivered.length} pending SameDateDelivered entries.`
+    );
+
     const today = new Date();
     const isNotSunday = today.getDay() !== 0;
     const isTodayMWF = [1, 3, 5].includes(today.getDay());
@@ -261,7 +265,7 @@ const remittanceScheduleData = async () => {
         planName: codPlan.planName,
         planDays: planDays,
       };
-
+      console.log("remittanceEntry", remittanceEntry);
       if (shouldRemitToday) {
         // Push directly to adminCodRemittance using business logic
         await processAndRemit(remittanceEntry);
@@ -293,18 +297,27 @@ cron.schedule(
   }
 );
 
+// remittanceScheduleData();
+
 // Helper for direct business logic (used in both controllers)
 const processAndRemit = async (plan) => {
   // Fetch fresh user, codPlan, wallet, codRemittance:
-  const [user, codPlan, wallet, remittanceData] = await Promise.all([
+  const [user, codPlan, remittanceData] = await Promise.all([
     User.findById(plan.userId),
     CodPlan.findOne({ user: plan.userId }),
-    Wallet.findById(user && user.Wallet),
     codRemittance.findOne({ userId: plan.userId }),
   ]);
 
-  if (!user || !codPlan || !wallet || !remittanceData) {
+  if (!user || !codPlan || !remittanceData) {
     console.log(`Missing data for user ${plan.userId}, skipping...`);
+    return;
+  }
+
+  // Now fetch the wallet using the user's wallet reference
+  const wallet = await Wallet.findById(user.Wallet);
+
+  if (!wallet) {
+    console.log(`Missing wallet for user ${plan.userId}, skipping...`);
     return;
   }
 
@@ -625,7 +638,7 @@ const codRemittanceData = async (req, res) => {
       return sum;
     }, 0);
 
-    console.log("reemm", pendingEarlyCodCharges);
+    // console.log("reemm", pendingEarlyCodCharges);
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",

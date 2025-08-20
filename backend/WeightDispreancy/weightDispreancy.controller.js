@@ -1038,6 +1038,129 @@ const declineDiscrepancy = async (req, res) => {
   }
 };
 
+const exportWeightDiscrepancy = async (req, res) => {
+  try {
+    const { disputeId } = req.body;
+    if (!disputeId || !Array.isArray(disputeId) || disputeId.length === 0) {
+      return res.status(400).json({ message: "disputeId array is required" });
+    }
+
+    const objectIds = disputeId
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    // Aggregate pipeline
+    const pipeline = [
+      { $match: { _id: { $in: objectIds } } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          _id: 1,
+          userId: "$user.userId", // Use 5-digit userId from users collection
+          awbNumber: 1,
+          orderId: 1,
+          courierServiceName: 1,
+          provider: 1,
+
+          // Keep full productDetails array for processing in JS
+          productDetails: 1,
+
+          enteredWeightApplicable: "$enteredWeight.applicableWeight",
+          chargedWeightApplicable: "$chargedWeight.applicableWeight",
+
+          excessWeight: "$excessWeightCharges.excessWeight",
+          excessCharges: "$excessWeightCharges.excessCharges",
+
+          status: 1,
+          adminStatus: 1,
+          clientStatus: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          text: 1,
+          imageUrl: 1,
+
+          user: {
+            name: "$user.fullname",
+            email: "$user.email",
+            phoneNumber: "$user.phoneNumber",
+          },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ];
+
+    const results = await WeightDiscrepancy.aggregate(pipeline);
+
+    if (!results || results.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No discrepancy data found for given IDs" });
+    }
+
+    // Process results for CSV export
+    const csvData = results.map((item) => ({
+      // DiscrepancyID: item._id.toString(),
+      UserID: item.userId || "",
+      UserName: item.user.name || "",
+      UserEmail: item.user.email || "",
+      PhoneNumber: item.user.phoneNumber || "",
+      AWBNumber: item.awbNumber || "",
+      OrderID: item.orderId || "",
+      CourierServiceName: item.courierServiceName || "",
+      Provider: item.provider || "",
+
+      // Join product names by comma
+      ProductNames: Array.isArray(item.productDetails)
+        ? item.productDetails
+            .map((pd) => pd.name)
+            .filter(Boolean)
+            .join(", ")
+        : "",
+
+      EnteredWeightApplicable: item.enteredWeightApplicable || "",
+      ChargedWeightApplicable: item.chargedWeightApplicable || "",
+      ExcessWeight: item.excessWeight || "",
+      ExcessCharges: item.excessCharges || "",
+
+      Status: item.status || "",
+      // AdminStatus: item.adminStatus || "",
+      // ClientStatus: item.clientStatus || "",
+      // CreatedAt: item.createdAt ? item.createdAt.toISOString() : "",
+      // UpdatedAt: item.updatedAt ? item.updatedAt.toISOString() : "",
+      // Text: item.text || "",
+      // ImageUrl: item.imageUrl || "",
+    }));
+
+    const csvHeaders = Object.keys(csvData[0]);
+    const csvContent = [
+      csvHeaders.join(","),
+      ...csvData.map((row) =>
+        csvHeaders
+          .map((header) => `"${String(row[header]).replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ].join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=weight_discrepancy_export.csv"
+    );
+    return res.send(csvContent);
+  } catch (error) {
+    console.error("Error exporting weight discrepancy data:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   downloadExcel,
   uploadDispreancy,
@@ -1050,4 +1173,5 @@ module.exports = {
   raiseDiscrepancies,
   adminAcceptDiscrepancy,
   declineDiscrepancy,
+  exportWeightDiscrepancy,
 };

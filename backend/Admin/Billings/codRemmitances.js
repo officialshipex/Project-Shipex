@@ -365,7 +365,7 @@ const getAllCodRemittance = async (req, res) => {
       return sum;
     }, 0);
     const codSnap = faceted.codSnapshot?.[0] || { CODToBeRemitted: 0 };
-    console.log("cod", rows);
+    // console.log("cod", rows);
     return res.json({
       total,
       page: Number(page),
