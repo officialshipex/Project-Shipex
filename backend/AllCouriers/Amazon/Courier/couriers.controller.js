@@ -281,7 +281,7 @@ const getShipmentTracking = async (trackingId) => {
 
 const checkAmazonServiceability = async (provider,payload) => {
   try {
-    console.log("payloadprovider", payload);
+    // console.log("payloadprovider", payload);
 
     const accessToken = await getAmazonAccessToken();
     if (!accessToken) return { success: false, reason: "Missing access token" };

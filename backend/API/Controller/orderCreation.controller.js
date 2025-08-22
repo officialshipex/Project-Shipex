@@ -1,8 +1,9 @@
 const Order = require("../../models/newOrder.model");
 const Joi = require("joi");
 
+// Your existing externalOrderSchema with the same validations
 const externalOrderSchema = Joi.object({
-  orderId: Joi.number().required(),
+  // Remove orderId from input schema since you'll generate it internally
   pickupAddress: Joi.object({
     contactName: Joi.string().required(),
     email: Joi.string().email().optional(),
@@ -68,49 +69,54 @@ const externalOrderSchema = Joi.object({
     }),
   }).required(),
 
-  channelId: Joi.number().optional(),
-  commodityId: Joi.number().optional(),
+  shipmentId: Joi.number().optional(),
+  // commodityId: Joi.number().optional(),
 });
 
 const orderCreationController = async (req, res) => {
   try {
-    // Validate input
+    // Validate input - exclude orderId since you'll generate it
     const { error, value } = externalOrderSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ success: false, message: error.message });
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        details: error.message,
+      });
     }
 
     const {
-      orderId,
       pickupAddress,
       receiverAddress,
       productDetails,
       packageDetails,
       paymentDetails,
-      channelId,
-      commodityId,
+      shipmentId
     } = value;
 
-    // Generate unique 6-digit order ID
-    // let orderId;
-    // let isUnique = false;
-    // while (!isUnique) {
-    //   orderId = Math.floor(100000 + Math.random() * 900000);
-    //   const exists = await Order.findOne({ orderId });
-    //   if (!exists) isUnique = true;
-    // }
+    // Generate unique 6-digit orderId for channelId field
+
+    let orderId;
+    let isUnique = false;
+    while (!isUnique) {
+      orderId = Math.floor(100000 + Math.random() * 900000); // 6-digit number
+      const exists = await Order.findOne({ channelId: orderId });
+      if (!exists) isUnique = true;
+    }
 
     const userId = req.user?._id || "external";
     const compositeOrderId = `${userId}-${orderId}`;
-    // ✅ Check if this orderId already exists for this user
+
+    // Check if compositeOrderId already exists (unlikely but safe)
     const existingOrder = await Order.findOne({ compositeOrderId });
     if (existingOrder) {
       return res.status(409).json({
         success: false,
-        message: `Duplicate orderId: ${orderId} already exists for this user.`,
+        message: `Duplicate order found with ID: ${orderId} for this user.`,
       });
     }
-    // Create and save shipment
+
+    // Create and save shipment/order
     const shipment = new Order({
       userId,
       orderId,
@@ -122,8 +128,8 @@ const orderCreationController = async (req, res) => {
       compositeOrderId,
       status: "new",
       channel: "api",
-      channelId,
-      commodityId,
+      channelId: shipmentId, 
+      // commodityId,
       tracking: [
         {
           status: "Created",
@@ -132,22 +138,24 @@ const orderCreationController = async (req, res) => {
         },
       ],
     });
-    console.log("shipment", shipment);
+
     await shipment.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Order created successfully",
+      message: "Order created successfully.",
       data: {
         orderId: shipment.orderId,
-        compositeOrderId: shipment.compositeOrderId,
-        tracking: shipment.tracking,
+        clientOrderId: shipmentId,
         status: shipment.status,
       },
     });
   } catch (err) {
     console.error("Error creating order:", err);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
 

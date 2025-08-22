@@ -64,11 +64,11 @@ const generateToken = async (req, res) => {
       message: "Token generated successfully",
       data: {
         token,
-        user: {
-          id: user.userId,
-          fullname: user.fullname,
-          email: user.email,
-        },
+        // user: {
+        //   id: user.userId,
+        //   fullname: user.fullname,
+        //   email: user.email,
+        // },
       },
     });
   } catch (error) {

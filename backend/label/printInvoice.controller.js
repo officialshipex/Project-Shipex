@@ -23,20 +23,11 @@ app.get("/download-invoice/:id", async (req, res) => {
   doc.pipe(res);
 
   // Title
-  const svgPath = path.join(__dirname, "../public/assets/LOGO.svg");
-  const pngPath = path.join(__dirname, "../public/assets/LOGO.png");
+  const jpgLogoPath = path.join(__dirname, "../public/assets/Shipex.jpg");
 
-  // Convert SVG to PNG
-  try {
-    await sharp(svgPath).toFormat("png").toFile(pngPath);
-    console.log("SVG converted to PNG");
-  } catch (err) {
-    console.error("Error converting SVG to PNG:", err);
-    return res.status(500).send("Error generating invoice");
-  }
+  // Add the JPEG image to the PDF directly
+  doc.image(jpgLogoPath, 220, 40, { width: 170 });
 
-  // Add the PNG image to the PDF
-  doc.image(pngPath, 220, 40, { width: 170 });
   doc.moveDown(8);
   // Add other content to the PDF
   doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(0.3);

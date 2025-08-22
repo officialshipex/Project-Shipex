@@ -16,6 +16,8 @@ const getAllCodRemittance = async (req, res) => {
       utr,
     } = req.query;
 
+    // console.log('req.query', req.query);
+
     const parsedLimit = limit === "all" ? 0 : Number(limit);
     const skip = (Number(page) - 1) * (parsedLimit || 0);
 
