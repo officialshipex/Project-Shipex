@@ -112,7 +112,7 @@ app.get("/download-invoice/:id", async (req, res) => {
     .text(`Payment Method: ${order.paymentDetails.method}`, 400)
     .moveDown(0.5);
 
-  doc.moveDown(7);
+  doc.moveDown(10);
 
   // ** Table Headers **
   let tableTop = doc.y;
