@@ -1,7 +1,7 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
 const Order = require("../models/newOrder.model");
-const sharp = require("sharp");
+const sharp = require("sharp"); // (not used below—keep if you plan to)
 const fs = require("fs");
 const path = require("path");
 
@@ -9,189 +9,265 @@ const app = express();
 
 app.get("/download-invoice/:id", async (req, res) => {
   const id = req.params.id;
-  // console.log(id);
   const order = await Order.findOne({ _id: id });
-  console.log(order);
-  // Create a new PDF document
+  if (!order) {
+    return res.status(404).send("Order not found");
+  }
+
+  // Helpers
+  const s = (v) => (v === null || v === undefined ? "" : String(v));
+  const n = (v, f = 0) => {
+    const num = Number(v);
+    return Number.isFinite(num) ? num : f;
+  };
+  const f2 = (v) => n(v, 0).toFixed(2);
+
+  // Create PDF
   const doc = new PDFDocument({ margin: 40 });
   const filename = "invoice.pdf";
 
-  // Set headers for downloading
+  // Headers
   res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
   res.setHeader("Content-Type", "application/pdf");
-
   doc.pipe(res);
 
-  // Title
-  const jpgLogoPath = path.join(__dirname, "../public/assets/Shipex.jpg");
-
-  // Add the JPEG image to the PDF directly
-  doc.image(jpgLogoPath, 220, 40, { width: 170 });
+  // Logo
+  try {
+    const jpgLogoPath = path.join(__dirname, "../public/assets/Shipex.jpg");
+    if (fs.existsSync(jpgLogoPath)) {
+      doc.image(jpgLogoPath, 220, 40, { width: 170 });
+    }
+  } catch (_) {
+    // ignore logo errors (won't affect layout)
+  }
 
   doc.moveDown(8);
-  // Add other content to the PDF
+
+  // Title
   doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(0.3);
   doc.fontSize(16).text("Tax Invoice", { align: "center" }).moveDown(0.5);
-
-  // Draw separator line
   doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke().moveDown(1);
 
-  // Three-column layout for Shipping Address, Seller, and Invoice Details
+  // === Three-column header blocks ===
+  const col1X = 50;
+  const col1W = 180;
+  const col2X = 250;
+  const col2W = 130;
+  const col3X = 400;
+  const col3W = 150;
+
   const startY = doc.y;
 
-  // Shipping Address
-  doc
-    .fontSize(12)
-    .text("SHIPPING ADDRESS:", 50, startY, { bold: true, underline: true })
-    .moveDown(1);
+  function drawBlock(x, y, width, title, lines) {
+    doc.fontSize(10).text(title, x, y, { width, continued: false });
 
-  doc.fontSize(10).text(`${order.pickupAddress.contactName}`).moveDown(0.5);
-  doc
-    .fontSize(10)
-    .text(`${order.pickupAddress.address}`, { width: 180, align: "left" }) // Wrap within 180px width
-    .moveDown(0.5);
-  doc.fontSize(10).text(`${order.pickupAddress.city}`).moveDown(0.5);
-  doc.fontSize(10).text(`${order.pickupAddress.state}`).moveDown(0.5);
-  doc.fontSize(10).text(`${order.pickupAddress.pinCode}`).moveDown(0.5);
-  doc.fontSize(10).text(`${order.pickupAddress.phoneNumber}`).moveDown(0.5);
-
-  // Seller Details
-  doc
-    .fontSize(12)
-    .text("SOLD BY:", 250, startY, { bold: true, underline: true })
-    .moveDown(1);
-
-  doc
-    .fontSize(10)
-    .text(`${order.receiverAddress.contactName}`, 250)
-    .moveDown(0.5);
-  doc
-    .fontSize(10)
-    .text(`${order.receiverAddress.address}`, {
-      width: 130,
-      align: "left",
-    }) // Wrap within 180px width
-    .moveDown(0.5);
-  doc.fontSize(10).text(`${order.receiverAddress.city}`, 250).moveDown(0.5);
-  doc.fontSize(10).text(`${order.receiverAddress.state}`, 250).moveDown(0.5);
-  doc.fontSize(10).text(`${order.receiverAddress.pinCode}`, 250).moveDown(0.5);
-  doc
-    .fontSize(10)
-    .text(`Phone: ${order.receiverAddress.phoneNumber}`, 250)
-    .moveDown(0.5);
-  doc.fontSize(10).text("GSTIN:N/A", 250).moveDown(0.5);
-  doc
-    .fontSize(10)
-    .text(`Email: ${order.receiverAddress.email}`, 250)
-    .moveDown(0.5);
-
-  // Invoice Details
-  doc
-    .fontSize(12)
-    .text("INVOICE DETAILS:", 400, startY, { bold: true, underline: true })
-    .moveDown(1);
-  doc.fontSize(10).text("Invoice No: INV-626796", 400).moveDown(0.5);
-  const orderDate1 = new Date();
-  const options1 = { year: "numeric", month: "short", day: "numeric" };
-  const formattedOrderDate1 = orderDate1.toLocaleDateString("en-US", options1);
-  doc
-    .fontSize(10)
-    .text(`Invoice Date: ${formattedOrderDate1}`, 400)
-    .moveDown(0.5);
-  doc.fontSize(10).text(`Order No: ${order.orderId}`, 400).moveDown(0.5);
-  const orderDate2 = new Date(order.createdAt);
-  const options2 = { year: "numeric", month: "short", day: "numeric" };
-  const formattedOrderDate2 = orderDate2.toLocaleDateString("en-US", options2);
-  doc
-    .fontSize(10)
-    .text(`Order Date: ${formattedOrderDate2}`, 400)
-    .moveDown(0.5);
-  doc.fontSize(10).text("Channel: SHIPEX", 400).moveDown(0.5);
-  doc
-    .fontSize(10)
-    .text(`Payment Method: ${order.paymentDetails.method}`, 400)
-    .moveDown(0.5);
-
-  doc.moveDown(10);
-
-  // ** Table Headers **
-  let tableTop = doc.y;
-  let columnWidths = [40, 150, 70, 80, 50, 50, 70];
-
-  const drawTableRow = (y, row) => {
-    let x = 50;
-    row.forEach((text, i) => {
-      doc.text(text, x, y, { width: columnWidths[i], align: "center" });
-      x += columnWidths[i];
+    let currentY = doc.y + 2; // small space after title
+    lines.forEach((line) => {
+      if (line) {
+        doc.text(line, x, currentY, {
+          width,
+          lineGap: 4, // 👈 adds spacing between lines
+        });
+        currentY = doc.y + 2;
+      }
     });
-  };
 
-  // ** Draw Header Row **
-  // Draw Table Headers
-  doc.font("Helvetica-Bold").fontSize(12);
-  drawTableRow(tableTop, [
-    "S.No",
-    "Product Name",
-    "Quantity",
-    "Unit Price",
-    "SGST",
-    "CGST",
-    "Total",
+    return currentY;
+  }
+
+  const pickup = order.pickupAddress || {};
+  const receiver = order.receiverAddress || {};
+  const payMethod = s(order?.paymentDetails?.method || "N/A");
+
+  // SHIPPING ADDRESS (left)
+  const b1 = drawBlock(col1X, startY, col1W, "SHIPPING ADDRESS:", [
+    s(pickup.contactName),
+    s(pickup.address),
+    s(pickup.city),
+    s(pickup.state),
+    s(pickup.pinCode),
+    s(pickup.phoneNumber),
   ]);
 
-  // Draw top border
-  doc
-    .moveTo(50, tableTop - 5)
-    .lineTo(550, tableTop - 5)
-    .stroke();
+  // SOLD BY (middle) — using receiver here is typical; change if needed
+  const b2 = drawBlock(col2X, startY, col2W, "SOLD BY:", [
+    s(pickup.contactName),
+    s(pickup.address),
+    s(pickup.city),
+    s(pickup.state),
+    s(pickup.pinCode),
+    `Phone: ${s(pickup.phoneNumber)}`,
+    "GSTIN: N/A",
+    `Email: ${s(pickup.email)}`,
+  ]);
 
-  // Move down for first data row
-  tableTop += 20;
+  // INVOICE DETAILS (right)
+  const currentDate = new Date();
+  const options = { year: "numeric", month: "short", day: "numeric" };
+  const formattedCurrentDate = currentDate.toLocaleDateString("en-US", options);
+  const orderCreatedDate = new Date(order.createdAt);
+  const formattedOrderDate = orderCreatedDate.toLocaleDateString(
+    "en-US",
+    options
+  );
+
+  const b3 = drawBlock(col3X, startY, col3W, "INVOICE DETAILS:", [
+    "Invoice No: INV-626796",
+    `Invoice Date: ${formattedCurrentDate}`,
+    `Order No: ${s(order.orderId)}`,
+    `Order Date: ${formattedOrderDate}`,
+    "Channel: SHIPEX",
+    `Payment Method: ${payMethod}`,
+  ]);
+
+  // Move cursor to below the tallest block
+  const afterBlocksY = Math.max(b1, b2, b3) + 12;
+  doc.y = afterBlocksY;
+
+  // === Table ===
+  const tableLeft = 50;
+  const tableWidth = 500;
+  const tableRight = tableLeft + tableWidth; // 550
+  const colWidths = [40, 150, 70, 80, 50, 50, 60]; // sums to 500
+  const minRowHeight = 20;
+  const cellPad = 4;
+
+  const pageTop = doc.page.margins.top;
+  const pageBottom = () => doc.page.height - doc.page.margins.bottom;
+
+  function measureRowHeight(row) {
+    // Compute max cell height for the row
+    const heights = row.map((text, i) =>
+      doc.heightOfString(s(text), {
+        width: colWidths[i] - 2 * cellPad,
+        align: i === 1 ? "left" : "center",
+      })
+    );
+    return Math.max(minRowHeight, ...heights) + 2 * cellPad;
+  }
+
+  function drawRow(row, y, isHeader = false) {
+    // Draw cell borders and text at fixed Y
+    let x = tableLeft;
+    const rowHeight = measureRowHeight(row);
+
+    // Background for header (optional)
+    if (isHeader) {
+      doc.rect(tableLeft, y, tableWidth, rowHeight).stroke(); // add .fillColor(..).fill() if you want
+    }
+
+    // Draw vertical lines and text
+    for (let i = 0; i < colWidths.length; i++) {
+      // cell border
+      doc.rect(x, y, colWidths[i], rowHeight).stroke();
+
+      // text alignment: left for product name, center for others
+      const align = i === 1 ? "left" : "center";
+      const textX = x + cellPad;
+      const textY = y + cellPad;
+
+      // Capture and restore doc.y to avoid drift
+      const prevY = doc.y;
+      doc.text(s(row[i]), textX, textY, {
+        width: colWidths[i] - 2 * cellPad,
+        align,
+      });
+      doc.y = prevY;
+
+      x += colWidths[i];
+    }
+    return y + rowHeight; // next Y
+  }
+
+  function ensureTableSpace(nextRowHeight, currentY, wantHeader) {
+    // If next row would overflow, add page and optionally redraw header
+    if (currentY + nextRowHeight > pageBottom()) {
+      doc.addPage();
+      currentY = doc.y = pageTop;
+      if (wantHeader) {
+        currentY = drawRow(
+          [
+            "S.No",
+            "Product Name",
+            "Quantity",
+            "Unit Price",
+            "SGST",
+            "CGST",
+            "Total",
+          ],
+          currentY,
+          true
+        );
+      }
+    }
+    return currentY;
+  }
+
+  // Draw header
+  doc.font("Helvetica-Bold").fontSize(12);
+  let y = drawRow(
+    ["S.No", "Product Name", "Quantity", "Unit Price", "SGST", "CGST", "Total"],
+    doc.y,
+    true
+  );
+
   doc.font("Helvetica").fontSize(12);
 
-  let tableData = order.productDetails.map((product, index) => {
-    // Calculate total price based on quantity and unit price
-    const totalPrice = product.quantity * product.unitPrice;
+  const items = Array.isArray(order.productDetails) ? order.productDetails : [];
 
-    return [
-      (index + 1).toString(), // S.No
-      product.name, // Product Name
-      product.quantity.toString(), // Quantity
-      product.unitPrice, // Unit Price
-      product.sgst || "0.00", // SGST
-      product.cgst || "0.00", // CGST
-      totalPrice, // Total
+  // Draw rows
+  for (let i = 0; i < items.length; i++) {
+    const p = items[i] || {};
+    const qty = n(p.quantity, 0);
+    const unit = n(p.unitPrice, 0);
+    const sgst = n(p.sgst, 0);
+    const cgst = n(p.cgst, 0);
+    const total = qty * unit; // tax columns shown separately; adjust if needed
+
+    const row = [
+      String(i + 1),
+      s(p.name),
+      String(qty),
+      f2(unit),
+      f2(sgst),
+      f2(cgst),
+      f2(total),
     ];
-  });
 
-  tableData.forEach((row, i) => {
-    drawTableRow(tableTop + i * 20, row);
-  });
+    const rh = measureRowHeight(row);
+    y = ensureTableSpace(rh, y, true);
+    y = drawRow(row, y, false);
+  }
 
-  // Draw bottom border
-  doc
-    .moveTo(50, tableTop + tableData.length * 20 - 5)
-    .lineTo(550, tableTop + tableData.length * 20 - 5)
-    .stroke();
+  // === Net Total ===
+  const netTotal = items.reduce(
+    (sum, p) => sum + n(p.quantity, 0) * n(p.unitPrice, 0),
+    0
+  );
+  const netLineHeight = doc.heightOfString("A", { width: 100 }) + 10;
 
-  doc.moveDown(2);
+  // If not enough room for total, go to new page
+  if (y + netLineHeight > pageBottom()) {
+    doc.addPage();
+    y = pageTop;
+  } else {
+    y += 10; // move down a bit before writing
+  }
 
-  // ** Net Total **
-  const netTotal = tableData.reduce((sum, row) => sum + parseFloat(row[6]), 0); // Sum of Total column
+  // Draw Net Total aligned to right
   doc
     .fontSize(14)
     .text(
-      `Net Total (In Value) Rs. ${order.paymentDetails.amount}`,
-      200,
-      doc.y,
-      { align: "right" }
+      `Net Total (In Value) Rs. ${f2(netTotal)}`,
+      doc.page.margins.left,
+      y,
+      {
+        width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+        align: "right",
+      }
     );
 
-  doc.moveDown(2);
-  // doc.fontSize(12).text("Whether tax is payable under reverse charge - No", 50, doc.y);
-
-  // doc.moveDown(2);
-  // doc.text("Authorized Signature for Infistyle India Retail Solution", 50, doc.y);
+  y = doc.y; // update y after writing
 
   doc.end();
 });
