@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const PDFDocument = require("pdfkit");
 const bwipjs = require("bwip-js");
@@ -166,7 +164,7 @@ router.get("/generate-pdf/:id", async (req, res) => {
     );
 
     // ----------- Set a fixed y for the right-side barcode section:
-    const rightBlockY = 240; // Adjust this to match your preferred layout
+    const rightBlockY = 280; // Adjust this to match your preferred layout
 
     const barcodeX1 = 320; // right side (you can tweak X too)
     const courierServiceText = orderData.courierServiceName || "N/A";
@@ -307,25 +305,35 @@ router.get("/generate-pdf/:id", async (req, res) => {
     // ======= END Table Section =======
 
     // Pickup Address
-    const showPickupName =
+    // Before rendering Pickup Address:
+    const showPickupAddressSection =
       !labelSettings?.warehouseSettings?.hidePickupName ||
-      labelSettings == null;
-    const showPickupAddress =
       !labelSettings?.warehouseSettings?.hidePickupAddress ||
-      labelSettings == null;
-    const showPickupMobile =
       !labelSettings?.warehouseSettings?.hidePickupMobile ||
       labelSettings == null;
+
+    const showReturnAddressSection =
+      !labelSettings?.warehouseSettings?.hideRTOName ||
+      !labelSettings?.warehouseSettings?.hideRTOAddress ||
+      !labelSettings?.warehouseSettings?.hideRTOMobile ||
+      labelSettings == null;
+
     const leftMargin = 30;
-    if (showPickupName || showPickupAddress || showPickupMobile) {
+
+    if (showPickupAddressSection) {
       doc.moveDown();
       doc.font("Helvetica-Bold").text(`Pickup Address:`, leftMargin, doc.y);
-      if (showPickupName) {
+      if (
+        !labelSettings?.warehouseSettings?.hidePickupName ||
+        labelSettings == null
+      )
         doc
           .font("Helvetica")
           .text(`${orderData.pickupAddress.contactName}`, leftMargin, doc.y);
-      }
-      if (showPickupAddress) {
+      if (
+        !labelSettings?.warehouseSettings?.hidePickupAddress ||
+        labelSettings == null
+      ) {
         doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
         doc.text(
           `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
@@ -333,32 +341,33 @@ router.get("/generate-pdf/:id", async (req, res) => {
           doc.y
         );
       }
-      if (showPickupMobile) {
+      if (
+        !labelSettings?.warehouseSettings?.hidePickupMobile ||
+        labelSettings == null
+      )
         doc.text(
           `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
           leftMargin,
           doc.y
         );
-      }
+    } else {
+      doc.moveDown(4); // maintain vertical space equivalent to Pickup Address section
     }
 
-    // Return Address
-    const showRTOName =
-      !labelSettings?.warehouseSettings?.hideRTOName || labelSettings == null;
-    const showRTOAddress =
-      !labelSettings?.warehouseSettings?.hideRTOAddress ||
-      labelSettings == null;
-    const showRTOMobile =
-      !labelSettings?.warehouseSettings?.hideRTOMobile || labelSettings == null;
-    if (showRTOName || showRTOAddress || showRTOMobile) {
+    if (showReturnAddressSection) {
       doc.moveDown();
       doc.font("Helvetica-Bold").text(`Return Address:`, leftMargin, doc.y);
-      if (showRTOName) {
+      if (
+        !labelSettings?.warehouseSettings?.hideRTOName ||
+        labelSettings == null
+      )
         doc
           .font("Helvetica")
           .text(orderData.pickupAddress.contactName, leftMargin, doc.y);
-      }
-      if (showRTOAddress) {
+      if (
+        !labelSettings?.warehouseSettings?.hideRTOAddress ||
+        labelSettings == null
+      ) {
         doc.text(`${orderData.pickupAddress.address}`, leftMargin, doc.y);
         doc.text(
           `${orderData.pickupAddress.city}, ${orderData.pickupAddress.state}, ${orderData.pickupAddress.pinCode}`,
@@ -366,18 +375,28 @@ router.get("/generate-pdf/:id", async (req, res) => {
           doc.y
         );
       }
-      if (showRTOMobile) {
+      if (
+        !labelSettings?.warehouseSettings?.hideRTOMobile ||
+        labelSettings == null
+      )
         doc.text(
           `Mobile No: ${orderData.pickupAddress.phoneNumber}`,
           leftMargin,
           doc.y
         );
-      }
+    } else {
+      doc.moveDown(4); // maintain vertical space equivalent to Return Address section
     }
 
+    // After these sections or their placeholders
     doc.moveDown(2);
     doc.moveTo(20, doc.y).lineTo(575, doc.y).stroke();
     doc.moveDown(1);
+
+    
+
+    doc.x = leftMargin;
+    doc.y = doc.y; // keep current vertical position
 
     doc
       .font("Helvetica")
