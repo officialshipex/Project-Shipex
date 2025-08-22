@@ -1010,6 +1010,15 @@ const cancelOrdersAtBooked = async (req, res) => {
     const currentWallet = await Wallet.findById({ _id: users.Wallet });
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
+    if(currentOrder.awb_number === "N/A" || !currentOrder.awb_number){
+      return res.status(400).send({ error: "Order cannot be cancelled missing awb_number" });  
+    }
+    if(currentOrder.status === "Cancelled"){
+      return res.status(400).send({ error: "Order is already Cancelled" });
+    }
+    if(currentOrder.status !== "Ready To Ship"){
+      return res.status(400).send({ error: "Order is not ready to Cancelled" });
+    }
 
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);

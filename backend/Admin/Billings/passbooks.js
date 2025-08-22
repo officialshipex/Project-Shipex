@@ -95,18 +95,47 @@ const getAllPassbookTransactions = async (req, res) => {
 
       // 🔁 Join with neworders based on awb_number
       {
+        $addFields: {
+          awbExists: {
+            $cond: [
+              {
+                $and: [
+                  {
+                    $gt: [
+                      { $type: "$wallet.transactions.awb_number" },
+                      "missing",
+                    ],
+                  },
+                  { $ne: ["$wallet.transactions.awb_number", null] },
+                  { $ne: ["$wallet.transactions.awb_number", ""] },
+                ],
+              },
+              true,
+              false,
+            ],
+          },
+        },
+      },
+
+      {
         $lookup: {
           from: "neworders",
-          let: { awb: "$wallet.transactions.awb_number" },
+          let: {
+            awb: "$wallet.transactions.awb_number",
+            awbExists: "$awbExists",
+          },
           pipeline: [
-            { $match: { $expr: { $eq: ["$awb_number", "$$awb"] } } },
             {
-              $project: {
-                courierServiceName: 1,
-                provider: 1,
-                _id: 0,
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$awb_number", "$$awb"] },
+                    { $eq: ["$$awbExists", true] },
+                  ],
+                },
               },
             },
+            { $project: { courierServiceName: 1, provider: 1, _id: 0 } },
           ],
           as: "orderInfo",
         },
@@ -122,7 +151,7 @@ const getAllPassbookTransactions = async (req, res) => {
             userId: "$userId",
             phoneNumber: "$phoneNumber",
           },
-          id:"$wallet.transactions._id",
+          id: "$wallet.transactions._id",
           category: "$wallet.transactions.category",
           amount: "$wallet.transactions.amount",
           balanceAfterTransaction:
@@ -131,10 +160,31 @@ const getAllPassbookTransactions = async (req, res) => {
           awb_number: "$wallet.transactions.awb_number",
           orderId: "$wallet.transactions.channelOrderId",
           description: "$wallet.transactions.description",
+
           courierServiceName: {
-            $arrayElemAt: ["$orderInfo.courierServiceName", 0],
+            $cond: [
+              {
+                $and: [
+                  { $gt: [{ $size: "$orderInfo" }, 0] },
+                  { $eq: ["$awbExists", true] },
+                ],
+              },
+              { $arrayElemAt: ["$orderInfo.courierServiceName", 0] },
+              null,
+            ],
           },
-          provider: { $arrayElemAt: ["$orderInfo.provider", 0] },
+          provider: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: [{ $size: "$orderInfo" }, 0] },
+                  { $eq: ["$awbExists", true] },
+                ],
+              },
+              { $arrayElemAt: ["$orderInfo.provider", 0] },
+              null,
+            ],
+          },
         },
       },
 
@@ -167,18 +217,23 @@ const getAllPassbookTransactions = async (req, res) => {
   }
 };
 
-
 const exportPassbook = async (req, res) => {
   try {
     const { transactionsId } = req.body;
-    if (!transactionsId || !Array.isArray(transactionsId) || transactionsId.length === 0) {
-      return res.status(400).json({ message: "transactionsId array is required" });
+    if (
+      !transactionsId ||
+      !Array.isArray(transactionsId) ||
+      transactionsId.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "transactionsId array is required" });
     }
 
     // Convert string IDs to ObjectId
     const objectIds = transactionsId
-      .filter(id => mongoose.Types.ObjectId.isValid(id))
-      .map(id => new mongoose.Types.ObjectId(id));
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
 
     // Aggregate pipeline to fetch transactions matching given ids
     const pipeline = [
@@ -228,12 +283,15 @@ const exportPassbook = async (req, res) => {
           id: "$wallet.transactions._id",
           category: "$wallet.transactions.category",
           amount: "$wallet.transactions.amount",
-          balanceAfterTransaction: "$wallet.transactions.balanceAfterTransaction",
+          balanceAfterTransaction:
+            "$wallet.transactions.balanceAfterTransaction",
           date: "$wallet.transactions.date",
           awb_number: "$wallet.transactions.awb_number",
           orderId: "$wallet.transactions.channelOrderId",
           description: "$wallet.transactions.description",
-          courierServiceName: { $arrayElemAt: ["$orderInfo.courierServiceName", 0] },
+          courierServiceName: {
+            $arrayElemAt: ["$orderInfo.courierServiceName", 0],
+          },
           provider: { $arrayElemAt: ["$orderInfo.provider", 0] },
         },
       },
@@ -243,7 +301,9 @@ const exportPassbook = async (req, res) => {
     const results = await User.aggregate(pipeline);
 
     if (!results || results.length === 0) {
-      return res.status(404).json({ message: "No transactions found for given IDs" });
+      return res
+        .status(404)
+        .json({ message: "No transactions found for given IDs" });
     }
 
     // Build CSV content
@@ -265,18 +325,23 @@ const exportPassbook = async (req, res) => {
     const csvHeaders = Object.keys(csvData[0]);
     const csvContent = [
       csvHeaders.join(","),
-      ...csvData.map((row) => csvHeaders.map((header) => `"${String(row[header]).replace(/"/g, '""')}"`).join(",")),
+      ...csvData.map((row) =>
+        csvHeaders
+          .map((header) => `"${String(row[header]).replace(/"/g, '""')}"`)
+          .join(",")
+      ),
     ].join("\n");
 
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", "attachment; filename=passbook_export.csv");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=passbook_export.csv"
+    );
     return res.send(csvContent);
-
   } catch (error) {
     console.error("Error exporting passbook by IDs:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-
-module.exports = { getAllPassbookTransactions,exportPassbook };
+module.exports = { getAllPassbookTransactions, exportPassbook };
