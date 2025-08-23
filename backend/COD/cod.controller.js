@@ -297,8 +297,6 @@ cron.schedule(
   }
 );
 
-
-
 // remittanceScheduleData();
 
 // Helper for direct business logic (used in both controllers)
@@ -1133,6 +1131,14 @@ const uploadCodRemittance = async (req, res) => {
         });
       }
 
+      if (
+        !userRemittance.LastCODRemitted ||
+        Number(remittance.totalCod || 0) >
+          Number(userRemittance.LastCODRemitted)
+      ) {
+        userRemittance.LastCODRemitted = Number(remittance.totalCod || 0);
+      }
+
       await userRemittance.save();
 
       remittance.status = "Paid";
@@ -1421,186 +1427,419 @@ const courierCodRemittance = async (req, res) => {
 
 const getAdminCodRemitanceData = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limitQuery = req.query.limit;
-    const userNameFilter = req.query.userNameFilter;
-    const remittanceIdFilter = req.query.remittanceIdFilter;
-    const statusFilter = req.query.statusFilter;
-    const limit = limitQuery === "All" ? null : parseInt(limitQuery);
-    const skip = limit ? (page - 1) * limit : 0;
-    const startDate = req.query.startDate
-      ? new Date(req.query.startDate)
-      : null;
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+    const {
+      userNameFilter,
+      selectedUserId,
+      startDate,
+      endDate,
+      statusFilter,
+      page = 1,
+      limit = 20,
+      remittanceIdFilter,
+      utr,
+    } = req.query;
 
-    // --- Employee filtering logic ---
-    let allocatedUserIds = null;
-    let allowedRemittanceIds = null;
-    if (req.employee && req.employee.employeeId) {
+    // console.log("query", req.query);
+
+    const parsedLimit = limit === "all" ? 0 : Number(limit);
+    const skip = (Number(page) - 1) * (parsedLimit || 0);
+
+    // ---------- Base filters ----------
+    const userIdFilter = {};
+    const remittanceMatchStage = {};
+
+    // Employee allocation filter (optional: applies if there is employee context)
+    if (req.employee?.employeeId) {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
       });
-      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      const allocatedUserIds = allocations.map(
+        (a) => new mongoose.Types.ObjectId(a.sellerMongoId)
+      );
       if (allocatedUserIds.length === 0) {
-        return res.status(200).json({
-          success: true,
-          message: "COD remittance orders retrieved successfully",
+        return res.json({
           total: 0,
-          page,
-          limit: limit || "All",
-          totalPages: 1,
-          data: {
-            totalCODAmount: 0,
-            paidCODAmount: 0,
-            pendingCODAmount: 0,
-            orders: [],
+          page: Number(page),
+          limit: parsedLimit === 0 ? "all" : parsedLimit,
+          results: [],
+          summary: {
+            CODToBeRemitted: 0,
+            RemittanceInitiated: 0,
+            TotalDeductionfromCOD: 0,
+            TotalCODRemitted: 0,
+            LastCodRemmited: null,
           },
         });
       }
-      // Find all remittanceIds for allocated users
-      const remittances = await adminCodRemittance
-        .find(
-          {
-            userId: {
-              $in: allocatedUserIds.map(
-                (id) => new mongoose.Types.ObjectId(id)
-              ),
-            },
-          },
-          { remitanceId: 1 }
-        )
-        .lean();
-      allowedRemittanceIds = remittances.map((r) => r.remitanceId?.toString());
+      userIdFilter.userId = { $in: allocatedUserIds };
     }
 
-    // Fetch all admin COD remittance orders
-    let matchStage = {};
-    if (allowedRemittanceIds) {
-      matchStage.remitanceId = { $in: allowedRemittanceIds };
+    // Add filtering by selectedUserId if provided
+    if (selectedUserId) {
+      try {
+        userIdFilter.userId = new mongoose.Types.ObjectId(selectedUserId);
+      } catch {
+        return res.status(400).json({ message: "Invalid selectedUserId" });
+      }
     }
 
+    // Date filter
     if (startDate && endDate) {
-      matchStage.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+      const sDate = new Date(startDate);
+      sDate.setHours(0, 0, 0, 0);
+      const eDate = new Date(endDate);
+      eDate.setHours(23, 59, 59, 999);
+      remittanceMatchStage["remittanceData.date"] = {
+        $gte: sDate,
+        $lte: eDate,
       };
     }
 
-    const allOrders = await adminCodRemittance.aggregate([
-      { $match: matchStage },
-      {
-        $addFields: {
-          codAmountNum: { $toDouble: { $ifNull: ["$orderDetails.codcal", 0] } },
-        },
-      },
-      {
-        $sort: {
-          _id: -1, // Sort by insertion order: latest first
-        },
-      },
-    ]);
+    // Status / remittanceId / utr filters on remittanceData
+    if (statusFilter)
+      remittanceMatchStage["remittanceData.status"] = statusFilter;
+    if (remittanceIdFilter)
+      remittanceMatchStage["remittanceData.remittanceId"] = remittanceIdFilter;
+    if (utr) remittanceMatchStage["remittanceData.utr"] = utr;
 
-    if (!allOrders || allOrders.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: "COD remittance orders retrieved successfully",
-        total: 0,
-        page,
-        limit: limit || "All",
-        totalPages: 1,
-        data: {
-          totalCODAmount: 0,
-          paidCODAmount: 0,
-          pendingCODAmount: 0,
-          orders: [],
+    // Base pipeline for user lookup and filtering user data
+    const basePipeline = [
+      { $match: userIdFilter },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
         },
-      });
-    }
+      },
+      { $unwind: "$user" },
+      ...(userNameFilter
+        ? [
+            {
+              $match: {
+                $or: [
+                  ...(mongoose.Types.ObjectId.isValid(userNameFilter)
+                    ? [
+                        {
+                          "user._id": new mongoose.Types.ObjectId(
+                            userNameFilter
+                          ),
+                        },
+                      ]
+                    : []),
+                  { "user.email": new RegExp(userNameFilter, "i") },
+                  { "user.fullname": new RegExp(userNameFilter, "i") },
+                ],
+              },
+            },
+          ]
+        : []),
+    ];
 
-    // Calculate totals with same filter
-    let totals = await adminCodRemittance.aggregate([
-      {
-        $match: matchStage,
+    // Work on remittanceData - unwind first, then apply remittance filters
+    const remittanceFilteringPipeline = [
+      { $unwind: "$remittanceData" },
+      { $match: remittanceMatchStage },
+    ];
+
+    // Group by remittanceId to get unique remittance entries
+    const groupByRemittanceId = {
+      $group: {
+        _id: "$remittanceData.remittanceId",
+        doc: { $first: "$$ROOT" },
       },
-      {
-        $addFields: {
-          codAmountNum: { $toDouble: { $ifNull: ["$orderDetails.codcal", 0] } },
+    };
+
+    const replaceRoot = { $replaceRoot: { newRoot: "$doc" } };
+
+    // Add fields: numeric conversions and sum for codAvailable and related amounts
+    const addFieldsForNumbers = {
+      $addFields: {
+        codAvailableNum: {
+          $toDouble: {
+            $ifNull: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $isArray: "$remittanceData.codAvailable" },
+                      { $gt: [{ $size: "$remittanceData.codAvailable" }, 0] },
+                    ],
+                  },
+                  { $arrayElemAt: ["$remittanceData.codAvailable", 0] },
+                  "$remittanceData.codAvailable",
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        amountCreditedToWalletNum: {
+          $toDouble: {
+            $ifNull: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $isArray: "$remittanceData.amountCreditedToWallet" },
+                      {
+                        $gt: [
+                          { $size: "$remittanceData.amountCreditedToWallet" },
+                          0,
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    $arrayElemAt: ["$remittanceData.amountCreditedToWallet", 0],
+                  },
+                  "$remittanceData.amountCreditedToWallet",
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        earlyCodChargesNum: {
+          $toDouble: {
+            $ifNull: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $isArray: "$remittanceData.earlyCodCharges" },
+                      {
+                        $gt: [{ $size: "$remittanceData.earlyCodCharges" }, 0],
+                      },
+                    ],
+                  },
+                  { $arrayElemAt: ["$remittanceData.earlyCodCharges", 0] },
+                  "$remittanceData.earlyCodCharges",
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        adjustedAmountNum: {
+          $toDouble: {
+            $ifNull: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $isArray: "$remittanceData.adjustedAmount" },
+                      { $gt: [{ $size: "$remittanceData.adjustedAmount" }, 0] },
+                    ],
+                  },
+                  { $arrayElemAt: ["$remittanceData.adjustedAmount", 0] },
+                  "$remittanceData.adjustedAmount",
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        remittanceInitiatedNum: {
+          $toDouble: {
+            $ifNull: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $isArray: "$remittanceData.codAvailable" },
+                      { $gt: [{ $size: "$remittanceData.codAvailable" }, 0] },
+                    ],
+                  },
+                  { $arrayElemAt: ["$remittanceData.codAvailable", 0] },
+                  "$remittanceData.codAvailable",
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        codAvailableSum: {
+          $add: [
+            {
+              $toDouble: {
+                $ifNull: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $isArray: "$remittanceData.codAvailable" },
+                          {
+                            $gt: [{ $size: "$remittanceData.codAvailable" }, 0],
+                          },
+                        ],
+                      },
+                      { $arrayElemAt: ["$remittanceData.codAvailable", 0] },
+                      "$remittanceData.codAvailable",
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            {
+              $toDouble: {
+                $ifNull: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          {
+                            $isArray: "$remittanceData.amountCreditedToWallet",
+                          },
+                          {
+                            $gt: [
+                              {
+                                $size: "$remittanceData.amountCreditedToWallet",
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        $arrayElemAt: [
+                          "$remittanceData.amountCreditedToWallet",
+                          0,
+                        ],
+                      },
+                      "$remittanceData.amountCreditedToWallet",
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            {
+              $toDouble: {
+                $ifNull: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $isArray: "$remittanceData.earlyCodCharges" },
+                          {
+                            $gt: [
+                              { $size: "$remittanceData.earlyCodCharges" },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                      { $arrayElemAt: ["$remittanceData.earlyCodCharges", 0] },
+                      "$remittanceData.earlyCodCharges",
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+          ],
         },
       },
+    };
+
+    // Final projection
+    const projectFields = {
+      $project: {
+        _id: 0,
+        user: {
+          userId: "$user.userId",
+          name: "$user.fullname",
+          email: "$user.email",
+          phoneNumber: "$user.phoneNumber",
+        },
+        remittanceId: "$remittanceData.remittanceId",
+        date: "$remittanceData.date",
+        status: "$remittanceData.status",
+        remittanceMethod: "$remittanceData.remittanceMethod",
+        utr: "$remittanceData.utr",
+        codAvailable: "$codAvailableSum", // sum of codAvailable + amountCreditedToWallet + earlyCodCharges
+        remittanceInitiated: "$remittanceInitiatedNum", // original codAvailable
+        amountCreditedToWallet: "$amountCreditedToWalletNum",
+        earlyCodCharges: "$earlyCodChargesNum",
+        adjustedAmount: "$adjustedAmountNum",
+      },
+    };
+
+    const sortingAndPagination = [
+      { $sort: { date: -1 } },
+      ...(parsedLimit === 0 ? [] : [{ $skip: skip }, { $limit: parsedLimit }]),
+    ];
+
+    // Full pipeline for fetching results
+    const rowsPipeline = [
+      ...basePipeline,
+      ...remittanceFilteringPipeline,
+      groupByRemittanceId,
+      replaceRoot,
+      addFieldsForNumbers,
+      projectFields,
+      ...sortingAndPagination,
+    ];
+
+    const rows = await codRemittance.aggregate(rowsPipeline);
+
+    // Count pipeline for total count
+    const countPipeline = [
+      ...basePipeline,
+      { $unwind: "$remittanceData" },
+      { $match: remittanceMatchStage },
+      { $count: "total" },
+    ];
+
+    const countResult = await codRemittance.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    // Summary aggregation: apply filters on remittanceData to get accurate summary for filtered data
+    const aggregationSummary = await codRemittance.aggregate([
+      { $match: userIdFilter },
       {
         $group: {
           _id: null,
-          totalCODAmount: { $sum: "$codAmountNum" },
-          paidCODAmount: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "Paid"] }, "$codAmountNum", 0],
-            },
-          },
-          pendingCODAmount: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "Pending"] }, "$codAmountNum", 0],
-            },
-          },
+          CODToBeRemitted: { $sum: "$CODToBeRemitted" },
+          RemittanceInitiated: { $sum: "$RemittanceInitiated" },
+          TotalDeductionfromCOD: { $sum: "$TotalDeductionfromCOD" },
+          TotalCODRemitted: { $sum: "$TotalCODRemitted" },
+          LastCODRemitted: { $max: "$LastCODRemitted" }, // replace with your actual last remittance date field if any, else remove
         },
       },
       {
         $project: {
           _id: 0,
-          totalCODAmount: 1,
-          paidCODAmount: 1,
-          pendingCODAmount: 1,
+          CODToBeRemitted: 1,
+          RemittanceInitiated: 1,
+          TotalDeductionfromCOD: 1,
+          TotalCODRemitted: 1,
+          LastCODRemitted: 1,
         },
       },
     ]);
-    if (!totals || totals.length === 0) {
-      totals = [{ totalCODAmount: 0, paidCODAmount: 0, pendingCODAmount: 0 }];
-    }
 
-    // Apply filters conditionally
-    let filteredOrders = allOrders;
+    const summary = aggregationSummary[0] || {
+      CODToBeRemitted: 0,
+      RemittanceInitiated: 0,
+      TotalDeductionfromCOD: 0,
+      TotalCODRemitted: 0,
+      LastCodRemmited: 0,
+    };
 
-    // Filter by userName
-    if (userNameFilter) {
-      filteredOrders = filteredOrders.filter((order) =>
-        order.userName?.toLowerCase().includes(userNameFilter.toLowerCase())
-      );
-    }
-
-    // Filter by remittanceId
-    if (remittanceIdFilter) {
-      filteredOrders = filteredOrders.filter((order) =>
-        order.remitanceId?.toString().includes(remittanceIdFilter)
-      );
-    }
-    // Filter by statusFilter
-    if (statusFilter) {
-      filteredOrders = filteredOrders.filter((order) =>
-        order.status?.toString().includes(statusFilter)
-      );
-    }
-
-    const totalCount = filteredOrders.length;
-    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
-    const paginatedData = limit
-      ? filteredOrders.slice(skip, skip + limit)
-      : filteredOrders;
-
-    return res.status(200).json({
-      success: true,
-      message: "COD remittance orders retrieved successfully",
-      total: totalCount,
-      page,
-      limit: limit || "All",
-      totalPages,
-      data: {
-        totalCODAmount: totals[0]?.totalCODAmount || 0,
-        paidCODAmount: totals[0]?.paidCODAmount || 0,
-        pendingCODAmount: totals[0]?.pendingCODAmount || 0,
-        orders: paginatedData,
-      },
+    res.json({
+      total,
+      page: Number(page),
+      limit: parsedLimit === 0 ? "all" : parsedLimit,
+      results: rows,
+      summary,
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
+    console.error("Error in getAllCodRemittance:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 

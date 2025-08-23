@@ -8,6 +8,8 @@ const pincodeServiceability = require("../Controller/pincodeServiceability.contr
 const availableCourierService=require("../Controller/availableCourierService.controller")
 const bookOrder= require("../Controller/bookOrder.controller");
 const cancelOrdersAtBooked = require("../Controller/cancelledOrder.controller");
+const trackOrder = require("../Controller/trackOrder.controller");
+const { exceptionList,ndrCreate } = require("../Controller/NDR.controller");
 
 // Route to create a new order
 router.post("/external/createOrder", isAuthorized, orderCreationController);
@@ -16,5 +18,8 @@ router.get("/external/pincodeServiceability", isAuthorized, pincodeServiceabilit
 router.get("/external/serviceableCourierServices/rate", isAuthorized, availableCourierService);
 router.post("/external/orderBooking",isAuthorized, bookOrder);
 router.post("/external/cancelledOrder/:awb_number", isAuthorized, cancelOrdersAtBooked);
+router.get("/external/trackOrder/:awb", isAuthorized, trackOrder);
+router.get("/external/exceptionList",isAuthorized,exceptionList)
+router.post("/external/ndr/create",isAuthorized,ndrCreate);
 
 module.exports = router;
