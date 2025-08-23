@@ -123,7 +123,7 @@ const createOrder = async (req, res) => {
       orderSubtype: "FORWARD",
       currency: "INR",
       amount: parseInt(currentOrder.paymentDetails.amount),
-      weight: Number(currentOrder.packageDetails.applicableWeight)*1000 || 1,
+      weight: Number(currentOrder.packageDetails.applicableWeight) * 1000 || 1,
       lineItems: lineItems,
       paymentType: payment_type,
       paymentStatus: payment_status,
@@ -335,18 +335,19 @@ const createManifest = async (req, res) => {
   };
 
   try {
-    const token = await getToken(); 
+    const token = await getToken();
     // console.log(token,"hhhhhhhhhh",awbNumbers)// Ensure token is fetched correctly
     const response = await axios.post(
       `${BASE_URL}/fulfillment/public/seller/order/create-manifest`,
       payload,
       {
-        headers: { Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-       },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       }
     );
-    console.log("jkkkkkkkkkkkkk",response.data);
+    console.log("jkkkkkkkkkkkkk", response.data);
 
     res.status(200).json(response.data);
   } catch (error) {
@@ -360,7 +361,6 @@ const createManifest = async (req, res) => {
     });
   }
 };
-
 
 // Track Order
 const trackOrderShreeMaruti = async (awbNumber) => {
@@ -414,7 +414,6 @@ const trackOrderShreeMaruti = async (awbNumber) => {
 // Serviceability
 const checkServiceabilityShreeMaruti = async (payload) => {
   const { fromPincode, toPincode, isCodOrder, deliveryMode } = payload;
-
   if (!fromPincode || !toPincode || isCodOrder === undefined || !deliveryMode) {
     return {
       error:
@@ -424,7 +423,6 @@ const checkServiceabilityShreeMaruti = async (payload) => {
 
   try {
     const token = await getToken();
-    // console.log("tokennnn",token)
     const response = await axios.post(
       `${BASE_URL}/fulfillment/public/seller/order/check-ecomm-order-serviceability`,
       { fromPincode, toPincode, isCodOrder, deliveryMode },
@@ -435,19 +433,23 @@ const checkServiceabilityShreeMaruti = async (payload) => {
         },
       }
     );
-    console.log("resssssssss", response.data);
-    if (response?.data?.data?.serviceability) {
-      return {
-        success: true,
-      };
+
+    if (response && response.data && response.data.data) {
+      if (response.data.data.serviceability) {
+        return { success: true };
+      } else {
+        return false;
+      }
     } else {
+      console.error("Unexpected response structure:", response);
       return false;
     }
   } catch (error) {
-    console.error(
-      "Error checking serviceability:",
-      error.response?.data || error.message
-    );
+    if (error.response) {
+      console.error("API error response:", error.response.data);
+    } else {
+      console.error("Request error:", error.message);
+    }
     return false;
   }
 };

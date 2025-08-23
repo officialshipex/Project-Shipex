@@ -102,7 +102,6 @@ const getAllCodRemittance = async (req, res) => {
       ...base,
       {
         $facet: {
-          // 1) Visible rows (paged)
           rows: [
             { $unwind: "$remittanceData" },
             { $match: remittanceMatchStage },
@@ -115,6 +114,7 @@ const getAllCodRemittance = async (req, res) => {
             { $replaceRoot: { newRoot: "$doc" } },
             {
               $addFields: {
+                // Add FLAT fields for safe access
                 codAvailableFlat: {
                   $cond: [
                     { $isArray: "$remittanceData.codAvailable" },
@@ -164,6 +164,22 @@ const getAllCodRemittance = async (req, res) => {
                 adjustedAmountNum: {
                   $toDouble: { $ifNull: ["$adjustedAmountFlat", 0] },
                 },
+                // NEW LOGIC: codAvailableSum = codAvailableNum + amountCreditedToWalletNum + earlyCodChargesNum
+                codAvailableSum: {
+                  $add: [
+                    { $toDouble: { $ifNull: ["$codAvailableFlat", 0] } },
+                    {
+                      $toDouble: {
+                        $ifNull: ["$amountCreditedToWalletFlat", 0],
+                      },
+                    },
+                    { $toDouble: { $ifNull: ["$earlyCodChargesFlat", 0] } },
+                  ],
+                },
+                // New field: remittanceInitiated = codAvailableNum (original value)
+                remittanceInitiated: {
+                  $toDouble: { $ifNull: ["$codAvailableFlat", 0] },
+                },
               },
             },
             {
@@ -180,7 +196,9 @@ const getAllCodRemittance = async (req, res) => {
                 status: "$remittanceData.status",
                 remittanceMethod: "$remittanceData.remittanceMethod",
                 utr: "$remittanceData.utr",
-                codAvailable: "$codAvailableNum",
+                // OUTPUT FIELDS
+                codAvailable: "$codAvailableSum", // Combined value as required
+                remittanceInitiated: "$remittanceInitiated", // The original codAvailable value
                 amountCreditedToWallet: "$amountCreditedToWalletNum",
                 earlyCodCharges: "$earlyCodChargesNum",
                 adjustedAmount: "$adjustedAmountNum",
@@ -191,7 +209,6 @@ const getAllCodRemittance = async (req, res) => {
               ? []
               : [{ $skip: skip }, { $limit: parsedLimit }]),
           ],
-
           // 2) Total count for pagination (same filters as rows, but just count)
           count: [
             { $unwind: "$remittanceData" },
@@ -377,8 +394,7 @@ const getAllCodRemittance = async (req, res) => {
         CODToBeRemitted: codSnap.CODToBeRemitted || 0, // snapshot (user-level)
         totalCodRemitted: totals.totalCodRemitted || 0, // from Paid rows
         totalDeductions: totals.totalDeductions || 0, // from visible rows
-        totalRemittanceInitiated:
-          totals.totalRemittanceInitiated - pendingEarlyCodCharges || 0, // from Pending rows
+        totalRemittanceInitiated: totals.totalRemittanceInitiated, // from Pending rows
       },
     });
   } catch (error) {
