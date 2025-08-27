@@ -50,6 +50,10 @@ const usersSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    apiAccess:{
+      type: Boolean,
+      default: false,
+    },
     wareHouse: [
       {
         type: mongoose.Schema.Types.ObjectId,
