@@ -32,6 +32,15 @@ const generateToken = async (req, res) => {
       });
     }
 
+    // 🔍 3.1 Check API access
+    if (user.apiAccess === false) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Please contact your Sales Manager or support at tech@shipexindia.com",
+      });
+    }
+
     // 4. Compare password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -64,11 +73,6 @@ const generateToken = async (req, res) => {
       message: "Token generated successfully",
       data: {
         token,
-        // user: {
-        //   id: user.userId,
-        //   fullname: user.fullname,
-        //   email: user.email,
-        // },
       },
     });
   } catch (error) {

@@ -14,7 +14,10 @@ const {
 const {
   checkSmartshipHubServiceability,
 } = require("../AllCouriers/SmartShip/Couriers/couriers.controller.js");
-const { checkAmazonServiceability } = require("../AllCouriers/Amazon/Courier/couriers.controller.js");
+const {
+  checkAmazonServiceability,
+} = require("../AllCouriers/Amazon/Courier/couriers.controller.js");
+const { checkServiceabilityShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller.js");
 
 const calculateRate = async (req, res) => {
   try {
@@ -50,7 +53,16 @@ const calculateRate = async (req, res) => {
       const mode = rc.mode;
       let serviceable;
 
-      if (!["EcomExpres", "Delhivery", "DTDC","Smartship","Amazon"].includes(provider)) {
+      if (
+        ![
+          // "EcomExpres",
+          "Delhivery",
+          "ShreeMaruti",
+          "DTDC",
+          "Smartship",
+          "Amazon",
+        ].includes(provider)
+      ) {
         continue;
       }
 
@@ -60,7 +72,19 @@ const calculateRate = async (req, res) => {
           pickUpPincode,
           deliveryPincode
         );
+
         // console.log("ecom", serviceable);
+      } else if (provider === "ShreeMaruti") {
+        const payload = {
+          fromPincode: parseInt(pickUpPincode),
+          toPincode: parseInt(deliveryPincode),
+          isCodOrder: paymentType === "COD" ? true : false,
+          deliveryMode: "SURFACE",
+        };
+        serviceable = await checkServiceabilityShreeMaruti(
+          payload
+        );
+        // console.log("shree", serviceable);
       } else if (provider === "Delhivery") {
         serviceable = await checkPincodeServiceabilityDelhivery(
           deliveryPincode,
@@ -82,23 +106,23 @@ const calculateRate = async (req, res) => {
         };
         serviceable = await checkSmartshipHubServiceability(payload);
         // console.log("serviceable", serviceable);
+      } else if (provider === "Amazon") {
+        const payload = {
+          pickUpPincode,
+          deliveryPincode,
+          applicableWeight,
+          declaredValue,
+        };
+        // serviceable = await checkAmazonServiceability(payload);
+        // console.log("servicable", serviceable);
+        serviceable=true
       }
-      else if(provider==="Amazon"){
-          const payload={
-            pickUpPincode,
-            deliveryPincode,
-            applicableWeight,
-            declaredValue
-          }
-          serviceable=await checkAmazonServiceability(payload)
-          console.log("servicable",serviceable);
-        }
       // if (!isServiceable) continue; // Skip if not serviceable
 
       if (serviceable.success === false) {
         continue;
       }
-      
+
       let basicCharge = parseFloat(rc.weightPriceBasic[0][currentZone]);
       let additionalCharge = parseFloat(
         rc.weightPriceAdditional[0][currentZone]

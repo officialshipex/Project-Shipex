@@ -6,6 +6,12 @@ const wallet = require("../models/wallet");
 const cron = require("node-cron");
 const zoneManagementController = require("../Rate/zoneManagementController");
 const getZone = zoneManagementController.getZone;
+
+// Helper sleep function for delay
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const rtoCharges = async () => {
   try {
     const gstRate = 18;
@@ -67,10 +73,12 @@ const rtoCharges = async () => {
         const codDescription = "COD Charges Received";
         const rtoDescription = "RTO Freight Charges Applied";
         const currentDate = new Date();
-          
 
         const user = await users.findOne({ _id: item.userId });
         const Wallet = await wallet.findOne({ _id: user.Wallet });
+
+        // Track live balance during updates
+        let liveBalance = Wallet.balance;
 
         // Helper: Remove transaction and update balance
         const removeTransactionAndUpdateBalance = async (
@@ -86,8 +94,7 @@ const rtoCharges = async () => {
           if (existingTx) {
             const amount = existingTx.amount;
             const isCredit = existingTx.category === "credit";
-
-            // Remove the transaction
+            // Remove the transaction and adjust live balance
             await wallet.updateOne(
               { _id: walletDoc._id },
               {
@@ -102,6 +109,7 @@ const rtoCharges = async () => {
                 },
               }
             );
+            liveBalance = isCredit ? liveBalance - amount : liveBalance + amount;
           }
         };
 
@@ -116,25 +124,29 @@ const rtoCharges = async () => {
         );
 
         // ✅ Add COD credit
-        await wallet.updateOne(
-          { _id: Wallet._id },
-          {
-            $inc: { balance: codCharges },
-            $push: {
-              transactions: {
-                channelOrderId: item.orderId || null,
-                category: "credit",
-                amount: codCharges,
-                balanceAfterTransaction: Wallet.balance + codCharges,
-                date: currentDate,
-                awb_number: awb,
-                description: codDescription,
+        if (codCharges > 0) {
+          liveBalance += codCharges;
+          await wallet.updateOne(
+            { _id: Wallet._id },
+            {
+              $inc: { balance: codCharges },
+              $push: {
+                transactions: {
+                  channelOrderId: item.orderId || null,
+                  category: "credit",
+                  amount: codCharges,
+                  balanceAfterTransaction: liveBalance,
+                  date: currentDate,
+                  awb_number: awb,
+                  description: codDescription,
+                },
               },
-            },
-          }
-        );
+            }
+          );
+        }
 
         // ✅ Add RTO charge debit
+        liveBalance -= totalChargesReverse;
         await wallet.updateOne(
           { _id: Wallet._id },
           {
@@ -144,7 +156,7 @@ const rtoCharges = async () => {
                 channelOrderId: item.orderId || null,
                 category: "debit",
                 amount: totalChargesReverse,
-                balanceAfterTransaction: Wallet.balance - totalChargesReverse,
+                balanceAfterTransaction: liveBalance,
                 date: currentDate,
                 awb_number: awb,
                 description: rtoDescription,
@@ -152,6 +164,9 @@ const rtoCharges = async () => {
             },
           }
         );
+
+        // ⏱️ Wait 1 second before the next order
+        await sleep(1000);
       } catch (innerErr) {
         console.error(
           "❌ Error processing order:",
@@ -171,7 +186,6 @@ cron.schedule("0 */5 * * *", () => {
   console.log("⏰ Running scheduled task every 5 hours: Fetching orders...");
   rtoCharges();
 });
+// rtoCharges(); // Initial call when the server starts
 
-// module.exports = {
-//   rtoCharges,
-// };
+// module.exports = { rtoCharges };
