@@ -1,5 +1,33 @@
 const mongoose = require("mongoose");
 
+// Sub-schema for each action in NDR
+const ndrActionSchema = new mongoose.Schema(
+  {
+    action: { type: String, required: true },
+    actionBy: { type: String, required: true },
+    remark: { type: String },
+    source: { type: String },
+    date: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+// Each entry in ndrHistory = array of max 2 actions
+const ndrEntrySchema = new mongoose.Schema(
+  {
+    actions: {
+      type: [ndrActionSchema],
+      validate: {
+        validator: function (arr) {
+          return arr.length <= 2;
+        },
+        message: "Each NDR entry can contain at most 2 actions",
+      },
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     userId: {
@@ -14,9 +42,8 @@ const orderSchema = new mongoose.Schema(
     channelId: {
       type: Number,
     },
-    channel:{
+    channel: {
       type: String,
-      // required:true
     },
     pickupAddress: {
       contactName: { type: String, required: true },
@@ -52,12 +79,11 @@ const orderSchema = new mongoose.Schema(
         length: { type: Number, required: true },
         width: { type: Number, required: true },
         height: { type: Number, required: true },
-        calculatedWeight: { type: Number }, // Will store the calculated value
+        calculatedWeight: { type: Number },
       },
     },
     compositeOrderId: {
       type: String,
-      // required: true,
       unique: true,
     },
     zone: { type: String },
@@ -72,37 +98,34 @@ const orderSchema = new mongoose.Schema(
       },
       default: {},
     },
-    ndrHistory: { type: Array, default: [] },
+
+    // Updated ndrHistory
+    ndrHistory: {
+      type: [ndrEntrySchema],
+      validate: {
+        validator: function (arr) {
+          return arr.length <= 3;
+        },
+        message: "NDR history can contain at most 3 entries",
+      },
+      default: [],
+    },
+
     ndrReason: {
       date: { type: Date },
       reason: { type: String },
     },
 
-    awb_number: {
-      type: String,
-    },
-    label: {
-      type: String,
-    },
-    shipment_id: {
-      type: String,
-    },
-    provider: {
-      type: String,
-    },
-    totalFreightCharges: {
-      type: Number,
-    },
+    awb_number: { type: String },
+    label: { type: String },
+    shipment_id: { type: String },
+    provider: { type: String },
+    totalFreightCharges: { type: Number },
     status: { type: String, required: true },
     ndrStatus: { type: String },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+    createdAt: { type: Date, default: Date.now },
     shipmentCreatedAt: { type: Date },
-    courierServiceName: {
-      type: String,
-    },
+    courierServiceName: { type: String },
     RTOCharges: { type: String },
     COD: { type: String },
     reattempt: { type: Boolean },
@@ -119,7 +142,7 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Add the compound index
+// Compound index
 orderSchema.index({ userId: 1, createdAt: -1 });
 
 const Shipment = mongoose.model("newOrder", orderSchema);

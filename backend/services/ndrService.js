@@ -281,15 +281,30 @@ const submitNdrToAmazon = async (
 
       const attemptCount = order.ndrHistory.length;
 
-      const ndrHistoryEntry = {
-        date: new Date(),
+      // Prepare new action
+      const ndrActionEntry = {
         action,
-        remark: comments,
-        attempt: attemptCount + 1,
+        actionBy: "Shipex India",
+        remark: comments || "",
+        source: "Shipex India",
+        date: new Date(),
       };
 
+      // If there is at least one history entry, push into its actions
+      if (order.ndrHistory.length > 0) {
+        const latestHistory = order.ndrHistory[order.ndrHistory.length - 1];
+        if (!Array.isArray(latestHistory.actions)) {
+          latestHistory.actions = [];
+        }
+        latestHistory.actions.push(ndrActionEntry);
+      } else {
+        // Otherwise, create first entry with actions array
+        order.ndrHistory.push({
+          actions: [ndrActionEntry],
+        });
+      }
+
       order.ndrStatus = "Action_Requested";
-      order.ndrHistory.push(ndrHistoryEntry);
       await order.save();
     }
 
@@ -325,35 +340,39 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       return { success: false, error: "Order not found" };
     }
 
-    const attemptCount = order.ndrHistory?.length || 0;
+    // --- build entry function ---
+    const buildActionEntry = (remark) => ({
+      action,
+      actionBy: "Shipex India",
+      remark: remark || "NDR Action Requested",
+      source: "Shipex India",
+      date: new Date(),
+    });
 
-    if (attemptCount < 0 || attemptCount > 2) {
-      return {
-        success: false,
-        error: "Re-attempt allowed only for attempt count 1 or 2.",
-      };
-    }
-
-    // ✅ If action is RTO, skip API call and handle manually
-    if (action.toUpperCase() === "RTO") {
+    // --- helper to push into nested ndrHistory ---
+    const pushToNdrHistory = (entry) => {
       if (!Array.isArray(order.ndrHistory)) {
         order.ndrHistory = [];
       }
 
-      const ndrHistoryEntry = {
-        date: new Date(),
-        action,
-        remark:
-          order.tracking.length > 0
-            ? order.tracking[order.tracking.length - 1].Instructions
-            : "Manual RTO Requested",
-        attempt: attemptCount + 1,
-      };
+      const latest = order.ndrHistory[order.ndrHistory.length - 1];
+      if (latest.length < 2) {
+        latest.push(entry);
+      }
+    };
+
+    // --- handle RTO (manual) ---
+    if (action.toUpperCase() === "RTO") {
+      const remark =
+        order.tracking.length > 0
+          ? order.tracking[order.tracking.length - 1].Instructions
+          : "Manual RTO Requested";
+
+      pushToNdrHistory(buildActionEntry(remark));
 
       order.manualRTOStatus = "Action_Requested";
       order.ndrStatus = "Action_Requested";
       order.status = "Undelivered";
-      order.ndrHistory.push(ndrHistoryEntry);
 
       await order.save();
 
@@ -364,7 +383,7 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       };
     }
 
-    // Step 3: Call Delhivery NDR API (for non-RTO actions only)
+    // --- Step 3: Call Delhivery NDR API (non-RTO) ---
     const payload = {
       data: [
         {
@@ -408,25 +427,19 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       };
     }
 
-    const { status, remark } = ndrStatusResponse.data;
+    const { remark } = ndrStatusResponse.data;
 
-    if (!Array.isArray(order.ndrHistory)) {
-      order.ndrHistory = [];
-    }
-
-    const ndrHistoryEntry = {
-      date: new Date(),
-      action,
-      remark:
+    pushToNdrHistory(
+      buildActionEntry(
         order.tracking.length > 0
           ? order.tracking[order.tracking.length - 1].Instructions
-          : remark,
-      attempt: attemptCount + 1,
-    };
+          : remark
+      )
+    );
 
     order.ndrStatus = "Action_Requested";
     order.status = "Undelivered";
-    order.ndrHistory.push(ndrHistoryEntry);
+
     await order.save();
 
     return {
@@ -524,7 +537,7 @@ const submitNdrToDtdc = async (
         details: failedConsignmentList,
       });
     }
-    console.log("successConsignmentList", successConsignmentList);
+
     // Handle success consignments
     if (
       successConsignmentList.some((item) => item.consgNumber === awb_number)
@@ -539,23 +552,30 @@ const submitNdrToDtdc = async (
         };
       }
 
+      // --- Build entry ---
+      const entry = {
+        action: rtoActionValue === "1" ? "RE-ATTEMPT" : "RTO",
+        actionBy: "Shipex India",
+        remark: remarks || "NDR Action Requested",
+        source: "Shipex India",
+        date: new Date(),
+      };
+
+      // --- Push to nested ndrHistory ---
       if (!Array.isArray(orderInDb.ndrHistory)) {
         orderInDb.ndrHistory = [];
       }
 
-      const latestInstruction = remarks;
+      const latest = orderInDb.ndrHistory[orderInDb.ndrHistory.length - 1];
+      if (latest.length < 2) {
+        latest.push(entry);
+      }
 
-      const ndrHistoryEntry = {
-        date: new Date(),
-        action: rtoActionValue === "1" ? "RE-ATTEMPT" : "RTO",
-        remark: latestInstruction,
-        attempt: orderInDb.ndrHistory.length + 1,
-      };
-
+      // --- Update order status ---
       orderInDb.ndrStatus = "Action_Requested";
       orderInDb.status = "Undelivered";
-      orderInDb.ndrHistory.push(ndrHistoryEntry);
       await orderInDb.save();
+
       console.log("Order updated:", orderInDb);
 
       return {
@@ -656,26 +676,32 @@ const callSmartshipNdrApi = async (
       }
     );
 
-    // console.log("smartship",smartshipResponse.data)
-
-    const { status, code, message, data } = smartshipResponse.data;
+    const { status, code, message } = smartshipResponse.data;
 
     if (status === 1) {
-      // ✅ Update order in DB like DTDC controller
+      // --- Build entry ---
+      const entry = {
+        action: action_id === 1 ? "RE-ATTEMPT" : "RTO",
+        actionBy: "Shipex India",
+        remark: comments,
+        source: "Shipex India",
+        date: new Date(),
+      };
+
+      // --- Push to nested ndrHistory ---
       if (!Array.isArray(currentOrder.ndrHistory)) {
         currentOrder.ndrHistory = [];
       }
 
-      const ndrHistoryEntry = {
-        date: new Date(),
-        action: action_id === 1 ? "RE-ATTEMPT" : "RTO",
-        remark: comments,
-        attempt: currentOrder.ndrHistory.length + 1,
-      };
+      const latest =
+        currentOrder.ndrHistory[currentOrder.ndrHistory.length - 1];
+      if (latest.length < 2) {
+        latest.push(entry);
+      }
 
+      // --- Update order status ---
       currentOrder.ndrStatus = "Action_Requested";
       currentOrder.status = "Undelivered";
-      currentOrder.ndrHistory.push(ndrHistoryEntry);
       await currentOrder.save();
 
       return {
@@ -711,7 +737,6 @@ const callSmartshipNdrApi = async (
     };
   }
 };
-
 
 module.exports = {
   getOrderDetails,
