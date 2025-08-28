@@ -391,7 +391,7 @@ const trackSingleOrder = async (order) => {
 
     if (provider === "Smartship") {
       const instruction = normalizedData.Instructions?.toLowerCase();
-      const Status=normalizedData.Status?.toLowerCase();
+      const Status = normalizedData.Status?.toLowerCase();
       order.status = SmartShipStatusMapping[Status];
 
       if (order.status === "RTO") {
@@ -463,7 +463,7 @@ const trackSingleOrder = async (order) => {
 
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
-        (normalizedData.Status === "RTO Delivered To Shipper" ||
+        (normalizedData.Status === "RTO Delivered To Shipper" &&
           normalizedData.Instructions === "SHIPMENT DELIVERED")
       ) {
         order.status = "RTO Delivered";
@@ -471,8 +471,9 @@ const trackSingleOrder = async (order) => {
       }
 
       if (
-        instruction === "delivered" ||
-        instruction === "delivery confirmed by customer"
+        (instruction === "delivered" ||
+          instruction === "delivery confirmed by customer") &&
+        normalizedData.Status !== "RTO Delivered To Shipper"
       ) {
         order.status = "Delivered";
       }
@@ -626,7 +627,7 @@ const trackSingleOrder = async (order) => {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
-const attemptCount = order.ndrHistory?.length || 0;
+          const attemptCount = order.ndrHistory?.length || 0;
           // New structured entry
           const newHistoryEntry = {
             actions: [
