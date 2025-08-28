@@ -1844,13 +1844,14 @@ const getAdminCodRemitanceData = async (req, res) => {
       TotalCODRemitted: 0,
       LastCodRemmited: 0,
     };
-
+const totalPages = parsedLimit === 0 ? 1 : Math.ceil(total / parsedLimit);
     res.json({
       total,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
       results: rows,
       summary,
+      totalPages
     });
   } catch (error) {
     console.error("Error in getAllCodRemittance:", error);

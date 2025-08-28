@@ -17,15 +17,18 @@ const getAllPassbookTransactions = async (req, res) => {
     } = req.query;
 
     const userMatchStage = {};
-    const transactionMatchStage = {};
+    const transactionFilterConditions = [];
 
     // --- Employee filtering logic ---
-    let allocatedUserIds = null;
     if (req.employee && req.employee.employeeId) {
       const allocations = await AllocateRole.find({
         employeeId: req.employee.employeeId,
-      });
-      allocatedUserIds = allocations.map((a) => a.sellerMongoId.toString());
+      }).lean();
+
+      const allocatedUserIds = allocations.map((a) =>
+        a.sellerMongoId.toString()
+      );
+
       if (allocatedUserIds.length === 0) {
         return res.json({
           total: 0,
@@ -34,52 +37,62 @@ const getAllPassbookTransactions = async (req, res) => {
           results: [],
         });
       }
+
       userMatchStage["_id"] = {
         $in: allocatedUserIds.map((id) => new mongoose.Types.ObjectId(id)),
       };
     }
 
-    // Filter by user (ID, email, or name)
+    // --- User search (id, email, name) ---
     if (userSearch) {
       const regex = new RegExp(userSearch, "i");
       if (mongoose.Types.ObjectId.isValid(userSearch)) {
         userMatchStage["$or"] = [
           { _id: new mongoose.Types.ObjectId(userSearch) },
           { email: regex },
-          { name: regex },
+          { fullname: regex },
         ];
       } else {
-        userMatchStage["$or"] = [{ email: regex }, { name: regex }];
+        userMatchStage["$or"] = [{ email: regex }, { fullname: regex }];
       }
     }
 
-    // Date filtering
+    // --- Transaction filters ---
     if (fromDate && toDate) {
       const startDate = new Date(new Date(fromDate).setHours(0, 0, 0, 0));
       const endDate = new Date(new Date(toDate).setHours(23, 59, 59, 999));
-      transactionMatchStage["wallet.transactions.date"] = {
-        $gte: startDate,
-        $lte: endDate,
-      };
+      transactionFilterConditions.push({
+        $and: [
+          { $gte: ["$$t.date", startDate] },
+          { $lte: ["$$t.date", endDate] },
+        ],
+      });
     }
 
-    // Filter by category (credit/debit)
     if (category) {
-      transactionMatchStage["wallet.transactions.category"] = category;
+      transactionFilterConditions.push({ $eq: ["$$t.category", category] });
     }
 
     if (awbNumber) {
-      transactionMatchStage["wallet.transactions.awb_number"] = awbNumber;
+      transactionFilterConditions.push({ $eq: ["$$t.awb_number", awbNumber] });
     }
 
     if (orderId) {
-      transactionMatchStage["wallet.transactions.channelOrderId"] = orderId;
+      transactionFilterConditions.push({
+        $eq: ["$$t.channelOrderId", orderId],
+      });
     }
+
+    const transactionFilter =
+      transactionFilterConditions.length > 0
+        ? { $and: transactionFilterConditions }
+        : true;
 
     const parsedLimit = limit === "all" ? 0 : Number(limit);
     const skip = (Number(page) - 1) * parsedLimit;
 
-    const basePipeline = [
+    // --- Aggregation pipeline ---
+    const pipeline = [
       { $match: { Wallet: { $ne: null }, ...userMatchStage } },
       {
         $lookup: {
@@ -90,129 +103,94 @@ const getAllPassbookTransactions = async (req, res) => {
         },
       },
       { $unwind: "$wallet" },
-      { $unwind: "$wallet.transactions" },
-      { $match: transactionMatchStage },
-
-      // 🔁 Join with neworders based on awb_number
       {
-        $addFields: {
-          awbExists: {
-            $cond: [
-              {
-                $and: [
-                  {
-                    $gt: [
-                      { $type: "$wallet.transactions.awb_number" },
-                      "missing",
-                    ],
-                  },
-                  { $ne: ["$wallet.transactions.awb_number", null] },
-                  { $ne: ["$wallet.transactions.awb_number", ""] },
-                ],
-              },
-              true,
-              false,
-            ],
+        $project: {
+          fullname: 1,
+          email: 1,
+          userId: 1,
+          phoneNumber: 1,
+          transactions: {
+            $filter: {
+              input: "$wallet.transactions",
+              as: "t",
+              cond: transactionFilter,
+            },
           },
         },
       },
+      { $unwind: "$transactions" },
+      { $sort: { "transactions.date": -1 } },
 
       {
-        $lookup: {
-          from: "neworders",
-          let: {
-            awb: "$wallet.transactions.awb_number",
-            awbExists: "$awbExists",
-          },
-          pipeline: [
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            ...(parsedLimit > 0
+              ? [{ $skip: skip }, { $limit: parsedLimit }]
+              : []),
             {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$awb_number", "$$awb"] },
-                    { $eq: ["$$awbExists", true] },
+              $lookup: {
+                from: "neworders",
+                let: { awb: "$transactions.awb_number" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: { $eq: ["$awb_number", "$$awb"] },
+                    },
+                  },
+                  { $project: { courierServiceName: 1, provider: 1, _id: 0 } },
+                ],
+                as: "orderInfo",
+              },
+            },
+            {
+              $project: {
+                user: {
+                  _id: "$_id",
+                  name: "$fullname",
+                  email: "$email",
+                  userId: "$userId",
+                  phoneNumber: "$phoneNumber",
+                },
+                id: "$transactions._id",
+                category: "$transactions.category",
+                amount: "$transactions.amount",
+                balanceAfterTransaction:
+                  "$transactions.balanceAfterTransaction",
+                date: "$transactions.date",
+                awb_number: "$transactions.awb_number",
+                orderId: "$transactions.channelOrderId",
+                description: "$transactions.description",
+                courierServiceName: {
+                  $ifNull: [
+                    { $arrayElemAt: ["$orderInfo.courierServiceName", 0] },
+                    null,
                   ],
+                },
+                provider: {
+                  $ifNull: [{ $arrayElemAt: ["$orderInfo.provider", 0] }, null],
                 },
               },
             },
-            { $project: { courierServiceName: 1, provider: 1, _id: 0 } },
           ],
-          as: "orderInfo",
         },
       },
-
-      {
-        $project: {
-          _id: 0,
-          user: {
-            _id: "$_id",
-            name: "$fullname",
-            email: "$email",
-            userId: "$userId",
-            phoneNumber: "$phoneNumber",
-          },
-          id: "$wallet.transactions._id",
-          category: "$wallet.transactions.category",
-          amount: "$wallet.transactions.amount",
-          balanceAfterTransaction:
-            "$wallet.transactions.balanceAfterTransaction",
-          date: "$wallet.transactions.date",
-          awb_number: "$wallet.transactions.awb_number",
-          orderId: "$wallet.transactions.channelOrderId",
-          description: "$wallet.transactions.description",
-
-          courierServiceName: {
-            $cond: [
-              {
-                $and: [
-                  { $gt: [{ $size: "$orderInfo" }, 0] },
-                  { $eq: ["$awbExists", true] },
-                ],
-              },
-              { $arrayElemAt: ["$orderInfo.courierServiceName", 0] },
-              null,
-            ],
-          },
-          provider: {
-            $cond: [
-              {
-                $and: [
-                  { $gt: [{ $size: "$orderInfo" }, 0] },
-                  { $eq: ["$awbExists", true] },
-                ],
-              },
-              { $arrayElemAt: ["$orderInfo.provider", 0] },
-              null,
-            ],
-          },
-        },
-      },
-
-      { $sort: { date: -1 } },
     ];
 
-    const [results, totalResult] = await Promise.all([
-      parsedLimit === 0
-        ? User.aggregate(basePipeline)
-        : User.aggregate([
-            ...basePipeline,
-            { $skip: skip },
-            { $limit: parsedLimit },
-          ]),
+    const result = await User.aggregate(pipeline);
 
-      User.aggregate([...basePipeline, { $count: "total" }]),
-    ]);
-
-    const total = totalResult[0]?.total || 0;
+    const total = result[0]?.metadata[0]?.total || 0;
+    const totalPages = parsedLimit === 0 ? 1 : Math.ceil(total / parsedLimit);
 
     return res.json({
       total,
+      totalPages,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
-      results,
+      results: result[0]?.data || [],
     });
   } catch (error) {
-    console.error("Error in getAllWalletTransactions:", error);
+    console.error("Error in getAllPassbookTransactions:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
