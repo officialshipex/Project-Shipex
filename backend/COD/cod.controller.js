@@ -761,19 +761,27 @@ const codRemittanceRecharge = async (req, res) => {
     let fulfilledOrders = [];
 
     for (const order of allCodRemittanceOrder) {
-      const codValue = Number(order.CODAmount);
+      let codValue = Number(order.CODAmount);
 
       if (remainingAmount >= codValue) {
-        // Mark this order as Paid
+        // Full payment for this order
         await CodRemittanceOrdersModel.updateOne(
           { _id: order._id },
           { $set: { status: "Paid" } }
         );
-
         fulfilledOrders.push(order.orderID);
         remainingAmount -= codValue;
-      }
+      } else if (remainingAmount > 0) {
+        // Partial payment
+        const newValue = codValue - remainingAmount;
 
+        await CodRemittanceOrdersModel.updateOne(
+          { _id: order._id },
+          { $set: { CODAmount: newValue } }
+        );
+        remainingAmount = 0;
+        break;
+      }
       if (remainingAmount <= 0) break;
     }
 
@@ -1008,6 +1016,13 @@ const uploadCodRemittance = async (req, res) => {
         return res.status(400).json({
           error: `Remittance ID ${row["*RemittanceID"]} not found.`,
         });
+      }
+
+      if (remittance.status === "Paid") {
+        console.log(
+          `Remittance ID ${row["*RemittanceID"]} is already paid. Skipping reprocessing.`
+        );
+        continue; // If inside for-loop, skip; or break/return as needed
       }
 
       let userRemittance = await codRemittance.findOne({
