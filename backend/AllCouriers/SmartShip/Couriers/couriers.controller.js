@@ -447,7 +447,7 @@ const trackOrderSmartShip = async (AWBNo, shipment_id) => {
   }
 };
 
-// trackOrderSmartShip("77955858024")
+// trackOrderSmartShip("77949935221")
 
 module.exports = {
   orderRegistrationOneStep,
