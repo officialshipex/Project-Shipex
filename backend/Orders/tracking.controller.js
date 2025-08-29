@@ -238,7 +238,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate ||
           order.ndrHistory.length === 0
         ) {
-          const attemptCount = order.ndrHistory?.length || 0;
+          const attemptCount = order.ndrHistory?.length+1 || 0;
           if (DTDCStatusMapping[instruction] === "Undelivered") {
             // Create a new history entry with one action inside
             const newHistoryEntry = {
@@ -339,7 +339,7 @@ const trackSingleOrder = async (order) => {
             order.ndrHistory.length === 0 ||
             lastEntryDate !== currentStatusDate
           ) {
-            const attemptCount = order.ndrHistory?.length || 0;
+            const attemptCount = order.ndrHistory?.length+1 || 0;
             // Create a new NDR history entry with one action
             const newHistoryEntry = {
               actions: [
@@ -444,7 +444,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate
         ) {
           order.ndrStatus = "Undelivered";
-          const attemptCount = order.ndrHistory?.length || 0;
+          const attemptCount = order.ndrHistory?.length+1 || 0;
           // Create new structured history entry
           const newHistoryEntry = {
             actions: [
@@ -528,7 +528,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate ||
           order.ndrHistory.length === 0
         ) {
-          const attemptCount = order.ndrHistory?.length || 0;
+          const attemptCount = order.ndrHistory?.length+1 || 0;
           if (SmartShipStatusMapping[instruction] === "Undelivered") {
             // process.exit(1)
             order.ndrHistory.push({
@@ -628,7 +628,7 @@ const trackSingleOrder = async (order) => {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
-          const attemptCount = order.ndrHistory?.length || 0;
+          const attemptCount = order.ndrHistory?.length+1 || 0;
           // New structured entry
           const newHistoryEntry = {
             actions: [
