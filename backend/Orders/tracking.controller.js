@@ -227,9 +227,12 @@ const trackSingleOrder = async (order) => {
         // if (!Array.isArray(order.ndrHistory)) {
         //   order.ndrHistory = [];
         // }
-        const lastEntryDate = new Date(
-          order.ndrHistory[order.ndrHistory.length - 1]?.date
-        ).toDateString();
+        const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+        const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
+
+        const lastEntryDate = lastAction?.date
+          ? new Date(lastAction.date).toDateString()
+          : null;
         const currentStatusDate = new Date(
           normalizedData.StatusDateTime
         ).toDateString();
@@ -238,7 +241,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate ||
           order.ndrHistory.length === 0
         ) {
-          const attemptCount = order.ndrHistory?.length+1 || 0;
+          const attemptCount = order.ndrHistory?.length + 1 || 0;
           if (DTDCStatusMapping[instruction] === "Undelivered") {
             // Create a new history entry with one action inside
             const newHistoryEntry = {
@@ -327,9 +330,12 @@ const trackSingleOrder = async (order) => {
             reason: normalizedData.StrRemarks,
           };
 
-          const lastEntryDate = new Date(
-            order.ndrHistory[order.ndrHistory.length - 1]?.actions?.[0]?.date
-          ).toDateString();
+          const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+          const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
+
+          const lastEntryDate = lastAction?.date
+            ? new Date(lastAction.date).toDateString()
+            : null;
 
           const currentStatusDate = new Date(
             normalizedData.StatusDateTime
@@ -339,7 +345,7 @@ const trackSingleOrder = async (order) => {
             order.ndrHistory.length === 0 ||
             lastEntryDate !== currentStatusDate
           ) {
-            const attemptCount = order.ndrHistory?.length+1 || 0;
+            const attemptCount = order.ndrHistory?.length + 1 || 0;
             // Create a new NDR history entry with one action
             const newHistoryEntry = {
               actions: [
@@ -431,9 +437,12 @@ const trackSingleOrder = async (order) => {
           reason: normalizedData.StrRemarks,
         };
 
-        const lastEntryDate = new Date(
-          order.ndrHistory[order.ndrHistory.length - 1]?.actions?.[0]?.date
-        ).toDateString();
+        const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+        const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
+
+        const lastEntryDate = lastAction?.date
+          ? new Date(lastAction.date).toDateString()
+          : null;
 
         const currentStatusDate = new Date(
           normalizedData.StatusDateTime
@@ -444,7 +453,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate
         ) {
           order.ndrStatus = "Undelivered";
-          const attemptCount = order.ndrHistory?.length+1 || 0;
+          const attemptCount = order.ndrHistory?.length + 1 || 0;
           // Create new structured history entry
           const newHistoryEntry = {
             actions: [
@@ -528,7 +537,7 @@ const trackSingleOrder = async (order) => {
           lastEntryDate !== currentStatusDate ||
           order.ndrHistory.length === 0
         ) {
-          const attemptCount = order.ndrHistory?.length+1 || 0;
+          const attemptCount = order.ndrHistory?.length + 1 || 0;
           if (SmartShipStatusMapping[instruction] === "Undelivered") {
             // process.exit(1)
             order.ndrHistory.push({
@@ -605,9 +614,12 @@ const trackSingleOrder = async (order) => {
         "EOD-6",
       ];
 
-      const lastEntryDate = new Date(
-        order.ndrHistory[order.ndrHistory.length - 1]?.actions?.[0]?.date
-      ).toDateString();
+      const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+      const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
+
+      const lastEntryDate = lastAction?.date
+        ? new Date(lastAction.date).toDateString()
+        : null;
 
       const currentStatusDate = new Date(
         normalizedData.StatusDateTime
@@ -628,7 +640,7 @@ const trackSingleOrder = async (order) => {
             date: normalizedData.StatusDateTime,
             reason: normalizedData.Instructions,
           };
-          const attemptCount = order.ndrHistory?.length+1 || 0;
+          const attemptCount = order.ndrHistory?.length + 1 || 0;
           // New structured entry
           const newHistoryEntry = {
             actions: [
@@ -970,30 +982,38 @@ const updateNdrHistoryByAwb = async (awb_number) => {
         return;
     }
 
-    const initialLength = order.ndrHistory.length;
-    const statusKeys = Object.keys(statusMapping).map((s) => s.toLowerCase());
-
-    // Filter out remarks that match any mapping key
-    const filteredNdrHistory = order.ndrHistory.filter(
-      (ndr) => !statusKeys.includes(ndr.remark?.toLowerCase())
+    const initialLength = order.ndrHistory.reduce(
+      (sum, group) => sum + (group.actions?.length || 0),
+      0
     );
 
-    if (filteredNdrHistory.length < initialLength) {
-      // Renumber attempts sequentially
-      const updatedNdrHistory = filteredNdrHistory.map((ndr, index) => ({
-        ...ndr,
-        attempt: index + 1,
-      }));
+    const statusKeys = Object.keys(statusMapping).map((s) => s.toLowerCase());
 
+    // Go through groups and remove actions that match a statusKey
+    const filteredNdrHistory = order.ndrHistory
+      .map((group) => {
+        const filteredActions = (group.actions || []).filter(
+          (action) => !statusKeys.includes(action.remark?.toLowerCase())
+        );
+        return { ...group, actions: filteredActions };
+      })
+      .filter((group) => group.actions.length > 0); // remove empty groups
+
+    const finalLength = filteredNdrHistory.reduce(
+      (sum, group) => sum + (group.actions?.length || 0),
+      0
+    );
+
+    if (finalLength < initialLength) {
       await Order.findOneAndUpdate(
         { awb_number },
-        { $set: { ndrHistory: updatedNdrHistory } },
-        { new: true } // optional: returns updated document
+        { $set: { ndrHistory: filteredNdrHistory } },
+        { new: true }
       );
 
       console.log(
         `✅ Updated order ${awb_number} — Removed ${
-          initialLength - filteredNdrHistory.length
+          initialLength - finalLength
         } NDR entries`
       );
     } else {
