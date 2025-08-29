@@ -23,6 +23,7 @@ const DTDCStatusMapping = {
   "booking not updated": "In-transit",
   "shipment received after cut-off time at destination": "In-transit",
   "off-loaded by airlines (central team access)": "In-transit",
+  "content which can not travel on air":"In-transit",
   "weekly off": "In-transit",
   "stock scan": "In-transit",
   "offload at origin": "In-transit",

@@ -52,7 +52,7 @@ const ndrProcessController = async (req, res) => {
         consignee_address
       );
     } else if (orderDetails.provider === "Delhivery") {
-      response = await handleDelhiveryNdrAction(awb_number, action);
+      response = await handleDelhiveryNdrAction(awb_number, action,comments);
     } else if (orderDetails.provider === "DTDC") {
       response = await submitNdrToDtdc(
         awb_number,
