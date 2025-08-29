@@ -284,9 +284,9 @@ const submitNdrToAmazon = async (
       // Prepare new action
       const ndrActionEntry = {
         action,
-        actionBy: "Shipex India",
+        actionBy: "ShipexIndia",
         remark: comments || "",
-        source: "Shipex India",
+        source: "ShipexIndia",
         date: new Date(),
       };
 
@@ -326,7 +326,7 @@ const submitNdrToAmazon = async (
   }
 };
 
-async function handleDelhiveryNdrAction(awb_number, action) {
+async function handleDelhiveryNdrAction(awb_number, action,comments) {
   if (!awb_number || !action) {
     return {
       success: false,
@@ -343,9 +343,9 @@ async function handleDelhiveryNdrAction(awb_number, action) {
     // --- build entry function ---
     const buildActionEntry = (remark) => ({
       action,
-      actionBy: "Shipex India",
-      remark: remark || "NDR Action Requested",
-      source: "Shipex India",
+      actionBy: "ShipexIndia",
+      remark: comments || "NDR Action Requested",
+      source: "ShipexIndia",
       date: new Date(),
     });
 
@@ -356,8 +356,8 @@ async function handleDelhiveryNdrAction(awb_number, action) {
       }
 
       const latest = order.ndrHistory[order.ndrHistory.length - 1];
-      if (latest.length < 2) {
-        latest.push(entry);
+      if (latest.actions.length < 2) {
+        latest.actions.push(entry);
       }
     };
 
@@ -555,9 +555,9 @@ const submitNdrToDtdc = async (
       // --- Build entry ---
       const entry = {
         action: rtoActionValue === "1" ? "RE-ATTEMPT" : "RTO",
-        actionBy: "Shipex India",
+        actionBy: "ShipexIndia",
         remark: remarks || "NDR Action Requested",
-        source: "Shipex India",
+        source: "ShipexIndia",
         date: new Date(),
       };
 
@@ -567,8 +567,8 @@ const submitNdrToDtdc = async (
       }
 
       const latest = orderInDb.ndrHistory[orderInDb.ndrHistory.length - 1];
-      if (latest.length < 2) {
-        latest.push(entry);
+      if (latest.actions.length < 2) {
+        latest.actions.push(entry);
       }
 
       // --- Update order status ---
@@ -682,9 +682,9 @@ const callSmartshipNdrApi = async (
       // --- Build entry ---
       const entry = {
         action: action_id === 1 ? "RE-ATTEMPT" : "RTO",
-        actionBy: "Shipex India",
+        actionBy: "ShipexIndia",
         remark: comments,
-        source: "Shipex India",
+        source: "ShipexIndia",
         date: new Date(),
       };
 
@@ -695,8 +695,8 @@ const callSmartshipNdrApi = async (
 
       const latest =
         currentOrder.ndrHistory[currentOrder.ndrHistory.length - 1];
-      if (latest.length < 2) {
-        latest.push(entry);
+      if (latest.actions.length < 2) {
+        latest.actions.push(entry);
       }
 
       // --- Update order status ---

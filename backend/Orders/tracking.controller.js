@@ -423,7 +423,7 @@ const trackSingleOrder = async (order) => {
       // --- NDR Case ---
       if (SmartShipStatusMapping[instruction] === "Undelivered") {
         order.status = "Undelivered";
-        order.ndrStatus = "Undelivered";
+
         updateNdrHistoryByAwb(order.awb_number);
 
         order.ndrReason = {
@@ -443,6 +443,7 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.length === 0 ||
           lastEntryDate !== currentStatusDate
         ) {
+          order.ndrStatus = "Undelivered";
           const attemptCount = order.ndrHistory?.length || 0;
           // Create new structured history entry
           const newHistoryEntry = {
@@ -463,8 +464,8 @@ const trackSingleOrder = async (order) => {
 
       if (
         (order.status === "RTO" || order.status === "RTO In-transit") &&
-        (normalizedData.Status === "RTO Delivered To Shipper" &&
-          normalizedData.Instructions === "SHIPMENT DELIVERED")
+        normalizedData.Status === "RTO Delivered To Shipper" &&
+        normalizedData.Instructions === "SHIPMENT DELIVERED"
       ) {
         order.status = "RTO Delivered";
         order.ndrStatus = "RTO Delivered";
@@ -1004,6 +1005,137 @@ const updateNdrHistoryByAwb = async (awb_number) => {
     console.error("❌ Error updating order by AWB:", error);
   }
 };
+
+// Migration controller
+const migrateNdrHistor = async (req, res) => {
+  try {
+    // Fetch all orders with old ndrHistory format
+    const orders = await Order.find({
+      status: { $nin: ["Delivered", "RTO Delivered", "new", "Cancelled"] },
+    });
+
+    for (const order of orders) {
+      const newHistory = [];
+
+      for (const oldEntry of order.ndrHistory) {
+        let actionBy = "";
+        let source = "";
+
+        // Logic for actionBy & source
+        if (oldEntry.action === "Auto Reattempt") {
+          actionBy = order.courierServiceName || "Courier";
+          source = order.provider || "Provider";
+        } else if (oldEntry.action === "RE-ATTEMPT") {
+          actionBy = "Shipex India";
+          source = "Shipex India";
+        }
+
+        const newAction = {
+          action: oldEntry.action,
+          actionBy,
+          remark: oldEntry.remark || "",
+          source,
+          date: oldEntry.date || new Date(),
+        };
+
+        // Place actions into groups of max 2
+        const lastEntry = newHistory[newHistory.length - 1];
+        if (lastEntry && lastEntry.actions.length < 2) {
+          lastEntry.actions.push(newAction);
+        } else if (newHistory.length < 3) {
+          newHistory.push({ actions: [newAction] });
+        }
+      }
+
+      // Ensure max 3 entries
+      order.ndrHistory = newHistory.slice(0, 3);
+
+      await order.save();
+    }
+
+    res.json({
+      success: true,
+      message: "NDR history migrated successfully",
+    });
+  } catch (err) {
+    console.error("Migration error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+const migrateNdrHistory = async (awbNumber) => {
+  try {
+    // const { awbNumber } = req.body; // 👈 pass awbNumber in request body
+    console.log("Migrating AWB:", awbNumber);
+    // Fetch single order with awbNumber and not in excluded statuses
+    const order = await Order.findOne({
+      awb_number: awbNumber,
+      status: { $nin: ["Delivered", "RTO Delivered", "new", "Cancelled"] },
+    });
+    // console.log("order", order);
+
+    if (!order) {
+      return {
+        success: false,
+        message: "Order not found or already in excluded status",
+      };
+    }
+
+    const newHistory = [];
+
+    for (const oldEntry of order.ndrHistory) {
+      let actionBy = "";
+      let source = "";
+
+      // Logic for actionBy & source
+      if (oldEntry.action === "Auto Reattempt") {
+        actionBy = order.courierServiceName || "Courier";
+        source = order.provider || "Provider";
+      } else if (oldEntry.action === "RE-ATTEMPT") {
+        actionBy = "Shipex India";
+        source = "Shipex India";
+      }
+
+      const newAction = {
+        action: oldEntry.action,
+        actionBy,
+        remark: oldEntry.remark || "",
+        source,
+        date: oldEntry.date || new Date(),
+      };
+
+      // Place actions into groups of max 2
+      const lastEntry = newHistory[newHistory.length - 1];
+      if (lastEntry && lastEntry.actions.length < 2) {
+        lastEntry.actions.push(newAction);
+      } else if (newHistory.length < 3) {
+        newHistory.push({ actions: [newAction] });
+      }
+    }
+
+    // Ensure max 3 entries
+    order.ndrHistory = newHistory.slice(0, 3);
+
+    await order.save();
+
+    return {
+      success: true,
+      message: "NDR history migrated successfully for the order",
+      order, // 👈 return updated order so you can check
+    };
+  } catch (err) {
+    console.error("Migration error:", err);
+    return {
+      success: false,
+      error: err.message,
+    };
+  }
+};
+
+// migrateNdrHistory("77953338455")
 
 // updateNdrHistoryByAwb("362413842319");
 
