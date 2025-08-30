@@ -372,6 +372,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
     };
   }
   const token = await getToken();
+  // console.log("tokennnnnnn", token);
   try {
     const response = await axios.get(
       `${BASE_URL}/fulfillment/public/seller/order/order-tracking`,
@@ -383,7 +384,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         params: { awbNumber },
       }
     );
-    // console.log("ressssssss",response.data)
+    console.log("ressssssss",response.data)
 
     if (response.data.status == 200) {
       // console.log("data")
@@ -410,6 +411,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
     };
   }
 };
+// trackOrderShreeMaruti("SHIP40000000002");
 
 // Serviceability
 const checkServiceabilityShreeMaruti = async (payload) => {

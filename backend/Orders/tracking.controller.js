@@ -6,6 +6,7 @@ const SmartShipStatusMapping = require("../statusMap/SmartShipStatusMapping");
 const DelhiveryStatusMapping = require("../statusMap/DelhiveryStatusMapping");
 const AmazonStatusMapping = require("../statusMap/AmazonStatusMapping");
 const ecomExpressStatusMapping = require("../statusMap/EcomStatusMapping");
+
 const cron = require("node-cron");
 const {
   shipmentTrackingforward,
