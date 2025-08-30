@@ -174,8 +174,17 @@ const createOrder = async (req, res) => {
         zip: `${currentOrder.receiverAddress.pinCode}`,
       },
     };
+
+    const effectiveBalance =
+      currentWallet.balance - (currentWallet.holdAmount || 0);
+    if (effectiveBalance < finalCharges) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Insufficient wallet balance" });
+    }
+
     let response;
-    if (currentWallet.balance >= finalCharges) {
+    if (effectiveBalance >= finalCharges) {
       response = await axios.post(API_URL, payload, {
         headers: {
           "Content-Type": "application/json",
@@ -225,7 +234,34 @@ const createOrder = async (req, res) => {
         },
       });
 
-      return res.status(201).json({ message: "Shipment Created Succesfully" });
+      // --- Call Manifest API ---
+      try {
+        const manifestResponse = await axios.post(
+          `${BASE_URL}/fulfillment/public/seller/order/create-manifest`,
+          {
+            awbNumber: [result.awbNumber], // Order AWB
+            // cAwbNumber: result.cAwbNumber || "", // Courier AWB (if available)
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        console.log("Manifest Created:", manifestResponse.data);
+      } catch (manifestErr) {
+        console.error(
+          "Error creating manifest:",
+          manifestErr.response?.data || manifestErr.message
+        );
+        // You can decide whether to fail here or just log and continue
+      }
+
+      return res
+        .status(201)
+        .json({ message: "Shipment & Manifest Created Successfully" });
     } else {
       return res
         .status(400)
@@ -384,7 +420,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         params: { awbNumber },
       }
     );
-    console.log("ressssssss",response.data)
+    console.log("ressssssss", response.data);
 
     if (response.data.status == 200) {
       // console.log("data")

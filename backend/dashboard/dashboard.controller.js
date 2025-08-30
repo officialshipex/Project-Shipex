@@ -4,6 +4,7 @@ const Cod = require("../COD/codRemittance.model");
 const moment = require("moment");
 const User = require("../models/User.model");
 const mongoose = require("mongoose");
+const WeightDispute = require("../WeightDispreancy/weightDispreancy.model");
 
 const dashboard = async (req, res) => {
   try {
@@ -800,7 +801,11 @@ const getDashboardOverview = async (req, res) => {
       avgShippingData.count > 0
         ? Math.round(avgShippingData.totalFreight / avgShippingData.count)
         : 0;
-const totalNdr = result.actionRequired[0]?.count || 0 +result.actionRequested[0]?.count || 0 + result.ndrDelivered[0]?.count || 0;
+    const totalNdr =
+      result.actionRequired[0]?.count ||
+      0 + result.actionRequested[0]?.count ||
+      0 + result.ndrDelivered[0]?.count ||
+      0;
     return res.status(200).json({
       success: true,
       data: {
@@ -1713,9 +1718,69 @@ const getCourierComparison = async (req, res) => {
   }
 };
 
+const getWeightDisputeData = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searchId = req.query.userId;
 
+    const userData = await User.findById(userId);
+    // Check if admin and has adminTab access
+    const isAdminView = userData?.isAdmin && userData?.adminTab;
 
+    // Determine filter
+    let baseMatch = {};
+    if (!isAdminView) {
+      // Normal user → only their disputes
+      baseMatch.userId = userId;
+    } else if (searchId) {
+      // Admin with a selected user → that user's disputes
+      baseMatch.userId = new mongoose.Types.ObjectId(searchId);
+    }
 
+    // Fetch disputes based on filter
+    const allDisputes = await WeightDispute.find(baseMatch)
+      .populate("orderId")
+      .populate("userId")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!allDisputes || allDisputes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No weight disputes found.",
+        data: [],
+        counts: { New: 0, Accepted: 0, "Discrepancy Raised": 0 },
+      });
+    }
+
+    // Count by status (only New, Accepted, Discrepancy Raised)
+    const counts = allDisputes.reduce(
+      (acc, dispute) => {
+        const status = dispute.status || "Unknown";
+        if (status === "new") acc.New++;
+        else if (status === "Accepted") acc.Accepted++;
+        else if (status === "Discrepancy Raised") acc["DiscrepancyRaised"]++;
+        return acc;
+      },
+      { New: 0, Accepted: 0, "DiscrepancyRaised": 0 }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Weight dispute data retrieved successfully.",
+      total: allDisputes.length,
+      counts,
+      data: allDisputes,
+    });
+  } catch (error) {
+    console.error("Error fetching weight dispute data:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while retrieving weight dispute data.",
+      error: error.message,
+    });
+  }
+};
 
 
 module.exports = {
@@ -1728,5 +1793,6 @@ module.exports = {
   getOrdersGraphsData,
   getRTOSummaryData,
   getRTOGraphsData,
-  getCourierComparison
+  getCourierComparison,
+  getWeightDisputeData,
 };
