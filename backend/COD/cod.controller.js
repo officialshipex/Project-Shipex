@@ -511,7 +511,7 @@ const codRemittanceData = async (req, res) => {
       utrFilter,
       statusFilter,
     } = req.query;
-    // console.log("hii")
+
     const page = Number(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const limit =
@@ -528,52 +528,23 @@ const codRemittanceData = async (req, res) => {
       });
     }
 
-    // ---- Normalize rows ----
-    // ---- Normalize rows ----
+    // ---- Apply filters only on remittanceData ----
     let rows = Array.isArray(remittanceDoc.remittanceData)
-      ? remittanceDoc.remittanceData.map((r) => {
-          const dateVal = r.date ?? r.data ?? null;
-          return {
-            ...r,
-            date: dateVal ? new Date(dateVal) : null,
-            status: r.status || "Pending",
-            codAvailable: Number(r.codAvailable || 0),
-            amountCreditedToWallet: Number(r.amountCreditedToWallet || 0),
-            earlyCodCharges: Number(r.earlyCodCharges || 0),
-            adjustedAmount: Number(r.adjustedAmount || 0),
-            utr: r.utr ?? "",
-          };
-        })
+      ? remittanceDoc.remittanceData
       : [];
 
-    // ✅ Remove duplicates by remittanceId
-    rows = rows.filter(
-      (r, index, self) =>
-        r.remittanceId &&
-        index === self.findIndex((t) => t.remittanceId === r.remittanceId)
-    );
-
-    // ---- Filters ----
     if (remittanceIdFilter) {
-      const terms = remittanceIdFilter
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      rows = rows.filter((e) => {
-        const idStr = e.remittanceId ? String(e.remittanceId) : "";
-        return terms.some((t) => idStr.includes(t));
-      });
+      const terms = remittanceIdFilter.split(",").map((s) => s.trim());
+      rows = rows.filter((e) =>
+        terms.some((t) => String(e.remittanceId || "").includes(t))
+      );
     }
 
     if (utrFilter) {
-      const terms = utrFilter
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      rows = rows.filter((e) => {
-        const utrStr = e.utr ? String(e.utr) : "";
-        return terms.some((t) => utrStr.includes(t));
-      });
+      const terms = utrFilter.split(",").map((s) => s.trim());
+      rows = rows.filter((e) =>
+        terms.some((t) => String(e.utr || "").includes(t))
+      );
     }
 
     if (statusFilter) {
@@ -585,60 +556,20 @@ const codRemittanceData = async (req, res) => {
       start.setHours(0, 0, 0, 0);
       const end = new Date(toDate);
       end.setHours(23, 59, 59, 999);
-      rows = rows.filter((e) => e.date && e.date >= start && e.date <= end);
+      rows = rows.filter((e) => {
+        const d = new Date(e.date);
+        return d >= start && d <= end;
+      });
     }
 
     // ---- Sort newest first ----
-    rows.sort((a, b) => {
-      const aTime = a.date ? a.date.getTime() : 0;
-      const bTime = b.date ? b.date.getTime() : 0;
-      return bTime - aTime;
-    });
+    rows.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // ---- Pagination ----
     const totalCount = rows.length;
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     const paginated = limit ? rows.slice(skip, skip + limit) : rows;
 
-    // ---- DATASET totals (from ALL filtered rows, before pagination) ----
-    const datasetTotals = rows.reduce(
-      (acc, e) => {
-        if (e.status === "Paid") {
-          acc.totalCodRemitted += e.codAvailable;
-        } else if (e.status === "Pending") {
-          acc.remittanceInitiated += e.codAvailable; // as requested
-        }
-        // Deduction across ALL rows
-        acc.totalDeductions +=
-          e.amountCreditedToWallet + e.earlyCodCharges + e.adjustedAmount;
-        return acc;
-      },
-      { totalCodRemitted: 0, totalDeductions: 0, remittanceInitiated: 0 }
-    );
-
-    // ---- VISIBLE totals (from PAGINATED rows only) ----
-    const visibleTotals = paginated.reduce(
-      (acc, e) => {
-        if (e.status === "Paid") {
-          acc.totalCodRemitted += e.codAvailable;
-        } else if (e.status === "Pending") {
-          acc.totalRemittanceInitiated += e.codAvailable; // matches table rows shown
-        }
-        acc.totalDeductions +=
-          e.amountCreditedToWallet + e.earlyCodCharges + e.adjustedAmount;
-        return acc;
-      },
-      { totalCodRemitted: 0, totalDeductions: 0, totalRemittanceInitiated: 0 }
-    );
-    // Sum of earlyCodCharges for all 'Pending' rows
-    const pendingEarlyCodCharges = rows.reduce((sum, e) => {
-      if (e.status === "Pending") {
-        return sum + (e.earlyCodCharges || 0);
-      }
-      return sum;
-    }, 0);
-
-    // console.log("reemm", pendingEarlyCodCharges);
     return res.status(200).json({
       success: true,
       message: "COD remittance data retrieved successfully",
@@ -647,28 +578,15 @@ const codRemittanceData = async (req, res) => {
       limit: limit || "All",
       totalPages,
       data: {
-        // Snapshot-like values, but now computed from the FILTERED DATASET
-        TotalCODRemitted: Number(datasetTotals.totalCodRemitted.toFixed(2)),
-        TotalDeductionfromCOD: Number(datasetTotals.totalDeductions.toFixed(2)), // ✅ fixed
-        // RemittanceInitiated: Number(
-        //   datasetTotals.remittanceInitiated.toFixed(2)
-        // ), // ✅ sum of pending codAvailable
-        RemittanceInitiated: Number(
-          remittanceDoc.RemittanceInitiated - pendingEarlyCodCharges
-        ),
+        // ✅ Take directly from DB document
+        TotalCODRemitted: Number(remittanceDoc.TotalCODRemitted || 0),
+        TotalDeductionfromCOD: Number(remittanceDoc.TotalDeductionfromCOD || 0),
+        RemittanceInitiated: Number(remittanceDoc.RemittanceInitiated || 0),
         CODToBeRemitted: Number(remittanceDoc.CODToBeRemitted || 0),
         LastCODRemitted: Number(remittanceDoc.LastCODRemitted || 0),
         rechargeAmount: Number(remittanceDoc.rechargeAmount || 0),
 
-        // What the user sees on THIS page
-        visibleSummary: {
-          totalCodRemitted: Number(visibleTotals.totalCodRemitted.toFixed(2)),
-          totalDeductions: Number(visibleTotals.totalDeductions.toFixed(2)),
-          totalRemittanceInitiated: Number(
-            visibleTotals.totalRemittanceInitiated.toFixed(2)
-          ),
-        },
-
+        // Only filtered + paginated rows
         remittanceData: paginated,
       },
     });
@@ -1208,13 +1126,21 @@ const remittanceTransactionData = async (req, res) => {
     const userID = req.user._id;
 
     if (!id) {
-      return res.status(400).json({ error: "Remittance ID is required." });
+      return res.status(400).json({
+        success: false,
+        message: "Remittance ID is required.",
+      });
     }
 
     // Fetch remittance data for the current user
-    const remittanceData = await codRemittance.findOne({ userId: userID });
+    const remittanceData = await codRemittance
+      .findOne({ userId: userID })
+      .lean();
     if (!remittanceData) {
-      return res.status(404).json({ error: "Remittance data not found." });
+      return res.status(404).json({
+        success: false,
+        message: "Remittance data not found.",
+      });
     }
 
     // Find the specific remittance transaction
@@ -1222,28 +1148,52 @@ const remittanceTransactionData = async (req, res) => {
       (item) => String(item.remittanceId) === String(id)
     );
     if (!result) {
-      return res.status(404).json({ error: "Transaction not found." });
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found.",
+      });
     }
 
     if (!result.orderDetails || !Array.isArray(result.orderDetails.orders)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid remittance order details." });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid remittance order details.",
+      });
     }
 
     // Fetch all orders in a single query for performance
     const orderdata = await Order.find({
       _id: { $in: result.orderDetails.orders },
-    });
+    }).lean();
 
-    // Construct the response object
+    // Parallel fetch: Bank details + Wallet info
+    const [bankDetails, user] = await Promise.all([
+      BankAccountDetails.findOne({ user: userID }).lean(),
+      users.findById(userID).lean(),
+    ]);
+
+    const wallet = user?.Wallet
+      ? await Wallet.findById(user.Wallet).lean()
+      : null;
+
+    // Construct the response object (aligned with seller controller)
     const transactions = {
       remittanceId: id,
-      date: result.date,
-      totalOrders: result.orderDetails.orders.length,
-      remittanceAmount: result.codAvailable,
-      deliveryDate: result.orderDetails.date,
-      orders: orderdata,
+      date: result.date || "N/A",
+      totalOrder: orderdata.length,
+      totalCOD: result.orderDetails?.codcal || 0,
+      remittanceAmount: result.codAvailable || 0,
+      deliveryDate: result.orderDetails?.date || "N/A",
+      status: result.status || "N/A",
+      orderDataInArray: orderdata,
+      bankDetails: {
+        accountHolderName: bankDetails?.nameAtBank || "N/A",
+        accountNumber: bankDetails?.accountNumber || "N/A",
+        ifscCode: bankDetails?.ifsc || "N/A",
+        bankName: bankDetails?.bank || "N/A",
+        branchName: bankDetails?.branch || "N/A",
+        balance: wallet?.balance || 0,
+      },
     };
 
     return res.status(200).json({
@@ -1844,14 +1794,14 @@ const getAdminCodRemitanceData = async (req, res) => {
       TotalCODRemitted: 0,
       LastCodRemmited: 0,
     };
-const totalPages = parsedLimit === 0 ? 1 : Math.ceil(total / parsedLimit);
+    const totalPages = parsedLimit === 0 ? 1 : Math.ceil(total / parsedLimit);
     res.json({
       total,
       page: Number(page),
       limit: parsedLimit === 0 ? "all" : parsedLimit,
       results: rows,
       summary,
-      totalPages
+      totalPages,
     });
   } catch (error) {
     console.error("Error in getAllCodRemittance:", error);

@@ -263,7 +263,7 @@ const getShipmentTracking = async (trackingId) => {
         },
       }
     );
-    // console.log("response", response.data.payload);
+    console.log("response", response.data.payload);
     // console.log(
     //   "Tracking Information:",
     //   response.data.payload.eventHistory[
@@ -278,6 +278,7 @@ const getShipmentTracking = async (trackingId) => {
     );
   }
 };
+// getShipmentTracking("362856312141");
 
 const checkAmazonServiceability = async (provider,payload) => {
   try {
