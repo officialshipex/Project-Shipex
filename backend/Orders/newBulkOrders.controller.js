@@ -26,6 +26,9 @@ const {
 const {
   orderRegistrationOneStep,
 } = require("../AllCouriers/SmartShip/Couriers/bulkShipment.controller");
+const {
+  createShipmentFunctionShreeMaruti,
+} = require("../AllCouriers/ShreeMaruti/Couriers/bulkShipment.controller");
 const updatePickup = async (req, res) => {
   try {
     // console.log(req.body)
