@@ -969,29 +969,57 @@ const uploadCodRemittance = async (req, res) => {
       userRemittance.RemittanceInitiated ??= 0;
       userRemittance.remittanceData ??= [];
 
-      for (const item of remittance.orderDetails.orders) {
-        const order = await Order.findOne({ _id: item });
+      const currentRemittanceEntry = userRemittance.remittanceData.find(
+        (entry) => entry.remittanceId === remittance.remitanceId
+      );
 
-        if (!order) {
-          console.log(`Order with ID ${item} not found.`);
-          continue;
-        }
-
-        const paymentAmount = Number(order?.paymentDetails?.amount || 0);
-
-        await CodRemittanceOrdersModel.findOneAndUpdate(
-          { orderID: order.orderId },
-          { $set: { status: "Paid" } }
+      if (currentRemittanceEntry) {
+        const codAvailable = Number(currentRemittanceEntry.codAvailable || 0);
+        const earlyCodCharges = Number(
+          currentRemittanceEntry.earlyCodCharges || 0
+        );
+        const amountCreditedToWallet = Number(
+          currentRemittanceEntry.amountCreditedToWallet || 0
+        );
+        const adjustedAmount = Number(
+          currentRemittanceEntry.adjustedAmount || 0
         );
 
-        // Safely subtract from RemittanceInitiated
-        if (userRemittance.RemittanceInitiated >= paymentAmount) {
-          userRemittance.RemittanceInitiated -= paymentAmount;
+        const actualAmount =
+          codAvailable -
+          (earlyCodCharges + amountCreditedToWallet + adjustedAmount);
+
+        if (actualAmount > 0) {
+          if (userRemittance.RemittanceInitiated >= actualAmount) {
+            userRemittance.RemittanceInitiated -= actualAmount;
+            userRemittance.LastCODRemitted = userRemittance.RemittanceInitiated;
+          } else {
+            console.warn(
+              `RemittanceInitiated (${userRemittance.RemittanceInitiated}) less than actualAmount (${actualAmount}), skipping deduction to avoid negative value.`
+            );
+          }
         } else {
           console.warn(
-            `RemittanceInitiated (${userRemittance.RemittanceInitiated}) is less than paymentAmount (${paymentAmount}). Skipping deduction to avoid negative value.`
+            `Actual amount is zero or negative (${actualAmount}), no deduction.`
           );
         }
+
+        // Mark all orders as Paid
+        for (const item of remittance.orderDetails.orders) {
+          const order = await Order.findOne({ _id: item });
+          if (!order) {
+            console.log(`Order with ID ${item} not found.`);
+            continue;
+          }
+          await CodRemittanceOrdersModel.findOneAndUpdate(
+            { orderID: order.orderId },
+            { $set: { status: "Paid" } }
+          );
+        }
+      } else {
+        console.warn(
+          `No remittanceData entry found for remittanceId ${remittance.remitanceId}`
+        );
       }
 
       // Add to totals
@@ -1062,14 +1090,6 @@ const uploadCodRemittance = async (req, res) => {
             orders: [...remittance.orderDetails.orders],
           },
         });
-      }
-
-      if (
-        !userRemittance.LastCODRemitted ||
-        Number(remittance.totalCod || 0) >
-          Number(userRemittance.LastCODRemitted)
-      ) {
-        userRemittance.LastCODRemitted = Number(remittance.totalCod || 0);
       }
 
       await userRemittance.save();

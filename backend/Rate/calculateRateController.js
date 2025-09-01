@@ -17,7 +17,9 @@ const {
 const {
   checkAmazonServiceability,
 } = require("../AllCouriers/Amazon/Courier/couriers.controller.js");
-const { checkServiceabilityShreeMaruti } = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller.js");
+const {
+  checkServiceabilityShreeMaruti,
+} = require("../AllCouriers/ShreeMaruti/Couriers/couriers.controller.js");
 
 const calculateRate = async (req, res) => {
   try {
@@ -81,9 +83,7 @@ const calculateRate = async (req, res) => {
           isCodOrder: paymentType === "COD" ? true : false,
           deliveryMode: "SURFACE",
         };
-        serviceable = await checkServiceabilityShreeMaruti(
-          payload
-        );
+        serviceable = await checkServiceabilityShreeMaruti(payload);
         // console.log("shree", serviceable);
       } else if (provider === "Delhivery") {
         serviceable = await checkPincodeServiceabilityDelhivery(
@@ -115,7 +115,7 @@ const calculateRate = async (req, res) => {
         };
         // serviceable = await checkAmazonServiceability(payload);
         // console.log("servicable", serviceable);
-        serviceable=true
+        serviceable = true;
       }
       // if (!isServiceable) continue; // Skip if not serviceable
 
@@ -208,7 +208,7 @@ async function calculateRateForService(payload) {
     // const rateCards = [];
     const plan = await Plan.findOne({ userId: userID });
     let RateCards = plan.rateCard;
-
+  // console.log("rate", RateCards);
     for (const rc of RateCards) {
       const basicChargeForward = parseFloat(
         rc.weightPriceBasic[0][currentZone]

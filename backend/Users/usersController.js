@@ -305,7 +305,7 @@ const getAllUsers = async (req, res) => {
         })(),
       };
     });
-// console.log("user",userDetails)
+    // console.log("user",userDetails)
     return res.status(200).json({
       success: true,
       userIds: userDetails.map((u) => u.userId),
@@ -501,14 +501,12 @@ const getAllPlans = async (req, res) => {
 const assignPlan = async (req, res) => {
   try {
     const { userId, userName, planName, rateCards } = req.body;
-
+    console.log(req.body);
     if (!planName || !rateCards) {
       return res
         .status(400)
         .json({ error: "Plan name and rate card are required" });
     }
-
-    console.log(rateCards);
 
     // Check if there is an existing plan for the user
     let existingPlan = await Plan.findOne({ userId });
