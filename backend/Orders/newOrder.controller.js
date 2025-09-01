@@ -47,7 +47,9 @@ const {
   cancelOrderDTDC,
   trackOrderDTDC,
 } = require("../AllCouriers/DTDC/Courier/couriers.controller");
-const { cancelVamashipOrder } = require("../AllCouriers/Vamaship/Couriers/couriers.controller");
+const {
+  cancelVamashipOrder,
+} = require("../AllCouriers/Vamaship/Couriers/couriers.controller");
 // Create a shipment
 const newOrder = async (req, res) => {
   try {
@@ -100,7 +102,7 @@ const newOrder = async (req, res) => {
       paymentDetails,
       compositeOrderId,
       status: "new",
-      channel:"custom",
+      channel: "custom",
       // commodityId: commodityId,
       tracking: [
         {
@@ -908,7 +910,7 @@ const ShipeNowOrder = async (req, res) => {
     // console.log("availbale",availableServices)
 
     const filteredServices = availableServices.filter(Boolean);
-    // console.log("filteredServices", filteredServices);
+    console.log("filteredServices", filteredServices);
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
@@ -929,7 +931,9 @@ const ShipeNowOrder = async (req, res) => {
     const updatedRates = rates
       .map((rate) => {
         const matchedService = filteredServices.find(
-          (service) => service.item.name === rate.courierServiceName
+          (service) =>
+            service.item.name.toLowerCase().replace(/\s+/g, "") ===
+            rate.courierServiceName.toLowerCase().replace(/\s+/g, "")
         );
         // console.log("1111111", matchedService);
 
@@ -1010,22 +1014,22 @@ const cancelOrdersAtBooked = async (req, res) => {
     const currentWallet = await Wallet.findById({ _id: users.Wallet });
 
     const currentOrder = await Order.findById({ _id: allOrders._id });
-    if(currentOrder.awb_number === "N/A" || !currentOrder.awb_number){
-      return res.status(400).send({ error: "Order cannot be cancelled missing awb_number" });  
+    if (currentOrder.awb_number === "N/A" || !currentOrder.awb_number) {
+      return res
+        .status(400)
+        .send({ error: "Order cannot be cancelled missing awb_number" });
     }
-    if(currentOrder.status === "Cancelled"){
+    if (currentOrder.status === "Cancelled") {
       return res.status(400).send({ error: "Order is already Cancelled" });
     }
-    if(currentOrder.status !== "Ready To Ship"){
+    if (currentOrder.status !== "Ready To Ship") {
       return res.status(400).send({ error: "Order is not ready to Cancelled" });
     }
 
     if (currentOrder.provider === "Xpressbees") {
       const result = await cancelShipmentXpressBees(currentOrder.awb_number);
       if (result.error) {
-        return res
-          .status(400)
-          .send({ error: "Failed to cancel order" });
+        return res.status(400).send({ error: "Failed to cancel order" });
       } else {
         currentOrder.status = "new";
       }
@@ -1040,9 +1044,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       } else if (currentOrder.provider === "Nimuspost") {
         const result = await cancelShipmentXpressBees(currentOrder.awb_number);
         if (result.error) {
-          return res
-          .status(400)
-          .send({ error: "Failed to cancel order" });
+          return res.status(400).send({ error: "Failed to cancel order" });
         }
       }
     } else if (currentOrder.provider === "Delhivery") {
@@ -1074,38 +1076,29 @@ const cancelOrdersAtBooked = async (req, res) => {
     } else if (currentOrder.provider === "DTDC") {
       const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
-        return res
-          .status(400)
-          .send({ error: result.error });
+        return res.status(400).send({ error: result.error });
       }
     } else if (currentOrder.provider === "EcomExpress") {
       const result = await cancelShipmentforward(currentOrder.awb_number);
       if (result.error) {
-        return res
-          .status(400)
-          .send({ error: result.error });
+        return res.status(400).send({ error: result.error });
       }
     } else if (currentOrder.provider === "Amazon") {
       const result = await cancelShipment(currentOrder.shipment_id);
       if (result.error) {
-        return res
-          .status(400)
-          .send({ error: result.error });
+        return res.status(400).send({ error: result.error });
       }
     } else if (currentOrder.provider === "Smartship") {
       const result = await cancelSmartshipOrder(currentOrder.orderId);
       if (result.error) {
-        return res
-          .status(400)
-          .send({ error: result.error });
+        return res.status(400).send({ error: result.error });
       }
-    } else if(currentOrder.provider==="Vamaship"){
-      const result=await cancelVamashipOrder(currentOrder.shipment_id);
-      if(result.error){
-        return res.status(400).send({error:result.error});
+    } else if (currentOrder.provider === "Vamaship") {
+      const result = await cancelVamashipOrder(currentOrder.shipment_id);
+      if (result.error) {
+        return res.status(400).send({ error: result.error });
       }
-    }
-     else {
+    } else {
       return {
         error: "Unsupported courier provider",
         orderId: currentOrder._id,
