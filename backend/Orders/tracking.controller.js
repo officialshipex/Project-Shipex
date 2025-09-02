@@ -68,6 +68,7 @@ const trackSingleOrder = async (order) => {
     }
 
     const result = await trackingFunctions[provider](awb_number, shipment_id);
+    //  console.log("result",result)
     if (!result || !result.success || !result.data) return;
 
     const normalizedData = mapTrackingResponse(result.data, provider);
@@ -566,6 +567,132 @@ const trackSingleOrder = async (order) => {
         order.status = "Delivered";
         // order.ndrStatus = "Delivered";
       }
+    }
+    if (provider === "ShreeMaruti") {
+      // console.log("ShreeMaruti normalizedData", normalizedData);
+      if (normalizedData.ShipmentType === "forward") {
+        if (
+          normalizedData.Status === "ORDER_CONFIRMED" ||
+          normalizedData.Status === "PICKUP_PENDING" ||
+          normalizedData.Status === "READY_FOR_DISPATCH" ||
+          normalizedData.Status === "NOT_PICKED_UP"
+          // normalizedData.Status === "PICKUP_SCHEDULED"||
+          // normalizedData.Status === "PICKUP_DONE"
+        ) {
+          order.status = "Ready To Ship";
+        }
+
+        if (normalizedData.Status === "IN_TRANSIT") {
+          order.status = "In-transit";
+        }
+
+        if (normalizedData.Status === "OUT_FOR_DELIVERY") {
+          order.status = "Out for Delivery";
+          order.ndrStatus = "Out for Delivery";
+        }
+
+        if (normalizedData.Status === "DELIVERED") {
+          order.status = "Delivered";
+        }
+
+        if (normalizedData.Status === "LOST") {
+          order.status = "Lost";
+        }
+
+        if (
+          (order.ndrStatus === "Undelivered" ||
+            order.ndrStatus === "Out for Delivery" ||
+            order.ndrStatus === "Action_Requested") &&
+          normalizedData.Instructions === "Delivered"
+        ) {
+          order.ndrStatus = "Delivered";
+        }
+
+        // Detect Delivery Attempted
+        const secondLastTracking =
+          Array.isArray(order.tracking) && order.tracking.length >= 2
+            ? order.tracking[order.tracking.length - 2]
+            : null;
+
+        const wasPreviousDeliveryAttempted =
+          secondLastTracking?.Instructions === "DeliveryAttempted";
+
+        if (
+          normalizedData.Instructions === "DeliveryAttempted" ||
+          wasPreviousDeliveryAttempted
+        ) {
+          order.status = "Undelivered";
+          order.ndrStatus = "Undelivered";
+          // updateNdrHistoryByAwb(order.awb_number);
+
+          order.ndrReason = {
+            date: normalizedData.StatusDateTime,
+            reason: normalizedData.StrRemarks,
+          };
+
+          const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+          const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
+
+          const lastEntryDate = lastAction?.date
+            ? new Date(lastAction.date).toDateString()
+            : null;
+
+          const currentStatusDate = new Date(
+            normalizedData.StatusDateTime
+          ).toDateString();
+
+          if (
+            order.ndrHistory.length === 0 ||
+            lastEntryDate !== currentStatusDate
+          ) {
+            const attemptCount = order.ndrHistory?.length + 1 || 0;
+            // Create a new NDR history entry with one action
+            const newHistoryEntry = {
+              actions: [
+                {
+                  action: `NDR ${attemptCount} Raised`,
+                  actionBy: order.courierServiceName,
+                  remark: normalizedData.StrRemarks,
+                  source: order.provider,
+                  date: normalizedData.StatusDateTime,
+                },
+              ],
+            };
+
+            order.ndrHistory.push(newHistoryEntry);
+          }
+        }
+      } else {
+        // RTO flow
+        if (
+          normalizedData.Status === "RTO_INITIATED" &&
+          order.status === "Undelivered"
+        ) {
+          order.status = "RTO";
+          order.ndrStatus = "RTO";
+        }
+
+        if (
+          normalizedData.Instructions === "ArrivedAtCarrierFacility" ||
+          normalizedData.Instructions === "Departed" ||
+          normalizedData.Instructions ===
+            "Package arrived at the carrier facility" ||
+          normalizedData.Instructions ===
+            "Package has left the carrier facility"
+        ) {
+          order.status = "RTO In-transit";
+          order.ndrStatus = "RTO In-transit";
+        }
+
+        if (normalizedData.Instructions === "ReturnInitiated") {
+          order.status = "RTO In-transit";
+        }
+
+        if (normalizedData.Status === "RTO_DELIVERED") {
+          order.status = "RTO Delivered";
+          order.ndrStatus = "RTO Delivered";
+        }
+      }
     } else {
       const statusMap = {
         "UD:Manifested": { status: "Ready To Ship" },
@@ -754,6 +881,7 @@ const trackOrders = async () => {
 
     const allOrders = await Order.find({
       status: { $nin: ["new", "Cancelled", "Delivered", "RTO Delivered"] },
+      // provider: "ShreeMaruti",
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -787,6 +915,7 @@ const startTrackingLoop = async () => {
 startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
+  // console.log("Mapping data for provider:", data);
   if (provider === "Smartship") {
     // console.log("Smartship data", data);
     const scans = data?.scans;
@@ -802,6 +931,20 @@ const mapTrackingResponse = (data, provider) => {
       Instructions: latestScan?.action || "N/A",
     };
   }
+  if (provider === "ShreeMaruti") {
+    // console.log("ShreeMaruti data", data);
+    const last = data[0];
+    // console.log("ShreeMaruti last", last);
+    return {
+      Status: last?.category || null,
+      StatusLocation: last?.location || "Unknown",
+      StatusDateTime: last?.createdAt
+        ? formatShreeMarutiDate(last.createdAt)
+        : null,
+      Instructions: last?.subcategory || null,
+      ShipmentType: last?.movement_type || null,
+    };
+  }
   const providerMappings = {
     EcomExpress: {
       Status: data.rts_system_delivery_status || "N/A",
@@ -810,6 +953,7 @@ const mapTrackingResponse = (data, provider) => {
       Instructions: data.tracking_status || null,
       ReasonCode: data.reason_code_description || null,
     },
+
     DTDC: {
       Status: data.trackDetails?.length
         ? data.trackDetails[data.trackDetails.length - 1].strCode
@@ -881,13 +1025,6 @@ const mapTrackingResponse = (data, provider) => {
       StatusDateTime: data.last_update || null,
       Instructions: data.remarks || null,
     },
-    ShreeMaruti: {
-      Status: data.status || null,
-      StatusCode: data.status_code || null,
-      StatusLocation: data.current_location || "Unknown",
-      StatusDateTime: data.updated_at || null,
-      Instructions: data.message || null,
-    },
   };
 
   return providerMappings[provider] || null;
@@ -946,6 +1083,42 @@ const formatSmartShipDateTime = (dateTimeStr) => {
     return utcDate.toISOString();
   } catch (err) {
     console.warn("Invalid SmartShip date format:", dateTimeStr);
+    return null;
+  }
+};
+
+const formatShreeMarutiDate = (isoDateStr) => {
+  try {
+    const date = new Date(isoDateStr);
+
+    // Convert to IST first
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3,
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type)?.value;
+
+    const year = get("year");
+    const month = get("month");
+    const day = get("day");
+    const hour = get("hour");
+    const minute = get("minute");
+    const second = get("second");
+    const millis = get("fractionalSecond") || "000";
+
+    // ⚡️ Store IST time but with Z (UTC), so frontend shift works
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}.${millis}Z`;
+  } catch (err) {
+    console.warn("Invalid date:", isoDateStr);
     return null;
   }
 };
