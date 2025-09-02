@@ -303,12 +303,88 @@ const getPlanNames = async (req, res) => {
   }
 };
 
+// const exportDemoRatecard = async (req, res) => {
+//   try {
+//     const workbook = new ExcelJS.Workbook();
+//     const worksheet = workbook.addWorksheet("RateCard Demo");
+
+//     // Define columns for all required rate card fields
+//     worksheet.columns = [
+//       { header: "Plan Name", key: "planName", width: 20 },
+//       {
+//         header: "Courier Provider Name",
+//         key: "courierProviderName",
+//         width: 25,
+//       },
+//       { header: "Courier Service Name", key: "courierServiceName", width: 25 },
+//       // { header: "Mode", key: "mode", width: 15 },
+//       // { header: "Status", key: "status", width: 15 },
+//       // { header: "Shipment Type", key: "shipmentType", width: 15 },
+//       // Basic weights and rates
+//       { header: "Basic Weight", key: "basicWeight", width: 15 },
+//       { header: "Basic Zone A", key: "basicZoneA", width: 10 },
+//       { header: "Basic Zone B", key: "basicZoneB", width: 10 },
+//       { header: "Basic Zone C", key: "basicZoneC", width: 10 },
+//       { header: "Basic Zone D", key: "basicZoneD", width: 10 },
+//       { header: "Basic Zone E", key: "basicZoneE", width: 10 },
+//       // Additional weights and rates
+//       { header: "Additional Weight", key: "additionalWeight", width: 15 },
+//       { header: "Additional Zone A", key: "additionalZoneA", width: 10 },
+//       { header: "Additional Zone B", key: "additionalZoneB", width: 10 },
+//       { header: "Additional Zone C", key: "additionalZoneC", width: 10 },
+//       { header: "Additional Zone D", key: "additionalZoneD", width: 10 },
+//       { header: "Additional Zone E", key: "additionalZoneE", width: 10 },
+//       // COD
+//       { header: "COD Percent", key: "codPercent", width: 15 },
+//       { header: "COD Charge", key: "codCharge", width: 15 },
+//     ];
+
+//     // Add a demo data row for user reference
+//     worksheet.addRow({
+//       planName: "Silver (same as existing plans in system)",
+//       courierProviderName: "Shipex (same as existing providers in system)",
+//       courierServiceName:
+//         "Shipex surface (same as existing services in system)",
+//       basicWeight: "500 (in grams)",
+//       basicZoneA: "50",
+//       basicZoneB: "60",
+//       basicZoneC: "70",
+//       basicZoneD: "80",
+//       basicZoneE: "90",
+//       additionalWeight: "100 (in grams)",
+//       additionalZoneA: "10",
+//       additionalZoneB: "12",
+//       additionalZoneC: "15",
+//       additionalZoneD: "18",
+//       additionalZoneE: "20",
+//       codPercent: "2",
+//       codCharge: "25",
+//     });
+
+//     // Set response headers for file download
+//     res.setHeader(
+//       "Content-Type",
+//       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+//     );
+//     res.setHeader(
+//       "Content-Disposition",
+//       "attachment; filename=ratecard-demo.xlsx"
+//     );
+
+//     // Write workbook to response
+//     await workbook.xlsx.write(res);
+//     res.status(200).end();
+//   } catch (error) {
+//     console.error("Demo file export error:", error);
+//     res.status(500).json({ message: "Error exporting demo file" });
+//   }
+// };
+
 const exportDemoRatecard = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("RateCard Demo");
 
-    // Define columns for all required rate card fields
     worksheet.columns = [
       { header: "Plan Name", key: "planName", width: 20 },
       {
@@ -317,51 +393,87 @@ const exportDemoRatecard = async (req, res) => {
         width: 25,
       },
       { header: "Courier Service Name", key: "courierServiceName", width: 25 },
-      // { header: "Mode", key: "mode", width: 15 },
-      // { header: "Status", key: "status", width: 15 },
-      // { header: "Shipment Type", key: "shipmentType", width: 15 },
-      // Basic weights and rates
-      { header: "Basic Weight", key: "basicWeight", width: 15 },
-      { header: "Basic Zone A", key: "basicZoneA", width: 10 },
-      { header: "Basic Zone B", key: "basicZoneB", width: 10 },
-      { header: "Basic Zone C", key: "basicZoneC", width: 10 },
-      { header: "Basic Zone D", key: "basicZoneD", width: 10 },
-      { header: "Basic Zone E", key: "basicZoneE", width: 10 },
-      // Additional weights and rates
-      { header: "Additional Weight", key: "additionalWeight", width: 15 },
-      { header: "Additional Zone A", key: "additionalZoneA", width: 10 },
-      { header: "Additional Zone B", key: "additionalZoneB", width: 10 },
-      { header: "Additional Zone C", key: "additionalZoneC", width: 10 },
-      { header: "Additional Zone D", key: "additionalZoneD", width: 10 },
-      { header: "Additional Zone E", key: "additionalZoneE", width: 10 },
-      // COD
-      { header: "COD Percent", key: "codPercent", width: 15 },
-      { header: "COD Charge", key: "codCharge", width: 15 },
+      { header: "Type", key: "type", width: 10 },
+      { header: "Type Text", key: "typeText", width: 15 },
+      { header: "weight", key: "weight", width: 12 },
+      { header: "zoneA", key: "zoneA", width: 10 },
+      { header: "zoneB", key: "zoneB", width: 10 },
+      { header: "zoneC", key: "zoneC", width: 10 },
+      { header: "zoneD", key: "zoneD", width: 10 },
+      { header: "zoneE", key: "zoneE", width: 10 },
+      { header: "COD Charge", key: "codCharge", width: 18 },
+      { header: "COD_Percentage", key: "codPercentage", width: 15 },
     ];
 
-    // Add a demo data row for user reference
+    // --- First ratecard: Basic and Additional ---
     worksheet.addRow({
-      planName: "Silver (same as existing plans in system)",
-      courierProviderName: "Shipex (same as existing providers in system)",
-      courierServiceName:
-        "Shipex surface (same as existing services in system)",
-      basicWeight: "500 (in grams)",
-      basicZoneA: "50",
-      basicZoneB: "60",
-      basicZoneC: "70",
-      basicZoneD: "80",
-      basicZoneE: "90",
-      additionalWeight: "100 (in grams)",
-      additionalZoneA: "10",
-      additionalZoneB: "12",
-      additionalZoneC: "15",
-      additionalZoneD: "18",
-      additionalZoneE: "20",
-      codPercent: "2",
-      codCharge: "25",
+      planName: "Silver",
+      courierProviderName: "Bluedart",
+      courierServiceName: "Bluedart Air",
+      type: "1",
+      typeText: "Basic",
+      weight: "0.5",
+      zoneA: "56.00",
+      zoneB: "67.00",
+      zoneC: "89.00",
+      zoneD: "96.00",
+      zoneE: "125.00",
+      codCharge: "35.4",
+      codPercentage: "1.97",
     });
 
-    // Set response headers for file download
+    worksheet.addRow({
+      planName: "Silver",
+      courierProviderName: "Bluedart",
+      courierServiceName: "Bluedart Air",
+      type: "2",
+      typeText: "Additional",
+      weight: "0.5",
+      zoneA: "42.40",
+      zoneB: "52.40",
+      zoneC: "79.00",
+      zoneD: "89.00",
+      zoneE: "112.00",
+      codCharge: "35.4",
+      codPercentage: "1.97",
+    });
+
+    // --- Add a blank row for visual separation ---
+    worksheet.addRow({});
+
+    // --- Second ratecard: Basic and Additional ---
+    worksheet.addRow({
+      planName: "Gold",
+      courierProviderName: "Xpressbees",
+      courierServiceName: "Xpressbees Air",
+      type: "1",
+      typeText: "Basic",
+      weight: "0.5",
+      zoneA: "48.00",
+      zoneB: "53.00",
+      zoneC: "73.00",
+      zoneD: "79.00",
+      zoneE: "100.00",
+      codCharge: "32.78",
+      codPercentage: "1.70",
+    });
+
+    worksheet.addRow({
+      planName: "Gold",
+      courierProviderName: "Xpressbees",
+      courierServiceName: "Xpressbees Air",
+      type: "2",
+      typeText: "Additional",
+      weight: "0.5",
+      zoneA: "43.00",
+      zoneB: "46.00",
+      zoneC: "61.00",
+      zoneD: "67.00",
+      zoneE: "83.00",
+      codCharge: "32.78",
+      codPercentage: "1.70",
+    });
+
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -371,7 +483,6 @@ const exportDemoRatecard = async (req, res) => {
       "attachment; filename=ratecard-demo.xlsx"
     );
 
-    // Write workbook to response
     await workbook.xlsx.write(res);
     res.status(200).end();
   } catch (error) {
@@ -389,23 +500,27 @@ const uploadRatecard = async (req, res) => {
     // Read Excel
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(req.file.path);
-    const worksheet = workbook.worksheets[0]; // Always take first sheet
+    const worksheet = workbook.worksheets[0];
 
     if (!worksheet) {
+      fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: "No worksheet found" });
     }
 
-    // Extract header
+    // Get header
     const keys = worksheet
       .getRow(1)
       .values.slice(1)
       .map((k) => String(k).trim());
 
-    // Parse rows
+    // Parse rows, skip empty
     const rows = worksheet
       .getSheetValues()
       .slice(2)
-      .filter(Boolean)
+      .filter(
+        (r) =>
+          r && r.length > 1 && r.some((cell) => cell !== null && cell !== "")
+      )
       .map((r) => {
         const obj = {};
         keys.forEach((key, i) => {
@@ -414,10 +529,10 @@ const uploadRatecard = async (req, res) => {
         return obj;
       });
 
-    // Cleanup temp file
+    // Delete temp file
     fs.unlink(req.file.path, () => {});
 
-    // Fetch sets
+    // Fetch sets for validation
     const [providers, services, plans] = await Promise.all([
       Couriers.find().lean(),
       CourierService.find().lean(),
@@ -433,6 +548,8 @@ const uploadRatecard = async (req, res) => {
     const errors = [];
     const savedRatecards = [];
 
+    // Group rows by (plan, provider, service)
+    const grouped = {};
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNum = i + 2;
@@ -440,12 +557,8 @@ const uploadRatecard = async (req, res) => {
       const plan = (row["Plan Name"] || "").toLowerCase();
       const provider = (row["Courier Provider Name"] || "").toLowerCase();
       const service = (row["Courier Service Name"] || "").toLowerCase();
-      const mode = services.find(
-        (s) => s.name.toLowerCase() === service
-      )?.courierType;
 
-      // Validate required fields
-
+      // Validation
       if (!planSet.has(plan)) {
         errors.push(`Row ${rowNum}: Invalid Plan`);
         continue;
@@ -459,69 +572,88 @@ const uploadRatecard = async (req, res) => {
         continue;
       }
 
+      const key = `${row["Plan Name"]}__${row["Courier Provider Name"]}__${row["Courier Service Name"]}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          plan: row["Plan Name"],
+          courierProviderName: row["Courier Provider Name"],
+          courierServiceName: row["Courier Service Name"],
+          weightPriceBasic: [],
+          weightPriceAdditional: [],
+          codCharge: row["COD Charge"] || 0,
+          codPercent: row["COD_Percentage"] || 0,
+        };
+      }
+
+      const weightObj = {
+        weight: parseFloat(row["weight"]) || 0,
+        zoneA: parseFloat(row["zoneA"]) || 0,
+        zoneB: parseFloat(row["zoneB"]) || 0,
+        zoneC: parseFloat(row["zoneC"]) || 0,
+        zoneD: parseFloat(row["zoneD"]) || 0,
+        zoneE: parseFloat(row["zoneE"]) || 0,
+      };
+
+      if ((row["Type"] || "").trim() === "1") {
+        grouped[key].weightPriceBasic.push(weightObj);
+      } else if ((row["Type"] || "").trim() === "2") {
+        grouped[key].weightPriceAdditional.push(weightObj);
+      } else {
+        errors.push(
+          `Row ${rowNum}: Invalid Type (must be 1=Basic, 2=Additional)`
+        );
+      }
+    }
+
+    // Save grouped ratecards
+    for (const key in grouped) {
+      const g = grouped[key];
+
+      // Check for duplicate before saving
       const duplicate = await RateCard.findOne({
-        plan: new RegExp(`^${row["Plan Name"]}$`, "i"),
-        courierProviderName: new RegExp(
-          `^${row["Courier Provider Name"]}$`,
-          "i"
-        ),
-        courierServiceName: new RegExp(`^${row["Courier Service Name"]}$`, "i"),
+        plan: new RegExp(`^${g.plan}$`, "i"),
+        courierProviderName: new RegExp(`^${g.courierProviderName}$`, "i"),
+        courierServiceName: new RegExp(`^${g.courierServiceName}$`, "i"),
       });
 
       if (duplicate) {
-        errors.push(`Row ${rowNum}: Duplicate RateCard`);
+        errors.push(
+          `Duplicate RateCard exists for Plan: ${g.plan}, Provider: ${g.courierProviderName}, Service: ${g.courierServiceName}`
+        );
         continue;
       }
 
-      // ✅ Map Excel row to RateCard schema
+      const mode = services.find(
+        (s) => s.name.toLowerCase() === g.courierServiceName.toLowerCase()
+      )?.courierType;
+
       const rateCardDoc = new RateCard({
-        plan: row["Plan Name"],
-        mode: mode,
-        courierProviderName: row["Courier Provider Name"],
-        courierServiceName: row["Courier Service Name"],
-        // courierProviderId: row["Courier Provider Id"] || "",
-        // courierServiceId: row["Courier Service Id"] || "",
-        weightPriceBasic: [
-          {
-            weight: row["Basic Weight"],
-            zoneA: row["Basic Zone A"],
-            zoneB: row["Basic Zone B"],
-            zoneC: row["Basic Zone C"],
-            zoneD: row["Basic Zone D"],
-            zoneE: row["Basic Zone E"],
-          },
-        ],
-        weightPriceAdditional: [
-          {
-            weight: row["Additional Weight"],
-            zoneA: row["Additional Zone A"],
-            zoneB: row["Additional Zone B"],
-            zoneC: row["Additional Zone C"],
-            zoneD: row["Additional Zone D"],
-            zoneE: row["Additional Zone E"],
-          },
-        ],
-        codPercent: row["COD Percent"] || 0,
-        codCharge: row["COD Charge"] || 0,
-        // gst: row["GST"] || 0,
-        defaultRate: true,
+        plan: g.plan,
+        mode: mode || "",
+        courierProviderName: g.courierProviderName,
+        courierServiceName: g.courierServiceName,
+        weightPriceBasic: g.weightPriceBasic,
+        weightPriceAdditional: g.weightPriceAdditional,
+        codCharge: parseFloat(g.codCharge) || 0,
+        codPercent: parseFloat(g.codPercent) || 0,
         status: "Active",
         shipmentType: "Forward",
+        defaultRate: true,
       });
-      console.log("rateCardDoc", rateCardDoc);
+
       await rateCardDoc.save();
       savedRatecards.push(rateCardDoc);
 
-      // **Update all users' rateCard field who have the same plan**
+      // Link with Plan if needed
       await Plan.updateMany(
-        { planName: row["Plan Name"] },
+        { planName: g.plan },
         { $push: { rateCard: rateCardDoc } }
       );
     }
 
     return res.status(200).json({
       message: errors.length
-        ? "Some rows skipped"
+        ? "Some rows skipped due to errors or duplicates"
         : "All rows saved successfully",
       savedCount: savedRatecards.length,
       errors,

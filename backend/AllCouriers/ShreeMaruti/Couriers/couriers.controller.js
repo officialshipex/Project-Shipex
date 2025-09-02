@@ -410,35 +410,23 @@ const trackOrderShreeMaruti = async (awbNumber) => {
   const token = await getToken();
   // console.log("tokennnnnnn", token);
   try {
-    const response = await axios.get(
-      `${BASE_URL}/fulfillment/public/seller/order/order-tracking`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        params: { awbNumber },
-      }
-    );
-    console.log("ressssssss", response.data);
+    const response = await axios.get(`${BASE_URL}/tracking/v2/${awbNumber}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    // console.log("ressssssss", response.data.statuses[0]);
 
-    if (response.data.status == 200) {
-      // console.log("data")
-      return {
-        success: true,
-        data: response.data.orderStatus,
-      };
-    } else {
-      return {
-        success: false,
-        data: "Error in tracking",
-      };
-    }
+    return {
+      success: true,
+      data: response.data.statuses,
+    };
   } catch (error) {
-    // console.error(
-    //   "Error tracking order:",
-    //   error.response?.data || error.message
-    // );
+    console.error(
+      "Error tracking order:",
+      error.response?.data || error.message
+    );
     // console.log(error);
 
     return {
