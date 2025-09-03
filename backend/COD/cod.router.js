@@ -19,7 +19,10 @@ const {
   sellerremittanceTransactionData,
   CourierdownloadSampleExcel,
   uploadCourierCodRemittance,
-  exportOrderInRemittance
+  exportOrderInRemittance,
+  validateCODTransfer,
+  getCODTransferData,
+  transferCOD
 } = require("./cod.controller");
 const { isAuthorized } = require("../middleware/auth.middleware");
 router.post("/codPlanUpdate", codPlanUpdate);
@@ -37,5 +40,8 @@ router.get("/sellerremittanceTransactionData/:id",sellerremittanceTransactionDat
 router.get("/courierCodRemittance",courierCodRemittance)
 router.get("/CodRemittanceOrder",CodRemittanceOrder)
 router.get("/exportOrderInRemittance",exportOrderInRemittance)
+router.post("/validateCODTransfer",validateCODTransfer)
+router.get("/getCODTransferData/:id",getCODTransferData)
+router.get("/transferCOD/:id",transferCOD)
 
 module.exports = router;

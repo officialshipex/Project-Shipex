@@ -15,6 +15,7 @@ const path = require("path");
 const xlsx = require("xlsx");
 const File = require("../model/bulkOrderFiles.model.js");
 const AllocateRole = require("../models/allocateRoleSchema");
+const bankAccount=require("../models/BankAccount.model.js")
 
 // const { date } = require("joi");
 const CourierCodRemittance = require("./CourierCodRemittance.js");
@@ -2247,6 +2248,190 @@ const exportOrderInRemittance = async (req, res) => {
   }
 };
 
+const validateCODTransfer = async (req, res) => {
+  try {
+    const remittanceIds = req.body.remittanceIds;
+    console.log("Validating remittance IDs:", remittanceIds);
+    if (!Array.isArray(remittanceIds) || remittanceIds.length === 0) {
+      return res.status(400).json({ message: "Remittance IDs are required." });
+    }
+
+    // Step 1: Take the first remittanceId
+    const firstRemittanceId = remittanceIds[0];
+    // console.log("First remittance ID for user check:", firstRemittanceId);
+
+    // Step 2: Find remittance by first ID
+    const firstRemittance = await adminCodRemittance
+      .findOne({ remitanceId: firstRemittanceId })
+      .lean();
+
+    if (!firstRemittance) {
+      return res.status(404).json({ message: "First remittance not found." });
+    }
+    // console.log("First remittance found:", firstRemittance);
+
+    const userId = firstRemittance.userId;
+
+    // Step 3: Get all pending remittances for that user
+    const pendingRemittances = await adminCodRemittance
+      .find({ userId: userId, status: "Pending" })
+      .lean();
+
+    const pendingIds = pendingRemittances.map((r) => r.remitanceId);
+    console.log("Pending remittance IDs for user:", pendingIds);
+    // Step 4: Compare arrays strictly (both must match exactly)
+    const sortArray = (arr) => arr.map(String).sort(); // ensure same type & sorted
+    const reqSorted = sortArray(remittanceIds);
+    const pendingSorted = sortArray(pendingIds);
+
+    const isExactMatch =
+      reqSorted.length === pendingSorted.length &&
+      reqSorted.every((id, idx) => id === pendingSorted[idx]);
+
+    if (!isExactMatch) {
+      return res.status(400).json({
+        message: "Please select all the pending remittance for same user",
+        requiredPendingIds: pendingIds,
+        providedIds: remittanceIds,
+      });
+    }
+
+    // ✅ If exact match
+    return res.status(200).json({
+      message: "Validation successful",
+      userId,
+      remittanceIds,
+    });
+  } catch (error) {
+    console.error("Error in validateCODTransfer:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getCODTransferData = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    // 1. Fetch all remittance records for this user
+    const remittanceRecords = await codRemittance.find({ userId: id }).lean();
+
+    if (!remittanceRecords || remittanceRecords.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No remittance data found for this user." });
+    }
+
+    // 2. Extract only pending remittanceData
+    const pendingRemittances = remittanceRecords
+      .map((record) => ({
+        ...record,
+        remittanceData: record.remittanceData.filter(
+          (r) => r.status === "Pending"
+        ),
+      }))
+      .filter((record) => record.remittanceData.length > 0);
+
+    if (pendingRemittances.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No pending remittance data found for this user." });
+    }
+
+    // 3. Fetch bank details for this user
+    const bankDetails = await bankAccount.findOne({ user: id }).lean();
+
+    if (!bankDetails) {
+      return res
+        .status(404)
+        .json({ message: "Bank details not found for this user." });
+    }
+
+    // 4. Send response
+    return res.status(200).json({
+      message: "Pending remittance data & bank details fetched successfully",
+      bankDetails,
+      data: pendingRemittances,
+    });
+  } catch (error) {
+    console.error("Error in getCODTransferData:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const transferCOD = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const { utr } = req.body;
+
+    if (!id || !utr) {
+      return res.status(400).json({ message: "User ID and UTR are required." });
+    }
+
+    // 1. Fetch COD Remittance record for this user
+    const remittanceRecord = await codRemittance.findOne({ userId: id });
+    if (!remittanceRecord) {
+      return res
+        .status(404)
+        .json({ message: "No remittance data found for this user." });
+    }
+
+    // 2. Find all Pending remittanceData
+    const pendingRemittances = remittanceRecord.remittanceData.filter(
+      (r) => r.status === "Pending"
+    );
+
+    if (pendingRemittances.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No pending remittance data found for this user." });
+    }
+
+    // 3. Calculate total sum of COD available
+    const initiatedSum = pendingRemittances.reduce(
+      (sum, r) => sum + (r.codAvailable || 0),
+      0
+    );
+
+    // 4. Update remittanceData -> set Paid + utr
+    remittanceRecord.remittanceData = remittanceRecord.remittanceData.map((r) =>
+      r.status === "Pending"
+        ? { ...r, status: "Paid", utr }
+        : r
+    );
+
+    // 5. Update summary fields in codRemittance
+    remittanceRecord.LastCODRemitted = initiatedSum;
+    remittanceRecord.RemittanceInitiated =
+      (remittanceRecord.RemittanceInitiated || 0) - initiatedSum;
+    // remittanceRecord.utr = utr;
+
+    await remittanceRecord.save();
+
+    // 6. Update adminCodRemittance for each remittanceId
+    for (let rem of pendingRemittances) {
+      await adminCodRemittance.findOneAndUpdate(
+        { remitanceId: rem.remittanceId },
+        { $set: { status: "Paid" } }
+      );
+    }
+
+    return res.status(200).json({
+      message: "COD transfer completed successfully",
+      utr,
+      remittanceInitiated: initiatedSum,
+      data: remittanceRecord,
+    });
+  } catch (error) {
+    console.error("Error in transferCOD:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
 module.exports = {
   codPlanUpdate,
   codToBeRemitteds,
@@ -2264,4 +2449,7 @@ module.exports = {
   CourierdownloadSampleExcel,
   uploadCourierCodRemittance,
   exportOrderInRemittance,
+  validateCODTransfer,
+  getCODTransferData,
+  transferCOD
 };
