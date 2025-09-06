@@ -15,7 +15,7 @@ const path = require("path");
 const xlsx = require("xlsx");
 const File = require("../model/bulkOrderFiles.model.js");
 const AllocateRole = require("../models/allocateRoleSchema");
-const bankAccount=require("../models/BankAccount.model.js")
+const bankAccount = require("../models/BankAccount.model.js");
 
 // const { date } = require("joi");
 const CourierCodRemittance = require("./CourierCodRemittance.js");
@@ -367,6 +367,30 @@ const processAndRemit = async (plan) => {
     creditedAmount = adjustAmount;
     remainingRecharge -= adjustAmount;
     afterWallet += adjustAmount;
+
+    // ✅ Create transaction only when adjustment happens
+    const transactionEntry = {
+      channelOrderId: "" || null,
+      category: "credit",
+      amount: creditedAmount,
+      balanceAfterTransaction: afterWallet,
+      awb_number: "" || null,
+      description: "COD Adjustment credited to wallet",
+    };
+
+    await Wallet.updateOne(
+      { _id: wallet._id },
+      {
+        $set: { balance: afterWallet },
+        $push: { transactions: transactionEntry },
+      }
+    );
+  } else {
+    // No adjustment → only update balance
+    await Wallet.updateOne(
+      { _id: wallet._id },
+      { $set: { balance: afterWallet } }
+    );
   }
 
   // Charges
@@ -375,30 +399,22 @@ const processAndRemit = async (plan) => {
     (charges + creditedAmount + extraAmount).toFixed(2)
   );
   const codToBeRemitted = Number(remittanceData.CODToBeRemitted);
-  const codToBeDeducted = Math.min(
-    codToBeRemitted || 0,
-    remainingRecharge || 0
-  );
+  const codToBeDeducted = remainingRecharge;
 
-  // Update wallet
-  await Wallet.updateOne(
-    { _id: wallet._id },
-    { $set: { balance: afterWallet } }
-  );
-
+  // Actual payout to client (deduct charges here)
+  const payoutToClient = Number((codToBeDeducted - charges).toFixed(2));
   // Update codRemittance
-  await codRemittance.updateOne(
-    { userId: plan.userId },
+  await codRemittance.findOneAndUpdate(
+    { userId: plan.userId, CODToBeRemitted: { $gte: codToBeDeducted } }, // ensure enough COD
     {
       $inc: {
         CODToBeRemitted: -codToBeDeducted,
-        RemittanceInitiated: codToBeDeducted,
-        TotalDeductionfromCOD: TotalDeduction,
+        RemittanceInitiated: payoutToClient,
       },
-      $set: {
-        rechargeAmount: rechargeAmount,
-      },
-    }
+      $set: { rechargeAmount },
+      $push: { remittanceData: remittanceEntryForUser },
+    },
+    { new: true }
   );
 
   // Prepare remittance entry
@@ -986,14 +1002,12 @@ const uploadCodRemittance = async (req, res) => {
           currentRemittanceEntry.adjustedAmount || 0
         );
 
-        const actualAmount =
-          codAvailable -
-          (earlyCodCharges + amountCreditedToWallet + adjustedAmount);
+        const actualAmount = codAvailable 
 
         if (actualAmount > 0) {
           if (userRemittance.RemittanceInitiated >= actualAmount) {
             userRemittance.RemittanceInitiated -= actualAmount;
-            userRemittance.LastCODRemitted = userRemittance.RemittanceInitiated;
+            userRemittance.LastCODRemitted = actualAmount;
           } else {
             console.warn(
               `RemittanceInitiated (${userRemittance.RemittanceInitiated}) less than actualAmount (${actualAmount}), skipping deduction to avoid negative value.`
@@ -2398,9 +2412,7 @@ const transferCOD = async (req, res) => {
 
     // 4. Update remittanceData -> set Paid + utr
     remittanceRecord.remittanceData = remittanceRecord.remittanceData.map((r) =>
-      r.status === "Pending"
-        ? { ...r, status: "Paid", utr }
-        : r
+      r.status === "Pending" ? { ...r, status: "Paid", utr } : r
     );
 
     // 5. Update summary fields in codRemittance
@@ -2431,7 +2443,6 @@ const transferCOD = async (req, res) => {
   }
 };
 
-
 module.exports = {
   codPlanUpdate,
   codToBeRemitteds,
@@ -2451,5 +2462,5 @@ module.exports = {
   exportOrderInRemittance,
   validateCODTransfer,
   getCODTransferData,
-  transferCOD
+  transferCOD,
 };

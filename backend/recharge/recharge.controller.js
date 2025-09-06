@@ -18,6 +18,7 @@ const razorpay = new Razorpay({
 const createOrder = async (req, res) => {
   try {
     const id = req.user.id;
+    console.log("ie",id)
     const { amount, walletId: walletIdFromBody } = req.body;
 
     const user = await User.findById(id);

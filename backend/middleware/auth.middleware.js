@@ -27,6 +27,7 @@ const isAuthorized = async (req, res, next) => {
     if (decoded.user && decoded.user.isEmployee === false) {
       // It's a user
       const user = await User.findById(decoded.user.id);
+      // console.log("userrrrr",user)
       if (!user) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
