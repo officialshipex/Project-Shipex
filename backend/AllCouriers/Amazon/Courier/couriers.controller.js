@@ -293,6 +293,8 @@ const checkAmazonServiceability = async (provider,payload) => {
       city: payload.origin.city,
       postalCode: payload.origin.pinCode,
       countryCode: "IN",
+      email:payload.origin.email,
+      phoneNumber:payload.origin.phoneNumber
     };
 
     const shipTo = {
@@ -301,6 +303,8 @@ const checkAmazonServiceability = async (provider,payload) => {
       city: payload.destination.city,
       postalCode: payload.destination.pinCode,
       countryCode: "IN",
+      email:payload.destination.email,
+      phoneNumber:payload.destination.phoneNumber
     };
     const totalQuantity = payload.productDetails.reduce(
       (sum, item) => sum + item.quantity,
