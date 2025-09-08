@@ -134,7 +134,7 @@ const createOrder = async (req, res) => {
     let response;
     const walletHoldAmount = currentWallet?.holdAmount || 0;
     const effectiveBalance = currentWallet.balance - walletHoldAmount;
-    if (effectiveBalance >= finalCharges) {
+    if (currentWallet.balance >= finalCharges) {
       response = await axios.post(
         `${DTDC_API_URL}/customer/integration/consignment/softdata`,
         shipmentData,

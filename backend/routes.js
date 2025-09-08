@@ -51,6 +51,9 @@ const channel = require("./Channels/allChannel.routes");
 const staffRoleRoutes = require("./routes/rolesRouter");
 const trackSingleOrder = require("./Orders/tracking.controller");
 const LabelSettings = require("./label/label.router");
+const statusMap=require("./statusMap/StatusMap.router")
+
+router.use("/statusMap",statusMap);
 
 router.use("/label", LabelSettings);
 

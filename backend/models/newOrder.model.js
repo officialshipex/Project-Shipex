@@ -102,12 +102,6 @@ const orderSchema = new mongoose.Schema(
     // Updated ndrHistory
     ndrHistory: {
       type: [ndrEntrySchema],
-      validate: {
-        validator: function (arr) {
-          return arr.length <= 3;
-        },
-        message: "NDR history can contain at most 3 entries",
-      },
       default: [],
     },
 

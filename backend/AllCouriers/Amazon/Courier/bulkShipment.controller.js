@@ -42,7 +42,7 @@ const createShipmentAmazon = async (
     const holdAmount = currentWallet?.holdAmount || 0;
     const availableBalance = currentWallet.balance - holdAmount;
 
-    if (availableBalance < charges) {
+    if (currentWallet.balance < charges) {
       return {
         success: false,
         message: "Insufficient wallet balance after hold deduction",

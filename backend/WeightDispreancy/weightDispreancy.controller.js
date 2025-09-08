@@ -694,42 +694,45 @@ const AcceptDiscrepancy = async (req, res) => {
 };
 
 const AcceptAllDiscrepancies = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const userId = req.user._id;
     const { orderIds } = req.body;
-    console.log("orderIds", orderIds);
 
     if (!orderIds || orderIds.length === 0) {
+      await session.abortTransaction();
       return res
         .status(400)
         .json({ success: false, message: "No order IDs provided" });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).session(session);
     if (!user) {
+      await session.abortTransaction();
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
 
-    const wallet = await Wallet.findById(user.Wallet);
+    const wallet = await Wallet.findById(user.Wallet).session(session);
     if (!wallet) {
+      await session.abortTransaction();
       return res
         .status(404)
         .json({ success: false, message: "Wallet not found" });
     }
 
-    console.log("Wallet Balance (Before):", wallet.balance);
-    console.log("Wallet HoldAmount (Before):", wallet.holdAmount);
-
-    let totalExtraCharges = 0;
     let discrepanciesToUpdate = [];
 
     for (const orderId of orderIds) {
-      console.log("Processing order ID:", orderId);
-      const discrepancy = await WeightDiscrepancy.findById(orderId);
+      const discrepancy = await WeightDiscrepancy.findById(orderId).session(
+        session
+      );
 
       if (!discrepancy) {
+        await session.abortTransaction();
         return res.status(404).json({
           success: false,
           message: `Discrepancy not found for ID: ${orderId}`,
@@ -737,60 +740,57 @@ const AcceptAllDiscrepancies = async (req, res) => {
       }
 
       if (discrepancy.status !== "new") {
-        console.log(
-          `Skipping discrepancy ${orderId} as it's not in 'new' status.`
-        );
-        continue; // Skip already processed discrepancies
+        continue; // skip already processed
       }
 
       const extraCharges = parseFloat(
         discrepancy.excessWeightCharges.excessCharges
       );
-      totalExtraCharges += extraCharges;
 
       discrepanciesToUpdate.push({ discrepancy, extraCharges });
     }
 
-    // If all discrepancies were skipped or already processed
     if (discrepanciesToUpdate.length === 0) {
+      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: "No new discrepancies found to accept",
       });
     }
 
-    // Deduct total from balance and holdAmount
-    wallet.balance = parseFloat(
-      (wallet.balance - totalExtraCharges).toFixed(2)
-    );
-    wallet.holdAmount = Math.max(
-      0,
-      parseFloat((wallet.holdAmount - totalExtraCharges).toFixed(2))
-    );
-
-    await wallet.save();
-
-    // Create and push transactions while updating each discrepancy
+    // Sequentially deduct per discrepancy
     for (const { discrepancy, extraCharges } of discrepanciesToUpdate) {
+      wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
+      wallet.holdAmount = Math.max(
+        0,
+        parseFloat((wallet.holdAmount - extraCharges).toFixed(2))
+      );
+
       const newTransaction = {
         channelOrderId: discrepancy.orderId,
         category: "debit",
         amount: extraCharges,
-        balanceAfterTransaction: wallet.balance, // can remain same for all if needed
+        balanceAfterTransaction: wallet.balance, // ✅ updated per order
         awb_number: discrepancy.awbNumber,
-        description: `Weight Dispute Charges Applied`,
+        description: "Weight Dispute Charges Applied",
+        createdAt: new Date(),
       };
 
       wallet.transactions.push(newTransaction);
 
+      // update discrepancy
       discrepancy.status = "Accepted";
       discrepancy.clientStatus = "Accepted by Client";
       discrepancy.adminStatus = "Accepted";
       discrepancy.excessWeightCharges.pendingAmount = 0;
-      await discrepancy.save();
+
+      await discrepancy.save({ session });
     }
 
-    await wallet.save();
+    await wallet.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(200).json({
       success: true,
@@ -800,6 +800,8 @@ const AcceptAllDiscrepancies = async (req, res) => {
       totalAccepted: discrepanciesToUpdate.length,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error in AcceptAllDiscrepancies:", error);
     return res.status(500).json({
       success: false,
@@ -810,6 +812,9 @@ const AcceptAllDiscrepancies = async (req, res) => {
 };
 
 const autoAcceptDiscrepancies = async () => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     console.log("Running auto-accept discrepancy job...");
 
@@ -819,16 +824,16 @@ const autoAcceptDiscrepancies = async () => {
     const discrepancies = await WeightDiscrepancy.find({
       status: "new",
       createdAt: { $lte: sevenDaysAgo },
-    });
+    }).session(session);
 
     for (const discrepancy of discrepancies) {
-      const user = await User.findById(discrepancy.userId);
+      const user = await User.findById(discrepancy.userId).session(session);
       if (!user) {
         console.log(`User not found for discrepancy ${discrepancy.awbNumber}`);
         continue;
       }
 
-      const wallet = await Wallet.findById(user.Wallet);
+      const wallet = await Wallet.findById(user.Wallet).session(session);
       if (!wallet) {
         console.log(`Wallet not found for user ${user._id}`);
         continue;
@@ -844,16 +849,13 @@ const autoAcceptDiscrepancies = async () => {
         continue;
       }
 
-      console.log(
-        `Auto-processing discrepancy ${discrepancy.awbNumber}, Extra Charges: ${extraCharges}`
-      );
-
-      // Deduct from balance and holdAmount
+      // Deduct from balance and holdAmount safely
       wallet.balance = parseFloat((wallet.balance - extraCharges).toFixed(2));
       wallet.holdAmount = Math.max(
         0,
         parseFloat((wallet.holdAmount - extraCharges).toFixed(2))
       );
+
       const newTransaction = {
         channelOrderId: discrepancy.orderId,
         category: "debit",
@@ -861,24 +863,30 @@ const autoAcceptDiscrepancies = async () => {
         balanceAfterTransaction: wallet.balance,
         awb_number: discrepancy.awbNumber,
         description: `Auto-accepted Weight Dispute charge`,
+        createdAt: new Date(),
       };
 
       wallet.transactions.push(newTransaction);
-      await wallet.save();
+      await wallet.save({ session });
 
       discrepancy.status = "Accepted";
       discrepancy.clientStatus = "Auto Accepted";
       discrepancy.adminStatus = "Accepted";
       discrepancy.excessWeightCharges.pendingAmount = 0;
-      await discrepancy.save();
+      await discrepancy.save({ session });
 
       console.log(
         `Discrepancy ${discrepancy.awbNumber} auto-accepted. Updated Wallet Balance: ${wallet.balance}, HoldAmount: ${wallet.holdAmount}`
       );
     }
 
+    await session.commitTransaction();
+    session.endSession();
+
     console.log("Auto-accept discrepancy job completed.");
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error in autoAcceptDiscrepancies:", error);
   }
 };

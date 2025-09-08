@@ -85,7 +85,7 @@ const createOneClickShipment = async (req, res) => {
     let response;
     const walletHoldAmount = currentWallet?.holdAmount || 0;
     const effectiveBalance = currentWallet.balance - walletHoldAmount;
-    if (effectiveBalance >= finalCharges) {
+    if (currentWallet.balance >= finalCharges) {
       response = await axios.post(
         "https://sellingpartnerapi-eu.amazon.com/shipping/v2/shipments",
         shipmentData,

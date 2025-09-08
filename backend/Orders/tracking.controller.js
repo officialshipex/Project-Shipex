@@ -31,6 +31,7 @@ const {
 } = require("../AllCouriers/SmartShip/Couriers/couriers.controller");
 const Bottleneck = require("bottleneck");
 const orderSchemaModel = require("../models/orderSchema.model");
+const statusMap = require("../statusMap/StatusMap.model");
 
 const limiter = new Bottleneck({
   minTime: 1000, // 10 requests per second (1000ms delay between each)
@@ -168,114 +169,108 @@ const trackSingleOrder = async (order) => {
       }
     }
     if (provider === "DTDC") {
-      const instruction = normalizedData.Instructions?.toLowerCase();
-      order.status = DTDCStatusMapping[instruction];
+      const statusDoc = await statusMap.findOne(
+        { partnerName: provider.toUpperCase() },
+        { data: 1 }
+      );
 
-      if (order.status === "RTO") {
-        order.ndrStatus = "RTO";
-      }
-      if (order.status === "RTO In-transit") {
-        order.ndrStatus = "RTO In-transit";
-      }
+      if (statusDoc) {
+        // match by code (case-insensitive)
+        const dbMapping = statusDoc.data.find(
+          (d) => d.code?.toLowerCase() === normalizedData.Status?.toLowerCase()
+        );
 
-      if (DTDCStatusMapping[instruction] === "Out for Delivery") {
-        order.ndrStatus = "Out for Delivery";
-      }
-      if (
-        (order.ndrStatus === "Undelivered" ||
-          order.ndrStatus === "Out for Delivery" ||
-          order.ndrStatus === "Action_Requested") &&
-        normalizedData.Instructions === "Delivered"
-      ) {
-        order.ndrStatus = "Delivered";
-      }
-      const trackingLength = order.tracking?.length || 0;
-      const previousStatus =
-        trackingLength >= 2 ? order.tracking[trackingLength - 2]?.status : null;
-      if (
-        normalizedData.Instructions === "Return as per client instruction." &&
-        (trackingLength === 0 ||
-          (previousStatus !== "NONDLV" &&
-            previousStatus !== "Not Delivered" &&
-            previousStatus !== "SETRTO"))
-      ) {
-        // console.log("awb with number", awb_number);
-        order.status = "Cancelled";
-        order.ndrStatus = "Cancelled";
-        balanceTobeAdded =
-          order.totalFreightCharges === "N/A"
-            ? 0
-            : parseInt(order.totalFreightCharges);
-        shouldUpdateWallet = true;
-      }
+        if (dbMapping) {
+          order.status = dbMapping.sy_status;
+          if (dbMapping.sy_status === "Our for Delivery") {
+            order.ndrStatus = dbMapping.sy_status;
+          }
+          if (
+            (order.ndrStatus === "Undelivered" ||
+              order.ndrStatus === "Out for Delivery" ||
+              order.ndrStatus === "Action_Requested") &&
+            dbMapping.code === "DLV"
+          ) {
+            order.ndrStatus = dbMapping.sy_status;
+          }
+          const trackingLength = order.tracking?.length || 0;
+          const previousStatus =
+            trackingLength >= 2
+              ? order.tracking[trackingLength - 2]?.status
+              : null;
+          if (
+            normalizedData.Instructions ===
+              "Return as per client instruction." &&
+            (trackingLength === 0 ||
+              (previousStatus !== "NONDLV" &&
+                previousStatus !== "Not Delivered" &&
+                previousStatus !== "SETRTO"))
+          ) {
+            // console.log("awb with number", awb_number);
+            order.status = "Cancelled";
+            order.ndrStatus = "Cancelled";
+            balanceTobeAdded =
+              order.totalFreightCharges === "N/A"
+                ? 0
+                : parseInt(order.totalFreightCharges);
+            shouldUpdateWallet = true;
+          }
 
-      if (normalizedData.Status === "SETRTO") {
-        order.reattempt = true;
-      } else {
-        order.reattempt = false;
-      }
+          if (normalizedData.Status === "SETRTO") {
+            order.reattempt = true;
+          } else {
+            order.reattempt = false;
+          }
 
-      if (
-        DTDCStatusMapping[instruction] === "Undelivered" ||
-        normalizedData.Instructions === "RTO Not Delivered"
-      ) {
-        order.status = "Undelivered";
-        order.ndrStatus = "Undelivered";
-        updateNdrHistoryByAwb(order.awb_number);
-        order.ndrReason = {
-          date: normalizedData.StatusDateTime,
-          reason: normalizedData.StrRemarks,
-        };
-        // if (!Array.isArray(order.ndrHistory)) {
-        //   order.ndrHistory = [];
-        // }
-        const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
-        const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
-
-        const lastEntryDate = lastAction?.date
-          ? new Date(lastAction.date).toDateString()
-          : null;
-        const currentStatusDate = new Date(
-          normalizedData.StatusDateTime
-        ).toDateString();
-
-        if (
-          lastEntryDate !== currentStatusDate ||
-          order.ndrHistory.length === 0
-        ) {
-          const attemptCount = order.ndrHistory?.length + 1 || 0;
-          if (DTDCStatusMapping[instruction] === "Undelivered") {
-            // Create a new history entry with one action inside
-            const newHistoryEntry = {
-              actions: [
-                {
-                  action: `NDR ${attemptCount} Raised`,
-                  actionBy: order.courierServiceName,
-                  remark: normalizedData.StrRemarks,
-                  source: order.provider,
-                  date: normalizedData.StatusDateTime,
-                },
-              ],
+          if (
+            dbMapping.sy_status === "Undelivered" ||
+            dbMapping.code === "RTONONDLV"
+          ) {
+            order.status = "Undelivered";
+            order.ndrStatus = "Undelivered";
+            updateNdrHistoryByAwb(order.awb_number);
+            order.ndrReason = {
+              date: normalizedData.StatusDateTime,
+              reason: normalizedData.StrRemarks,
             };
+            // if (!Array.isArray(order.ndrHistory)) {
+            //   order.ndrHistory = [];
+            // }
+            const lastNdr = order.ndrHistory[order.ndrHistory.length - 1];
+            const lastAction = lastNdr?.actions?.[lastNdr.actions.length - 1];
 
-            order.ndrHistory.push(newHistoryEntry);
+            const lastEntryDate = lastAction?.date
+              ? new Date(lastAction.date).toDateString()
+              : null;
+            const currentStatusDate = new Date(
+              normalizedData.StatusDateTime
+            ).toDateString();
+
+            if (
+              (lastEntryDate !== currentStatusDate ||
+                order.ndrHistory.length === 0) &&
+              order.ndrHistory.length <= 2
+            ) {
+              const attemptCount = order.ndrHistory?.length + 1 || 0;
+              if (dbMapping.sy_status === "Undelivered") {
+                // Create a new history entry with one action inside
+                const newHistoryEntry = {
+                  actions: [
+                    {
+                      action: `NDR ${attemptCount} Raised`,
+                      actionBy: order.courierServiceName,
+                      remark: normalizedData.StrRemarks,
+                      source: order.provider,
+                      date: normalizedData.StatusDateTime,
+                    },
+                  ],
+                };
+
+                order.ndrHistory.push(newHistoryEntry);
+              }
+            }
           }
         }
-      }
-
-      if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
-        instruction === "rto delivered"
-      ) {
-        order.status = "RTO Delivered";
-        order.ndrStatus = "RTO Delivered";
-      }
-      if (
-        instruction === "delivered" ||
-        instruction === "otp based delivered"
-      ) {
-        order.status = "Delivered";
-        // order.ndrStatus = "Delivered";
       }
     }
     if (provider === "Amazon") {
@@ -344,8 +339,9 @@ const trackSingleOrder = async (order) => {
           ).toDateString();
 
           if (
-            order.ndrHistory.length === 0 ||
-            lastEntryDate !== currentStatusDate
+            (order.ndrHistory.length === 0 ||
+              lastEntryDate !== currentStatusDate) &&
+            order.ndrHistory.length <= 2
           ) {
             const attemptCount = order.ndrHistory?.length + 1 || 0;
             // Create a new NDR history entry with one action
@@ -396,7 +392,6 @@ const trackSingleOrder = async (order) => {
         }
       }
     }
-
     if (provider === "Smartship") {
       const instruction = normalizedData.Instructions?.toLowerCase();
       const Status = normalizedData.Status?.toLowerCase();
@@ -429,7 +424,12 @@ const trackSingleOrder = async (order) => {
       }
 
       // --- NDR Case ---
-      if (SmartShipStatusMapping[instruction] === "Undelivered") {
+      if (
+        SmartShipStatusMapping[instruction] === "Undelivered" &&
+        (normalizedData.Instructions === "CONSIGNEE REFUSED TO ACCEPT" ||
+          normalizedData.Instructions ===
+            "CONSIGNEE NOT AVAILABLE CANT DELIVER")
+      ) {
         order.status = "Undelivered";
 
         updateNdrHistoryByAwb(order.awb_number);
@@ -451,8 +451,9 @@ const trackSingleOrder = async (order) => {
         ).toDateString();
 
         if (
-          order.ndrHistory.length === 0 ||
-          lastEntryDate !== currentStatusDate
+          (order.ndrHistory.length === 0 ||
+            lastEntryDate !== currentStatusDate) &&
+          order.ndrHistory.length <= 2
         ) {
           order.ndrStatus = "Undelivered";
           const attemptCount = order.ndrHistory?.length + 1 || 0;
@@ -472,9 +473,8 @@ const trackSingleOrder = async (order) => {
           order.ndrHistory.push(newHistoryEntry);
         }
       }
-
+      console.log("norma", normalizedData);
       if (
-        (order.status === "RTO" || order.status === "RTO In-transit") &&
         normalizedData.Status === "RTO Delivered To Shipper" &&
         normalizedData.Instructions === "SHIPMENT DELIVERED"
       ) {
@@ -642,8 +642,9 @@ const trackSingleOrder = async (order) => {
           ).toDateString();
 
           if (
-            order.ndrHistory.length === 0 ||
-            lastEntryDate !== currentStatusDate
+            (order.ndrHistory.length === 0 ||
+              lastEntryDate !== currentStatusDate) &&
+            order.ndrHistory.length <= 2
           ) {
             const attemptCount = order.ndrHistory?.length + 1 || 0;
             // Create a new NDR history entry with one action
@@ -694,34 +695,54 @@ const trackSingleOrder = async (order) => {
         }
       }
     } else {
-      const statusMap = {
-        "UD:Manifested": { status: "Ready To Ship" },
-        "UD:In Transit": { status: "In-transit" },
-        "UD:Dispatched": {
-          status: "Out for Delivery",
-          ndrStatus: "Out for Delivery",
-        },
-        "RT:In Transit": {
-          status: "RTO In-transit",
-          ndrStatus: "RTO In-transit",
-        },
-        "DL:RTO": { status: "RTO Delivered", ndrStatus: "RTO Delivered" },
-        "DL:Delivered": { status: "Delivered" },
-      };
+      const statusDoc = await statusMap.findOne(
+        { partnerName: provider.toUpperCase() }, // partnerName stored as uppercase
+        { data: 1 }
+      );
 
-      const key = `${normalizedData.StatusType}:${normalizedData.Status}`;
-      const mapped = statusMap[key];
+      if (statusDoc) {
+        const dbMapping = statusDoc.data.find(
+          (d) =>
+            d.scan_type?.toLowerCase() ===
+              normalizedData.StatusType?.toLowerCase() &&
+            d.scan?.toLowerCase() === normalizedData.Status?.toLowerCase()
+        );
 
-      if (mapped) {
-        order.status = mapped.status;
-        if (mapped.ndrStatus) order.ndrStatus = mapped.ndrStatus;
-      } else if (
-        normalizedData.StatusType === "UD" &&
-        normalizedData.Status === "Pending" &&
-        normalizedData.StatusCode === "ST-108"
-      ) {
-        order.status = "RTO";
+        if (dbMapping) {
+          order.status = dbMapping.sy_status; // fallback if not mapped
+          if (dbMapping.sy_status === "Our for Delivery") {
+            order.ndrStatus = dbMapping.sy_status;
+          }
+        }
       }
+      // const statusMap = {
+      //   "UD:Manifested": { status: "Ready To Ship" },
+      //   "UD:In Transit": { status: "In-transit" },
+      //   "UD:Dispatched": {
+      //     status: "Out for Delivery",
+      //     ndrStatus: "Out for Delivery",
+      //   },
+      //   "RT:In Transit": {
+      //     status: "RTO In-transit",
+      //     ndrStatus: "RTO In-transit",
+      //   },
+      //   "DL:RTO": { status: "RTO Delivered", ndrStatus: "RTO Delivered" },
+      //   "DL:Delivered": { status: "Delivered" },
+      // };
+
+      // const key = `${normalizedData.StatusType}:${normalizedData.Status}`;
+      // const mapped = statusMap[key];
+
+      // if (mapped) {
+      //   order.status = mapped.status;
+      //   if (mapped.ndrStatus) order.ndrStatus = mapped.ndrStatus;
+      // } else if (
+      //   normalizedData.StatusType === "UD" &&
+      //   normalizedData.Status === "Pending" &&
+      //   normalizedData.StatusCode === "ST-108"
+      // ) {
+      //   order.status = "RTO";
+      // }
 
       if (
         (order.ndrStatus === "Undelivered" ||
@@ -754,8 +775,9 @@ const trackSingleOrder = async (order) => {
       ).toDateString();
 
       if (
-        order.ndrHistory.length === 0 ||
-        lastEntryDate !== currentStatusDate
+        (order.ndrHistory.length === 0 ||
+          lastEntryDate !== currentStatusDate) &&
+        order.ndrHistory.length <= 2
       ) {
         if (
           normalizedData.StatusCode &&
@@ -881,7 +903,7 @@ const trackOrders = async () => {
 
     const allOrders = await Order.find({
       status: { $nin: ["new", "Cancelled", "Delivered", "RTO Delivered"] },
-      // provider: "ShreeMaruti",
+      // provider: "Smartship",
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
@@ -1199,137 +1221,6 @@ const updateNdrHistoryByAwb = async (awb_number) => {
     console.error("❌ Error updating order by AWB:", error);
   }
 };
-
-// Migration controller
-const migrateNdrHistor = async (req, res) => {
-  try {
-    // Fetch all orders with old ndrHistory format
-    const orders = await Order.find({
-      status: { $nin: ["Delivered", "RTO Delivered", "new", "Cancelled"] },
-    });
-
-    for (const order of orders) {
-      const newHistory = [];
-
-      for (const oldEntry of order.ndrHistory) {
-        let actionBy = "";
-        let source = "";
-
-        // Logic for actionBy & source
-        if (oldEntry.action === "Auto Reattempt") {
-          actionBy = order.courierServiceName || "Courier";
-          source = order.provider || "Provider";
-        } else if (oldEntry.action === "RE-ATTEMPT") {
-          actionBy = "Shipex India";
-          source = "Shipex India";
-        }
-
-        const newAction = {
-          action: oldEntry.action,
-          actionBy,
-          remark: oldEntry.remark || "",
-          source,
-          date: oldEntry.date || new Date(),
-        };
-
-        // Place actions into groups of max 2
-        const lastEntry = newHistory[newHistory.length - 1];
-        if (lastEntry && lastEntry.actions.length < 2) {
-          lastEntry.actions.push(newAction);
-        } else if (newHistory.length < 3) {
-          newHistory.push({ actions: [newAction] });
-        }
-      }
-
-      // Ensure max 3 entries
-      order.ndrHistory = newHistory.slice(0, 3);
-
-      await order.save();
-    }
-
-    res.json({
-      success: true,
-      message: "NDR history migrated successfully",
-    });
-  } catch (err) {
-    console.error("Migration error:", err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
-  }
-};
-
-const migrateNdrHistory = async (awbNumber) => {
-  try {
-    // const { awbNumber } = req.body; // 👈 pass awbNumber in request body
-    console.log("Migrating AWB:", awbNumber);
-    // Fetch single order with awbNumber and not in excluded statuses
-    const order = await Order.findOne({
-      awb_number: awbNumber,
-      status: { $nin: ["Delivered", "RTO Delivered", "new", "Cancelled"] },
-    });
-    // console.log("order", order);
-
-    if (!order) {
-      return {
-        success: false,
-        message: "Order not found or already in excluded status",
-      };
-    }
-
-    const newHistory = [];
-
-    for (const oldEntry of order.ndrHistory) {
-      let actionBy = "";
-      let source = "";
-
-      // Logic for actionBy & source
-      if (oldEntry.action === "Auto Reattempt") {
-        actionBy = order.courierServiceName || "Courier";
-        source = order.provider || "Provider";
-      } else if (oldEntry.action === "RE-ATTEMPT") {
-        actionBy = "Shipex India";
-        source = "Shipex India";
-      }
-
-      const newAction = {
-        action: oldEntry.action,
-        actionBy,
-        remark: oldEntry.remark || "",
-        source,
-        date: oldEntry.date || new Date(),
-      };
-
-      // Place actions into groups of max 2
-      const lastEntry = newHistory[newHistory.length - 1];
-      if (lastEntry && lastEntry.actions.length < 2) {
-        lastEntry.actions.push(newAction);
-      } else if (newHistory.length < 3) {
-        newHistory.push({ actions: [newAction] });
-      }
-    }
-
-    // Ensure max 3 entries
-    order.ndrHistory = newHistory.slice(0, 3);
-
-    await order.save();
-
-    return {
-      success: true,
-      message: "NDR history migrated successfully for the order",
-      order, // 👈 return updated order so you can check
-    };
-  } catch (err) {
-    console.error("Migration error:", err);
-    return {
-      success: false,
-      error: err.message,
-    };
-  }
-};
-
-// migrateNdrHistory("77953338455")
 
 // updateNdrHistoryByAwb("362413842319");
 

@@ -123,7 +123,7 @@ const orderRegistrationOneStep = async (req, res) => {
 
     const effectiveBalance =
       currentWallet.balance - (currentWallet.holdAmount || 0);
-    if (effectiveBalance < finalCharges) {
+    if (currentWallet.balance < finalCharges) {
       return res
         .status(400)
         .json({ success: false, message: "Insufficient wallet balance" });

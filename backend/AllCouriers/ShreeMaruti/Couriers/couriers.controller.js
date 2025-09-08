@@ -177,14 +177,14 @@ const createOrder = async (req, res) => {
 
     const effectiveBalance =
       currentWallet.balance - (currentWallet.holdAmount || 0);
-    if (effectiveBalance < finalCharges) {
+    if (currentWallet.balance < finalCharges) {
       return res
         .status(400)
         .json({ success: false, message: "Insufficient wallet balance" });
     }
 
     let response;
-    if (effectiveBalance >= finalCharges) {
+    if (currentWallet.balance >= finalCharges) {
       response = await axios.post(API_URL, payload, {
         headers: {
           "Content-Type": "application/json",
