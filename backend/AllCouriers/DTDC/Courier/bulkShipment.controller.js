@@ -139,7 +139,7 @@ const createOrderDTDC = async (
     // }
     if (response?.data?.data[0]?.success) {
       const result = response.data.data[0];
-      currentOrder.status = "Ready To Ship";
+      currentOrder.status = "Booked";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.reference_number;
       currentOrder.shipment_id = `${result.customer_reference_number}`;

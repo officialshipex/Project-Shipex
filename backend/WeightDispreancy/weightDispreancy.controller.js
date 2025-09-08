@@ -239,44 +239,32 @@ const uploadDispreancy = async (req, res) => {
 
       for (const discrepancy of discrepancies) {
         const userId = discrepancy.userId;
-
         const userDetails = await User.findById(userId).select("Wallet");
         if (!userDetails || !userDetails.Wallet) continue;
 
         const walletId = userDetails.Wallet.toString();
         const amountToHold = Number(
           discrepancy.excessWeightCharges?.pendingAmount || 0
-        ).toFixed(2);
+        );
 
-        // console.log("amoutn", amountToHold);
+        if (isNaN(amountToHold) || amountToHold <= 0) continue;
 
-        if (isNaN(amountToHold)) {
-          console.warn(
-            `Invalid pendingAmount for AWB ${discrepancy.awbNumber}:`,
-            discrepancy.excessWeightCharges.pendingAmount
-          );
-          continue;
-        }
-
-        const currentAmount = walletUpdates.get(walletId) || 0;
-        walletUpdates.set(walletId, currentAmount + Number(amountToHold));
+        walletUpdates.set(
+          walletId,
+          (walletUpdates.get(walletId) || 0) + amountToHold
+        );
       }
 
       // Step 2: Apply holdAmount updates
       for (const [walletId, amount] of walletUpdates.entries()) {
         await Wallet.updateOne(
           { _id: walletId },
-          {
-            $inc: { holdAmount: amount },
-          }
+          { $inc: { holdAmount: amount } }
         );
-
-        console.log(walletId, amount);
       }
 
       // Step 3: Save discrepancies
       await WeightDiscrepancy.insertMany(discrepancies);
-      console.log(`${discrepancies.length} discrepancies saved.`);
     }
 
     fs.promises.unlink(filePath).catch((err) => {

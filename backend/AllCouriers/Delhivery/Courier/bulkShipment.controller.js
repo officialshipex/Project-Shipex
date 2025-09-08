@@ -94,7 +94,7 @@ const createShipmentFunctionDelhivery = async (
         const result = response.data.packages[0];
 
         // Update Order Details
-        currentOrder.status = "Ready To Ship";
+        currentOrder.status = "Booked";
         currentOrder.cancelledAtStage = null;
         currentOrder.awb_number = result.waybill;
         currentOrder.shipment_id = `${result.refnum}`;

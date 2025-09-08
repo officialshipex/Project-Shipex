@@ -139,7 +139,7 @@ const createShipmentFunctionShreeMaruti = async (
     // Handle response
     if (response.status === 200) {
       const result = response.data.data;
-      currentOrder.status = "Ready To Ship";
+      currentOrder.status = "Booked";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.awbNumber;
       currentOrder.shipment_id = `${result.shipperOrderId}`;

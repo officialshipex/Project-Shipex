@@ -27,7 +27,14 @@ const filterOrdersForEmployee = async (req, res) => {
       filter.orderId = Number(orderId);
     }
 
-    if (status && status !== "All") filter.status = status;
+    if (status && status !== "All") {
+      const statusArray = Array.isArray(status)
+        ? status
+        : status.split(",").map((s) => s.trim());
+
+      filter.status = { $in: statusArray };
+    }
+
     if (awbNumber) filter.awb_number = { $regex: awbNumber, $options: "i" };
 
     if (startDate && endDate) {

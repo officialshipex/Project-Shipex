@@ -229,7 +229,7 @@ const orderRegistrationOneStep = async (req, res) => {
     const result = response.data?.data?.success_order_details?.orders?.[0];
 
     if (result?.awb_number) {
-      currentOrder.status = "Ready To Ship";
+      currentOrder.status = "Booked";
       currentOrder.awb_number = result.awb_number;
       currentOrder.shipment_id = result.request_order_id || "";
       currentOrder.provider = provider;

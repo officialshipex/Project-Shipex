@@ -4,6 +4,7 @@ const courier = require("../models/AllCourierSchema");
 const readXlsxFile = require("read-excel-file/node");
 const path = require("path");
 const StatusMap = require("./StatusMap.model");
+const fs = require("fs");
 
 const fetchCourier = async (req, res) => {
   try {
@@ -46,7 +47,9 @@ const uploadExcel = async (req, res) => {
       const rowObject = Object.fromEntries(
         headers.map((key, i) => [key, row[i]])
       );
-      const partner = rowObject.partnerName;
+      const partner = rowObject.partnerName?.trim();
+
+      if (!partner) return;
 
       if (!groupedData[partner]) {
         groupedData[partner] = {
@@ -57,19 +60,51 @@ const uploadExcel = async (req, res) => {
       groupedData[partner].data.push(rowObject);
     });
 
-    // groupedData now contains one object per partnerName with array of related rows
-    // console.log(groupedData);
+    // Check if any partner already exists
+    for (const partner in groupedData) {
+      const exists = await StatusMap.findOne({ partnerName: partner });
+      if (exists) {
+        // ✅ Delete file before returning
+        fs.unlink(filePath, (err) => {
+          if (err) console.error("Error deleting file:", err);
+          else console.log("Uploaded file deleted (duplicate partner).");
+        });
 
-    // Example to save each partner group as one record in DB:
+        return res.status(400).json({
+          success: false,
+          message: `Partner "${partner}" already exists`,
+        });
+      }
+    }
 
+    // Save all new partners
     for (const partner in groupedData) {
       await StatusMap.create(groupedData[partner]);
     }
 
-    res.send("File processed and grouped data created");
+    // ✅ Delete file after success
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Error deleting file:", err);
+      else console.log("Uploaded file deleted successfully.");
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "File processed successfully",
+    });
   } catch (e) {
     console.error(e);
-    res.status(500).send("Error processing file");
+
+    // Cleanup file on error too
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Error deleting file after failure:", err);
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: "Error processing file",
+      error: e.message,
+    });
   }
 };
 

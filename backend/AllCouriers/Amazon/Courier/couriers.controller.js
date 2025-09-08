@@ -122,7 +122,7 @@ const createOneClickShipment = async (req, res) => {
 
       const labelUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${labelKey}`;
 
-      currentOrder.status = "Ready To Ship";
+      currentOrder.status = "Booked";
       currentOrder.cancelledAtStage = null;
       currentOrder.awb_number = result.packageDocumentDetails[0].trackingId;
       currentOrder.shipment_id = `${result.shipmentId}`;

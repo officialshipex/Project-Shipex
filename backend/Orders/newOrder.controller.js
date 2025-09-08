@@ -312,7 +312,11 @@ const getOrders = async (req, res) => {
     const andConditions = [{ userId }];
 
     if (status && status !== "All") {
-      andConditions.push({ status });
+      const statusArray = Array.isArray(status)
+        ? status
+        : status.split(",").map((s) => s.trim());
+
+      andConditions.push({ status: { $in: statusArray } });
     }
 
     if (searchQuery) {
@@ -1022,7 +1026,11 @@ const cancelOrdersAtBooked = async (req, res) => {
     if (currentOrder.status === "Cancelled") {
       return res.status(400).send({ error: "Order is already Cancelled" });
     }
-    if (currentOrder.status !== "Ready To Ship") {
+    if (
+      currentOrder.status !== "Ready To Ship" ||
+      currentOrder.status !== "Booked" ||
+      currentOrder.status !== "Not Picked"
+    ) {
       return res.status(400).send({ error: "Order is not ready to Cancelled" });
     }
 
