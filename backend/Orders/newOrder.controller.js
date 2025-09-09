@@ -914,7 +914,7 @@ const ShipeNowOrder = async (req, res) => {
     // console.log("availbale",availableServices)
 
     const filteredServices = availableServices.filter(Boolean);
-    console.log("filteredServices", filteredServices);
+    // console.log("filteredServices", filteredServices);
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,

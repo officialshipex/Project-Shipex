@@ -124,7 +124,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     if (service.provider === "Delhivery") {
       
       const result = await checkPincodeServiceabilityDelhivery(
-        
+        currentOrder.pickupAddress.pinCode,
         currentOrder.receiverAddress.pinCode,
         currentOrder.paymentDetails?.method === "COD" ? "cod" : "prepaid"
       );

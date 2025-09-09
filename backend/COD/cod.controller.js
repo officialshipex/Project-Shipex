@@ -1002,7 +1002,7 @@ const uploadCodRemittance = async (req, res) => {
           currentRemittanceEntry.adjustedAmount || 0
         );
 
-        const actualAmount = codAvailable 
+        const actualAmount = codAvailable;
 
         if (actualAmount > 0) {
           if (userRemittance.RemittanceInitiated >= actualAmount) {
@@ -2384,6 +2384,7 @@ const transferCOD = async (req, res) => {
     if (!id || !utr) {
       return res.status(400).json({ message: "User ID and UTR are required." });
     }
+    // console.log("utr",id,utr)
 
     // 1. Fetch COD Remittance record for this user
     const remittanceRecord = await codRemittance.findOne({ userId: id });
@@ -2419,6 +2420,8 @@ const transferCOD = async (req, res) => {
     remittanceRecord.LastCODRemitted = initiatedSum;
     remittanceRecord.RemittanceInitiated =
       (remittanceRecord.RemittanceInitiated || 0) - initiatedSum;
+    remittanceRecord.TotalCODRemitted =
+      remittanceRecord.TotalCODRemitted + initiatedSum;
     // remittanceRecord.utr = utr;
 
     await remittanceRecord.save();

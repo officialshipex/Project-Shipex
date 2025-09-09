@@ -208,7 +208,7 @@ const createOrder = async (req, res) => {
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
-      currentOrder.zone=zone.zone;
+      currentOrder.zone = zone.zone;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
@@ -264,43 +264,64 @@ const createOrder = async (req, res) => {
   }
 };
 
-const checkPincodeServiceabilityDelhivery = async (pincode, order_type) => {
-  if (!pincode) {
-    return "Pincode is required";
+const checkPincodeServiceabilityDelhivery = async (
+  pickUpPincode,
+  deliveryPincode,
+  order_type
+) => {
+  if (!pickUpPincode || !deliveryPincode) {
+    return {
+      success: false,
+      message: "Pickup and Delivery Pincodes are required",
+    };
   }
-  // console.log("klkkllkk",order_type)
-  // console.log("iewoooooooooo",pincode)
+  // console.log(pickUpPincode,deliveryPincode)
+
   try {
-    const response = await axios.get(`${url}/c/api/pin-codes/json?`, {
+    // --- Check Delivery Pincode ---
+    const deliveryResponse = await axios.get(`${url}/c/api/pin-codes/json?`, {
       headers: {
         Authorization: `Token ${API_TOKEN}`,
       },
-      params: {
-        filter_codes: pincode,
-      },
+      params: { filter_codes: deliveryPincode },
     });
-    let result = response.data.delivery_codes;
+// console.log("delivery service",deliveryResponse.data.delivery_codes)
+    const deliveryCodes = deliveryResponse.data.delivery_codes || [];
+    let deliveryServiceable = false;
 
-    // console.log("serv", result);
-
-    let finalResult = false;
-
-    if (result.length > 0) {
-      let data = result[0].postal_code;
-
-      let { pre_paid, cash, pickup, remarks } = data;
-
-      finalResult =
+    if (deliveryCodes.length > 0) {
+      let { pre_paid, cash, pickup, remarks } = deliveryCodes[0].postal_code;
+      deliveryServiceable =
         order_type === "Cash on Delivery"
           ? cash === "Y" && pickup === "Y" && remarks === ""
           : pre_paid === "Y" && pickup === "Y" && remarks === "";
     }
 
-    return { success: finalResult };
+    // --- Check Pickup Pincode ---
+    const pickupResponse = await axios.get(`${url}/c/api/pin-codes/json?`, {
+      headers: {
+        Authorization: `Token ${API_TOKEN}`,
+      },
+      params: { filter_codes: pickUpPincode },
+    });
+// console.log("pickup servi",pickupResponse.data.delivery_codes)
+    const pickupCodes = pickupResponse.data.delivery_codes || [];
+    let pickupServiceable = false;
+
+    if (pickupCodes.length > 0) {
+      let { pre_paid, cash, pickup, remarks } = pickupCodes[0].postal_code;
+      pickupServiceable =
+        order_type === "Cash on Delivery"
+          ? cash === "Y" && pickup === "Y" && remarks === ""
+          : pre_paid === "Y" && pickup === "Y" && remarks === "";
+    }
+
+    // --- Final Result ---
+    const finalResult = pickupServiceable && deliveryServiceable;
+    return { success: finalResult, pickupServiceable, deliveryServiceable };
   } catch (error) {
     console.error("Error fetching pincode serviceability:", error.message);
-
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
