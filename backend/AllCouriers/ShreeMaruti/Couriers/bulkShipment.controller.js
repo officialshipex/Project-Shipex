@@ -10,10 +10,8 @@ const { getUniqueId } = require("../../getUniqueId");
 const Wallet = require("../../../models/wallet");
 const { getZone } = require("../../../Rate/zoneManagementController");
 
-const BASE_URL =
-  process.env?.NODE_ENV != "production"
-    ? process.env.SHREEMA_STAGING_URL
-    : process.env.SHREEMA_PRODUCTION_URL;
+const BASE_URL =process.env.SHREEMA_PRODUCTION_URL
+  
 
 const createShipmentFunctionShreeMaruti = async (
   selectedServiceDetails,
@@ -26,7 +24,7 @@ const createShipmentFunctionShreeMaruti = async (
 
   try {
     const token = await getToken();
-    const currentOrder = await Order.findById(id);
+    const currentOrder = await Order.findById(orderId);
     const currentWallet = await Wallet.findById(walletId);
     const zone = await getZone(
       currentOrder.pickupAddress.pinCode,
@@ -70,7 +68,7 @@ const createShipmentFunctionShreeMaruti = async (
 
     // Construct payload
     const payload = {
-      orderId: currentOrder.orderId,
+      orderId: `${currentOrder.orderId}`,
       orderSubtype: "FORWARD",
       currency: "INR",
       amount: parseInt(currentOrder.paymentDetails.amount),
@@ -134,7 +132,7 @@ const createShipmentFunctionShreeMaruti = async (
 
     const effectiveBalance =
       currentWallet.balance - (currentWallet.holdAmount || 0);
-    if (currentWallet.balance < charges) {
+    if (currentWallet.balance < finalCharges) {
       return { success: false, message: "Insufficient wallet balance" };
     }
 
@@ -220,17 +218,19 @@ const createShipmentFunctionShreeMaruti = async (
         status: 400,
         success: false,
         error: "Error creating shipment",
-        details: response.data,
+        // details: response.data,
       };
     }
   } catch (error) {
-    console.log(error);
+    console.log("data",error.response.data)
+    console.log("message",error.response.data.message)
+    console.log(error.response.data.trace);
     console.error("Error in creating shipment:", error.message);
     return {
       status: 400,
       success: false,
       error: "Error creating shipment",
-      details: response.data,
+      // details: response.data,
     };
   }
 };

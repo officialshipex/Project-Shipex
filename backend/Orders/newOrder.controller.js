@@ -1121,20 +1121,42 @@ const cancelOrdersAtBooked = async (req, res) => {
       allOrders.totalFreightCharges == "N/A"
         ? 0
         : parseInt(allOrders.totalFreightCharges);
-    await currentWallet.updateOne({
-      $inc: { balance: balanceTobeAdded },
-      $push: {
-        transactions: {
-          channelOrderId: currentOrder.orderId || null, // Include if available
-          category: "credit",
-          amount: balanceTobeAdded, // Fixing incorrect reference
-          balanceAfterTransaction: currentWallet.balance + balanceTobeAdded,
-          date: new Date(), // Format date & time
-          awb_number: allOrders.awb_number || "", // Ensuring it follows the schema
-          description: `Freight Charges Received`,
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const updatedWallet = await Wallet.findOneAndUpdate(
+        { _id: currentWallet._id },
+        { $inc: { balance: balanceTobeAdded } },
+        { new: true, session }
+      );
+
+      await Wallet.updateOne(
+        { _id: updatedWallet._id },
+        {
+          $push: {
+            transactions: {
+              channelOrderId: currentOrder.orderId || null,
+              category: "credit",
+              amount: balanceTobeAdded,
+              balanceAfterTransaction: updatedWallet.balance,
+              date: new Date(),
+              awb_number: allOrders.awb_number || "",
+              description: `Freight Charges Received`,
+            },
+          },
         },
-      },
-    });
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+      throw err;
+    }
+
     // console.log("hii")
     res.status(201).send({
       success: true,
