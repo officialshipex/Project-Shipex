@@ -148,6 +148,12 @@ const createOrderDTDC = async (
       currentOrder.courierServiceName = serviceDetails.name;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       let savedOrder = await currentOrder.save();
 
       // console.log("sjakjska",balanceToBeDeducted)

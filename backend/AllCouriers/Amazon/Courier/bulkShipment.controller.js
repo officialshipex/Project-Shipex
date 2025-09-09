@@ -136,7 +136,12 @@ const createShipmentAmazon = async (
     currentOrder.shipmentCreatedAt = new Date();
     currentOrder.label = labelUrl;
     currentOrder.zone = zone.zone;
-
+    currentOrder.tracking.push({
+      status: "Booked",
+      StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+      StatusDateTime: new Date(),
+      Instructions: "Order booked successfully",
+    });
     await currentOrder.save();
 
     const transaction = {
@@ -163,7 +168,11 @@ const createShipmentAmazon = async (
       const updatedBalance = updatedWallet.balance;
 
       await Wallet.updateOne(
-        { _id: walletId, "transactions.awb_number": result.packageDocumentDetails[0].trackingId },
+        {
+          _id: walletId,
+          "transactions.awb_number":
+            result.packageDocumentDetails[0].trackingId,
+        },
         {
           $set: {
             "transactions.$.balanceAfterTransaction": updatedBalance,
