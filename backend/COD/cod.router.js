@@ -42,6 +42,6 @@ router.get("/CodRemittanceOrder",CodRemittanceOrder)
 router.get("/exportOrderInRemittance",exportOrderInRemittance)
 router.post("/validateCODTransfer",validateCODTransfer)
 router.get("/getCODTransferData/:id",getCODTransferData)
-router.get("/transferCOD/:id",transferCOD)
+router.post("/transferCOD/:id",transferCOD)
 
 module.exports = router;
