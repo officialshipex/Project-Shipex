@@ -182,7 +182,7 @@ const trackSingleOrder = async (order) => {
         );
 // console.log("db mapping dtdc",dbMapping)
         if (dbMapping) {
-          // console.log("maped dtdc status",dbMapping.sy_status)
+          console.log("maped dtdc status",dbMapping.sy_status)
           order.status = dbMapping.sy_status;
           if (dbMapping.sy_status === "Our for Delivery") {
             order.ndrStatus = dbMapping.sy_status;
@@ -711,7 +711,7 @@ const trackSingleOrder = async (order) => {
         );
 
         if (dbMapping) {
-          // console.log("maped delhivery status",dbMapping.sy_status)
+          console.log("maped delhivery status",dbMapping.sy_status)
           order.status = dbMapping.sy_status; // fallback if not mapped
           if (dbMapping.sy_status === "Our for Delivery") {
             order.ndrStatus = dbMapping.sy_status;
@@ -937,7 +937,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop(); 
+startTrackingLoop(); 
 
 const mapTrackingResponse = (data, provider) => {
   // console.log("Mapping data for provider:", data);
