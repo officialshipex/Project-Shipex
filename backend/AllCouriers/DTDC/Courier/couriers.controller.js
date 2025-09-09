@@ -127,8 +127,7 @@ const createOrder = async (req, res) => {
         },
       ],
     };
-    console.log("consignments",shipmentData);
-
+    console.log("consignments", shipmentData);
 
     // API call to DTDC
     let response;
@@ -161,27 +160,34 @@ const createOrder = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
       // console.log("sjakjska",balanceToBeDeducted)
       await Wallet.findOneAndUpdate(
-        {_id:user.Wallet,balance:{$gte:balanceToBeDeducted}},
+        { _id: user.Wallet, balance: { $gte: balanceToBeDeducted } },
         {
-        $inc: { balance: -balanceToBeDeducted },
-        $push: {
-          transactions: {
-            channelOrderId: currentOrder.orderId || null, // Include if available
-            category: "debit",
-            amount: balanceToBeDeducted, // Fixing incorrect reference
-            balanceAfterTransaction:
-              currentWallet.balance - balanceToBeDeducted,
-            date: new Date(),
-            awb_number: result.reference_number || "", // Ensuring it follows the schema
-            description: `Freight Charges Applied`,
+          $inc: { balance: -balanceToBeDeducted },
+          $push: {
+            transactions: {
+              channelOrderId: currentOrder.orderId || null, // Include if available
+              category: "debit",
+              amount: balanceToBeDeducted, // Fixing incorrect reference
+              balanceAfterTransaction:
+                currentWallet.balance - balanceToBeDeducted,
+              date: new Date(),
+              awb_number: result.reference_number || "", // Ensuring it follows the schema
+              description: `Freight Charges Applied`,
+            },
           },
-        },
-      });
+        }
+      );
     } else {
       console.log("ererer", response.data);
       return res.status(400).json({ message: response.data.data[0].message });

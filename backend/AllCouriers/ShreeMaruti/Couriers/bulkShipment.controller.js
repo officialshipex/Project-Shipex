@@ -4,7 +4,7 @@ if (process.env.NODE_ENV != "production") {
 const axios = require("axios");
 const { getToken } = require("../Authorize/shreeMaruti.controller");
 const Courier = require("../../../models/courierSecond");
-const Services = require("../../../models/courierServiceSecond.model");
+const Services = require("../../../models/CourierService.Schema");
 const Order = require("../../../models/newOrder.model");
 const { getUniqueId } = require("../../getUniqueId");
 const Wallet = require("../../../models/wallet");
@@ -33,6 +33,9 @@ const createShipmentFunctionShreeMaruti = async (
       currentOrder.receiverAddress.pinCode
       // res
     );
+    const services = await Services.findOne({
+      name: selectedServiceDetails.name,
+    });
     // console.log("zone", zone);
     if (!zone) {
       return { success: false, message: "Pincode not serviceable" };
@@ -111,15 +114,22 @@ const createShipmentFunctionShreeMaruti = async (
         zip: `${currentOrder.pickupAddress.pinCode}`,
       },
       returnAddress: {
-        name: `${currentOrder.receiverAddress.contactName}`,
-        phone: currentOrder.receiverAddress.phoneNumber.toString(),
-        address1: currentOrder.receiverAddress.address,
+        name: `${currentOrder.pickupAddress.contactName}`,
+        phone: currentOrder.pickupAddress.phoneNumber.toString(),
+        address1: currentOrder.pickupAddress.address,
         // address2: wh.addressLine2,
-        city: currentOrder.receiverAddress.city,
-        state: currentOrder.receiverAddress.state,
+        city: currentOrder.pickupAddress.city,
+        state: currentOrder.pickupAddress.state,
         country: "India",
-        zip: `${currentOrder.receiverAddress.pinCode}`,
+        zip: `${currentOrder.pickupAddress.pinCode}`,
       },
+      selectedCarriers: [
+        {
+          shortName: "SMILE",
+        },
+      ],
+      deliveryPromise:
+        services.courierType === "Domestic (Surface)" ? "SURFACE" : "AIR",
     };
 
     const effectiveBalance =
@@ -148,7 +158,12 @@ const createShipmentFunctionShreeMaruti = async (
       currentOrder.courierServiceName = selectedServiceDetails.name;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
-
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       await currentOrder.save();
 
       const updatedWallet = await Wallet.findOneAndUpdate(
@@ -195,11 +210,15 @@ const createShipmentFunctionShreeMaruti = async (
         // You can decide whether to fail here or just log and continue
       }
 
-      return { status: 201,success:true, message: "Shipment Created Successfully" };
+      return {
+        status: 201,
+        success: true,
+        message: "Shipment Created Successfully",
+      };
     } else {
       return {
         status: 400,
-        success:false,
+        success: false,
         error: "Error creating shipment",
         details: response.data,
       };
@@ -209,7 +228,7 @@ const createShipmentFunctionShreeMaruti = async (
     console.error("Error in creating shipment:", error.message);
     return {
       status: 400,
-      success:false,
+      success: false,
       error: "Error creating shipment",
       details: response.data,
     };

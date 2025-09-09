@@ -5,10 +5,16 @@ const Order = require("../../../models/newOrder.model");
 const { getZone } = require("../../../Rate/zoneManagementController");
 const Wallet = require("../../../models/wallet");
 const User = require("../../../models/User.model");
-const {registerSmartshipHub}=require("./couriers.controller")
-const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charges) => {
+const { registerSmartshipHub } = require("./couriers.controller");
+const orderRegistrationOneStep = async (
+  serviceDetails,
+  orderId,
+  wh,
+  walletId,
+  charges
+) => {
   try {
-    console.log("req.body",serviceDetails,orderId,walletId,charges);
+    console.log("req.body", serviceDetails, orderId, walletId, charges);
     const accessToken = await getAccessToken();
     const currentOrder = await Order.findById(orderId);
     if (!currentOrder) {
@@ -21,13 +27,12 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
     );
     // console.log("zone", zone);
     if (!zone) {
-      return ({success:false, message: "Pincode not serviceable" });
+      return { success: false, message: "Pincode not serviceable" };
     }
     const user = await User.findById(currentOrder.userId);
     if (!user) {
-      return ({ success: false, message: "User not found" });
+      return { success: false, message: "User not found" };
     }
-
 
     const smartshipHub = await registerSmartshipHub(
       user._id,
@@ -43,7 +48,7 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
     const effectiveBalance =
       currentWallet.balance - (currentWallet.holdAmount || 0);
     if (currentWallet.balance < charges) {
-      return ({ success: false, message: "Insufficient wallet balance" });
+      return { success: false, message: "Insufficient wallet balance" };
     }
 
     const productNames = currentOrder.productDetails
@@ -128,13 +133,13 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
         respData.success_order_details.orders.length === 0) &&
       respData?.duplicate_orders
     ) {
-      return ({
+      return {
         success: false,
         message:
           "Duplicate orderId is not allowed in courier Bluedart, ship with another courier",
         errors: respData.errors,
         duplicate_orders: respData.duplicate_orders,
-      });
+      };
     }
     // Save AWB and update order status
     const result = response.data?.data?.success_order_details?.orders?.[0];
@@ -148,28 +153,34 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
       currentOrder.courierServiceName = serviceDetails.name;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       await currentOrder.save();
 
-      const updatedWallet=await Wallet.findOneAndUpdate(
-        {_id:walletId,balance:{$gte:charges}},
+      const updatedWallet = await Wallet.findOneAndUpdate(
+        { _id: walletId, balance: { $gte: charges } },
         [
           {
-            $set:{
-              balance:{$subtract:["$balance",charges]},
-              transactions:{
-                $concatArrays:[
+            $set: {
+              balance: { $subtract: ["$balance", charges] },
+              transactions: {
+                $concatArrays: [
                   "$transactions",
                   [
                     {
-                      channelOrderId:currentOrder.orderId,
-                      category:"debit",
-                      amount:charges,
-                      balanceAfterTransaction:{
-                        $subtract:["$balance",charges],
+                      channelOrderId: currentOrder.orderId,
+                      category: "debit",
+                      amount: charges,
+                      balanceAfterTransaction: {
+                        $subtract: ["$balance", charges],
                       },
-                      date:new Date(),
-                      awb_number:result.awb_number,
-                      description:"Freight Charges Applied",
+                      date: new Date(),
+                      awb_number: result.awb_number,
+                      description: "Freight Charges Applied",
                     },
                   ],
                 ],
@@ -177,18 +188,18 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
             },
           },
         ],
-        {new:true}
-      )
-    }
-    else{
-      return {message:"Error creating shipment"};
+        { new: true }
+      );
+    } else {
+      return { message: "Error creating shipment" };
     }
 
     return {
       message: "Shipment Created Successfully",
       success: true,
-      orderId:currentOrder.orderId,
-      waybill:response.data?.data?.success_order_details?.orders?.[0].awb_number
+      orderId: currentOrder.orderId,
+      waybill:
+        response.data?.data?.success_order_details?.orders?.[0].awb_number,
     };
   } catch (error) {
     console.error(
@@ -203,4 +214,4 @@ const orderRegistrationOneStep = async (serviceDetails,orderId,wh,walletId,charg
   }
 };
 
-module.exports={orderRegistrationOneStep}
+module.exports = { orderRegistrationOneStep };

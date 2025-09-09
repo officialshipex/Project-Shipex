@@ -133,6 +133,12 @@ const createOneClickShipment = async (req, res) => {
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.label = labelUrl;
       currentOrder.zone = zone.zone;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       let savedOrder = await currentOrder.save();
       let balanceToBeDeducted =
         finalCharges === "N/A" ? 0 : parseInt(finalCharges);
@@ -280,7 +286,7 @@ const getShipmentTracking = async (trackingId) => {
 };
 // getShipmentTracking("362856312141");
 
-const checkAmazonServiceability = async (provider,payload) => {
+const checkAmazonServiceability = async (provider, payload) => {
   try {
     // console.log("payloadprovider", payload);
 
@@ -293,8 +299,8 @@ const checkAmazonServiceability = async (provider,payload) => {
       city: payload.origin.city,
       postalCode: payload.origin.pinCode,
       countryCode: "IN",
-      email:payload.origin.email,
-      phoneNumber:payload.origin.phoneNumber
+      email: payload.origin.email,
+      phoneNumber: payload.origin.phoneNumber,
     };
 
     const shipTo = {
@@ -303,8 +309,8 @@ const checkAmazonServiceability = async (provider,payload) => {
       city: payload.destination.city,
       postalCode: payload.destination.pinCode,
       countryCode: "IN",
-      email:payload.destination.email,
-      phoneNumber:payload.destination.phoneNumber
+      email: payload.destination.email,
+      phoneNumber: payload.destination.phoneNumber,
     };
     const totalQuantity = payload.productDetails.reduce(
       (sum, item) => sum + item.quantity,
@@ -340,7 +346,7 @@ const checkAmazonServiceability = async (provider,payload) => {
             quantity: item.quantity,
             weight: {
               unit: "GRAM",
-              value: weightPerUnit
+              value: weightPerUnit,
             },
             isHazmat: false,
             invoiceDetails: {
@@ -411,7 +417,7 @@ const checkAmazonServiceability = async (provider,payload) => {
         success: true,
         reason: "Pincodes are serviceable",
         rate: selectedRate.rateId,
-        serviceable:true,
+        serviceable: true,
         requestToken: response.data.payload.requestToken,
         valueAddedServiceIds, // ✅ include this in return
       };

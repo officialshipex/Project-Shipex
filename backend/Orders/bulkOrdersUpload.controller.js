@@ -345,9 +345,10 @@ const bulkOrder = async (req, res) => {
             state: row["*Receiver State"] || "Unknown State",
           },
           paymentDetails: {
-            method: row["*Method (COD/Prepaid)"] || "Prepaid",
+            method: (row["*Method (COD/Prepaid)"] || "Prepaid").trim(), // ✅ remove spaces
             amount: totalAmount,
           },
+
           productDetails: [
             {
               id: 1,

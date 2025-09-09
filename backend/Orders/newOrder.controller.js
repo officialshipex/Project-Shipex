@@ -1026,11 +1026,9 @@ const cancelOrdersAtBooked = async (req, res) => {
     if (currentOrder.status === "Cancelled") {
       return res.status(400).send({ error: "Order is already Cancelled" });
     }
-    if (
-      currentOrder.status !== "Ready To Ship" ||
-      currentOrder.status !== "Booked" ||
-      currentOrder.status !== "Not Picked"
-    ) {
+    const cancellableStatuses = ["Ready To Ship", "Booked", "Not Picked"];
+
+    if (!cancellableStatuses.includes(currentOrder.status)) {
       return res.status(400).send({ error: "Order is not ready to Cancelled" });
     }
 

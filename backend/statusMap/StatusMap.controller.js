@@ -6,20 +6,27 @@ const path = require("path");
 const StatusMap = require("./StatusMap.model");
 const fs = require("fs");
 
-const fetchCourier = async (req, res) => {
+const fetchPartnerName = async (req, res) => {
   try {
-    const allCourier = await courier.find({ status: "Enable" });
+    const allStatus = await StatusMap.find();
 
-    if (!allCourier || allCourier.length === 0) {
+    if (!allStatus || allStatus.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No couriers found with status 'Enable'",
+        message: "No partner name found",
       });
     }
 
+    // Extract partnerName values into an array, removing duplicates if needed
+    const partnerNames = [
+      ...new Set(allStatus.map((item) => item.partnerName)),
+    ];
+
+    // console.log("partner",partnerNames)
+
     res.status(200).json({
       success: true,
-      data: allCourier,
+      data: allStatus, // array of partnerName strings
     });
   } catch (error) {
     console.error("Error fetching couriers:", error);
@@ -108,4 +115,22 @@ const uploadExcel = async (req, res) => {
   }
 };
 
-module.exports = { fetchCourier, uploadExcel };
+const getStatusByPartnerName = async (req, res) => {
+  // console.log("hii",req.query)
+  const { courierProvider } = req.query;
+  if (!courierProvider) {
+    return res.status(400).json({ error: "partnerName is required" });
+  }
+  try {
+    // Find documents where partnerName matches (case-sensitive by default)
+    const records = await StatusMap.find({
+      partnerName: courierProvider.toUpperCase(),
+    });
+    // console.log("recco",records)
+    return res.json({ courierProvider, data: records });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+module.exports = { fetchPartnerName, uploadExcel, getStatusByPartnerName };

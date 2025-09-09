@@ -237,6 +237,12 @@ const orderRegistrationOneStep = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       await currentOrder.save();
 
       await currentWallet.updateOne({

@@ -180,7 +180,7 @@ const trackSingleOrder = async (order) => {
         const dbMapping = statusDoc.data.find(
           (d) => d.code?.toLowerCase() === normalizedData.Status?.toLowerCase()
         );
-// console.log("db mapping dtdc",dbMapping)
+        // console.log("db mapping dtdc",dbMapping)
         if (dbMapping) {
           // console.log("maped dtdc status",dbMapping.sy_status)
           order.status = dbMapping.sy_status;
@@ -937,7 +937,7 @@ const startTrackingLoop = async () => {
   }
 };
 
-// startTrackingLoop(); 
+// startTrackingLoop();
 
 const mapTrackingResponse = (data, provider) => {
   // console.log("Mapping data for provider:", data);

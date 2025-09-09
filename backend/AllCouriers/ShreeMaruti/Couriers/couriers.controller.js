@@ -4,7 +4,7 @@ if (process.env.NODE_ENV != "production") {
 const axios = require("axios");
 const { getToken } = require("../Authorize/shreeMaruti.controller");
 const Courier = require("../../../models/courierSecond");
-const Services = require("../../../models/courierServiceSecond.model");
+const Services = require("../../../models/CourierService.Schema");
 const Order = require("../../../models/newOrder.model");
 const { getUniqueId } = require("../../getUniqueId");
 const Wallet = require("../../../models/wallet");
@@ -86,7 +86,7 @@ const createOrder = async (req, res) => {
   // console.log("bodyyyyy", req.body);
   try {
     const { courierServiceName, id, provider, finalCharges } = req.body;
-
+    const services = await Services.findOne({ name: courierServiceName });
     const currentOrder = await Order.findById(id);
     const users = await user.findById({ _id: currentOrder.userId });
     // console.log("currentOrder",currentOrder)
@@ -164,15 +164,22 @@ const createOrder = async (req, res) => {
         zip: `${currentOrder.pickupAddress.pinCode}`,
       },
       returnAddress: {
-        name: `${currentOrder.receiverAddress.contactName}`,
-        phone: currentOrder.receiverAddress.phoneNumber.toString(),
-        address1: currentOrder.receiverAddress.address,
+        name: `${currentOrder.pickupAddress.contactName}`,
+        phone: currentOrder.pickupAddress.phoneNumber.toString(),
+        address1: currentOrder.pickupAddress.address,
         // address2: wh.addressLine2,
-        city: currentOrder.receiverAddress.city,
-        state: currentOrder.receiverAddress.state,
+        city: currentOrder.pickupAddress.city,
+        state: currentOrder.pickupAddress.state,
         country: "India",
-        zip: `${currentOrder.receiverAddress.pinCode}`,
+        zip: `${currentOrder.pickupAddress.pinCode}`,
       },
+      selectedCarriers: [
+        {
+          shortName: "SMILE",
+        },
+      ],
+      deliveryPromise:
+        services.courierType === "Domestic (Surface)" ? "SURFACE" : "AIR",
     };
 
     const effectiveBalance =
@@ -207,6 +214,12 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges = finalCharges;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.courierServiceName = courierServiceName;
+      currentOrder.tracking.push({
+        status: "Booked",
+        StatusLocation: currentOrder.pickupAddress?.city || "N/A",
+        StatusDateTime: new Date(),
+        Instructions: "Order booked successfully",
+      });
       //   currentOrder.service_details = selectedServiceDetails._id;
       //   currentOrder.freightCharges =
       //     req.body.finalCharges === "N/A" ? 0 : parseInt(req.body.finalCharges);
@@ -416,7 +429,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    // console.log("ressssssss", response.data.statuses[0]);
+    console.log("ressssssss", response.data.statuses[0]);
 
     return {
       success: true,
@@ -435,7 +448,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
     };
   }
 };
-// trackOrderShreeMaruti("SHIP40000000002");
+// trackOrderShreeMaruti("SHIP40000000009");
 
 // Serviceability
 const checkServiceabilityShreeMaruti = async (payload) => {
