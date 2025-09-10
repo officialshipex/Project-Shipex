@@ -446,18 +446,27 @@ const getAllDiscrepancy = async (req, res) => {
   }
 };
 
+// const mongoose = require("mongoose");
+
 const AllDiscrepancyCountBasedId = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { id } = req.query;
+    let userId;
+    if (id) {
+      userId = new mongoose.Types.ObjectId(id); // convert to ObjectId
+    } else {
+      userId = req.user?._id || req.employee?._id;
+    }
 
-    // Aggregate status counts for this user
+    console.log("Using userId:", userId);
+
     const statusCounts = await WeightDiscrepancy.aggregate([
       {
-        $match: { userId }, // filter by logged-in user
+        $match: { userId }, // correctly matched ObjectId
       },
       {
         $group: {
-          _id: "$status", // group by status
+          _id: "$status",
           count: { $sum: 1 },
         },
       },
@@ -470,10 +479,7 @@ const AllDiscrepancyCountBasedId = async (req, res) => {
       },
     ]);
 
-    // Get full discrepancy data for this user
-    const discrepancies = await WeightDiscrepancy.find({ userId }, null, {
-      lean: true,
-    });
+    const discrepancies = await WeightDiscrepancy.find({ userId }).lean();
 
     if (!discrepancies.length) {
       return res.status(404).json({
@@ -498,6 +504,7 @@ const AllDiscrepancyCountBasedId = async (req, res) => {
 const AllDiscrepancyBasedId = async (req, res) => {
   try {
     const {
+      id,
       fromDate,
       toDate,
       page = 1,
@@ -507,8 +514,14 @@ const AllDiscrepancyBasedId = async (req, res) => {
       status,
       provider,
     } = req.query;
-
-    const userId = req.user._id;
+    let userId;
+    // console.log("id",id)
+    if (id) {
+      userId = id;
+    } else {
+      userId = req.user?._id || req.employee?._id;
+    }
+    // const userId = req.user._id;
     const discrepancyMatchStage = {
       userId: new mongoose.Types.ObjectId(userId),
     };

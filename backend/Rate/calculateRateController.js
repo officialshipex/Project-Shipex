@@ -87,6 +87,7 @@ const calculateRate = async (req, res) => {
         // console.log("shree", serviceable);
       } else if (provider === "Delhivery") {
         serviceable = await checkPincodeServiceabilityDelhivery(
+          pickUpPincode,
           deliveryPincode,
           order_type
         );
@@ -113,9 +114,9 @@ const calculateRate = async (req, res) => {
           applicableWeight,
           declaredValue,
         };
-        // serviceable = await checkAmazonServiceability(payload);
+        serviceable = await checkAmazonServiceability(payload);
         // console.log("servicable", serviceable);
-        serviceable = true;
+        // serviceable.success = false;
       }
       // if (!isServiceable) continue; // Skip if not serviceable
 
