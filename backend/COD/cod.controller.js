@@ -1807,7 +1807,7 @@ const getAdminCodRemitanceData = async (req, res) => {
           RemittanceInitiated: { $sum: "$RemittanceInitiated" },
           TotalDeductionfromCOD: { $sum: "$TotalDeductionfromCOD" },
           TotalCODRemitted: { $sum: "$TotalCODRemitted" },
-          LastCODRemitted: { $max: "$LastCODRemitted" }, // replace with your actual last remittance date field if any, else remove
+          LastCODRemitted: { $sum: "$LastCODRemitted" }, // replace with your actual last remittance date field if any, else remove
         },
       },
       {
@@ -2413,7 +2413,7 @@ const transferCOD = async (req, res) => {
 
     // 4. Update remittanceData -> set Paid + utr
     remittanceRecord.remittanceData = remittanceRecord.remittanceData.map((r) =>
-      r.status === "Pending" ? { ...r, status: "Paid", utr } : r
+      r.status === "Pending" ? { ...r, status: "Paid", utr,remittanceMethod:"Bank Transaction" } : r
     );
 
     // 5. Update summary fields in codRemittance

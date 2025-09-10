@@ -477,19 +477,21 @@ const checkServiceabilityShreeMaruti = async (payload) => {
       if (response.data.data.serviceability) {
         return { success: true };
       } else {
-        return false;
+        return { success: false };
       }
     } else {
       console.error("Unexpected response structure:", response);
-      return false;
+      return { success: false };
     }
   } catch (error) {
     if (error.response) {
       console.error("API error response:", error.response.data);
+      return { success: false };
     } else {
       console.error("Request error:", error.message);
+      return { success: false };
     }
-    return false;
+    return { success: false };
   }
 };
 

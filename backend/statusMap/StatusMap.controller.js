@@ -3,6 +3,7 @@ require("dotenv").config();
 const courier = require("../models/AllCourierSchema");
 const readXlsxFile = require("read-excel-file/node");
 const path = require("path");
+const excelJS = require("exceljs");
 const StatusMap = require("./StatusMap.model");
 const fs = require("fs");
 
@@ -133,4 +134,50 @@ const getStatusByPartnerName = async (req, res) => {
   }
 };
 
-module.exports = { fetchPartnerName, uploadExcel, getStatusByPartnerName };
+const exportStatusMap = async (req, res) => {
+  const { courierProvider } = req.query;
+  try {
+    // Find the document, assuming the collection shape as you showed
+    const doc = await StatusMap.findOne({
+      partnerName: courierProvider,
+    }).lean();
+    if (!doc || !doc.data || !doc.data.length) {
+      return res.status(404).json({ message: "No data found" });
+    }
+
+    // Get all keys from the first object in the data array, except for __v if present
+    const allKeys = Object.keys(doc.data[0]).filter((k) => k !== "__v");
+    const columns = allKeys.map((key) => ({ header: key, key, width: 20 }));
+
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet("StatusMap");
+    worksheet.columns = columns;
+
+    // Add each row from doc.data
+    doc.data.forEach((item) => {
+      const row = allKeys.map((colKey) => item[colKey]);
+      worksheet.addRow(row);
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=statusMap-${courierProvider}.xlsx`
+    );
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Export failed", error });
+  }
+};
+
+module.exports = {
+  fetchPartnerName,
+  uploadExcel,
+  getStatusByPartnerName,
+  exportStatusMap,
+};

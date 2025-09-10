@@ -432,10 +432,10 @@ const checkAmazonServiceability = async (provider, payload) => {
       return { success: false, reason: "No rates returned by Amazon" };
     }
   } catch (error) {
-    console.error(
-      "Error checking serviceabilityyy:",
-      error.response?.data || error.message
-    );
+    // console.error(
+    //   "Error checking serviceabilityyy:",
+    //   error.response?.data || error.message
+    // );
     return { success: false, reason: "Error checking serviceability" };
   }
 };
