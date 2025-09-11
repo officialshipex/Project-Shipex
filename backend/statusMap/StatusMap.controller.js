@@ -48,17 +48,14 @@ const uploadExcel = async (req, res) => {
     const headers = rows[0];
     const dataRows = rows.slice(1);
 
-    // Create a map to group by partnerName
+    // Group by partnerName
     const groupedData = {};
-
     dataRows.forEach((row) => {
       const rowObject = Object.fromEntries(
         headers.map((key, i) => [key, row[i]])
       );
       const partner = rowObject.partnerName?.trim();
-
       if (!partner) return;
-
       if (!groupedData[partner]) {
         groupedData[partner] = {
           partnerName: partner,
@@ -68,29 +65,16 @@ const uploadExcel = async (req, res) => {
       groupedData[partner].data.push(rowObject);
     });
 
-    // Check if any partner already exists
+    // For each partner: delete existing, add new
     for (const partner in groupedData) {
-      const exists = await StatusMap.findOne({ partnerName: partner });
-      if (exists) {
-        // ✅ Delete file before returning
-        fs.unlink(filePath, (err) => {
-          if (err) console.error("Error deleting file:", err);
-          else console.log("Uploaded file deleted (duplicate partner).");
-        });
+      // Delete previous records for this partner
+      await StatusMap.deleteMany({ partnerName: partner });
 
-        return res.status(400).json({
-          success: false,
-          message: `Partner "${partner}" already exists`,
-        });
-      }
-    }
-
-    // Save all new partners
-    for (const partner in groupedData) {
+      // Insert new record(s) for this partner
       await StatusMap.create(groupedData[partner]);
     }
 
-    // ✅ Delete file after success
+    // Delete file after success
     fs.unlink(filePath, (err) => {
       if (err) console.error("Error deleting file:", err);
       else console.log("Uploaded file deleted successfully.");
@@ -98,12 +82,11 @@ const uploadExcel = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "File processed successfully",
+      message: "File processed and partners replaced successfully",
     });
   } catch (e) {
     console.error(e);
-
-    // Cleanup file on error too
+    // Cleanup file on error
     fs.unlink(filePath, (err) => {
       if (err) console.error("Error deleting file after failure:", err);
     });

@@ -7,16 +7,17 @@ const Wallet = require("../../../models/wallet");
 const User = require("../../../models/User.model");
 const PickupAddress = require("../../../models/pickupAddress.model");
 
-
 const registerSmartshipHub = async (userId, pinCode) => {
   try {
     const pickupAddress = await PickupAddress.findOne({
       userId,
       "pickupAddress.pinCode": pinCode,
     });
-
+    // console.log("pickup", pickupAddress);
     if (!pickupAddress) {
-      throw new Error("Pickup address not found for the given pincode");
+      return {
+        success: false,
+      };
     }
 
     if (pickupAddress.smartshipHubId) {
@@ -41,7 +42,7 @@ const registerSmartshipHub = async (userId, pinCode) => {
         delivery_type_id: 2,
       },
     };
-
+    // console.log(hubPayload);
     const accessToken = await getAccessToken();
 
     const response = await axios.post(
@@ -107,12 +108,18 @@ const orderRegistrationOneStep = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-
     const smartshipHub = await registerSmartshipHub(
       user._id,
       currentOrder.pickupAddress.pinCode
     );
-    console.log("Smartship Hub:", smartshipHub);
+    // console.log("Smartship Hub:", smartshipHub);
+    if (smartshipHub.success === false) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Pickup pincode is not registered. Please add a pickup address first.",
+      });
+    }
 
     const currentWallet = await Wallet.findById(user.Wallet);
     if (!currentWallet) {
@@ -198,16 +205,16 @@ const orderRegistrationOneStep = async (req, res) => {
       }
     );
     console.log("Smartship Order Response:", response.data);
-    console.log(
-      "Smartship Order Response:",
-      response.data.data.errors.account_validation
-    );
+    // console.log(
+    //   "Smartship Order Response:",
+    //   response.data.data.errors.data_discrepancy
+    // );
 
-    if(response.data.data.errors){
+    if (response.data.data.errors) {
       return res.status(400).json({
-        success:false,
-        message:"Error creating Shipment",
-      })
+        success: false,
+        message: "Error creating Shipment",
+      });
     }
 
     // Duplicate order check
@@ -220,7 +227,8 @@ const orderRegistrationOneStep = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Duplicate orderId is not allowed in courier Bluedart, ship with another courier",
+        message:
+          "Duplicate orderId is not allowed in courier Bluedart, ship with another courier",
         errors: respData.errors,
         duplicate_orders: respData.duplicate_orders,
       });
@@ -460,5 +468,5 @@ module.exports = {
   checkSmartshipHubServiceability,
   cancelSmartshipOrder,
   trackOrderSmartShip,
-  registerSmartshipHub
+  registerSmartshipHub,
 };
