@@ -696,27 +696,37 @@ const trackSingleOrder = async (order) => {
           order.ndrStatus = "RTO Delivered";
         }
       }
-    } else {
+    } if(provider==="Delhivery") {
       const statusDoc = await statusMap.findOne(
         { partnerName: provider.toUpperCase() }, // partnerName stored as uppercase
         { data: 1 }
       );
-
+      // console.log("stat", normalizedData.StatusType, normalizedData.Status);
       if (statusDoc) {
-        const dbMapping = statusDoc.data.find(
+        function normalizeString(str) {
+          return str?.toLowerCase().replace(/\s+/g, "").trim();
+        }
+
+        const dbMapping = statusDoc?.data.find(
           (d) =>
-            d.scan_type?.toLowerCase() ===
-              normalizedData.StatusType?.toLowerCase() &&
-            d.scan?.toLowerCase() === normalizedData.Status?.toLowerCase()
+            normalizeString(d?.scan_type) ===
+              normalizeString(normalizedData?.StatusType) &&
+            normalizeString(d?.scan) ===
+              normalizeString(normalizedData?.Status) &&
+            normalizeString(d?.instructions) ===
+              normalizeString(normalizedData?.Instructions)
         );
 
+        console.log(dbMapping?.sy_status)
+
         if (dbMapping) {
-          // console.log("maped delhivery status",dbMapping.sy_status)
+          console.log("maped delhivery status", dbMapping.sy_status);
           order.status = dbMapping.sy_status; // fallback if not mapped
           if (dbMapping.sy_status === "Our for Delivery") {
             order.ndrStatus = dbMapping.sy_status;
           }
         }
+        // await order.save();
       }
       // const statusMap = {
       //   "UD:Manifested": { status: "Ready To Ship" },
@@ -907,6 +917,7 @@ const trackOrders = async () => {
     const allOrders = await Order.find({
       status: { $nin: ["new", "Cancelled", "Delivered", "RTO Delivered"] },
       // provider: "Smartship",
+      // awb_number: "35973710033224",
     });
 
     console.log(`📦 Found ${allOrders.length} orders to track`);
