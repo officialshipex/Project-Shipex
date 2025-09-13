@@ -400,23 +400,6 @@ const processAndRemit = async (plan) => {
   );
   const codToBeRemitted = Number(remittanceData.CODToBeRemitted);
   const codToBeDeducted = remainingRecharge;
-
-  // Actual payout to client (deduct charges here)
-  const payoutToClient = Number((codToBeDeducted - charges).toFixed(2));
-  // Update codRemittance
-  await codRemittance.findOneAndUpdate(
-    { userId: plan.userId, CODToBeRemitted: { $gte: codToBeDeducted } }, // ensure enough COD
-    {
-      $inc: {
-        CODToBeRemitted: -codToBeDeducted,
-        RemittanceInitiated: payoutToClient,
-      },
-      $set: { rechargeAmount },
-      $push: { remittanceData: remittanceEntryForUser },
-    },
-    { new: true }
-  );
-
   // Prepare remittance entry
   const totalCodResult = Number((remainingRecharge - charges).toFixed(2));
   const remittanceEntryForUser = {
@@ -429,6 +412,22 @@ const processAndRemit = async (plan) => {
     status: totalCodResult === 0 ? "Paid" : "Pending",
     orderDetails: plan.orderDetails,
   };
+  // Actual payout to client (deduct charges here)
+  const payoutToClient = Number((codToBeDeducted - charges).toFixed(2));
+  // Update codRemittance
+  await codRemittance.findOneAndUpdate(
+    { userId: plan.userId, CODToBeRemitted: { $gte: codToBeDeducted } }, // ensure enough COD
+    {
+      $inc: {
+        CODToBeRemitted: -codToBeDeducted,
+        RemittanceInitiated: payoutToClient,
+        TotalDeductionfromCOD: TotalDeduction,
+      },
+      $set: { rechargeAmount },
+      $push: { remittanceData: remittanceEntryForUser },
+    },
+    { new: true }
+  );
 
   const adminEntry = {
     date: today,
@@ -907,10 +906,9 @@ function parseExcel(filePath) {
   const data = xlsx.utils.sheet_to_json(sheet);
   return data;
 }
+
 const uploadCodRemittance = async (req, res) => {
   try {
-    // const userID = req.user._id;
-
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -927,7 +925,6 @@ const uploadCodRemittance = async (req, res) => {
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
     let codRemittances = [];
 
-    // Parse file based on extension
     if (fileExtension === ".csv") {
       codRemittances = await parseCSV(req.file.path, fileData);
     } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
@@ -937,9 +934,9 @@ const uploadCodRemittance = async (req, res) => {
     }
 
     if (!codRemittances || codRemittances.length === 0) {
-      return res.status(400).json({
-        error: "The uploaded file is empty or contains invalid data",
-      });
+      return res
+        .status(400)
+        .json({ error: "The uploaded file is empty or contains invalid data" });
     }
 
     for (const row of codRemittances) {
@@ -948,16 +945,16 @@ const uploadCodRemittance = async (req, res) => {
       });
 
       if (!remittance) {
-        return res.status(400).json({
-          error: `Remittance ID ${row["*RemittanceID"]} not found.`,
-        });
+        return res
+          .status(400)
+          .json({ error: `Remittance ID ${row["*RemittanceID"]} not found.` });
       }
 
       if (remittance.status === "Paid") {
         console.log(
           `Remittance ID ${row["*RemittanceID"]} is already paid. Skipping reprocessing.`
         );
-        continue; // If inside for-loop, skip; or break/return as needed
+        continue;
       }
 
       let userRemittance = await codRemittance.findOne({
@@ -965,24 +962,17 @@ const uploadCodRemittance = async (req, res) => {
       });
 
       if (!userRemittance) {
-        console.log(
-          `No COD Remittance found for user ${remittance.userId}, creating a new one.`
-        );
-
         userRemittance = new codRemittance({
-          userId: remittance.userId, // ✅ Use remittance.userId (not req.user._id)
+          userId: remittance.userId,
           TotalCODRemitted: 0,
-          TotalDeductionfromCOD: 0,
           RemittanceInitiated: 0,
           remittanceData: [],
         });
-
         await userRemittance.save();
       }
 
-      // Ensure numeric fields are initialized
+      // Ensure numeric fields
       userRemittance.TotalCODRemitted ??= 0;
-      userRemittance.TotalDeductionfromCOD ??= 0;
       userRemittance.RemittanceInitiated ??= 0;
       userRemittance.remittanceData ??= [];
 
@@ -991,18 +981,7 @@ const uploadCodRemittance = async (req, res) => {
       );
 
       if (currentRemittanceEntry) {
-        const codAvailable = Number(currentRemittanceEntry.codAvailable || 0);
-        const earlyCodCharges = Number(
-          currentRemittanceEntry.earlyCodCharges || 0
-        );
-        const amountCreditedToWallet = Number(
-          currentRemittanceEntry.amountCreditedToWallet || 0
-        );
-        const adjustedAmount = Number(
-          currentRemittanceEntry.adjustedAmount || 0
-        );
-
-        const actualAmount = codAvailable;
+        const actualAmount = Number(currentRemittanceEntry.codAvailable || 0);
 
         if (actualAmount > 0) {
           if (userRemittance.RemittanceInitiated >= actualAmount) {
@@ -1037,49 +1016,26 @@ const uploadCodRemittance = async (req, res) => {
         );
       }
 
-      // Add to totals
+      // ✅ Only update TotalCODRemitted
       userRemittance.TotalCODRemitted += Number(remittance.totalCod || 0);
 
-      userRemittance.TotalDeductionfromCOD +=
-        Number(remittance.amountCreditedToWallet || 0) +
-        Number(remittance.earlyCodCharges || 0) +
-        Number(remittance.adjustedAmount || 0);
-
-      // Final safety check before saving
-      const remitted = Number(userRemittance.TotalCODRemitted);
-      const deducted = Number(userRemittance.TotalDeductionfromCOD);
-
-      if (isNaN(remitted) || isNaN(deducted)) {
-        console.error("Invalid values detected:", {
+      // ✅ Safety check
+      if (isNaN(userRemittance.TotalCODRemitted)) {
+        console.error("Invalid TotalCODRemitted detected:", {
           TotalCODRemitted: userRemittance.TotalCODRemitted,
-          TotalDeductionfromCOD: userRemittance.TotalDeductionfromCOD,
         });
-        return res.status(500).json({ error: "Invalid remittance values" });
+        return res
+          .status(500)
+          .json({ error: "Invalid TotalCODRemitted value" });
       }
 
-      // userRemittance.remittanceData.push({
-      //   date: remittance.date,
-      //   remittanceId: remittance.remitanceId,
-      //   utr: row["*UTR"] || "N/A",
-      //   codAvailable: remittance.totalCod || 0,
-      //   amountCreditedToWallet: remittance.amountCreditedToWallet || 0,
-      //   earlyCodCharges: remittance.earlyCodCharges || 0,
-      //   adjustedAmount: remittance.adjustedAmount || 0,
-      //   remittanceMethod: "Bank Transaction",
-      //   status: "Paid",
-      //   orderDetails: {
-      //     date: remittance.orderDetails.date,
-      //     codcal: remittance.orderDetails.codcal,
-      //     orders: [...remittance.orderDetails.orders],
-      //   },
-      // });
+      // Update or add entry
       const existingRemittanceEntryIndex =
         userRemittance.remittanceData.findIndex(
           (entry) => entry.remittanceId === remittance.remitanceId
         );
 
       if (existingRemittanceEntryIndex !== -1) {
-        // Update existing entry
         userRemittance.remittanceData[existingRemittanceEntryIndex].utr =
           row["*UTR"] || "N/A";
         userRemittance.remittanceData[
@@ -1088,7 +1044,6 @@ const uploadCodRemittance = async (req, res) => {
         userRemittance.remittanceData[existingRemittanceEntryIndex].status =
           "Paid";
       } else {
-        // Push new entry
         userRemittance.remittanceData.push({
           date: remittance.date,
           remittanceId: remittance.remitanceId,
@@ -1113,12 +1068,9 @@ const uploadCodRemittance = async (req, res) => {
       await remittance.save();
     }
 
+    // Delete uploaded file
     fs.unlink(req.file.path, (err) => {
-      if (err) {
-        console.error("Error deleting file:", err);
-      } else {
-        console.log("File deleted successfully:", req.file.path);
-      }
+      if (err) console.error("Error deleting file:", err);
     });
 
     return res.status(200).json({
@@ -2413,7 +2365,9 @@ const transferCOD = async (req, res) => {
 
     // 4. Update remittanceData -> set Paid + utr
     remittanceRecord.remittanceData = remittanceRecord.remittanceData.map((r) =>
-      r.status === "Pending" ? { ...r, status: "Paid", utr,remittanceMethod:"Bank Transaction" } : r
+      r.status === "Pending"
+        ? { ...r, status: "Paid", utr, remittanceMethod: "Bank Transaction" }
+        : r
     );
 
     // 5. Update summary fields in codRemittance
