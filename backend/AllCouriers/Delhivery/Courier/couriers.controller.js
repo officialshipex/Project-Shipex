@@ -345,20 +345,21 @@ const trackShipmentDelhivery = async (waybill) => {
       }
     );
     // console.log(response)
-    // console.log("lllllllllll", response?.data?.ShipmentData[0]?.Shipment.AWB)
+    // console.log("lllllllllll", response?.data?.ShipmentData[0])
     // console.log("cxxxxxxxx",response.data.ShipmentData[0].Shipment.Status.Status);
     // console.log("rrrrrrrrrr", response.data.ShipmentData[0].Shipment.ReferenceNo)
     // console.log()
     const status = response?.data?.ShipmentData[0]?.Shipment?.Status?.Status;
     // console.log(status)
     if (
-      status === "Manifested" ||
-      status === "In Transit" ||
-      status === "Delivered" ||
-      status === "Pending" ||
-      status === "Dispatched" ||
-      status === "RTO" ||
-      status === "Not Picked"
+      // status === "Manifested" ||
+      // status === "In Transit" ||
+      // status === "Delivered" ||
+      // status === "Pending" ||
+      // status === "Dispatched" ||
+      // status === "RTO" ||
+      // status === "Not Picked"
+      response.status===200
     ) {
       return {
         success: true,
@@ -379,6 +380,7 @@ const trackShipmentDelhivery = async (waybill) => {
     };
   }
 };
+// trackShipmentDelhivery("35973710033224")
 
 const generateShippingLabel = async (req, res) => {
   const { waybill } = req.params;
