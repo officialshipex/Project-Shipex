@@ -127,7 +127,7 @@ const createOrder = async (req, res) => {
         },
       ],
     };
-    console.log("consignments", shipmentData);
+    console.log("consignments", shipmentData,shipmentData.consignments[0].origin_details,shipmentData.consignments[0].destination_details);
 
     // API call to DTDC
     let response;
@@ -145,6 +145,7 @@ const createOrder = async (req, res) => {
           },
         }
       );
+      console.log("dtdc response",response.data)
     } else {
       return res.status(400).json({ success: false, message: "Low Balance" });
     }
