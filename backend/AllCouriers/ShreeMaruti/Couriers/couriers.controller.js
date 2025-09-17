@@ -473,6 +473,8 @@ const checkServiceabilityShreeMaruti = async (payload) => {
       }
     );
 
+    // console.log("shreemaruti",response.data)
+
     if (response && response.data && response.data.data) {
       if (response.data.data.serviceability) {
         return { success: true };

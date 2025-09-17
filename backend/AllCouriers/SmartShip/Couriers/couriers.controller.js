@@ -317,7 +317,7 @@ const checkSmartshipHubServiceability = async (payload) => {
       }
     );
 
-    // console.log("Smartship Serviceability Response:", response.data);
+    console.log("Smartship Serviceability Response:", response.data);
 
     const serviceabilityData = response.data?.data;
     const serviceable = serviceabilityData?.serviceability_status === true;
