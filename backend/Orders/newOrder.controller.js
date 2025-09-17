@@ -8,6 +8,8 @@ const Plan = require("../models/Plan.model");
 const Wallet = require("../models/wallet");
 const Bottleneck = require("bottleneck");
 const cron = require("node-cron");
+const EDDMap = require("../models/EDDMap.model");
+const { getZone } = require("../Rate/zoneManagementController");
 
 const { codToBeRemitted } = require("../COD/cod.controller");
 const {
@@ -861,24 +863,20 @@ const getreceiverAddress = async (req, res) => {
 
 const ShipeNowOrder = async (req, res) => {
   try {
-    // Fetch order by ID
-    // console.log(req.params.id);
-
     const order = await Order.findById(req.params.id);
-
-    //  console.log("dsfdsfdsfs",order.userId);
-
-    const plan = await Plan.findOne({ userId: order.userId });
-    const users = await user.findOne({ _id: order.userId });
-    const userWallet = await Wallet.findOne({ _id: users.Wallet });
-    // console.log("ahsaisa",userWallet)
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Fetch enabled courier services
+    const plan = await Plan.findOne({ userId: order.userId });
+    const users = await user.findOne({ _id: order.userId });
+    const userWallet = await Wallet.findOne({ _id: users.Wallet });
+
+    // ✅ fetch EDDMap
+    const EDDRates = await EDDMap.find();
+
+    // ✅ enabled courier services
     const services = await CourierService.find({ status: "Enable" });
-    // console.log("88888888888888888",services);
     const enabledServices = [];
 
     for await (const srvc of services) {
@@ -889,7 +887,7 @@ const ShipeNowOrder = async (req, res) => {
         enabledServices.push(srvc);
       }
     }
-    // console.log("enableservices", enabledServices);
+
     const availableServices = await Promise.all(
       enabledServices.map(async (item) => {
         let result = await checkServiceabilityAll(
@@ -897,24 +895,19 @@ const ShipeNowOrder = async (req, res) => {
           order._id,
           order.pickupAddress.pinCode
         );
-
-        // console.log("iiiii", result);
         if (result && result.success) {
-          return {
-            item,
-          };
-        } else {
-          console.error(
-            "Result is undefined or does not have a success property"
-          );
-          // Handle the case where result is not as expected
+          return { item };
         }
       })
     );
-    // console.log("availbale",availableServices)
 
     const filteredServices = availableServices.filter(Boolean);
-    // console.log("filteredServices", filteredServices);
+
+    // ✅ calculate zone based on pincodes
+    const zone = await getZone(
+      order.pickupAddress.pinCode,
+      order.receiverAddress.pinCode
+    );
 
     const payload = {
       pickupPincode: order.pickupAddress.pinCode,
@@ -929,37 +922,52 @@ const ShipeNowOrder = async (req, res) => {
       filteredServices,
       rateCardType: plan.planName,
     };
+
     let rates = await calculateRateForService(payload);
-    // console.log("rates", rates);
 
-    const updatedRates = rates
-      .map((rate) => {
-        const matchedService = filteredServices.find(
-          (service) =>
-            service.item.name.toLowerCase().replace(/\s+/g, "") ===
-            rate.courierServiceName.toLowerCase().replace(/\s+/g, "")
+    // ✅ normalize helper
+    const normalize = (str) => str?.toLowerCase().replace(/\s+/g, "").trim();
+
+    // ✅ Build updatedRates only for serviceable couriers
+    const updatedRates = filteredServices
+      .map((service) => {
+        const matchedRate = rates.find(
+          (rate) =>
+            normalize(rate.courierServiceName) === normalize(service.item.name)
         );
-        // console.log("1111111", matchedService);
 
-        if (matchedService) {
-          return {
-            ...rate,
-            provider: matchedService.item.provider,
-            courierType: matchedService.item.courierType,
-            courier: matchedService.item?.courier,
-            // Xid: matchedService.Xid[0],
-          };
+        if (!matchedRate) return null; // ❌ skip if no rate (not serviceable)
+
+        const matchedEDD = EDDRates.find(
+          (edd) => normalize(edd.serviceName) === normalize(service.item.name)
+        );
+
+        let estimatedDeliveryDate = null;
+        if (matchedEDD && matchedEDD.zoneRates) {
+          const zoneKey = zone.zone; // already like "zoneA"
+          const days = matchedEDD.zoneRates[zoneKey];
+          if (days) {
+            const eddDate = new Date();
+            eddDate.setDate(eddDate.getDate() + days);
+            estimatedDeliveryDate = eddDate;
+          }
         }
 
-        return null; // Return null for unmatched rates
+        return {
+          ...matchedRate,
+          provider: service.item.provider,
+          courierType: service.item.courierType,
+          courier: service.item?.courier,
+          serviceName: service.item.name,
+          estimatedDeliveryDate,
+        };
       })
-      .filter(Boolean); // Remove null values from the final array
-    // console.log("update",updatedRates)
+      .filter(Boolean); // remove nulls
+
     res.status(201).json({
       success: true,
       order,
-      services: filteredServices,
-      updatedRates,
+      updatedRates, // ✅ only serviceable with rates
     });
   } catch (error) {
     console.error(error);
