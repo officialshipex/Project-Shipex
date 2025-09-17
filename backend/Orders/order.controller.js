@@ -191,7 +191,7 @@ const shipOrder = async (req, res) => {
     );
 
     const filteredServices = availableServices.filter(Boolean);
-    // console.log(filteredServices);
+    // console.log("filter",filteredServices);
 
     const payload = {
       pickupPincode: req.body.pincode,
@@ -1015,6 +1015,6 @@ module.exports = {
   tracking,
   editOrder,
   shipBulkOrder,
-  shipBulkOrder,
+  // shipBulkOrder,
   createBulkOrder
 };
