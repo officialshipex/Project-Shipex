@@ -52,8 +52,10 @@ const staffRoleRoutes = require("./routes/rolesRouter");
 const trackSingleOrder = require("./Orders/tracking.controller");
 const LabelSettings = require("./label/label.router");
 const statusMap=require("./statusMap/StatusMap.router")
+const EDDMap=require("./routes/EDDMap.router")
 
 router.use("/statusMap",statusMap);
+router.use("/EDD",EDDMap)
 
 router.use("/label", LabelSettings);
 

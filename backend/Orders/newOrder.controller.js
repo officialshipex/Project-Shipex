@@ -1373,6 +1373,27 @@ const GetTrackingByAwb = async (req, res) => {
   }
 };
 
+const GetTrackingByAwbs = async (req, res) => {
+  try {
+    const { awbs } = req.body; // Expect array of AWB numbers
+    // console.log("body", awbs);
+    if (!Array.isArray(awbs) || awbs.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Please provide an array of AWB numbers" });
+    }
+
+    // Fetch all matching orders for the array of AWB numbers
+    const orders = await Order.find({ awb_number: { $in: awbs } });
+
+    // Return only found orders, skipping missing AWBs
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching tracking details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   newOrder,
   getOrders,
@@ -1393,6 +1414,7 @@ module.exports = {
   getUser,
   updatePackageDetails,
   GetTrackingByAwb,
+  GetTrackingByAwbs,
   updatePickupAddress,
   setPrimaryPickupAddress,
   deletePickupAddress,

@@ -164,7 +164,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       console.log("rerere",result)
       return result
     }
-    if(service.provider==="Smartship"){
+    if(service.provider==="Smartshi"){
       const payload={
         source_pincode:pincode,
         destination_pincode:currentOrder.receiverAddress.pinCode,

@@ -19,6 +19,7 @@ const {
   getUser,
   updatePackageDetails,
   GetTrackingByAwb,
+  GetTrackingByAwbs,
   updatePickupAddress,
   setPrimaryPickupAddress,
   deletePickupAddress
@@ -48,6 +49,7 @@ router.get("/passbook",passbook)
 router.get("/getUser",getUser)
 // router.post("/webhookTracking",trackOrders)
 router.get("/GetTrackingByAwb/:awb",GetTrackingByAwb)
+router.post("/GetTrackingByAwbs",GetTrackingByAwbs)
 router.put("/updatePickupAddress/:id",updatePickupAddress)
 router.patch("/pickupAddress/setPrimary/:id",setPrimaryPickupAddress)
 router.delete("/pickupAddress/:id",deletePickupAddress)
