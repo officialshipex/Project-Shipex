@@ -95,7 +95,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
     //   return result;
     // }
 
-    if (service.provider === "Amazon") {
+    if (service.provider === "Amazon Shipping") {
       // console.log("orderer",currentOrder)
     
       const payload = {
@@ -132,7 +132,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       return result;
     }
 
-    if (service.provider === "ShreeMaruti") {
+    if (service.provider === "Shree Maruti") {
       const payload = {
         fromPincode: parseInt(pincode),
         toPincode: parseInt(currentOrder.receiverAddress.pinCode),
@@ -155,7 +155,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
       // console.log("Serviceability Result:", result);
       return result;
     }
-    if(service.provider==="DTDC"){
+    if(service.provider==="Dtdc"){
       const payload={
         originPincode:pincode,
         destinationPincode:currentOrder.receiverAddress.pinCode

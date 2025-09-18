@@ -67,7 +67,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "Amazon":
+      case "Amazon Shipping":
         result = await createShipmentAmazon(
           serviceDetails,
           order._id,
@@ -112,7 +112,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "DTDC":
+      case "Dtdc":
         result = await createOrderDTDC(
           serviceDetails,
           order._id,
@@ -130,7 +130,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "ShreeMaruti":
+      case "Shree Maruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
           order._id,
