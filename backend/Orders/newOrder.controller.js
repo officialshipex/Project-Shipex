@@ -1074,7 +1074,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       } else {
         currentOrder.status = "new";
       }
-    } else if (currentOrder.provider === "ShreeMaruti") {
+    } else if (currentOrder.provider === "Shree Maruti") {
       const result = await cancelOrderShreeMaruti(currentOrder.orderId);
       // console.log("shreemaruti",result)
       if (result.error) {
@@ -1087,7 +1087,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       } else {
         currentOrder.status = "new";
       }
-    } else if (currentOrder.provider === "DTDC") {
+    } else if (currentOrder.provider === "Dtdc") {
       const result = await cancelOrderDTDC(currentOrder.awb_number);
       if (result.error) {
         return res.status(400).send({ error: result.error });
@@ -1097,7 +1097,7 @@ const cancelOrdersAtBooked = async (req, res) => {
       if (result.error) {
         return res.status(400).send({ error: result.error });
       }
-    } else if (currentOrder.provider === "Amazon") {
+    } else if (currentOrder.provider === "Amazon Shipping") {
       const result = await cancelShipment(currentOrder.shipment_id);
       if (result.error) {
         return res.status(400).send({ error: result.error });

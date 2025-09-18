@@ -478,7 +478,7 @@ const cancelOrdersAtBooked = async (req, res) => {
             };
           }
         } else if (
-          currentOrder.service_details.courierProviderName === "ShreeMaruti"
+          currentOrder.service_details.courierProviderName === "Shree Maruti"
         ) {
           const result = await cancelOrderShreeMaruti(currentOrder.order_id);
           if (result.error) {
@@ -592,7 +592,7 @@ const tracking = async (req, res) => {
           result = await trackShipment(awb_number);
         } else if (courierProviderName === "Delhivery") {
           result = await trackShipmentDelhivery(awb_number);
-        } else if (courierProviderName === "ShreeMaruti") {
+        } else if (courierProviderName === "Shree Maruti") {
           result = await trackOrderShreeMaruti(awb_number);
         }
 
@@ -981,7 +981,7 @@ const createShipment = async (serviceDetails, order, wh, walletId, charges) => {
           charges
         );
         break;
-      case "ShreeMaruti":
+      case "Shree Maruti":
         result = await createShipmentFunctionShreeMaruti(
           serviceDetails,
           order._id,
