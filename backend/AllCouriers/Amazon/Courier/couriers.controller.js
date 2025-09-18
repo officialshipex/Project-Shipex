@@ -14,7 +14,7 @@ const createOneClickShipment = async (req, res) => {
       return res.status(401).json({ error: "Access token missing" });
     }
     // console.log(req.body)
-    const { id, provider, finalCharges, courierServiceName } = req.body;
+    const { id, provider, finalCharges, courierServiceName,estimatedDeliveryDate } = req.body;
     const currentOrder = await Order.findById(id);
     if (!currentOrder) {
       return res.status(404).json({ message: "Order not found" });
@@ -133,6 +133,7 @@ const createOneClickShipment = async (req, res) => {
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.label = labelUrl;
       currentOrder.zone = zone.zone;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",

@@ -98,7 +98,7 @@ const createClientWarehouse = async (payload) => {
 
 const createOrder = async (req, res) => {
   try {
-    const { id, provider, finalCharges, courierServiceName } = req.body;
+    const { id, provider, finalCharges, courierServiceName,estimatedDeliveryDate } = req.body;
     const currentOrder = await Order.findById(id);
     const users = await user.findById({ _id: currentOrder.userId });
     const currentWallet = await Wallet.findById({ _id: users.Wallet });
@@ -209,6 +209,7 @@ const createOrder = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",

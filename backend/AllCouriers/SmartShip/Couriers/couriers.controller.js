@@ -83,7 +83,7 @@ const registerSmartshipHub = async (userId, pinCode) => {
 
 const orderRegistrationOneStep = async (req, res) => {
   try {
-    const { id, finalCharges, courierServiceName, provider } = req.body;
+    const { id, finalCharges, courierServiceName, provider,estimatedDeliveryDate } = req.body;
     console.log("req.body", req.body);
     const accessToken = await getAccessToken();
     const currentOrder = await Order.findById(id);
@@ -245,6 +245,7 @@ const orderRegistrationOneStep = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
