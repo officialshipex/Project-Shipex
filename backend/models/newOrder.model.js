@@ -124,6 +124,7 @@ const orderSchema = new mongoose.Schema(
     COD: { type: String },
     reattempt: { type: Boolean },
     commodityId: { type: Number },
+    estimatedDeliveryDate:{type:Date},
     tracking: [
       {
         status: { type: String },

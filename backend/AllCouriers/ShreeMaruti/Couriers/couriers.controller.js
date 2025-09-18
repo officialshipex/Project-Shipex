@@ -85,7 +85,7 @@ const createOrder = async (req, res) => {
 
   // console.log("bodyyyyy", req.body);
   try {
-    const { courierServiceName, id, provider, finalCharges } = req.body;
+    const { courierServiceName, id, provider, finalCharges,estimatedDeliveryDate } = req.body;
     const services = await Services.findOne({ name: courierServiceName });
     const currentOrder = await Order.findById(id);
     const users = await user.findById({ _id: currentOrder.userId });
@@ -214,6 +214,7 @@ const createOrder = async (req, res) => {
       currentOrder.totalFreightCharges = finalCharges;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.courierServiceName = courierServiceName;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",

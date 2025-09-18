@@ -20,7 +20,7 @@ const createOrder = async (req, res) => {
     console.log("API Key:", API_KEY);
     console.log("Access Token:", X_ACCESS_TOKEN);
 
-    const { id, provider, finalCharges, courierServiceName, courier } =
+    const { id, provider, finalCharges, courierServiceName, courier,estimatedDeliveryDate } =
       req.body;
     console.log(id, provider, finalCharges, courierServiceName, courier);
     if (!courier) {
@@ -161,6 +161,7 @@ const createOrder = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
