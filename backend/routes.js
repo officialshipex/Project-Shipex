@@ -114,11 +114,11 @@ router.use("/NimbusPost", NimbusPostController);
 router.use("/Shiprocket", ShipRocketController);
 router.use("/EcomExpress", EcomExpressController);
 router.use("/Xpressbees", XpressbeesController);
-router.use("/Shree Maruti", shreeMarutiController);
+router.use("/ShreeMaruti", shreeMarutiController);
 router.use("/Smartship", SmartShipController);
 router.use("/Dtdc", DtdcController);
 router.use("/Delhivery", DelhiveryController);
-router.use("/Amazon Shipping", AmazonRouter);
+router.use("/AmazonShipping", AmazonRouter);
 router.use("/Ekart",Ekart)
 router.use("/Vamaship",Vamaship)
 
