@@ -113,7 +113,7 @@ const register = async (req, res) => {
     await sendWelcomeEmail(email, fullname);
 
     // Fetch the "Bronze" rate card
-    const bronzeRateCard = await RateCard.find({ plan: "bronze" });
+    const bronzeRateCard = await RateCard.find({ plan: "Bronze" });
 
     if (!bronzeRateCard) {
       return res.status(500).json({
@@ -126,7 +126,7 @@ const register = async (req, res) => {
     const newPlan = new Plan({
       userId: newUser._id,
       userName: fullname,
-      planName: "bronze",
+      planName: "Bronze",
       rateCard: bronzeRateCard, // Assigning the fetched rate card
     });
 

@@ -538,13 +538,17 @@ const uploadRatecard = async (req, res) => {
       CourierService.find().lean(),
       PlanName.find().lean(),
     ]);
-
+    // console.log("plans", plans);
     const providerSet = new Set(
-      providers.map((p) => p.courierProvider.toLowerCase())
+      providers.map((p) => String(p.courierProvider).trim().toLowerCase())
     );
-    const serviceSet = new Set(services.map((s) => s.name.toLowerCase()));
-    const planSet = new Set(plans.map((p) => p.name.toLowerCase()));
-
+    const serviceSet = new Set(
+      services.map((s) => String(s.name).trim().toLowerCase())
+    );
+    const planSet = new Set(
+      plans.map((p) => String(p.name).trim().toLowerCase())
+    );
+    // console.log("planSet",planSet)
     const errors = [];
     const savedRatecards = [];
 
@@ -553,11 +557,17 @@ const uploadRatecard = async (req, res) => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNum = i + 2;
-
-      const plan = (row["Plan Name"] || "").toLowerCase();
-      const provider = (row["Courier Provider Name"] || "").toLowerCase();
-      const service = (row["Courier Service Name"] || "").toLowerCase();
-
+      // console.log(row["Plan Name"])
+      // console.log(row["Courier Provider Name"])
+      // console.log(row["Courier Service Name"])
+      const plan = (row["Plan Name"] || "").trim().toLowerCase();
+      const provider = (row["Courier Provider Name"] || "")
+        .trim()
+        .toLowerCase();
+      const service = (row["Courier Service Name"] || "").trim().toLowerCase();
+      // console.log("plan", plan);
+      // console.log("provider", provider);
+      // console.log("sercvice", service);
       // Validation
       if (!planSet.has(plan)) {
         errors.push(`Row ${rowNum}: Invalid Plan`);
@@ -586,7 +596,7 @@ const uploadRatecard = async (req, res) => {
       }
 
       const weightObj = {
-        weight: parseFloat(row["weight"]) || 0,
+        weight: (parseFloat(row["weight"]) || 0) * 1000, // convert kg to grams
         zoneA: parseFloat(row["zoneA"]) || 0,
         zoneB: parseFloat(row["zoneB"]) || 0,
         zoneC: parseFloat(row["zoneC"]) || 0,
@@ -594,13 +604,16 @@ const uploadRatecard = async (req, res) => {
         zoneE: parseFloat(row["zoneE"]) || 0,
       };
 
-      if ((row["Type"] || "").trim() === "1") {
+      // console.log("weight", weightObj);
+
+      const type = (row["Type"] || "").toLowerCase().trim();
+      if (type === "basic" || type === "1") {
         grouped[key].weightPriceBasic.push(weightObj);
-      } else if ((row["Type"] || "").trim() === "2") {
+      } else if (type === "additional" || type === "2") {
         grouped[key].weightPriceAdditional.push(weightObj);
       } else {
         errors.push(
-          `Row ${rowNum}: Invalid Type (must be 1=Basic, 2=Additional)`
+          `Row ${rowNum}: Invalid Type (must be Basic/1 or Additional/2)`
         );
       }
     }
@@ -609,29 +622,17 @@ const uploadRatecard = async (req, res) => {
     for (const key in grouped) {
       const g = grouped[key];
 
-      // Check for duplicate before saving
-      const duplicate = await RateCard.findOne({
-        plan: new RegExp(`^${g.plan}$`, "i"),
-        courierProviderName: new RegExp(`^${g.courierProviderName}$`, "i"),
-        courierServiceName: new RegExp(`^${g.courierServiceName}$`, "i"),
-      });
-
-      if (duplicate) {
-        errors.push(
-          `Duplicate RateCard exists for Plan: ${g.plan}, Provider: ${g.courierProviderName}, Service: ${g.courierServiceName}`
-        );
-        continue;
-      }
-
       const mode = services.find(
-        (s) => s.name.toLowerCase() === g.courierServiceName.toLowerCase()
+        (s) =>
+          s.name.trim().toLowerCase() ===
+          g.courierServiceName.trim().toLowerCase()
       )?.courierType;
 
       const rateCardDoc = new RateCard({
-        plan: g.plan,
+        plan: (g.plan || "").trim(),
         mode: mode || "",
-        courierProviderName: g.courierProviderName,
-        courierServiceName: g.courierServiceName,
+        courierProviderName: (g.courierProviderName || "").trim(),
+        courierServiceName: (g.courierServiceName || "").trim(),
         weightPriceBasic: g.weightPriceBasic,
         weightPriceAdditional: g.weightPriceAdditional,
         codCharge: parseFloat(g.codCharge) || 0,
@@ -644,13 +645,14 @@ const uploadRatecard = async (req, res) => {
       await rateCardDoc.save();
       savedRatecards.push(rateCardDoc);
 
-      // Link with Plan if needed
+      // Update Plan collection with trimmed plan name
       await Plan.updateMany(
-        { planName: g.plan },
+        { planName: (g.plan || "").trim() },
         { $push: { rateCard: rateCardDoc } }
       );
     }
 
+    console.log("errr", errors);
     return res.status(200).json({
       message: errors.length
         ? "Some rows skipped due to errors or duplicates"
