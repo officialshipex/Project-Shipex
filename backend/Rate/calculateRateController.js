@@ -209,7 +209,7 @@ async function calculateRateForService(payload) {
     // const rateCards = [];
     const plan = await Plan.findOne({ userId: userID });
     let RateCards = plan.rateCard;
-  // console.log("rate", RateCards);
+    // console.log("rate", RateCards);
     for (const rc of RateCards) {
       const basicChargeForward = parseFloat(
         rc.weightPriceBasic[0][currentZone]
@@ -217,17 +217,23 @@ async function calculateRateForService(payload) {
       const additionalChargeForward = parseFloat(
         rc.weightPriceAdditional[0][currentZone]
       );
+      // console.log("basicChargeForward", basicChargeForward);
+      // console.log("additionalChargeForward", additionalChargeForward);
 
       let totalForwardCharge;
       const count = Math.ceil(
         (chargedWeight - rc.weightPriceBasic[0].weight) /
           rc.weightPriceAdditional[0].weight
       );
+      // console.log("count", count);
+      // console.log("chargedWeight", chargedWeight);
       if (rc.weightPriceBasic[0].weight >= chargedWeight) {
         totalForwardCharge = basicChargeForward;
+        // console.log("totalForwardCharge111", totalForwardCharge);
       } else if (rc.weightPriceBasic[0].weight < chargedWeight) {
         totalForwardCharge =
           basicChargeForward + additionalChargeForward * count;
+        // console.log("totalForwardCharge222", totalForwardCharge);
       }
       let codCharge = 0;
       if (cod === "Yes") {
@@ -245,7 +251,7 @@ async function calculateRateForService(payload) {
           console.error("COD charge or percentage is not properly defined.");
         }
       }
-
+      // console.log("totalForwardCharge", totalForwardCharge);
       const gstAmountForward = (
         (totalForwardCharge + codCharge) *
         (gstRate / 100)
@@ -255,7 +261,7 @@ async function calculateRateForService(payload) {
         codCharge +
         (totalForwardCharge + codCharge) * (gstRate / 100)
       ).toFixed(2);
-
+      // console.log("totalChargesForward",totalChargesForward)
       const allRates = {
         courierServiceName: rc.courierServiceName,
         cod: codCharge,

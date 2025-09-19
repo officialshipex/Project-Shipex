@@ -924,6 +924,7 @@ const ShipeNowOrder = async (req, res) => {
     };
 
     let rates = await calculateRateForService(payload);
+    // console.log("rates",rates)
 
     // ✅ normalize helper
     const normalize = (str) => str?.toLowerCase().replace(/\s+/g, "").trim();
