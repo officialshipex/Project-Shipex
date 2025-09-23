@@ -425,14 +425,36 @@ const getUserById = async (req, res) => {
 
 const getUserDetails = async (req, res) => {
   try {
-    const existsingUser = await User.findById(req.user._id)
+    const existingUser = await User.findById(req.user._id)
       .populate("wareHouse")
       .populate({ path: "orders", populate: { path: "service_details" } })
       .populate("Wallet")
       .populate("plan");
+
+    // Default: use the actual user's balance and holdAmount
+    let balance = existingUser?.Wallet?.balance || 0;
+    let holdAmount = existingUser?.Wallet?.holdAmount || 0;
+
+    // If admin with adminTab, sum all
+    if (existingUser?.isAdmin && existingUser?.adminTab) {
+      const allUsers = await User.find({}).populate("Wallet");
+      balance = allUsers.reduce((total, u) => {
+        return total + (u.Wallet?.balance || 0);
+      }, 0);
+      holdAmount = allUsers.reduce((total, u) => {
+        return total + (u.Wallet?.holdAmount || 0);
+      }, 0);
+
+      // Patch into user object for response
+      if (existingUser.Wallet) {
+        existingUser.Wallet.balance = balance;
+        existingUser.Wallet.holdAmount = holdAmount;
+      }
+    }
+
     res.status(201).json({
       success: true,
-      user: existsingUser,
+      user: existingUser,
     });
   } catch (error) {
     res.status(500).json({

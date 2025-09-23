@@ -161,7 +161,7 @@ const createOrder = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
-      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
+      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate || "";
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
@@ -282,6 +282,7 @@ const cancelOrderDTDC = async (AWBNo) => {
     };
   }
 };
+// cancelOrderDTDC("I75009163")
 
 // DTDC Tracking API Config
 const DTDC_TRACKING_API_URL = `https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails`;
@@ -381,7 +382,7 @@ const checkServiceabilityDTDC = async (originPincode, destinationPincode) => {
     // If both origin and destination are fully serviceable, return true
     return { success: isOriginServiceable && isDestinationServiceable };
   } catch (error) {
-    console.error("Error checking serviceability:", error.message);
+    // console.error("Error checking serviceability:", error.message);
     return { success: false };
   }
 };

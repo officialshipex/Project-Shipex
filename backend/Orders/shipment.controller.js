@@ -161,7 +161,7 @@ const checkServiceabilityAll = async (service, id, pincode) => {
         destinationPincode:currentOrder.receiverAddress.pinCode
       }
       const result=await checkServiceabilityDTDC(payload.originPincode, payload.destinationPincode)
-      console.log("rerere",result)
+      // console.log("rerere",result)
       return result
     }
     if(service.provider==="Smartship"){

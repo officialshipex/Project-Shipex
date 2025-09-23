@@ -321,7 +321,7 @@ const checkPincodeServiceabilityDelhivery = async (
     const finalResult = pickupServiceable && deliveryServiceable;
     return { success: finalResult, pickupServiceable, deliveryServiceable };
   } catch (error) {
-    console.error("Error fetching pincode serviceability:", error.message);
+    // console.error("Error fetching pincode serviceability:", error.message);
     return { success: false, error: error.message };
   }
 };

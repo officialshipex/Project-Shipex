@@ -423,7 +423,7 @@ const checkAmazonServiceability = async (provider, payload) => {
         valueAddedServiceIds, // ✅ include this in return
       };
     } else if (ineligibleRates.length > 0) {
-      console.log("❌ Amazon does not service this pincode.");
+      // console.log("❌ Amazon does not service this pincode.");
       return {
         success: false,
         reason: "Pincodes are not serviceable",
