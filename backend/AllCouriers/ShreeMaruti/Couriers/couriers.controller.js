@@ -430,7 +430,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("ressssssss", response.data.statuses[0]);
+    console.log("ressssssss", response.data.statuses);
 
     return {
       success: true,
@@ -449,7 +449,7 @@ const trackOrderShreeMaruti = async (awbNumber) => {
     };
   }
 };
-// trackOrderShreeMaruti("SHIP40000000009");
+// trackOrderShreeMaruti("SHIP40000000002");
 
 // Serviceability
 const checkServiceabilityShreeMaruti = async (payload) => {
@@ -483,15 +483,15 @@ const checkServiceabilityShreeMaruti = async (payload) => {
         return { success: false };
       }
     } else {
-      console.error("Unexpected response structure:", response);
+      // console.error("Unexpected response structure:", response);
       return { success: false };
     }
   } catch (error) {
     if (error.response) {
-      console.error("API error response:", error.response.data);
+      // console.error("API error response:", error.response.data);
       return { success: false };
     } else {
-      console.error("Request error:", error.message);
+      // console.error("Request error:", error.message);
       return { success: false };
     }
     return { success: false };

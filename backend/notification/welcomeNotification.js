@@ -57,3 +57,7 @@ const sendWelcomeEmail = async (email, fullname) => {
 };
 
 module.exports = { sendWelcomeEmail };
+
+
+
+

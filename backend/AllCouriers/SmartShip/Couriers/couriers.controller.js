@@ -318,7 +318,7 @@ const checkSmartshipHubServiceability = async (payload) => {
       }
     );
 
-    console.log("Smartship Serviceability Response:", response.data);
+    // console.log("Smartship Serviceability Response:", response.data);
 
     const serviceabilityData = response.data?.data;
     const serviceable = serviceabilityData?.serviceability_status === true;
@@ -328,10 +328,10 @@ const checkSmartshipHubServiceability = async (payload) => {
       data: serviceabilityData || {},
     };
   } catch (err) {
-    console.error(
-      "Smartship Serviceability Error:",
-      err.response?.data || err.message
-    );
+    // console.error(
+    //   "Smartship Serviceability Error:",
+    //   err.response?.data || err.message
+    // );
     return {
       success: false,
       error: err.response?.data || err.message,

@@ -763,7 +763,7 @@ const trackSingleOrder = async (order) => {
 
       if (
         (order.ndrStatus === "Undelivered" ||
-          order.ndrStatus === "Out for Delivery") &&
+          order.ndrStatus === "Out for Delivery" || order.ndrStatus==="Action_Requested") &&
         normalizedData.Status === "Delivered"
       ) {
         order.ndrStatus = "Delivered";
