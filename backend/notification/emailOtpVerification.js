@@ -17,53 +17,48 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
   OTPs[email] = otp; // Store OTP temporarily
   console.log("9999", otp);
   // Email Content
+  const validTime = "10 minutes"; // example expiry, replace with actual expiration time
+
   const mailOptions = {
     from: '"Shipex Team" <info@shipexindia.com>',
     to: email,
-    subject: "Your OTP Code",
-    html: `<table cellspacing="0" cellpadding="0" style="background-color: #F4F6F7; border: 1px solid #eee; width: 100%;">
-    <tbody>
-        <tr>
-            <td>
-                <div
-                    style="background-color: #fff; border: 1px solid #DEE6E9; border-radius: 10px; box-sizing: border-box; font-family: Lato, Helvetica, 'Helvetica Neue', Arial, 'sans-serif'; margin: auto; max-width: 600px; overflow: hidden; width: 600px;">
+    subject: "Your Verification Code",
+    html: `
+    <table cellspacing="0" cellpadding="0" style="margin:0 auto; width:100%; background-color:#f9f9f9;">
+      <tr>
+        <td>
+          <div style="background:#fff; border:1px solid #eee; font-family:Lato, Helvetica, Arial, sans-serif; margin:32px auto; max-width:500px; border-radius:16px; overflow:hidden; box-sizing:border-box;">
+            <!-- Header with logo -->
+            <div style="background-color: #0CBB7D; padding: 25px 0; text-align: center;">
+              <img src="https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg" alt="Shipex Logo" style="max-height: 60px; width: auto;" />
+            </div>
 
-                    <div
-                        style="background-color: #25586B; padding: 40px; text-align: center; background-image: url(../images/sampleTemplates/otp.svg); background-repeat: no-repeat; background-position: calc( 100% - 20px ) 20px; background-size: 50px;">
-                        <h2 style="color: #3F2955; margin: 0px;">
-                            <span class="size" style="font-size: 32px"><i>Shipex India</i></span><br></h2>
-                    </div>
-                    <div
-                        style="padding: 40px 50px; background-image: url(../images/sampleTemplates/shadow.svg); background-repeat: no-repeat; background-position: top; background-size: contain;">
-                        <p style="font-size: 14px; margin: 0; margin-bottom: 25px;">Hi </p>
-                        <p style="font-size: 16px; margin: 0; margin-bottom: 35px; line-height: 22px;">
-                            Verify you email address. Below is your
-                            <strong>One time password:</strong>
-                        </p>
-                        <div style="text-align: center;">
-                            <div
-                                style="background-color: #25586B0D; border-radius: 6px; color: #25586B; display: inline-block; font-size: 30px; padding: 20px 30px;">
-                                ${otp}
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: center; margin-top: 15px;">
-                            <div
-                                style="background-image: url(../images/sampleTemplates/copy.svg); background-repeat: no-repeat; background-size: contain; height: 14px; width: 14px;">
-                            </div>
-                        </div>
-                        <p style="font-size: 14px; margin: 0; margin: 35px 0;  line-height: 22px;">If you didn't request
-                            this one time password, ignore the email.</p>
-                        <p style="font-size: 14px; margin: 0; margin-bottom: 35px; line-height: 22px;">If you'd like to
-                            know more about Shipex or want to get in touch with us, get in touch with our
-                            customer support team.</p>
-                        <p style="font-size: 14px; margin: 0; line-height: 22px;">Thank you,</p>
-                        <p style="font-size: 14px; margin: 0; line-height: 22px;">Team Shipex</p>
-                    </div>
-                </div>
-            </td>
-        </tr>
-    </tbody>
-</table>`,
+            <div style="padding:32px 24px; text-align:center;">
+              <h1 style="color:#222; font-size:24px; font-weight:700; margin:0 0 16px;">Verification code</h1>
+              <p style="font-size:15px; color:#222; margin-bottom:24px;">
+                Enter the below one time password to verify your Shipex account:
+              </p>
+              <div style="font-size:28px; font-weight:600; color:#1658db; margin-bottom:8px;">
+                ${otp}
+              </div>
+              <div style="margin-top:2px; font-size:14px; color:#b60000;">
+                The verification code expires in ${validTime}
+              </div>
+              <hr style="border:0; border-bottom:1px solid #eee; margin:28px 0 16px;">
+              <p style="font-size:15px; color:#232323; margin-bottom:8px;">
+                If you have further questions, write to us at 
+                <a href="mailto:info@shipexindia.com" style="color:#0CBB7D;">info@shipexindia.com</a> and our team will get back to you.
+              </p>
+              <div style="margin-top:18px; font-size:15px; color:#444;">
+                Have a great day!<br>
+                <span style="font-weight:700;">Team Shipex India</span>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  `,
   };
 
   try {
@@ -78,8 +73,6 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
   }
 });
 
-
-
 emailOtpRouter.post("/verify-email-otp", (req, res) => {
   const { email, otp } = req.body;
 
@@ -92,8 +85,3 @@ emailOtpRouter.post("/verify-email-otp", (req, res) => {
 });
 
 module.exports = emailOtpRouter;
-
-
-
-
-

@@ -110,7 +110,7 @@ const register = async (req, res) => {
     });
 
     await newUser.save();
-    await sendWelcomeEmail(email, fullname);
+    await sendWelcomeEmail(email, fullname,password);
 
     // Fetch the "Bronze" rate card
     const bronzeRateCard = await RateCard.find({ plan: "Bronze" });
