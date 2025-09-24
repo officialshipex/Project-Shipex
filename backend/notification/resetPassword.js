@@ -2,6 +2,8 @@ const express = require("express");
 const crypto = require("crypto");
 const transporter = require("./configEmailpass");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User.model");
 
 const resetPassword = express.Router();
 
@@ -19,7 +21,9 @@ resetPassword.post("/resetPassword", async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    return res.status(400).json({ success: false, message: "Email is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Email is required" });
   }
 
   try {
@@ -37,7 +41,8 @@ resetPassword.post("/resetPassword", async (req, res) => {
     );
 
     // Prepare email content
-    const logoUrl = "https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg";
+    const logoUrl =
+      "https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg";
     const productName = "Shipex";
     const resetUrl = `https://app.shipexindia.com/reset-password?token=${token}`;
     const supportEmail = "info@shipexindia.com";
@@ -45,9 +50,13 @@ resetPassword.post("/resetPassword", async (req, res) => {
 
     // Format expiry for email in readable string with timezone
     const expiryText = expiresAt.toLocaleString("en-IN", {
-      year: "numeric", month: "long", day: "numeric",
-      hour: "numeric", minute: "numeric",
-      hour12: true, timeZoneName: "short"
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+      timeZoneName: "short",
     });
 
     const mailOptions = {
@@ -95,43 +104,69 @@ resetPassword.post("/resetPassword", async (req, res) => {
     const mailSent = await transporter.sendMail(mailOptions);
     console.log("Password reset mail sent:", mailSent);
 
-    return res.json({ success: true, message: "Password reset email sent successfully" });
-
+    return res.json({
+      success: true,
+      message: "Password reset email sent successfully",
+    });
   } catch (err) {
-    console.error("Error generating password reset token or sending email", err);
-    return res.status(500).json({ success: false, message: "Failed to send password reset email" });
+    console.error(
+      "Error generating password reset token or sending email",
+      err
+    );
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to send password reset email" });
   }
 });
 
 // Endpoint to verify token and reset password
+ 
+
 resetPassword.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
 
   if (!token || !newPassword) {
-    return res.status(400).json({ success: false, message: "Token and new password are required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Token and new password are required" });
   }
 
   try {
     // Lookup token in DB
     const resetRecord = await PasswordResetModel.findOne({ token });
-    if (!resetRecord) return res.status(400).json({ success: false, message: "Invalid or expired token" });
+    if (!resetRecord) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid or expired token" });
+    }
 
     // Validate expiry
     if (resetRecord.expiresAt < new Date()) {
       await PasswordResetModel.deleteOne({ token });
-      return res.status(400).json({ success: false, message: "Reset token has expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Reset token has expired" });
     }
 
-    // TODO: Update user's password here with proper hashing
-    // e.g. const user = await User.findOne({ email: resetRecord.email });
-    // user.password = hash(newPassword);
-    // await user.save();
+    // 🔑 Find the user by email from token record
+    const user = await User.findOne({ email: resetRecord.email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
 
-    // Remove used token
+    // 🔑 Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 🔑 Update password
+    user.password = hashedPassword;
+    await user.save();
+
+    // Delete token after successful reset
     await PasswordResetModel.deleteOne({ token });
 
     return res.json({ success: true, message: "Password reset successfully" });
-
   } catch (err) {
     console.error("Error resetting password", err);
     return res.status(500).json({ success: false, message: "Server error" });
