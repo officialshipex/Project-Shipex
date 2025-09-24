@@ -249,12 +249,18 @@ const remittanceScheduleData = async () => {
           (planDays === 3 && isTodayTF) ||
           dayDiff > planDays);
 
+      let uniqueId;
+      do {
+        uniqueId = Math.floor(10000 + Math.random() * 90000);
+      } while (await adminCodRemittance.findOne({ remitanceId: uniqueId }));
+
+
       // Only store minimal info if not due (raw data, no business calculation)
       const remittanceEntry = {
         date: today,
         userId: remittance.userId,
         userName: user ? user.fullname : "",
-        remitanceId: Math.floor(10000 + Math.random() * 90000),
+        remitanceId: uniqueId,
         totalCod: remittance.totalCod,
         orderDetails: {
           date: today,
@@ -443,13 +449,7 @@ const processAndRemit = async (plan) => {
   };
 
   // Save to adminCodRemittance and remittanceData
-  await Promise.all([
-    new adminCodRemittance(adminEntry).save(),
-    codRemittance.findOneAndUpdate(
-      { userId: plan.userId },
-      { $push: { remittanceData: remittanceEntryForUser } }
-    ),
-  ]);
+  await Promise.all([new adminCodRemittance(adminEntry).save()]);
 };
 
 const fetchExtraData = async () => {
@@ -2336,7 +2336,6 @@ const transferCOD = async (req, res) => {
     if (!id || !utr) {
       return res.status(400).json({ message: "User ID and UTR are required." });
     }
-    // console.log("utr",id,utr)
 
     // 1. Fetch COD Remittance record for this user
     const remittanceRecord = await codRemittance.findOne({ userId: id });
@@ -2357,31 +2356,41 @@ const transferCOD = async (req, res) => {
         .json({ message: "No pending remittance data found for this user." });
     }
 
-    // 3. Calculate total sum of COD available
-    const initiatedSum = pendingRemittances.reduce(
+    // 3. Remove duplicate remittanceIds
+    const uniquePendingRemittances = [];
+    const seenIds = new Set();
+
+    for (let r of pendingRemittances) {
+      if (!seenIds.has(r.remittanceId)) {
+        seenIds.add(r.remittanceId);
+        uniquePendingRemittances.push(r);
+      }
+    }
+
+    // 4. Calculate total sum of COD available (only unique ones)
+    const initiatedSum = uniquePendingRemittances.reduce(
       (sum, r) => sum + (r.codAvailable || 0),
       0
     );
 
-    // 4. Update remittanceData -> set Paid + utr
+    // 5. Update remittanceData -> set Paid + utr
     remittanceRecord.remittanceData = remittanceRecord.remittanceData.map((r) =>
-      r.status === "Pending"
+      r.status === "Pending" && seenIds.has(r.remittanceId)
         ? { ...r, status: "Paid", utr, remittanceMethod: "Bank Transaction" }
         : r
     );
 
-    // 5. Update summary fields in codRemittance
+    // 6. Update summary fields in codRemittance
     remittanceRecord.LastCODRemitted = initiatedSum;
     remittanceRecord.RemittanceInitiated =
       (remittanceRecord.RemittanceInitiated || 0) - initiatedSum;
     remittanceRecord.TotalCODRemitted =
       remittanceRecord.TotalCODRemitted + initiatedSum;
-    // remittanceRecord.utr = utr;
 
     await remittanceRecord.save();
 
-    // 6. Update adminCodRemittance for each remittanceId
-    for (let rem of pendingRemittances) {
+    // 7. Update adminCodRemittance for each unique remittanceId
+    for (let rem of uniquePendingRemittances) {
       await adminCodRemittance.findOneAndUpdate(
         { remitanceId: rem.remittanceId },
         { $set: { status: "Paid" } }

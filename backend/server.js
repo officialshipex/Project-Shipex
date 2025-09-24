@@ -16,6 +16,7 @@ const nimbuspostRoutes = require("./AllCouriersRoutes/nimbuspost.router");
 const delhiveryRouter = require("./AllCouriersRoutes/delhivery.router");
 const otpRouter = require("./auth/auth.otp");
 const emailOtpRouter = require("./notification/emailOtpVerification");
+const {resetPassword}=require("./notification/resetPassword")
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/v1/delhivery", delhiveryRouter);
 app.use("/v1/nimbuspost", nimbuspostRoutes);
 app.use("/v1/auth", otpRouter);
 app.use("/v1/auth", emailOtpRouter);
+app.use("/v1/auth", resetPassword);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.get("*", (req, res) => {
