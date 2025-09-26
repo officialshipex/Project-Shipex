@@ -31,12 +31,15 @@ const rtoCharges = async () => {
           item.receiverAddress.pinCode
         );
         const currentZone = result.zone;
-
+// console.log("courierServiceName",item.courierServiceName);
         const plans = await Plan.findOne({ userId: item.userId });
+        // console.log("plans", plans.planName);
         const ratecards = await rateCards.findOne({
           plan: plans.planName,
           courierServiceName: item.courierServiceName,
         });
+
+        // console.log("ratecards", ratecards);
 
         const extraWeight =
           item.packageDetails.applicableWeight * 1000 -
