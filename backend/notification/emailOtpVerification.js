@@ -29,11 +29,11 @@ emailOtpRouter.post("/send-email-otp", async (req, res) => {
         <td>
           <div style="background:#fff; border:1px solid #eee; font-family:Lato, Helvetica, Arial, sans-serif; margin:32px auto; max-width:500px; border-radius:16px; overflow:hidden; box-sizing:border-box;">
             <!-- Header with logo -->
-            <div style="background-color: #0CBB7D; padding: 25px 0; text-align: center;">
-              <img src="https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg" alt="Shipex Logo" style="max-height: 60px; width: auto;" />
+            <div style="padding: 25px 0 25px 0;background:#eee;text-align: center;">
+              <img src="https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758806046534_shipexNoBG.png" alt="Shipex Logo" style="max-height: 60px; width: auto;" />
             </div>
 
-            <div style="padding:32px 24px; text-align:center;">
+            <div style="padding:20px 24px; text-align:center;">
               <h1 style="color:#222; font-size:24px; font-weight:700; margin:0 0 16px;">Verification code</h1>
               <p style="font-size:15px; color:#222; margin-bottom:24px;">
                 Enter the below one time password to verify your Shipex account:

@@ -163,7 +163,6 @@ const wooCommerceWebhookHandler = async (req, res) => {
       return res.status(404).json({ error: "Store not found" });
     }
 
-
     // Product details + weight/dimensions aggregation
     let totalWeight = 0.5;
     let totalLength = 10,
@@ -225,18 +224,18 @@ const wooCommerceWebhookHandler = async (req, res) => {
       channelId: orderData.id,
       channel: "WooCommerce",
       pickupAddress: {
-        contactName: `${orderData.billing.first_name} ${orderData.billing.last_name}`,
-        email: orderData.billing.email,
-        phoneNumber: orderData.billing.phone,
-        address: `${orderData.billing.address_1}, ${orderData.billing.city}`,
-        pinCode: orderData.billing.postcode,
-        city: orderData.billing.city,
-        state: orderData.billing.state,
+        contactName: "Default Name",
+        email: "default@email.com",
+        phoneNumber: "9999999999",
+        address: "Default Warehouse Address",
+        pinCode: "000000",
+        city: "Default City",
+        state: "Default State",
       },
       receiverAddress: {
         contactName: `${orderData.shipping.first_name} ${orderData.shipping.last_name}`,
         email: orderData.billing.email,
-        phoneNumber: orderData.shipping.phone || "0000000000",
+        phoneNumber: orderData.shipping.phone || orderData.billing.phone,
         address: orderData.shipping.address_1,
         pinCode: orderData.shipping.postcode,
         city: orderData.shipping.city,

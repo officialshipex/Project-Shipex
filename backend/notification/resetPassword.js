@@ -42,7 +42,7 @@ resetPassword.post("/resetPassword", async (req, res) => {
 
     // Prepare email content
     const logoUrl =
-      "https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg";
+      "https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758806046534_shipexNoBG.png";
     const productName = "Shipex";
     const resetUrl = `https://app.shipexindia.com/reset-password?token=${token}`;
     const supportEmail = "info@shipexindia.com";
@@ -68,10 +68,10 @@ resetPassword.post("/resetPassword", async (req, res) => {
           <tr>
             <td>
               <div style="background:#fff;border:1px solid #eee;font-family:Lato,Helvetica,Arial,sans-serif;margin:32px auto;max-width:540px;border-radius:16px;overflow:hidden;box-sizing:border-box;">
-                <div style="background:#0CBB7D;text-align:center;padding:25px 0;">
+                <div style="text-align:center;background:#eee;padding:25px 0 25px 25px;">
                   <img src="${logoUrl}" alt="${productName} Logo" style="max-height:60px;width:auto;">
                 </div>
-                <div style="padding:38px 30px 34px 30px;text-align:center">
+                <div style="padding:20px 30px 34px 30px;text-align:center">
                   <h2 style="font-size:23px;font-weight:700;color:#232323;margin:0 0 24px;">Reset Password</h2>
                   <p style="font-size:16px;color:#222;margin-bottom:22px;">
                     You have requested a password reset for your <b>${productName}</b> account with the email <b>${email}</b>.<br><br>

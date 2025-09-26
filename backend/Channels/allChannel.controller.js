@@ -6,7 +6,9 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const Order = require("../models/newOrder.model");
-const {createWooCommerceWebhook} = require("./WooCommerce/woocommerce.controller");
+const {
+  createWooCommerceWebhook,
+} = require("./WooCommerce/woocommerce.controller");
 
 const createWebhook = async (storeURL, storeAccessToken) => {
   const webhookURL = "https://api.shipexindia.com/v1/channel/webhook/orders";
@@ -100,7 +102,9 @@ const fetchExistingOrders = async (req, res) => {
     });
 
     if (!channel) {
-      return res.status(404).json({ success: false, message: "Shopify channel not connected." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Shopify channel not connected." });
     }
 
     const accessToken = channel.storeAccessToken;
@@ -156,7 +160,9 @@ const fetchExistingOrders = async (req, res) => {
 
       // Default package dimensions
       let totalWeight = 0;
-      let totalLength = 10, totalWidth = 10, totalHeight = 10;
+      let totalLength = 10,
+        totalWidth = 10,
+        totalHeight = 10;
 
       for (const item of order.line_items) {
         try {
@@ -171,7 +177,9 @@ const fetchExistingOrders = async (req, res) => {
           totalWidth = Math.max(totalWidth, productInfo.width || 0);
           totalHeight = Math.max(totalHeight, productInfo.height || 0);
         } catch (err) {
-          console.warn(`Failed to fetch details for product ${item.product_id}`);
+          console.warn(
+            `Failed to fetch details for product ${item.product_id}`
+          );
         }
       }
 
@@ -184,7 +192,9 @@ const fetchExistingOrders = async (req, res) => {
           contactName: order.billing_address?.name || "N/A",
           email: order.email || "unknown@example.com",
           phoneNumber: order.billing_address?.phone || "0000000000",
-          address: `${order.billing_address?.address1 || ""}, ${order.billing_address?.address2 || ""}`.trim(),
+          address: `${order.billing_address?.address1 || ""}, ${
+            order.billing_address?.address2 || ""
+          }`.trim(),
           pinCode: order.billing_address?.zip || "000000",
           city: order.billing_address?.city || "Unknown",
           state: order.billing_address?.province || "Unknown",
@@ -210,7 +220,10 @@ const fetchExistingOrders = async (req, res) => {
         },
         paymentDetails: {
           method: order.financial_status === "paid" ? "Prepaid" : "COD",
-          amount: order.financial_status === "paid" ? 0 : parseFloat(order.total_price || 0),
+          amount:
+            order.financial_status === "paid"
+              ? 0
+              : parseFloat(order.total_price || 0),
         },
         status: "new",
       });
@@ -227,7 +240,10 @@ const fetchExistingOrders = async (req, res) => {
       message: "All orders synced successfully.",
     });
   } catch (error) {
-    console.error("Error fetching existing orders:", error.response?.data || error.message);
+    console.error(
+      "Error fetching existing orders:",
+      error.response?.data || error.message
+    );
     res.status(500).json({
       success: false,
       message: "Error in syncing orders.",
@@ -317,7 +333,7 @@ const webhookhandler = async (req, res) => {
       },
       receiverAddress: {
         contactName: shopifyOrder.shipping_address?.name || "N/A",
-        email: shopifyOrder.email|| "abc@gmail.com",
+        email: shopifyOrder.email || "abc@gmail.com",
         phoneNumber: shopifyOrder.shipping_address?.phone || "0000000000",
         address: shopifyOrder.shipping_address?.address1 || "abc,abc,abc",
         pinCode: shopifyOrder.shipping_address?.zip || "000000",
@@ -376,7 +392,7 @@ const storeAllChannelDetails = async (req, res) => {
       syncInventory,
       syncDate,
     } = req.body;
-// console.log("req",req.body)
+    // console.log("req",req.body)
     if (
       !storeName ||
       !storeURL ||
@@ -396,6 +412,7 @@ const storeAllChannelDetails = async (req, res) => {
 
     // ✅ Register Webhook
     let webHook;
+    let webhookId;
     if (channel === "Shopify") {
       webHook = await createWebhook(storeURL, storeAccessToken);
       console.log("✅ Webhook created successfully:", webHook);
@@ -404,6 +421,7 @@ const storeAllChannelDetails = async (req, res) => {
           message: "URL or Token or Secret key or Client ID are not matching",
         });
       }
+      webhookId = webHook?.webhook?.id || "";
     }
     if (channel === "WooCommerce") {
       webHook = await createWooCommerceWebhook(
@@ -411,6 +429,7 @@ const storeAllChannelDetails = async (req, res) => {
         storeClientId,
         storeClientSecret
       );
+      webhookId = webHook?.id || webHook?.webhook?.id || "";
     }
     console.log("wekdfn", webHook);
     const newChannel = new AllChannel({
@@ -429,7 +448,7 @@ const storeAllChannelDetails = async (req, res) => {
       multiSeller,
       syncInventory,
       syncFromDate: syncDate || null,
-      webhookId: webHook?.webhook?.id || "",
+      webhookId: webhookId,
     });
 
     await newChannel.save();

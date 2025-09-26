@@ -11,10 +11,10 @@ const sendWelcomeEmail = async (email, customername, password) => {
           <td>
             <div style="background:#fff;border:1px solid #eee;font-family:Lato,Helvetica,Arial,sans-serif;margin:32px auto;max-width:600px;border-radius:8px;overflow:hidden;">
               <!-- Header with logo -->
-              <div style="background-color:#0CBB7D;text-align:center;padding:30px;">
-                <img src="https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758633150031_Shipex.jpg" alt="Shipex Logo" style="max-height:60px;width:auto;">
+              <div style="text-align:center;background:#eee;padding:30px;">
+                <img src="https://shipex-india.s3.ap-south-1.amazonaws.com/uploads/1758806046534_shipexNoBG.png" alt="Shipex Logo" style="max-height:60px;width:auto;">
               </div>
-              <div style="padding:36px 36px 24px;text-align:left;color:#222;">
+              <div style="padding:20px 36px 24px 36px;text-align:left;color:#222;">
                 <!-- Welcome -->
                 <h2 style="color:#183765;font-size:22px;font-weight:700;margin:18px 0 10px;">Welcome to Shipex India! 🎉</h2>
                 <h4 style="font-size:15px;font-weight:400;margin:0 0 18px;">Dear <span style="font-weight:700;">${customername}</span>,</h4>
