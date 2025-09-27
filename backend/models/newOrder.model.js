@@ -45,6 +45,9 @@ const orderSchema = new mongoose.Schema(
     channel: {
       type: String,
     },
+    storeUrl: {
+      type: String,
+    },
     pickupAddress: {
       contactName: { type: String, required: true },
       email: { type: String },
@@ -90,13 +93,7 @@ const orderSchema = new mongoose.Schema(
 
     paymentDetails: {
       method: { type: String, enum: ["COD", "Prepaid"], required: true },
-      amount: {
-        type: Number,
-        required: function () {
-          return this.paymentDetails?.method === "Prepaid";
-        },
-      },
-      default: {},
+      amount: { type: Number, required: true },
     },
 
     // Updated ndrHistory
@@ -124,7 +121,7 @@ const orderSchema = new mongoose.Schema(
     COD: { type: String },
     reattempt: { type: Boolean },
     commodityId: { type: Number },
-    estimatedDeliveryDate:{type:Date},
+    estimatedDeliveryDate: { type: Date },
     tracking: [
       {
         status: { type: String },

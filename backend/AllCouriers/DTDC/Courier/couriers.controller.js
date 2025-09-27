@@ -7,6 +7,7 @@ const Wallet = require("../../../models/wallet");
 const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
 const { getZone } = require("../../../Rate/zoneManagementController");
 const commodityOptions = require("../../../config/commodityOptions");
+const {markWooOrderAsShipped} =require("../../../Channels/WooCommerce/woocommerce.controller")
 // const router = express.Router();
 
 // DTDC API Configuration from environment variables
@@ -190,6 +191,9 @@ const createOrder = async (req, res) => {
           },
         }
       );
+      if(currentOrder.channel.toLowerCase()==="woocommerce"){
+        await markWooOrderAsShipped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
+      }
     } else {
       console.log("ererer", response.data);
       return res.status(400).json({ message: response.data.data[0].message });

@@ -211,9 +211,7 @@ const wooCommerceWebhookHandler = async (req, res) => {
     );
     const paymentDetails = {
       method: paymentMethod,
-      ...(paymentMethod === "Prepaid"
-        ? { amount: parseFloat(orderData.total) }
-        : {}),
+      amount: parseFloat(orderData.total) || 0,
     };
 
     // Prepare order payload
@@ -223,6 +221,7 @@ const wooCommerceWebhookHandler = async (req, res) => {
       compositeOrderId, // customer_id + WC orderId
       channelId: orderData.id,
       channel: "WooCommerce",
+      storeUrl: storeURL,
       pickupAddress: {
         contactName: "Default Name",
         email: "default@email.com",
@@ -321,23 +320,22 @@ const getWooCommerceProductDetails = async (
 const markWooOrderAsShipped = async (
   storeUrl,
   orderId,
-  consumerKey,
-  consumerSecret,
   trackingNumber,
-  trackingUrl,
   courierName
 ) => {
   try {
     const baseUrl = storeUrl.replace(/\/$/, "");
-
+    console.log("baseUrl", baseUrl);
+    const store = await AllChannel.findOne({ storeURL: storeUrl });
+    const trackingUrl = `https://app.shipexindia.com/dashboard/order/tracking/${trackingNumber}`;
     // 1. Update WooCommerce order status to "completed"
     await axios.put(
       `${baseUrl}/wp-json/wc/v3/orders/${orderId}`,
       { status: "completed" },
       {
         auth: {
-          username: consumerKey,
-          password: consumerSecret,
+          username: store.storeClientId,
+          password: store.storeClientSecret,
         },
       }
     );
@@ -364,7 +362,7 @@ const markWooOrderAsShipped = async (
         );
         console.log(`🚚 Tracking info added for WooCommerce order ${orderId}`);
       } catch (err) {
-        console.warn(
+        console.log(
           `⚠️ Could not add tracking info: ${err.response?.data || err.message}`
         );
       }

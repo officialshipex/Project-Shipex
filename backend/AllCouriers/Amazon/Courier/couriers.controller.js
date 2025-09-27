@@ -6,6 +6,7 @@ const User = require("../../../models/User.model");
 const { s3 } = require("../../../config/s3");
 const { getZone } = require("../../../Rate/zoneManagementController");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const {markWooOrderAsSihpped} =require("../../../Channels/WooCommerce/woocommerce.controller")
 
 const createOneClickShipment = async (req, res) => {
   try {
@@ -158,6 +159,9 @@ const createOneClickShipment = async (req, res) => {
           },
         },
       });
+      if(currentOrder.channel.toLowerCase()==="woocommerce"){
+        await markWooOrderAsSihpped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
+      }
     } else {
       console.log("eror", response.data);
       return res.status(400).json({ message: "Error creating shipment" });
