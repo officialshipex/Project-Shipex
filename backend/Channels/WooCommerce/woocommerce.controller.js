@@ -325,6 +325,7 @@ const markWooOrderAsShipped = async (
 ) => {
   try {
     const baseUrl = storeUrl.replace(/\/$/, "");
+    console.log("baseUrl", baseUrl);
     const store = await AllChannel.findOne({ storeURL: storeUrl });
     const trackingUrl = `https://app.shipexindia.com/dashboard/order/tracking/${trackingNumber}`;
     // 1. Update WooCommerce order status to "completed"
@@ -361,7 +362,7 @@ const markWooOrderAsShipped = async (
         );
         console.log(`🚚 Tracking info added for WooCommerce order ${orderId}`);
       } catch (err) {
-        console.warn(
+        console.log(
           `⚠️ Could not add tracking info: ${err.response?.data || err.message}`
         );
       }

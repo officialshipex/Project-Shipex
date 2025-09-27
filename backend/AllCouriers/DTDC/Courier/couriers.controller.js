@@ -192,7 +192,7 @@ const createOrder = async (req, res) => {
         }
       );
       if(currentOrder.channel.toLowerCase()==="woocommerce"){
-        markWooOrderAsShipped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
+        await markWooOrderAsShipped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
       }
     } else {
       console.log("ererer", response.data);
