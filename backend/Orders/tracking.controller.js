@@ -57,7 +57,7 @@ const trackSingleOrder = async (order) => {
       Xpressbees: trackShipment,
       Delhivery: trackShipmentDelhivery,
       "Shree Maruti": trackOrderShreeMaruti,
-      ShreeMaruti:trackOrderShreeMaruti,
+      ShreeMaruti: trackOrderShreeMaruti,
       DTDC: trackOrderDTDC,
       Dtdc: trackOrderDTDC, // optional: keep both keys if needed
       EcomExpress: shipmentTrackingforward,
@@ -171,7 +171,7 @@ const trackSingleOrder = async (order) => {
         order.ndrStatus = "RTO Delivered";
       }
     }
-    if (provider === "Dtdc" || provider==="DTDC") {
+    if (provider === "Dtdc" || provider === "DTDC") {
       const statusDoc = await statusMap.findOne(
         { partnerName: provider.toUpperCase() },
         { data: 1 }
@@ -187,7 +187,12 @@ const trackSingleOrder = async (order) => {
         if (dbMapping) {
           // console.log("maped dtdc status",dbMapping.sy_status)
           order.status = dbMapping.sy_status;
-          if (dbMapping.sy_status === "Our for Delivery") {
+          // Only set ndrStatus for actual NDR-related states
+          if (
+            ["Our for Delivery", "RTO", "Undelivered"].includes(
+              dbMapping.sy_status
+            )
+          ) {
             order.ndrStatus = dbMapping.sy_status;
           }
           if (
@@ -196,7 +201,14 @@ const trackSingleOrder = async (order) => {
               order.ndrStatus === "Action_Requested") &&
             dbMapping.code === "DLV"
           ) {
-            order.ndrStatus = dbMapping.sy_status;
+            if (order.ndrHistory.length > 0) {
+              // Delivered but NDR was raised → mark both
+              order.status = "Delivered";
+              order.ndrStatus = "Delivered";
+            } else {
+              // Delivered without NDR → only order.status
+              order.status = "Delivered";
+            }
           }
           const trackingLength = order.tracking?.length || 0;
           const previousStatus =
@@ -278,7 +290,7 @@ const trackSingleOrder = async (order) => {
         }
       }
     }
-    if (provider === "Amazon Shipping" || provider==="Amazon") {
+    if (provider === "Amazon Shipping" || provider === "Amazon") {
       if (normalizedData.ShipmentType === "FORWARD") {
         if (normalizedData.Instructions === "ReadyForReceive") {
           order.status = "Ready To Ship";
@@ -573,7 +585,7 @@ const trackSingleOrder = async (order) => {
         // order.ndrStatus = "Delivered";
       }
     }
-    if (provider === "Shree Maruti" || provider==="ShreeMaruti") {
+    if (provider === "Shree Maruti" || provider === "ShreeMaruti") {
       // console.log("ShreeMaruti normalizedData", normalizedData);
       if (normalizedData.ShipmentType === "forward") {
         if (
@@ -726,11 +738,16 @@ const trackSingleOrder = async (order) => {
         if (dbMapping) {
           console.log("maped delhivery status", dbMapping.sy_status);
           order.status = dbMapping.sy_status; // fallback if not mapped
-          if (dbMapping.sy_status === "Our for Delivery") {
+          // order.ndrStatus=dbMapping.sy_status
+          // Only set ndrStatus for actual NDR-related states
+          if (
+            ["Our for Delivery", "RTO", "Undelivered"].includes(
+              dbMapping.sy_status
+            )
+          ) {
             order.ndrStatus = dbMapping.sy_status;
           }
         }
-        // await order.save();
       }
       // const statusMap = {
       //   "UD:Manifested": { status: "Ready To Ship" },
@@ -763,12 +780,20 @@ const trackSingleOrder = async (order) => {
 
       if (
         (order.ndrStatus === "Undelivered" ||
-          order.ndrStatus === "Out for Delivery" || order.ndrStatus==="Action_Requested") &&
+          order.ndrStatus === "Out for Delivery" ||
+          order.ndrStatus === "Action_Requested") &&
         normalizedData.Status === "Delivered"
       ) {
-        order.ndrStatus = "Delivered";
+        if (order.ndrHistory.length > 0) {
+          // NDR was raised → mark both as Delivered
+          order.status = "Delivered";
+          order.ndrStatus = "Delivered";
+        } else {
+          // No NDR raised → only status is Delivered
+          order.status = "Delivered";
+        }
       }
-
+      // await order.save();
       const eligibleNSLCodes = [
         "EOD-74",
         "EOD-15",
@@ -971,7 +996,7 @@ const mapTrackingResponse = (data, provider) => {
       Instructions: latestScan?.action || "N/A",
     };
   }
-  if (provider === "Shree Maruti" || provider==="ShreeMaruti") {
+  if (provider === "Shree Maruti" || provider === "ShreeMaruti") {
     // console.log("ShreeMaruti data", data);
     const last = data[0];
     // console.log("ShreeMaruti last", last);
@@ -1056,7 +1081,7 @@ const mapTrackingResponse = (data, provider) => {
         : "N/A",
     },
 
-    "Amazon": {
+    Amazon: {
       Status: data.summary?.status || "N/A",
       StrRemarks:
         data.eventHistory?.length &&

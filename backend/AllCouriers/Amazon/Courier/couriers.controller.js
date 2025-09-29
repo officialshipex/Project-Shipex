@@ -6,7 +6,9 @@ const User = require("../../../models/User.model");
 const { s3 } = require("../../../config/s3");
 const { getZone } = require("../../../Rate/zoneManagementController");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
-const {markWooOrderAsSihpped} =require("../../../Channels/WooCommerce/woocommerce.controller")
+const {
+  markWooOrderAsSihpped,
+} = require("../../../Channels/WooCommerce/woocommerce.controller");
 
 const createOneClickShipment = async (req, res) => {
   try {
@@ -15,7 +17,13 @@ const createOneClickShipment = async (req, res) => {
       return res.status(401).json({ error: "Access token missing" });
     }
     // console.log(req.body)
-    const { id, provider, finalCharges, courierServiceName,estimatedDeliveryDate } = req.body;
+    const {
+      id,
+      provider,
+      finalCharges,
+      courierServiceName,
+      estimatedDeliveryDate,
+    } = req.body;
     const currentOrder = await Order.findById(id);
     if (!currentOrder) {
       return res.status(404).json({ message: "Order not found" });
@@ -134,7 +142,7 @@ const createOneClickShipment = async (req, res) => {
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.label = labelUrl;
       currentOrder.zone = zone.zone;
-      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate;
+      currentOrder.estimatedDeliveryDate = estimatedDeliveryDate;
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
@@ -159,9 +167,14 @@ const createOneClickShipment = async (req, res) => {
           },
         },
       });
-      if(currentOrder.channel.toLowerCase()==="woocommerce"){
-        await markWooOrderAsSihpped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
-      }
+      // if (currentOrder.channel?.toLowerCase() === "woocommerce") {
+      //   await markWooOrderAsSihpped(
+      //     currentOrder.storeUrl,
+      //     currentOrder.channelId,
+      //     currentOrder.awb_number,
+      //     currentOrder.provider
+      //   );
+      // }
     } else {
       console.log("eror", response.data);
       return res.status(400).json({ message: "Error creating shipment" });
@@ -225,8 +238,8 @@ const cancelShipment = async (shipmentId) => {
       { $set: { status: "Cancelled" } }
     );
 
-    if (response?.data?.payload) {
-      console.log("Shipment Cancelled Successfully");
+    if (response.data.payload) {
+      console.log("Shipment Cancelled Successfully",response);
       return {
         data: response.data,
         code: 201,

@@ -390,6 +390,7 @@ const bulkOrder = async (req, res) => {
               height: parseFloat(row["*Height (cm)"] || 0),
             },
           },
+          channel: "custom",
           compositeOrderId,
           status: "new",
         };
