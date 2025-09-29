@@ -7,7 +7,9 @@ const Wallet = require("../../../models/wallet");
 const { getDTDCAuthToken } = require("../Authorize/saveCourierContoller");
 const { getZone } = require("../../../Rate/zoneManagementController");
 const commodityOptions = require("../../../config/commodityOptions");
-const {markWooOrderAsShipped} =require("../../../Channels/WooCommerce/woocommerce.controller")
+const {
+  markWooOrderAsShipped,
+} = require("../../../Channels/WooCommerce/woocommerce.controller");
 // const router = express.Router();
 
 // DTDC API Configuration from environment variables
@@ -21,8 +23,14 @@ const createOrder = async (req, res) => {
     console.log("API Key:", API_KEY);
     console.log("Access Token:", X_ACCESS_TOKEN);
 
-    const { id, provider, finalCharges, courierServiceName, courier,estimatedDeliveryDate } =
-      req.body;
+    const {
+      id,
+      provider,
+      finalCharges,
+      courierServiceName,
+      courier,
+      estimatedDeliveryDate,
+    } = req.body;
     console.log(id, provider, finalCharges, courierServiceName, courier);
     if (!courier) {
       return res.status(400).json({
@@ -128,7 +136,12 @@ const createOrder = async (req, res) => {
         },
       ],
     };
-    console.log("consignments", shipmentData,shipmentData.consignments[0].origin_details,shipmentData.consignments[0].destination_details);
+    console.log(
+      "consignments",
+      shipmentData,
+      shipmentData.consignments[0].origin_details,
+      shipmentData.consignments[0].destination_details
+    );
 
     // API call to DTDC
     let response;
@@ -146,7 +159,7 @@ const createOrder = async (req, res) => {
           },
         }
       );
-      console.log("dtdc response",response.data)
+      console.log("dtdc response", response.data);
     } else {
       return res.status(400).json({ success: false, message: "Low Balance" });
     }
@@ -162,7 +175,7 @@ const createOrder = async (req, res) => {
       currentOrder.courierServiceName = courierServiceName;
       currentOrder.shipmentCreatedAt = new Date();
       currentOrder.zone = zone.zone;
-      currentOrder.estimatedDeliveryDate=estimatedDeliveryDate || "";
+      currentOrder.estimatedDeliveryDate = estimatedDeliveryDate || "";
       currentOrder.tracking.push({
         status: "Booked",
         StatusLocation: currentOrder.pickupAddress?.city || "N/A",
@@ -191,9 +204,14 @@ const createOrder = async (req, res) => {
           },
         }
       );
-      if(currentOrder.channel.toLowerCase()==="woocommerce"){
-        await markWooOrderAsShipped(currentOrder.storeUrl,currentOrder.channelId,currentOrder.awb_number,currentOrder.provider)
-      }
+      // if (currentOrder.channel?.toLowerCase() === "woocommerce") {
+      //   await markWooOrderAsSihpped(
+      //     currentOrder.storeUrl,
+      //     currentOrder.channelId,
+      //     currentOrder.awb_number,
+      //     currentOrder.provider
+      //   );
+      // }
     } else {
       console.log("ererer", response.data);
       return res.status(400).json({ message: response.data.data[0].message });
