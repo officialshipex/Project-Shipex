@@ -2385,7 +2385,7 @@ const transferCOD = async (req, res) => {
     remittanceRecord.RemittanceInitiated =
       (remittanceRecord.RemittanceInitiated || 0) - initiatedSum;
     remittanceRecord.TotalCODRemitted =
-      remittanceRecord.TotalCODRemitted + initiatedSum;
+  (Number(remittanceRecord.TotalCODRemitted) || 0) + initiatedSum;
 
     await remittanceRecord.save();
 

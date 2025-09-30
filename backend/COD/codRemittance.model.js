@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 
 const codRemittanceSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  CODToBeRemitted: { type: Number },
-  LastCODRemitted: { type: Number },
-  TotalCODRemitted: { type: Number },
-  TotalDeductionfromCOD: { type: Number },
+  CODToBeRemitted: { type: Number ,default:0 },
+  LastCODRemitted: { type: Number ,default:0 },
+  TotalCODRemitted: { type: Number ,default:0 },
+  TotalDeductionfromCOD: { type: Number ,default:0},
   RemittanceInitiated: { type: Number,defult:0 },
-  rechargeAmount:{type:Number},
+  rechargeAmount:{type:Number,default:0},
 
   remittanceData: [
     {
