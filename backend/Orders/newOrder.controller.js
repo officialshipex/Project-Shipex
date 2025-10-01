@@ -305,6 +305,8 @@ const getOrders = async (req, res) => {
       userId = req.user?._id || req.employee?._id;
     }
 
+    // console.log("userId",userId)
+
     const page = parseInt(req.query.page) || 1;
     const limitQuery = req.query.limit;
     const limit =
