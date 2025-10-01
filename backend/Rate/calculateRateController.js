@@ -59,10 +59,10 @@ const calculateRate = async (req, res) => {
         ![
           // "EcomExpres",
           "Delhivery",
-          "ShreeMaruti",
-          "DTDC",
+          "Shree Maruti",
+          "Dtdc",
           "Smartship",
-          "Amazon",
+          "Amazon Shipping",
         ].includes(provider)
       ) {
         continue;
@@ -76,7 +76,7 @@ const calculateRate = async (req, res) => {
         );
 
         // console.log("ecom", serviceable);
-      } else if (provider === "ShreeMaruti") {
+      } else if (provider === "Shree Maruti") {
         const payload = {
           fromPincode: parseInt(pickUpPincode),
           toPincode: parseInt(deliveryPincode),
@@ -92,7 +92,7 @@ const calculateRate = async (req, res) => {
           order_type
         );
         // console.log("dele", serviceable);
-      } else if (provider === "DTDC") {
+      } else if (provider === "Dtdc") {
         serviceable = await checkServiceabilityDTDC(
           pickUpPincode,
           deliveryPincode
@@ -107,7 +107,7 @@ const calculateRate = async (req, res) => {
         };
         serviceable = await checkSmartshipHubServiceability(payload);
         // console.log("serviceable", serviceable);
-      } else if (provider === "Amazon") {
+      } else if (provider === "Amazon Shipping") {
         const payload = {
           pickUpPincode,
           deliveryPincode,
