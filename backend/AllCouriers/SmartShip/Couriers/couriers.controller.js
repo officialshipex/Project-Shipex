@@ -443,8 +443,8 @@ const trackOrderSmartShip = async (AWBNo, shipment_id) => {
       }
     );
 
-    // console.log("response data", response.data);
-    // console.log("respose status",response.data.data.scans)
+    console.log("response data", response.data);
+    console.log("respose status",response.data.data.scans)
     // console.log("response status", response.data.data.scans["20726635"][0].call_logs);
     if (response.data.message === "success") {
       return { success: true, data: response.data.data };
@@ -462,7 +462,7 @@ const trackOrderSmartShip = async (AWBNo, shipment_id) => {
   }
 };
 
-// trackOrderSmartShip("77953338455")
+trackOrderSmartShip("SMPC0000303506")
 
 module.exports = {
   orderRegistrationOneStep,
