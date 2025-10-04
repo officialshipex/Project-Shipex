@@ -9,7 +9,7 @@ const getZone = zoneManagementController.getZone;
 
 // Helper sleep function for delay
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const rtoCharges = async () => {
@@ -31,7 +31,7 @@ const rtoCharges = async () => {
           item.receiverAddress.pinCode
         );
         const currentZone = result.zone;
-// console.log("courierServiceName",item.courierServiceName);
+        // console.log("courierServiceName",item.courierServiceName);
         const plans = await Plan.findOne({ userId: item.userId });
         // console.log("plans", plans.planName);
         const ratecards = await rateCards.findOne({
@@ -112,7 +112,9 @@ const rtoCharges = async () => {
                 },
               }
             );
-            liveBalance = isCredit ? liveBalance - amount : liveBalance + amount;
+            liveBalance = isCredit
+              ? liveBalance - amount
+              : liveBalance + amount;
           }
         };
 
@@ -185,10 +187,30 @@ const rtoCharges = async () => {
   }
 };
 
-cron.schedule("0 */5 * * *", () => {
-  console.log("⏰ Running scheduled task every 5 hours: Fetching orders...");
-  rtoCharges();
-});
-// rtoCharges(); // Initial call when the server starts
+const startRtoLoop = async () => {
+  try {
+    const now = new Date();
+    const currentHour = now.getHours(); // 0 - 23
 
-// module.exports = { rtoCharges };
+    // Run only between 7 AM and 11 PM
+    if (currentHour >= 7 && currentHour <= 23) {
+      console.log("⏰ Running RTO Charges at", now.toLocaleTimeString());
+      await rtoCharges(); // your async function
+
+      console.log("✅ RTO Charges completed. Next run after 1 hour...");
+      setTimeout(startRtoLoop, 1 * 60 * 60 * 1000); // wait 1 hour after finish
+    } else {
+      console.log(
+        "🌙 Outside allowed hours, will retry in 1 hour:",
+        now.toLocaleTimeString()
+      );
+      setTimeout(startRtoLoop, 1 * 60 * 60 * 1000); // check again in 1 hour
+    }
+  } catch (error) {
+    console.error("❌ Error in RTO loop:", error);
+    setTimeout(startRtoLoop, 15 * 60 * 1000); // retry in 15 min if error
+  }
+};
+
+// start the loop once
+// startRtoLoop();

@@ -369,7 +369,7 @@ verfication.post("/verify-otp", async (req, res) => {
     const userId = req.user._id;
     // const userId = "6711f5f10d7b30f7193c55fd";
     const { otp, refId, aadhaarNo } = req.body;
-
+// console.log(req.body);
     if (!otp || !refId) {
       return res.status(400).json({
         success: false,
@@ -381,6 +381,7 @@ verfication.post("/verify-otp", async (req, res) => {
       otp: otp,
       ref_id: refId,
     });
+    // console.log("data",data)
 
     let signature = getSignature();
 
@@ -423,7 +424,7 @@ verfication.post("/verify-otp", async (req, res) => {
       data: newAadhaar,
     });
   } catch (err) {
-    console.log("err:", err.response.data);
+    console.log("err:", err);
 
     if (err.isAxiosError && err.response) {
       return res.status(err.response.status || 500).json({

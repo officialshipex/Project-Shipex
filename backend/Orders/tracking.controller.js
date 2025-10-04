@@ -967,17 +967,30 @@ const trackOrders = async () => {
 
 const startTrackingLoop = async () => {
   try {
-    console.log("🕒 Starting Order Tracking");
-    await trackOrders();
-    console.log("⏳ Waiting for 1 hours before next tracking cycle...");
-    setTimeout(startTrackingLoop, 1 * 60 * 60 * 1000); // Wait 3 hours, then call again
+    const now = new Date();
+    const currentHour = now.getHours(); // 0 - 23
+
+    if (currentHour >= 7 && currentHour <= 23) {
+      console.log("🕒 Starting Order Tracking at", now.toLocaleTimeString());
+
+      // Run tracking (may take ~20 min)
+      await trackOrders();
+
+      console.log("✅ Tracking completed. Next run after 1 hour...");
+      setTimeout(startTrackingLoop, 1 * 60 * 60 * 1000); // wait 1 hour after finish
+    } else {
+      console.log("🌙 Outside tracking window, will retry in 1 hour:", now.toLocaleTimeString());
+      setTimeout(startTrackingLoop, 1 * 60 * 60 * 1000); // check again in 1 hour
+    }
   } catch (error) {
     console.error("❌ Error in tracking loop:", error);
-    setTimeout(startTrackingLoop, 15 * 60 * 1000); // Retry after 5 minutes even on error
+    setTimeout(startTrackingLoop, 15 * 60 * 1000); // retry after 15 min
   }
 };
 
+// Start the loop once
 // startTrackingLoop();
+
 
 const mapTrackingResponse = (data, provider) => {
   // console.log("Mapping data for provider:", data);
